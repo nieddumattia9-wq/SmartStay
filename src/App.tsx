@@ -1,16 +1,13 @@
 import "./App.css";
-
-/**
- * SmartStay - Home page
- * Prima versione del progetto.
- */
+import Hero from "./components/Hero/Hero";
+import TripOptimizer from "./components/TripOptimizer/TripOptimizer";
+import Navbar from "./components/Navbar/Navbar"
 function App() {
   return (
     <main className="app">
-      <h1 className="app__title">SmartStay</h1>
-      <p className="app__subtitle">
-        Find the smartest way to travel.
-      </p>
+      <Navbar />
+      <Hero />
+      <TripOptimizer />
     </main>
   );
 }
