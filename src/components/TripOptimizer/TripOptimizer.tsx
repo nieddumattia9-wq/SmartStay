@@ -1,5 +1,5 @@
 import "./TripOptimizer.css";
-
+import PreferenceSlider from "../PreferenceSlider/PreferenceSlider";
 function TripOptimizer() {
   return (
     <div className="trip-card">
@@ -30,16 +30,7 @@ function TripOptimizer() {
         />
 
       </div>
-
-      <div className="slider">
-
-        <span>Comfort</span>
-
-        <input type="range" />
-
-        <span>Risparmio</span>
-
-      </div>
+      <PreferenceSlider />
 
       <button>
 

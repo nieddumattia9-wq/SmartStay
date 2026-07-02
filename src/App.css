@@ -13,28 +13,6 @@
 
   background: #f8fafc;
 }
-
-.title {
-  font-size: 4.5rem;
-  font-weight: 800;
-  color: #0f172a;
-
-  margin-top: 60px;
-  margin-bottom: 0;
-}
-
-.subtitle {
-  margin-top: 18px;
-
-  font-size: 1.3rem;
-
-  color: #64748b;
-
-  max-width: 650px;
-
-  line-height: 1.7;
-}
-
 .search-card {
   margin-top: 50px;
 
