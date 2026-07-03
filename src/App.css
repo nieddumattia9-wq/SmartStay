@@ -3,82 +3,10 @@
 
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: center;
+
+  background: #f8fafc;
 
   padding-top: 20px;
   padding-bottom: 80px;
-
-  text-align: center;
-
-  background: #f8fafc;
-}
-.search-card {
-  margin-top: 50px;
-
-  width: 100%;
-  max-width: 700px;
-
-  background: white;
-
-  padding: 30px;
-
-  border-radius: 20px;
-
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
-
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.search-card input {
-  padding: 14px 16px;
-
-  font-size: 16px;
-
-  border: 1px solid #d1d5db;
-
-  border-radius: 12px;
-
-  outline: none;
-
-  transition: 0.2s;
-}
-
-.search-card input:focus {
-  border-color: #2563eb;
-}
-
-.dates {
-  display: flex;
-  gap: 16px;
-}
-
-.dates input {
-  flex: 1;
-}
-
-.search-card button {
-  padding: 16px;
-
-  border: none;
-
-  border-radius: 12px;
-
-  background: #2563eb;
-
-  color: white;
-
-  font-size: 17px;
-
-  font-weight: 600;
-
-  cursor: pointer;
-
-  transition: 0.2s;
-}
-
-.search-card button:hover {
-  background: #1d4ed8;
 }

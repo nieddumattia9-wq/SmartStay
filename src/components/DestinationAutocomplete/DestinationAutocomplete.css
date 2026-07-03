@@ -1,0 +1,130 @@
+.destination-autocomplete__mark {
+    background: transparent;
+    color: #16e06e;
+    font-weight: 700;
+    padding: 0;
+  }
+.destination-autocomplete {
+    position: relative;
+    width: 100%;
+  }
+  
+  .destination-autocomplete__input {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 16px;
+    line-height: 1.2;
+    outline: none;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+    -webkit-appearance: none;
+  }
+  
+  .destination-autocomplete__input::placeholder {
+    color: #94a3b8;
+  }
+  
+  .destination-autocomplete__input:focus {
+    border-color: #16e06e;
+    box-shadow: 0 0 0 4px rgba(22, 224, 110, 0.15);
+  }
+  
+  .destination-autocomplete__input:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+  
+  .destination-autocomplete__dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 280px;
+    margin: 0;
+    padding: 8px;
+    list-style: none;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow:
+      0 12px 32px rgba(15, 23, 42, 0.1),
+      0 2px 8px rgba(15, 23, 42, 0.06);
+    -webkit-overflow-scrolling: touch;
+
+    animation: dropdownFade .18s ease;
+transform-origin: top;
+  }
+  
+  .destination-autocomplete__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  
+  .destination-autocomplete__option--active,
+  .destination-autocomplete__option:hover {
+    background: #f8fafc;
+  }
+  
+  .destination-autocomplete__city {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+  }
+  
+  .destination-autocomplete__country {
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  
+  @media (max-width: 640px) {
+
+    .destination-autocomplete__input {
+      height: 44px;
+      font-size: 16px;
+    }
+  
+    .destination-autocomplete__option {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      padding: 11px 12px;
+    }
+  
+    .destination-autocomplete__country {
+      white-space: normal;
+    }
+  
+  } 
+  
+  
+  @keyframes dropdownFade {
+  
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+  
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  
+  }

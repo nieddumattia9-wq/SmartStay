@@ -1,0 +1,130 @@
+.smart-optimizer {
+  margin-top: 36px;
+}
+
+.optimizer-title {
+  margin: 0 0 24px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.optimizer-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.slider-container {
+  position: relative;
+  width: 100%;
+  height: 44px;
+  margin-bottom: 34px;
+}
+
+.slider-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  transform: translateY(-50%);
+  background: #e5e7eb;
+  border-radius: 999px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow: visible;
+}
+
+.slider-track--dragging {
+  cursor: grabbing;
+}
+
+.slider-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 999px;
+  transition:
+    width 0.32s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background-color 0.32s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: width;
+}
+
+.slider-track--dragging .slider-progress {
+  transition: background-color 0.32s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.slider-mark {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.slider-thumb {
+  position: absolute;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.18),
+    0 2px 8px rgba(15, 23, 42, 0.08);
+  transition:
+    left 0.32s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background-color 0.32s cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  z-index: 10;
+  pointer-events: none;
+  will-change: left;
+}
+
+.slider-track--dragging .slider-thumb {
+  transition:
+    background-color 0.32s cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.slider-track:hover:not(.slider-track--dragging) .slider-thumb {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.optimizer-info {
+  margin-top: 18px;
+  padding: 22px;
+  border-radius: 18px;
+  background: #f8fafc;
+  transition: background-color 0.25s ease;
+}
+
+.optimizer-info h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  transition: color 0.32s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.optimizer-info p {
+  margin: 12px 0 0;
+  color: #64748b;
+  line-height: 1.7;
+  font-size: 0.97rem;
+}

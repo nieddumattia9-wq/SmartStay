@@ -1,24 +1,34 @@
+import { useState } from "react";
+
 import "./TripOptimizer.css";
-import PreferenceSlider from "../PreferenceSlider/PreferenceSlider";
+
+import SmartOptimizer from "../SmartOptimizer/SmartOptimizer";
+import DestinationAutocomplete from "../DestinationAutocomplete/DestinationAutocomplete";
+import BookingCalendar from "../BookingCalendar/BookingCalendar";
+
 function TripOptimizer() {
+  const [destination, setDestination] = useState("");
+
   return (
     <div className="trip-card">
 
-      <input
-        type="text"
-        placeholder="📍 Destination"
+      <DestinationAutocomplete
+        value={destination}
+        onChange={setDestination}
+        placeholder="Search destination..."
       />
 
       <div className="row">
+        <BookingCalendar
+          placeholder="Check-in"
+        />
 
-        <input type="date" />
-
-        <input type="date" />
-
+        <BookingCalendar
+          placeholder="Check-out"
+        />
       </div>
 
       <div className="row">
-
         <input
           type="number"
           placeholder="Guests"
@@ -28,14 +38,12 @@ function TripOptimizer() {
           type="number"
           placeholder="Budget €"
         />
-
       </div>
-      <PreferenceSlider />
+
+      <SmartOptimizer />
 
       <button>
-
         Find my SmartStay
-
       </button>
 
     </div>
