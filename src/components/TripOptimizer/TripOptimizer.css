@@ -1,72 +1,209 @@
 .trip-card {
-    width: 100%;
-    max-width: 760px;
-  
-    margin-top: 50px;
-  
-    background: white;
-  
-    padding: 35px;
-  
-    border-radius: 24px;
-  
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 760px;
+
+  margin-top: 50px;
+
+  background: #ffffff;
+
+  padding: 35px;
+
+  border-radius: 24px;
+
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.08);
+}
+
+.row {
+  display: flex;
+
+  gap: 15px;
+
+  margin-top: 15px;
+}
+
+/* =========================
+   BUDGET
+========================= */
+
+.budget-input {
+
+  position: relative;
+
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+}
+
+.budget-input__icon {
+
+  position: absolute;
+
+  left: 16px;
+
+  color: #16e06e;
+
+  pointer-events: none;
+
+  z-index: 2;
+}
+
+.budget-input__field {
+
+  width: 100%;
+  height: 50px;
+
+  padding: 0 18px 0 46px;
+
+  border: 1px solid #dbe3ec;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  color: #0f172a;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  outline: none;
+
+  transition:
+    border-color .22s ease,
+    box-shadow .22s ease,
+    background-color .22s ease;
+}
+
+.budget-input__field::placeholder {
+
+  color: #94a3b8;
+}
+
+.budget-input__field:hover {
+
+  border-color: #cbd5e1;
+}
+
+.budget-input__field:focus {
+
+  border-color: #16e06e;
+
+  box-shadow:
+    0 0 0 4px rgba(22,224,110,.12);
+}
+
+/* =========================
+   BUTTON
+========================= */
+
+.trip-card__submit {
+
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  margin-top: 35px;
+
+  padding: 18px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: #22c55e;
+
+  color: #ffffff;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background-color .25s ease,
+    transform .25s ease,
+    box-shadow .25s ease;
+}
+
+.trip-card__submit:hover {
+
+  background: #16e06e;
+
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 10px 24px rgba(22,224,110,.25);
+}
+
+.trip-card__submit:active {
+
+  transform: translateY(0);
+}
+
+.trip-card__submit:focus-visible {
+
+  outline: none;
+
+  box-shadow:
+    0 0 0 4px rgba(22,224,110,.18);
+}
+
+.trip-card__submit-icon {
+
+  color: #ffffff;
+
+  flex-shrink: 0;
+
+  transition:
+    transform .25s ease;
+}
+
+.trip-card__submit:hover .trip-card__submit-icon {
+
+  transform:
+    rotate(12deg)
+    scale(1.10);
+}
+
+.trip-card__submit span {
+
+  display: flex;
+
+  align-items: center;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 640px) {
+
+  .trip-card {
+
+    padding: 24px;
   }
-  
-  .trip-card input {
-    width: 100%;
-  
-    padding: 16px;
-  
-    border-radius: 14px;
-  
-    border: 1px solid #d1d5db;
-  
-    font-size: 16px;
-  
-    outline: none;
-  
-    transition: 0.2s;
-  }
-  
-  .trip-card input:focus {
-    border-color: #22c55e;
-  }
-  
+
   .row {
-    display: flex;
-  
-    gap: 15px;
-  
-    margin-top: 15px;
+
+    flex-direction: column;
   }
-  
-  .trip-card button {
-    width: 100%;
-  
-    margin-top: 35px;
-  
-    padding: 18px;
-  
-    background: #22c55e;
-  
-    color: white;
-  
-    border: none;
-  
-    border-radius: 14px;
-  
-    font-size: 18px;
-  
-    font-weight: 700;
-  
-    cursor: pointer;
-  
-    transition: 0.25s;
+
+  .budget-input__field {
+
+    height: 44px;
+
+    padding-left: 42px;
+
+    font-size: 16px;
   }
-  
-  .trip-card button:hover {
-    background: #16e06e;
-  
-    transform: translateY(-2px);
+
+  .budget-input__icon {
+
+    left: 14px;
   }
+}

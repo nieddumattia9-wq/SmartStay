@@ -13,6 +13,7 @@ export const WEEKDAY_LABELS = [
     dayOfMonth: number;
     isCurrentMonth: boolean;
     isToday: boolean;
+    isPast: boolean;
   };
   
   export function startOfDay(date: Date): Date {
@@ -96,8 +97,14 @@ export const WEEKDAY_LABELS = [
       days.push({
         date,
         dayOfMonth: date.getDate(),
+      
         isCurrentMonth: date.getMonth() === month,
+      
         isToday: isSameDay(date, today),
+      
+        isPast:
+          startOfDay(date).getTime() <
+          today.getTime(),
       });
   
     }

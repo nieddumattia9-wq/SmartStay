@@ -1,3 +1,4 @@
+import { MapPin } from "lucide-react";
 import {
     useCallback,
     useEffect,
@@ -187,30 +188,40 @@ function highlightMatch(text: string, query: string): ReactNode {
         ref={rootRef}
         className={`destination-autocomplete ${className}`.trim()}
       >
-        <input
-          ref={inputRef}
-          id={inputId}
-          name={name}
-          type="text"
-          className="destination-autocomplete__input"
-          value={value}
-          placeholder={placeholder}
-          disabled={disabled}
-          autoComplete="off"
-          spellCheck={false}
-          role="combobox"
-          aria-expanded={showDropdown}
-          aria-controls={listboxId}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            showDropdown && activeIndex >= 0
-              ? `${inputId}-option-${activeIndex}`
-              : undefined
-          }
-          onChange={(event) => handleInputChange(event.target.value)}
-          onFocus={openDropdown}
-          onKeyDown={handleKeyDown}
-        />
+        <div className="destination-autocomplete__input-wrapper">
+
+<MapPin
+  size={18}
+  strokeWidth={2}
+  className="destination-autocomplete__icon"
+/>
+
+<input
+  ref={inputRef}
+  id={inputId}
+  name={name}
+  type="text"
+  className="destination-autocomplete__input"
+  value={value}
+  placeholder={placeholder}
+  disabled={disabled}
+  autoComplete="off"
+  spellCheck={false}
+  role="combobox"
+  aria-expanded={showDropdown}
+  aria-controls={listboxId}
+  aria-autocomplete="list"
+  aria-activedescendant={
+    showDropdown && activeIndex >= 0
+      ? `${inputId}-option-${activeIndex}`
+      : undefined
+  }
+  onChange={(event) => handleInputChange(event.target.value)}
+  onFocus={openDropdown}
+  onKeyDown={handleKeyDown}
+/>
+
+</div>
   
         {showDropdown && (
           <ul

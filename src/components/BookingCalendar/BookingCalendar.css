@@ -2,12 +2,34 @@
     position: relative;
     width: 100%;
   }
+
+  .booking-calendar__input-wrapper {
+
+    position: relative;
+  
+    display: flex;
+  
+    align-items: center;
+  }
+  
+  .booking-calendar__icon {
+  
+    position: absolute;
+  
+    left: 16px;
+  
+    color: #16e06e;
+  
+    pointer-events: none;
+  
+    z-index: 2;
+  }
   
   .booking-calendar__input {
     width: 100%;
     height: 50px;
   
-    padding: 0 18px;
+    padding: 0 18px 0 46px;
   
     border: 1px solid #dbe3ec;
     border-radius: 14px;
@@ -53,26 +75,26 @@
   
     position: absolute;
   
-    top: calc(100% + 10px);
+    top: calc(100% + 8px);
     left: 0;
   
     z-index: 1000;
   
-    width: min(350px, 100%);
+    width: 340px;
   
-    padding: 18px;
+    padding: 14px;
   
     border: 1px solid #e2e8f0;
-    border-radius: 18px;
+    border-radius: 16px;
   
     background: #ffffff;
   
     overflow: hidden;
   
     box-shadow:
-      0 24px 50px rgba(15,23,42,.12),
-      0 8px 20px rgba(15,23,42,.08);
-  
+    0 18px 40px rgba(15,23,42,.10),
+    0 4px 12px rgba(15,23,42,.06);
+
     animation: bookingCalendarFade .18s ease;
   
     transform-origin: top;
@@ -225,7 +247,7 @@
   }
   .calendar-grid__day--outside {
 
-    color: #cbd5e1;
+    color: #0f172a;
   }
   
   .calendar-grid__day--outside:hover {
@@ -265,6 +287,25 @@
     box-shadow:
       0 0 0 4px rgba(22,224,110,.18);
   }
+  .calendar-grid__day--disabled {
+
+    color: #7c8798;
+
+    opacity: .55;
+
+    cursor: not-allowed;
+}
+
+.calendar-grid__day--disabled:hover {
+
+    background: transparent;
+
+    color: #cbd5e1;
+
+    transform: none;
+
+    box-shadow: none;
+}
   
   @keyframes bookingCalendarFade {
   
@@ -321,12 +362,16 @@
   
       font-size: 10px;
     }
+
     .calendar-grid__day:hover:not(:disabled) {
 
         background: #f1f5f9;
-      
+    
         transform: scale(1.05);
-      
+    
         color: #0f172a;
-      }
+    }
+    
+    
+    }
   }

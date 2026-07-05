@@ -1,14 +1,42 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import "./App.css";
-import Hero from "./components/Hero/Hero";
-import TripOptimizer from "./components/TripOptimizer/TripOptimizer";
-import Navbar from "./components/Navbar/Navbar"
+
+import Navbar from "./components/Navbar/Navbar";
+
+import Home from "./pages/Home/Home";
+
+import Results from "./pages/Results/Results";
+
+import LoadingScreen from "./components/LoadingScreen/LoadingScreen";
 function App() {
   return (
-    <main className="app">
+    <BrowserRouter>
+
       <Navbar />
-      <Hero />
-      <TripOptimizer />
-    </main>
+
+      <main className="app">
+
+        <Routes>
+
+          <Route
+            path="/"
+            element={<Home />}
+          />
+          <Route
+            path="/loading"
+            element={<LoadingScreen />}
+          />
+          <Route
+            path="/results"
+            element={<Results />}
+          />
+
+        </Routes>
+
+      </main>
+
+    </BrowserRouter>
   );
 }
 

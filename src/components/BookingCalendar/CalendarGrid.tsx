@@ -40,6 +40,9 @@ function CalendarGrid({
             day.isToday
               ? "calendar-grid__day--today"
               : "",
+            day.isPast
+              ? "calendar-grid__day--disabled"
+              : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -50,7 +53,7 @@ function CalendarGrid({
               type="button"
               className={className}
               role="gridcell"
-              disabled={!day.isCurrentMonth}
+              disabled={day.isPast}
               onClick={() => onSelectDay?.(day.date)}
             >
               {day.dayOfMonth}

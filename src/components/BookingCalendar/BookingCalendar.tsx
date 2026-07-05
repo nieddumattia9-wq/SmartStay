@@ -1,3 +1,4 @@
+import { CalendarDays } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import Calendar from "./Calendar";
@@ -117,22 +118,32 @@ function BookingCalendar({
       ref={rootRef}
       className={`booking-calendar ${className}`.trim()}
     >
-      <input
-        id={inputId}
-        type="text"
-        className="booking-calendar__input"
-        value={inputValue}
-        readOnly
-        placeholder={placeholder}
-        disabled={disabled}
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        aria-controls={
-          isOpen ? popupId : undefined
-        }
-        onClick={openCalendar}
-        onFocus={openCalendar}
-      />
+      <div className="booking-calendar__input-wrapper">
+
+<CalendarDays
+  size={18}
+  strokeWidth={2}
+  className="booking-calendar__icon"
+/>
+
+<input
+  id={inputId}
+  type="text"
+  className="booking-calendar__input"
+  value={inputValue}
+  readOnly
+  placeholder={placeholder}
+  disabled={disabled}
+  aria-haspopup="dialog"
+  aria-expanded={isOpen}
+  aria-controls={
+    isOpen ? popupId : undefined
+  }
+  onClick={openCalendar}
+  onFocus={openCalendar}
+/>
+
+</div>
 
       {isOpen && (
         <div
