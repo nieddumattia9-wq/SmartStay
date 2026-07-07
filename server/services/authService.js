@@ -8,8 +8,24 @@ const {
   generateHmac,
 } = require("../utils/crypto");
 
+function maskValue(value, visibleChars = 8) {
+
+  if (!value || typeof value !== "string") {
+    return "";
+  }
+
+  if (value.length <= visibleChars) {
+    return "*".repeat(value.length);
+  }
+
+  return `${value.slice(0, visibleChars)}...`;
+
+}
+
 async function getPartnerToken() {
+
   try {
+
     const nonce = generateNonce();
 
     const timestamp = generateTimestamp();
@@ -28,15 +44,13 @@ async function getPartnerToken() {
       hmac,
     };
 
-    console.log("\n========== RouteStack ==========");
-    console.log("Authenticating...");
+    console.log("\n========== RouteStack Auth ==========");
+    console.log("Authenticating with partner-token endpoint...");
     console.log("Timestamp:", timestamp);
-    console.log("Nonce:", nonce);
-    console.log("===============================\n");
-
-    console.log("\n===== REQUEST PAYLOAD =====");
-    console.log(payload);
-    console.log("===========================\n");
+    console.log("API Key:", maskValue(config.apiKey));
+    console.log("Nonce:", maskValue(nonce));
+    console.log("HMAC:", maskValue(hmac));
+    console.log("====================================\n");
 
     const response = await axios.post(
       `${config.baseUrl}/mcp/auth/partner-token`,
@@ -50,8 +64,17 @@ async function getPartnerToken() {
       }
     );
 
-    console.log("✅ Partner Token ricevuto!");
-    console.log(response.data);
+    if (!response.data?.token) {
+
+      throw new Error(
+        "RouteStack authentication response did not include a token."
+      );
+
+    }
+
+    console.log("✅ RouteStack partner token received.");
+    console.log("Token:", maskValue(response.data.token, 24));
+    console.log("Expires in:", response.data.expiresIn ?? "unknown");
 
     return response.data;
 
@@ -59,19 +82,21 @@ async function getPartnerToken() {
 
     console.error("\n❌ RouteStack Authentication Error");
 
-    console.error("Status:", error.response?.status);
-    console.error("Headers:", error.response?.headers);
-    console.error("Body:", error.response?.data);
-
     if (error.response) {
+
       console.error("Status:", error.response.status);
-      console.error(error.response.data);
+      console.error("Body:", error.response.data);
+
     } else {
-      console.error(error.message);
+
+      console.error("Message:", error.message);
+
     }
 
     throw error;
+
   }
+
 }
 
 module.exports = {

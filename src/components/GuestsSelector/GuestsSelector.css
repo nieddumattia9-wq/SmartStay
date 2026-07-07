@@ -253,3 +253,163 @@
       height: 30px;
     }
   }
+
+  .counter {
+
+    display: flex;
+  
+    align-items: center;
+  
+    gap: 14px;
+  
+  }
+  
+  .counter strong {
+  
+    min-width: 22px;
+  
+    text-align: center;
+  
+    font-size: 16px;
+  
+    font-weight: 700;
+  
+    color: #0f172a;
+  
+  }
+  
+  .counter button {
+  
+    width: 32px;
+  
+    height: 32px;
+  
+    display: flex;
+  
+    align-items: center;
+  
+    justify-content: center;
+  
+    border: 1px solid #dbe3ec;
+  
+    border-radius: 50%;
+  
+    background: #ffffff;
+  
+    color: #0f172a;
+  
+    font-size: 18px;
+  
+    font-weight: 500;
+  
+    cursor: pointer;
+  
+    outline: none;
+  
+    transition:
+      background-color .18s ease,
+      border-color .18s ease,
+      transform .18s ease,
+      color .18s ease,
+      box-shadow .18s ease;
+  
+  }
+  
+  .counter button:hover:not(:disabled) {
+  
+    background: #f8fafc;
+  
+    border-color: #16e06e;
+  
+    color: #16e06e;
+  
+    transform: scale(1.06);
+  
+  }
+  
+  .counter button:active:not(:disabled) {
+  
+    transform: scale(.94);
+  
+  }
+  
+  .counter button:focus-visible {
+  
+    box-shadow:
+      0 0 0 4px rgba(22, 224, 110, .14);
+  
+  }
+  
+  .counter button:disabled {
+  
+    opacity: .35;
+  
+    cursor: not-allowed;
+  
+    border-color: #e2e8f0;
+  
+    color: #94a3b8;
+  
+    background: #ffffff;
+  
+  }
+  
+  @keyframes guestsPopup {
+  
+    from {
+  
+      opacity: 0;
+  
+      transform:
+        translateY(-8px)
+        scale(.98);
+  
+    }
+  
+    to {
+  
+      opacity: 1;
+  
+      transform:
+        translateY(0)
+        scale(1);
+  
+    }
+  
+  }
+  
+  @media (max-width: 640px) {
+  
+    .guests-selector__popup {
+  
+      left: 50%;
+  
+      width: min(calc(100vw - 24px), 340px);
+  
+      transform: translateX(-50%);
+  
+    }
+  
+    .guest-row {
+  
+      padding: 12px 0;
+  
+      gap: 16px;
+  
+    }
+  
+    .counter {
+  
+      gap: 10px;
+  
+    }
+  
+    .counter button {
+  
+      width: 30px;
+  
+      height: 30px;
+  
+    }
+  
+  }

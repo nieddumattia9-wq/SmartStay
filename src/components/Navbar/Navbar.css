@@ -1,53 +1,164 @@
 .navbar {
+
     width: 100%;
+  
     max-width: 1200px;
+  
     margin: 0 auto;
-
+  
     display: flex;
+  
     justify-content: space-between;
+  
     align-items: center;
-
+  
     padding: 30px 60px;
-}
-
-.logo {
+  
+  }
+  
+  .navbar__logo {
+  
+    color: #0f172a;
+  
     font-size: 24px;
+  
     font-weight: 800;
-    color: #0F172A;
-}
-
-nav {
+  
+    text-decoration: none;
+  
+    letter-spacing: -.03em;
+  
+  }
+  
+  .navbar__logo:hover {
+  
+    color: #16e06e;
+  
+  }
+  
+  .navbar__nav {
+  
     display: flex;
+  
     align-items: center;
+  
     gap: 20px;
-}
-
-.login {
+  
+  }
+  
+  .navbar__login {
+  
+    border: none;
+  
     background: transparent;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
+  
     color: #374151;
-}
-
-.signup {
-    background: #2563EB;
-    color: white;
-
-    border: none;
-
-    padding: 12px 22px;
-
-    border-radius: 12px;
-
-    font-weight: 600;
-
+  
+    font-size: 16px;
+  
+    font-weight: 500;
+  
     cursor: pointer;
-
-    transition: .25s;
-}
-
-.signup:hover {
+  
+    transition:
+      color .2s ease,
+      transform .2s ease;
+  
+  }
+  
+  .navbar__login:hover {
+  
+    color: #0f172a;
+  
+    transform: translateY(-1px);
+  
+  }
+  
+  .navbar__signup {
+  
+    border: none;
+  
+    border-radius: 12px;
+  
+    padding: 12px 22px;
+  
+    background: #16e06e;
+  
+    color: #ffffff;
+  
+    font-size: 15px;
+  
+    font-weight: 700;
+  
+    cursor: pointer;
+  
+    transition:
+      transform .25s ease,
+      box-shadow .25s ease,
+      background-color .25s ease;
+  
+  }
+  
+  .navbar__signup:hover {
+  
+    background: #12c963;
+  
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(37,99,235,.25);
-}
+  
+    box-shadow:
+      0 10px 25px rgba(22, 224, 110, .25);
+  
+  }
+  
+  .navbar__login:focus-visible,
+  .navbar__signup:focus-visible,
+  .navbar__logo:focus-visible {
+  
+    outline: none;
+  
+    box-shadow:
+      0 0 0 4px rgba(22, 224, 110, .18);
+  
+    border-radius: 10px;
+  
+  }
+  
+  @media (max-width: 768px) {
+  
+    .navbar {
+  
+      padding: 24px;
+  
+    }
+  
+  }
+  
+  @media (max-width: 520px) {
+  
+    .navbar {
+  
+      gap: 18px;
+  
+    }
+  
+    .navbar__nav {
+  
+      gap: 12px;
+  
+    }
+  
+    .navbar__login {
+  
+      font-size: 14px;
+  
+    }
+  
+    .navbar__signup {
+  
+      padding: 10px 16px;
+  
+      font-size: 14px;
+  
+    }
+  
+  }

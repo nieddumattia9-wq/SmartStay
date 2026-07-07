@@ -1,12 +1,35 @@
-module.exports = {
+function getRequiredEnv(name) {
 
-    baseUrl:
-      process.env.ROUTESTACK_BASE_URL,
+    const value = process.env[name];
   
-    apiKey:
-      process.env.ROUTESTACK_API_KEY,
+    if (!value || value.trim() === "") {
   
-    apiSecret:
-      process.env.ROUTESTACK_API_SECRET,
+      throw new Error(
+        `Missing required environment variable: ${name}`
+      );
+  
+    }
+  
+    return value.trim();
+  
+  }
+  
+  function normalizeBaseUrl(url) {
+  
+    return url.replace(/\/+$/, "");
+  
+  }
+  
+  const config = {
+  
+    baseUrl: normalizeBaseUrl(
+      getRequiredEnv("ROUTESTACK_BASE_URL")
+    ),
+  
+    apiKey: getRequiredEnv("ROUTESTACK_API_KEY"),
+  
+    apiSecret: getRequiredEnv("ROUTESTACK_API_SECRET"),
   
   };
+  
+  module.exports = config;

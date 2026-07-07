@@ -1,75 +1,200 @@
-# React + TypeScript + Vite
+# SmartStay
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SmartStay is a travel web app that helps users find smarter accommodation options by comparing destination, dates, guests, budget, comfort, and value.
 
-Currently, two official plugins are available:
+The app currently connects a React frontend to a Node.js backend. The backend communicates with RouteStack to search real hotel stays and manage asynchronous search results.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Project structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+SmartStay is divided into two main parts:
 
-## Expanding the ESLint configuration
+- `src` — frontend React app
+- `server` — backend Node.js API
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Frontend
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+The frontend includes:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- destination autocomplete
+- date picker
+- guest selector
+- smart preference slider
+- loading screen
+- results page
+- hotel cards
+
+The frontend runs on:
+
+```text
+
+[http://localhost:5173](http://localhost:5173)
+
+
+
+
+
+
+
+To start the frontend from the project root:
+
+```
 
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+npm run dev
 
 ```
+
+
+
+
+
+## Backend
+
+The backend includes:
+
+- RouteStack authentication
+- destination search
+- hotel search
+- polling for incomplete searches
+- server-side search sessions
+- search status endpoint
+- results session endpoint
+
+The backend runs on:
+
+```
+
+```
+
+```
+
+[http://localhost:3001](http://localhost:3001)
+
+```
+
+To start the backend:
+
+```
+
+```
+
+```
+
+cd server
+npm run dev
+
+```
+
+
+
+
+
+## Environment variables
+
+The backend uses a `.env` file inside the `server` folder.
+
+Example:
+
+```
+
+```
+
+```
+
+PORT=3001
+CLIENT_ORIGIN=[http://localhost:5173](http://localhost:5173)
+ROUTESTACK_BASE_URL=[https://evolvemcp.routestack.ai](https://evolvemcp.routestack.ai)
+ROUTESTACK_API_KEY=your_api_key_here
+ROUTESTACK_API_SECRET=your_api_secret_here
+
+```
+
+Never commit real API keys or secrets.
+
+
+
+
+
+## Useful commands
+
+Frontend type check:
+
+```
+
+```
+
+```
+
+npm run typecheck
+
+```
+
+Frontend build:
+
+```
+
+```
+
+```
+
+npm run build
+
+```
+
+Frontend lint:
+
+```
+
+```
+
+```
+
+npm run lint
+
+```
+
+
+
+
+
+## Current status
+
+SmartStay currently supports this real search flow:
+
+```
+
+```
+
+```
+
+Home
+→ search setup
+→ loading screen
+→ RouteStack hotel search
+→ polling
+→ results page
+
+```
+
+The project is still under active development.
+
+```
+
+```
+
+```
+
+Questa è più pulita.  
+Quando hai fatto, scrivimi **fatto** e passiamo a `server\.gitignore`.
+
+```
+
+```
+

@@ -1,13 +1,21 @@
-.destination-autocomplete__mark {
-    background: transparent;
-    color: #16e06e;
-    font-weight: 700;
-    padding: 0;
+.destination-autocomplete {
+
+    position: relative;
+  
+    width: 100%;
+  
   }
   
-  .destination-autocomplete {
-    position: relative;
-    width: 100%;
+  .destination-autocomplete__mark {
+  
+    background: transparent;
+  
+    color: #16e06e;
+  
+    font-weight: 700;
+  
+    padding: 0;
+  
   }
   
   .destination-autocomplete__input-wrapper {
@@ -17,6 +25,7 @@
     display: flex;
   
     align-items: center;
+  
   }
   
   .destination-autocomplete__icon {
@@ -30,15 +39,19 @@
     pointer-events: none;
   
     z-index: 2;
+  
   }
   
   .destination-autocomplete__input {
+  
     width: 100%;
+  
     height: 48px;
   
     padding: 0 16px 0 46px;
   
     border: 1px solid #e2e8f0;
+  
     border-radius: 12px;
   
     background: #ffffff;
@@ -46,46 +59,97 @@
     color: #0f172a;
   
     font-size: 16px;
+  
     line-height: 1.2;
   
     outline: none;
   
     transition:
       border-color .2s ease,
-      box-shadow .2s ease;
+      box-shadow .2s ease,
+      background-color .2s ease;
+  
+    appearance: none;
   
     -webkit-appearance: none;
+  
   }
   
   .destination-autocomplete__input::placeholder {
+  
     color: #94a3b8;
+  
   }
   
   .destination-autocomplete__input:focus {
+  
     border-color: #16e06e;
   
     box-shadow:
-      0 0 0 4px rgba(22,224,110,.15);
+      0 0 0 4px rgba(22, 224, 110, .15);
+  
   }
   
   .destination-autocomplete__input:disabled {
+  
     background: #f8fafc;
+  
     color: #94a3b8;
+  
     cursor: not-allowed;
+  
   }
   
-  .destination-autocomplete__dropdown {
+  .destination-autocomplete__loading {
+  
     position: absolute;
   
     top: calc(100% + 8px);
+  
     left: 0;
+  
     right: 0;
   
-    z-index: 50;
+    z-index: 1000;
+  
+    padding: 12px 14px;
+  
+    border: 1px solid #e2e8f0;
+  
+    border-radius: 14px;
+  
+    background: #ffffff;
+  
+    color: #64748b;
+  
+    font-size: 14px;
+  
+    font-weight: 500;
+  
+    box-shadow:
+      0 12px 32px rgba(15, 23, 42, .10),
+      0 2px 8px rgba(15, 23, 42, .06);
+  
+    animation: dropdownFade .18s ease;
+  
+  }
+  
+  .destination-autocomplete__dropdown {
+  
+    position: absolute;
+  
+    top: calc(100% + 8px);
+  
+    left: 0;
+  
+    right: 0;
+  
+    z-index: 1000;
   
     max-height: 280px;
   
     margin: 0;
+  
     padding: 8px;
   
     list-style: none;
@@ -93,25 +157,31 @@
     overflow-y: auto;
   
     border: 1px solid #e2e8f0;
+  
     border-radius: 18px;
   
     background: #ffffff;
   
     box-shadow:
-      0 12px 32px rgba(15,23,42,.10),
-      0 2px 8px rgba(15,23,42,.06);
+      0 12px 32px rgba(15, 23, 42, .10),
+      0 2px 8px rgba(15, 23, 42, .06);
   
     -webkit-overflow-scrolling: touch;
   
     animation: dropdownFade .18s ease;
   
     transform-origin: top;
-  }
   
+    will-change: transform, opacity;
+  
+  }
+
   .destination-autocomplete__option {
+
     display: flex;
   
     align-items: center;
+  
     justify-content: space-between;
   
     gap: 12px;
@@ -122,36 +192,65 @@
   
     cursor: pointer;
   
-    transition: background-color .15s ease;
+    transition:
+      background-color .15s ease,
+      color .15s ease;
+  
   }
   
   .destination-autocomplete__option--active,
   .destination-autocomplete__option:hover {
+  
     background: #f8fafc;
+  
   }
   
   .destination-autocomplete__city {
+  
     font-size: 15px;
+  
     font-weight: 600;
   
     color: #0f172a;
   
     letter-spacing: -.01em;
+  
   }
   
   .destination-autocomplete__country {
+  
     font-size: 14px;
+  
     font-weight: 500;
   
     color: #64748b;
   
     white-space: nowrap;
+  
   }
+  
   @media (max-width: 640px) {
-
+  
     .destination-autocomplete__input {
+  
       height: 44px;
+  
+      padding-left: 42px;
+  
       font-size: 16px;
+  
+    }
+  
+    .destination-autocomplete__icon {
+  
+      left: 14px;
+  
+    }
+  
+    .destination-autocomplete__loading {
+  
+      font-size: 13px;
+  
     }
   
     .destination-autocomplete__option {
@@ -163,22 +262,15 @@
       gap: 2px;
   
       padding: 11px 12px;
+  
     }
   
     .destination-autocomplete__country {
   
       white-space: normal;
+  
     }
   
-    .destination-autocomplete__icon {
-  
-      left: 14px;
-    }
-  
-    .destination-autocomplete__input {
-  
-      padding-left: 42px;
-    }
   }
   
   @keyframes dropdownFade {
@@ -190,6 +282,7 @@
       transform:
         translateY(-6px)
         scale(.98);
+  
     }
   
     to {
@@ -199,5 +292,7 @@
       transform:
         translateY(0)
         scale(1);
+  
     }
+  
   }

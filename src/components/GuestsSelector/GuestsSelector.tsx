@@ -1,173 +1,443 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Users } from "lucide-react";
-import "./GuestsSelector.css";
-
-function GuestsSelector() {
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  const [isOpen, setIsOpen] = useState(false);
-
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [rooms, setRooms] = useState(1);
-
-  const totalGuests = adults + children;
-
-  const openSelector = () => setIsOpen(true);
-
-  const closeSelector = useCallback(() => {
-    setIsOpen(false);
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        rootRef.current &&
-        !rootRef.current.contains(event.target as Node)
-      ) {
-        closeSelector();
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+  } from "react";
+  
+  import { Users } from "lucide-react";
+  
+  import "./GuestsSelector.css";
+  
+  export type GuestsSelectorValue = {
+  
+    adults: number;
+  
+    children: number;
+  
+    rooms: number;
+  
+  };
+  
+  type GuestsSelectorProps = {
+  
+    value?: GuestsSelectorValue;
+  
+    onChange?: (value: GuestsSelectorValue) => void;
+  
+    disabled?: boolean;
+  
+    className?: string;
+  
+  };
+  
+  const DEFAULT_VALUE: GuestsSelectorValue = {
+  
+    adults: 2,
+  
+    children: 0,
+  
+    rooms: 1,
+  
+  };
+  
+  const MIN_ADULTS = 1;
+  
+  const MIN_CHILDREN = 0;
+  
+  const MIN_ROOMS = 1;
+  
+  const MAX_ADULTS = 10;
+  
+  const MAX_CHILDREN = 10;
+  
+  const MAX_ROOMS = 5;
+  
+  function clamp(
+    value: number,
+    min: number,
+    max: number
+  ) {
+  
+    return Math.min(
+      Math.max(value, min),
+      max
+    );
+  
+  }
+  
+  function sanitizeValue(
+    value: GuestsSelectorValue
+  ): GuestsSelectorValue {
+  
+    return {
+  
+      adults: clamp(
+        value.adults,
+        MIN_ADULTS,
+        MAX_ADULTS
+      ),
+  
+      children: clamp(
+        value.children,
+        MIN_CHILDREN,
+        MAX_CHILDREN
+      ),
+  
+      rooms: clamp(
+        value.rooms,
+        MIN_ROOMS,
+        MAX_ROOMS
+      ),
+  
     };
-  }, [isOpen, closeSelector]);
+  
+  }
+  
+  function GuestsSelector({
+    value,
+    onChange,
+    disabled = false,
+    className = "",
+  }: GuestsSelectorProps) {
+  
+    const rootRef =
+      useRef<HTMLDivElement>(null);
+  
+    const [isOpen, setIsOpen] =
+      useState(false);
+  
+    const [internalValue, setInternalValue] =
+      useState<GuestsSelectorValue>(DEFAULT_VALUE);
+  
+    const currentValue =
+      value ?? internalValue;
+  
+    const totalGuests =
+      currentValue.adults + currentValue.children;
+  
+    const updateValue = useCallback((
+      nextPartialValue: Partial<GuestsSelectorValue>
+    ) => {
+  
+      const nextValue =
+        sanitizeValue({
+          ...currentValue,
+          ...nextPartialValue,
+        });
+  
+      if (!value) {
+  
+        setInternalValue(nextValue);
+  
+      }
+  
+      onChange?.(nextValue);
+  
+    }, [
+      currentValue,
+      onChange,
+      value,
+    ]);
+  
+    const openSelector = useCallback(() => {
+  
+      if (disabled) {
+  
+        return;
+  
+      }
+  
+      setIsOpen(true);
+  
+    }, [disabled]);
+  
+    const closeSelector = useCallback(() => {
+  
+      setIsOpen(false);
+  
+    }, []);
+  
+    useEffect(() => {
+  
+      if (!isOpen) {
+  
+        return;
+  
+      }
+  
+      function handlePointerDown(
+        event: MouseEvent | TouchEvent
+      ) {
+  
+        const target =
+          event.target as Node;
+  
+        if (!rootRef.current?.contains(target)) {
+  
+          closeSelector();
+  
+        }
+  
+      }
+  
+      function handleKeyDown(
+        event: KeyboardEvent
+      ) {
+  
+        if (event.key === "Escape") {
+  
+          closeSelector();
+  
+        }
+  
+      }
+  
+      document.addEventListener(
+        "mousedown",
+        handlePointerDown
+      );
+  
+      document.addEventListener(
+        "touchstart",
+        handlePointerDown
+      );
+  
+      document.addEventListener(
+        "keydown",
+        handleKeyDown
+      );
+  
+      return () => {
+  
+        document.removeEventListener(
+          "mousedown",
+          handlePointerDown
+        );
+  
+        document.removeEventListener(
+          "touchstart",
+          handlePointerDown
+        );
+  
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown
+        );
+  
+      };
+  
+    }, [
+      closeSelector,
+      isOpen,
+    ]);
 
-  return (
-    <div
-      ref={rootRef}
-      className="guests-selector"
-    >
+    return (
 
-<div
-  className="guests-selector__input"
-  onClick={openSelector}
->
-
-  <div className="guests-selector__left">
-
-    <Users size={18} strokeWidth={2} />
-
-    <span>
-      {totalGuests} Guest{totalGuests > 1 ? "s" : ""} · {rooms} Room{rooms > 1 ? "s" : ""}
-    </span>
-
-  </div>
-
-</div>
-
-      {isOpen && (
-
-        <div className="guests-selector__popup">
-
-          <div className="guest-row">
-
-            <div>
-              <h4>Adults</h4>
-              <span>Ages 18+</span>
+        <div
+          ref={rootRef}
+          className={`guests-selector ${className}`.trim()}
+        >
+    
+          <button
+            type="button"
+            className="guests-selector__input"
+            onClick={openSelector}
+            disabled={disabled}
+            aria-haspopup="dialog"
+            aria-expanded={isOpen}
+          >
+    
+            <div className="guests-selector__left">
+    
+              <Users
+                size={18}
+                strokeWidth={2}
+              />
+    
+              <span>
+    
+                {totalGuests} Guest{totalGuests > 1 ? "s" : ""} ·{" "}
+                {currentValue.rooms} Room{currentValue.rooms > 1 ? "s" : ""}
+    
+              </span>
+    
             </div>
-
-            <div className="counter">
-
-              <button
-                onClick={() =>
-                  setAdults(Math.max(1, adults - 1))
-                }
-              >
-                −
-              </button>
-
-              <strong>{adults}</strong>
-
-              <button
-                onClick={() =>
-                  setAdults(adults + 1)
-                }
-              >
-                +
-              </button>
-
+    
+          </button>
+    
+          {isOpen && (
+    
+            <div
+              className="guests-selector__popup"
+              role="dialog"
+              aria-label="Guests and rooms selector"
+            >
+    
+              <div className="guest-row">
+    
+                <div>
+    
+                  <h4>
+                    Adults
+                  </h4>
+    
+                  <span>
+                    Ages 18+
+                  </span>
+    
+                </div>
+    
+                <div className="counter">
+    
+                  <button
+                    type="button"
+                    disabled={currentValue.adults <= MIN_ADULTS}
+                    onClick={() =>
+                      updateValue({
+                        adults: currentValue.adults - 1,
+                      })
+                    }
+                  >
+    
+                    −
+    
+                  </button>
+    
+                  <strong>
+                    {currentValue.adults}
+                  </strong>
+    
+                  <button
+                    type="button"
+                    disabled={currentValue.adults >= MAX_ADULTS}
+                    onClick={() =>
+                      updateValue({
+                        adults: currentValue.adults + 1,
+                      })
+                    }
+                  >
+    
+                    +
+    
+                  </button>
+    
+                </div>
+    
+              </div>
+    
+              <div className="guest-row">
+    
+                <div>
+    
+                  <h4>
+                    Children
+                  </h4>
+    
+                  <span>
+                    Ages 0–12
+                  </span>
+    
+                </div>
+    
+                <div className="counter">
+    
+                  <button
+                    type="button"
+                    disabled={currentValue.children <= MIN_CHILDREN}
+                    onClick={() =>
+                      updateValue({
+                        children: currentValue.children - 1,
+                      })
+                    }
+                  >
+    
+                    −
+    
+                  </button>
+    
+                  <strong>
+                    {currentValue.children}
+                  </strong>
+    
+                  <button
+                    type="button"
+                    disabled={currentValue.children >= MAX_CHILDREN}
+                    onClick={() =>
+                      updateValue({
+                        children: currentValue.children + 1,
+                      })
+                    }
+                  >
+    
+                    +
+    
+                  </button>
+    
+                </div>
+    
+              </div>
+    
+              <div className="guest-row">
+    
+                <div>
+    
+                  <h4>
+                    Rooms
+                  </h4>
+    
+                  <span>
+                    Number of rooms
+                  </span>
+    
+                </div>
+    
+                <div className="counter">
+    
+                  <button
+                    type="button"
+                    disabled={currentValue.rooms <= MIN_ROOMS}
+                    onClick={() =>
+                      updateValue({
+                        rooms: currentValue.rooms - 1,
+                      })
+                    }
+                  >
+    
+                    −
+    
+                  </button>
+    
+                  <strong>
+                    {currentValue.rooms}
+                  </strong>
+    
+                  <button
+                    type="button"
+                    disabled={currentValue.rooms >= MAX_ROOMS}
+                    onClick={() =>
+                      updateValue({
+                        rooms: currentValue.rooms + 1,
+                      })
+                    }
+                  >
+    
+                    +
+    
+                  </button>
+    
+                </div>
+    
+              </div>
+    
             </div>
-
-          </div>
-
-          <div className="guest-row">
-
-            <div>
-              <h4>Children</h4>
-              <span>Ages 0–12</span>
-            </div>
-
-            <div className="counter">
-
-              <button
-                onClick={() =>
-                  setChildren(
-                    Math.max(0, children - 1)
-                  )
-                }
-              >
-                −
-              </button>
-
-              <strong>{children}</strong>
-
-              <button
-                onClick={() =>
-                  setChildren(children + 1)
-                }
-              >
-                +
-              </button>
-
-            </div>
-
-          </div>
-
-          <div className="guest-row">
-
-            <div>
-              <h4>Rooms</h4>
-            </div>
-
-            <div className="counter">
-
-              <button
-                onClick={() =>
-                  setRooms(Math.max(1, rooms - 1))
-                }
-              >
-                −
-              </button>
-
-              <strong>{rooms}</strong>
-
-              <button
-                onClick={() =>
-                  setRooms(rooms + 1)
-                }
-              >
-                +
-              </button>
-
-            </div>
-
-          </div>
-
+    
+          )}
+    
         </div>
-
-      )}
-
-    </div>
-  );
-}
-
-export default GuestsSelector;
+    
+      );
+    
+    }
+    
+    export default GuestsSelector;

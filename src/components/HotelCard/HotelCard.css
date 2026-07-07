@@ -1,0 +1,323 @@
+.hotel-card {
+
+    display: flex;
+  
+    background: #ffffff;
+  
+    border-radius: 22px;
+  
+    overflow: hidden;
+  
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, .08);
+  
+    transition:
+      transform .25s ease,
+      box-shadow .25s ease;
+  
+  }
+  
+  .hotel-card:hover {
+  
+    transform: translateY(-4px);
+  
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, .12);
+  
+  }
+  
+  .hotel-card__image {
+  
+    width: 320px;
+  
+    min-width: 320px;
+  
+    height: 240px;
+  
+    overflow: hidden;
+  
+  }
+  
+  .hotel-card__image img {
+  
+    width: 100%;
+  
+    height: 100%;
+  
+    object-fit: cover;
+  
+    transition: transform .35s ease;
+  
+  }
+  
+  .hotel-card:hover .hotel-card__image img {
+  
+    transform: scale(1.05);
+  
+  }
+  
+  .hotel-card__image-placeholder {
+  
+    width: 100%;
+  
+    height: 100%;
+  
+    display: flex;
+  
+    align-items: center;
+  
+    justify-content: center;
+  
+    background: #ecfdf5;
+  
+    color: #059669;
+  
+    font-size: 1.2rem;
+  
+    font-weight: 700;
+  
+  }
+  
+  .hotel-card__content {
+  
+    flex: 1;
+  
+    display: flex;
+  
+    flex-direction: column;
+  
+    justify-content: space-between;
+  
+    padding: 28px;
+  
+  }
+  
+  .hotel-card__top {
+  
+    display: flex;
+  
+    justify-content: space-between;
+  
+    gap: 30px;
+  
+  }
+  
+  .hotel-card__info {
+  
+    flex: 1;
+  
+  }
+  
+  .hotel-card__name {
+  
+    margin: 0;
+  
+    font-size: 1.7rem;
+  
+    font-weight: 700;
+  
+    color: #111827;
+  
+  }
+  
+  .hotel-card__stars {
+  
+    margin-top: 8px;
+  
+    color: #f5b301;
+  
+    font-size: 18px;
+  
+    letter-spacing: 2px;
+  
+  }
+  
+  .hotel-card__location {
+  
+    margin-top: 12px;
+  
+    color: #4b5563;
+  
+    font-size: .95rem;
+  
+  }
+  
+  .hotel-card__distance {
+  
+    margin-top: 6px;
+  
+    color: #6b7280;
+  
+    font-size: .9rem;
+  
+  }
+  
+  .hotel-card__score {
+  
+    display: flex;
+  
+    flex-direction: column;
+  
+    align-items: center;
+  
+  }
+  
+  .hotel-card__score-value {
+  
+    width: 60px;
+  
+    height: 60px;
+  
+    border-radius: 16px;
+  
+    background: #00b96b;
+  
+    color: white;
+  
+    display: flex;
+  
+    align-items: center;
+  
+    justify-content: center;
+  
+    font-size: 1.15rem;
+  
+    font-weight: 700;
+  
+  }
+  
+  .hotel-card__score-text {
+  
+    margin-top: 10px;
+  
+    font-size: .82rem;
+  
+    color: #6b7280;
+  
+    text-align: center;
+  
+  }
+  
+  .hotel-card__bottom {
+  
+    display: flex;
+  
+    justify-content: space-between;
+  
+    align-items: end;
+  
+  }
+  
+  .hotel-card__saving {
+  
+    display: inline-block;
+  
+    padding: 6px 12px;
+  
+    border-radius: 999px;
+  
+    background: #ecfdf5;
+  
+    color: #059669;
+  
+    font-size: .85rem;
+  
+    font-weight: 700;
+  
+    margin-bottom: 14px;
+  
+  }
+  
+  .hotel-card__price {
+  
+    margin: 0;
+  
+    font-size: 2rem;
+  
+    font-weight: 700;
+  
+    color: #111827;
+  
+  }
+  
+  .hotel-card__price-night {
+  
+    margin-top: 6px;
+  
+    color: #6b7280;
+  
+    font-size: .9rem;
+  
+  }
+  
+  .hotel-card__button {
+  
+    border: none;
+  
+    background: #00b96b;
+  
+    color: white;
+  
+    border-radius: 12px;
+  
+    padding: 14px 30px;
+  
+    cursor: pointer;
+  
+    font-size: .95rem;
+  
+    font-weight: 600;
+  
+    transition: .2s;
+  
+  }
+  
+  .hotel-card__button:hover {
+  
+    background: #00995a;
+  
+  }
+  
+  @media (max-width: 800px) {
+  
+    .hotel-card {
+  
+      flex-direction: column;
+  
+    }
+  
+    .hotel-card__image {
+  
+      width: 100%;
+  
+      min-width: 100%;
+  
+      height: 220px;
+  
+    }
+  
+    .hotel-card__top {
+  
+      flex-direction: column;
+  
+    }
+  
+    .hotel-card__score {
+  
+      align-items: flex-start;
+  
+    }
+  
+    .hotel-card__bottom {
+  
+      flex-direction: column;
+  
+      align-items: flex-start;
+  
+      gap: 22px;
+  
+      margin-top: 28px;
+  
+    }
+  
+  }

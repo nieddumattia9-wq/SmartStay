@@ -1,8 +1,13 @@
 .trip-card {
+
+  box-sizing: border-box;
+
   width: 100%;
   max-width: 760px;
 
   margin-top: 50px;
+  margin-right: auto;
+  margin-left: auto;
 
   background: #ffffff;
 
@@ -10,15 +15,27 @@
 
   border-radius: 24px;
 
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 15px 45px rgba(0, 0, 0, .08);
+
 }
 
 .row {
+
   display: flex;
 
   gap: 15px;
 
   margin-top: 15px;
+
+}
+
+.row > * {
+
+  flex: 1;
+
+  min-width: 0;
+
 }
 
 /* =========================
@@ -34,6 +51,7 @@
   display: flex;
 
   align-items: center;
+
 }
 
 .budget-input__icon {
@@ -47,9 +65,12 @@
   pointer-events: none;
 
   z-index: 2;
+
 }
 
 .budget-input__field {
+
+  box-sizing: border-box;
 
   width: 100%;
   height: 50px;
@@ -65,6 +86,7 @@
 
   font-size: 15px;
   font-weight: 500;
+  line-height: 1;
 
   outline: none;
 
@@ -72,16 +94,19 @@
     border-color .22s ease,
     box-shadow .22s ease,
     background-color .22s ease;
+
 }
 
 .budget-input__field::placeholder {
 
   color: #94a3b8;
+
 }
 
 .budget-input__field:hover {
 
   border-color: #cbd5e1;
+
 }
 
 .budget-input__field:focus {
@@ -89,7 +114,18 @@
   border-color: #16e06e;
 
   box-shadow:
-    0 0 0 4px rgba(22,224,110,.12);
+    0 0 0 4px rgba(22, 224, 110, .12);
+
+}
+
+.budget-input__field:disabled {
+
+  cursor: not-allowed;
+
+  background: #f8fafc;
+
+  color: #94a3b8;
+
 }
 
 /* =========================
@@ -121,13 +157,16 @@
 
   font-size: 18px;
   font-weight: 700;
+  line-height: 1;
 
   cursor: pointer;
 
   transition:
     background-color .25s ease,
     transform .25s ease,
-    box-shadow .25s ease;
+    box-shadow .25s ease,
+    opacity .25s ease;
+
 }
 
 .trip-card__submit:hover {
@@ -137,12 +176,14 @@
   transform: translateY(-2px);
 
   box-shadow:
-    0 10px 24px rgba(22,224,110,.25);
+    0 10px 24px rgba(22, 224, 110, .25);
+
 }
 
 .trip-card__submit:active {
 
   transform: translateY(0);
+
 }
 
 .trip-card__submit:focus-visible {
@@ -150,7 +191,30 @@
   outline: none;
 
   box-shadow:
-    0 0 0 4px rgba(22,224,110,.18);
+    0 0 0 4px rgba(22, 224, 110, .18);
+
+}
+
+.trip-card__submit:disabled {
+
+  cursor: not-allowed;
+
+  opacity: .7;
+
+  transform: none;
+
+  box-shadow: none;
+
+}
+
+.trip-card__submit:disabled:hover {
+
+  background: #22c55e;
+
+  transform: none;
+
+  box-shadow: none;
+
 }
 
 .trip-card__submit-icon {
@@ -161,6 +225,7 @@
 
   transition:
     transform .25s ease;
+
 }
 
 .trip-card__submit:hover .trip-card__submit-icon {
@@ -168,6 +233,13 @@
   transform:
     rotate(12deg)
     scale(1.10);
+
+}
+
+.trip-card__submit:disabled:hover .trip-card__submit-icon {
+
+  transform: none;
+
 }
 
 .trip-card__submit span {
@@ -175,6 +247,7 @@
   display: flex;
 
   align-items: center;
+
 }
 
 /* =========================
@@ -185,12 +258,20 @@
 
   .trip-card {
 
-    padding: 24px;
+    margin-top: 36px;
+
+    padding: 24px 20px;
+
+    border-radius: 22px;
+
   }
 
   .row {
 
     flex-direction: column;
+
+    gap: 14px;
+
   }
 
   .budget-input__field {
@@ -200,10 +281,23 @@
     padding-left: 42px;
 
     font-size: 16px;
+
   }
 
   .budget-input__icon {
 
     left: 14px;
+
   }
+
+  .trip-card__submit {
+
+    margin-top: 30px;
+
+    padding: 16px;
+
+    font-size: 16px;
+
+  }
+
 }

@@ -1,8 +1,9 @@
 {
-  "name": "server",
+  "name": "smartstay-server",
   "version": "1.0.0",
   "description": "SmartStay Backend",
   "main": "server.js",
+  "private": true,
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
@@ -14,8 +15,11 @@
     "routestack"
   ],
   "author": "Mattia",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "axios": "^1.18.1",
     "cors": "^2.8.6",

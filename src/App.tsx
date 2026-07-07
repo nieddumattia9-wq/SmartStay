@@ -1,16 +1,21 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+} from "react-router-dom";
 
 import "./App.css";
 
 import Navbar from "./components/Navbar/Navbar";
+import LoadingScreen from "./components/LoadingScreen/LoadingScreen";
 
 import Home from "./pages/Home/Home";
-
 import Results from "./pages/Results/Results";
 
-import LoadingScreen from "./components/LoadingScreen/LoadingScreen";
 function App() {
+
   return (
+
     <BrowserRouter>
 
       <Navbar />
@@ -23,10 +28,12 @@ function App() {
             path="/"
             element={<Home />}
           />
+
           <Route
             path="/loading"
             element={<LoadingScreen />}
           />
+
           <Route
             path="/results"
             element={<Results />}
@@ -37,7 +44,9 @@ function App() {
       </main>
 
     </BrowserRouter>
+
   );
+
 }
 
 export default App;
