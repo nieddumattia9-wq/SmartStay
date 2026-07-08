@@ -2,8 +2,23 @@ import "./HotelCard.css";
 
 import type { Hotel } from "../../types/hotel";
 
+import type {
+  SmartBadge,
+  SmartRiskLevel,
+} from "../../utils/smartStayEngine";
+
 type HotelCardProps = {
+
   hotel: Hotel;
+
+  smartScore?: number;
+
+  riskLevel?: SmartRiskLevel;
+
+  badges?: SmartBadge[];
+
+  reasons?: string[];
+
 };
 
 function formatPrice(
@@ -61,8 +76,61 @@ function formatStars(stars: number) {
 
 }
 
+function formatReviewCount(
+  reviewCount: number | null
+) {
+
+  if (
+    reviewCount === null ||
+    reviewCount <= 0
+  ) {
+
+    return "Review count unavailable";
+
+  }
+
+  if (reviewCount === 1) {
+
+    return "1 review";
+
+  }
+
+  return `${reviewCount.toLocaleString("en-US")} reviews`;
+
+}
+
+function formatRiskLabel(
+  riskLevel?: SmartRiskLevel
+) {
+
+  if (riskLevel === "low") {
+
+    return "Low risk";
+
+  }
+
+  if (riskLevel === "medium") {
+
+    return "Medium risk";
+
+  }
+
+  if (riskLevel === "high") {
+
+    return "Higher risk";
+
+  }
+
+  return null;
+
+}
+
 function HotelCard({
   hotel,
+  smartScore,
+  riskLevel,
+  badges = [],
+  reasons = [],
 }: HotelCardProps) {
 
   const hasImage =
@@ -73,6 +141,9 @@ function HotelCard({
       hotel.city,
       hotel.country
     );
+
+  const riskLabel =
+    formatRiskLabel(riskLevel);
 
   return (
 
@@ -105,11 +176,35 @@ function HotelCard({
 
           <div className="hotel-card__info">
 
-            <h2 className="hotel-card__name">
+            <div className="hotel-card__title-row">
 
-              {hotel.name}
+              <h2 className="hotel-card__name">
 
-            </h2>
+                {hotel.name}
+
+              </h2>
+
+              {smartScore !== undefined && (
+
+                <div className="hotel-card__smart-score">
+
+                  <span className="hotel-card__smart-score-label">
+
+                    SmartScore
+
+                  </span>
+
+                  <span className="hotel-card__smart-score-value">
+
+                    {smartScore}
+
+                  </span>
+
+                </div>
+
+              )}
+
+            </div>
 
             {hotel.stars > 0 && (
 
@@ -137,6 +232,27 @@ function HotelCard({
 
             )}
 
+            {badges.length > 0 && (
+
+              <div className="hotel-card__badges">
+
+                {badges.map((badge) => (
+
+                  <span
+                    key={badge}
+                    className="hotel-card__badge"
+                  >
+
+                    {badge}
+
+                  </span>
+
+                ))}
+
+              </div>
+
+            )}
+
           </div>
 
           <div className="hotel-card__score">
@@ -153,9 +269,43 @@ function HotelCard({
 
             </span>
 
+            <span className="hotel-card__review-count">
+
+              {formatReviewCount(hotel.reviewCount)}
+
+            </span>
+
           </div>
 
         </div>
+
+        {reasons.length > 0 && (
+
+          <div className="hotel-card__engine">
+
+            <p className="hotel-card__engine-title">
+
+              Why SmartStay recommends this
+
+            </p>
+
+            <ul className="hotel-card__reasons">
+
+              {reasons.map((reason) => (
+
+                <li key={reason}>
+
+                  {reason}
+
+                </li>
+
+              ))}
+
+            </ul>
+
+          </div>
+
+        )}
 
         <div className="hotel-card__bottom">
 
@@ -166,6 +316,18 @@ function HotelCard({
               <div className="hotel-card__saving">
 
                 Save {hotel.saving}%
+
+              </div>
+
+            )}
+
+            {riskLabel && (
+
+              <div
+                className={`hotel-card__risk hotel-card__risk--${riskLevel}`}
+              >
+
+                {riskLabel}
 
               </div>
 
@@ -188,7 +350,10 @@ function HotelCard({
 
           </div>
 
-          <button className="hotel-card__button">
+          <button
+            type="button"
+            className="hotel-card__button"
+          >
 
             View Details
 
