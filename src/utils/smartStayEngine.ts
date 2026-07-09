@@ -246,22 +246,45 @@ function calculateStarScore(
   );
 }
 
-function calculateSavingScore(
-  hotel: Hotel
-) {
-  if (hotel.saving <= 0) {
-    return 45;
+function getSafeSavingPercent(
+    saving: number
+  ) {
+    if (
+      !Number.isFinite(saving) ||
+      saving <= 0
+    ) {
+      return null;
+    }
+  
+    const savingPercent =
+      saving <= 1
+        ? saving * 100
+        : saving;
+  
+    if (
+      savingPercent <= 0 ||
+      savingPercent > 80
+    ) {
+      return null;
+    }
+  
+    return savingPercent;
   }
-
-  const savingPercent =
-    hotel.saving <= 1
-      ? hotel.saving * 100
-      : hotel.saving;
-
-  return roundScore(
-    45 + savingPercent * 1.7
-  );
-}
+  
+  function calculateSavingScore(
+    hotel: Hotel
+  ) {
+    const savingPercent =
+      getSafeSavingPercent(hotel.saving);
+  
+    if (savingPercent === null) {
+      return 45;
+    }
+  
+    return roundScore(
+      45 + savingPercent * 1.7
+    );
+  }
 
 function normalizeTextList(
   values: string[]
