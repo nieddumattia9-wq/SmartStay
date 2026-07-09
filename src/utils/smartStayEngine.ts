@@ -13,50 +13,36 @@ export type SmartBadge =
   | "Strong Amenities"
   | "Good Saving"
   | "Low Risk"
-  | "Balanced Choice";
+  | "Balanced Choice"
+  | "Solid Data"
+  | "Multiple Offers"
+  | "Limited Data";
 
 export type SmartScoreBreakdown = {
-
   price: number;
-
   reviews: number;
-
   location: number;
-
   stars: number;
-
   saving: number;
-
   amenities: number;
-
+  dataQuality: number;
+  offer: number;
   reliability: number;
-
 };
 
 export type SmartStayEvaluation = {
-
   hotel: Hotel;
-
   smartScore: number;
-
   riskLevel: SmartRiskLevel;
-
   badges: SmartBadge[];
-
   reasons: string[];
-
   breakdown: SmartScoreBreakdown;
-
 };
 
 type SmartStayContext = {
-
   averagePrice: number;
-
   minPrice: number;
-
   maxPrice: number;
-
 };
 
 function clamp(
@@ -64,120 +50,127 @@ function clamp(
   min: number,
   max: number
 ) {
-
   return Math.min(
     Math.max(value, min),
     max
   );
-
 }
 
 function roundScore(value: number) {
-
   return Math.round(
     clamp(value, 0, 100)
   );
+}
 
+function isValidNumber(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value)
+  );
+}
+
+function hasPositiveNumber(value: unknown): value is number {
+  return (
+    isValidNumber(value) &&
+    value > 0
+  );
+}
+
+function getBestOfferPrice(hotel: Hotel) {
+  const offerPrices =
+    hotel.offers
+      ?.map((offer) => offer.price)
+      .filter(hasPositiveNumber) ?? [];
+
+  if (offerPrices.length > 0) {
+    return Math.min(...offerPrices);
+  }
+
+  if (hasPositiveNumber(hotel.price)) {
+    return hotel.price;
+  }
+
+  return null;
+}
+
+function hasValidOffer(hotel: Hotel) {
+  return getBestOfferPrice(hotel) !== null;
 }
 
 function getValidPrices(hotels: Hotel[]) {
-
   return hotels
-    .map((hotel) => hotel.price)
-    .filter((price) => (
-      Number.isFinite(price) &&
-      price > 0
-    ));
-
+    .map(getBestOfferPrice)
+    .filter(hasPositiveNumber);
 }
 
 function createSmartStayContext(
   hotels: Hotel[]
 ): SmartStayContext {
-
-  const prices =
-    getValidPrices(hotels);
+  const prices = getValidPrices(hotels);
 
   if (prices.length === 0) {
-
     return {
       averagePrice: 0,
       minPrice: 0,
       maxPrice: 0,
     };
-
   }
 
-  const totalPrice =
-    prices.reduce(
-      (sum, price) => sum + price,
-      0
-    );
+  const totalPrice = prices.reduce(
+    (sum, price) => sum + price,
+    0
+  );
 
   return {
-    averagePrice:
-      totalPrice / prices.length,
-
-    minPrice:
-      Math.min(...prices),
-
-    maxPrice:
-      Math.max(...prices),
+    averagePrice: totalPrice / prices.length,
+    minPrice: Math.min(...prices),
+    maxPrice: Math.max(...prices),
   };
-
 }
 
 function calculatePriceScore(
   hotel: Hotel,
   context: SmartStayContext
 ) {
+  const hotelPrice = getBestOfferPrice(hotel);
 
   if (
-    hotel.price <= 0 ||
+    !hotelPrice ||
     context.averagePrice <= 0
   ) {
-
     return 40;
-
   }
 
   if (context.minPrice === context.maxPrice) {
-
     return 72;
-
   }
 
   const pricePosition =
-    (hotel.price - context.minPrice) /
+    (hotelPrice - context.minPrice) /
     (context.maxPrice - context.minPrice);
 
   const rangeScore =
     100 - pricePosition * 75;
 
   const comparedToAverage =
-    context.averagePrice / hotel.price;
+    context.averagePrice / hotelPrice;
 
-  const averageBonus =
-    clamp(
-      (comparedToAverage - 1) * 22,
-      -16,
-      16
-    );
+  const averageBonus = clamp(
+    (comparedToAverage - 1) * 22,
+    -16,
+    16
+  );
 
   return roundScore(
     rangeScore + averageBonus
   );
-
 }
 
 function calculateReviewScore(
   hotel: Hotel
 ) {
-
   if (hotel.reviewScore === null) {
-
     return 38;
-
   }
 
   const normalizedRating =
@@ -199,90 +192,65 @@ function calculateReviewScore(
           1
         );
 
-  const neutralScore =
-    52;
+  const neutralScore = 52;
 
   return roundScore(
     normalizedRating * confidence +
     neutralScore * (1 - confidence)
   );
-
 }
 
 function calculateLocationScore(
   hotel: Hotel
 ) {
-
   if (hotel.distance === null) {
-
     return 55;
-
   }
 
   if (hotel.distance <= 0.5) {
-
     return 100;
-
   }
 
   if (hotel.distance <= 1) {
-
     return 92;
-
   }
 
   if (hotel.distance <= 2) {
-
     return 82;
-
   }
 
   if (hotel.distance <= 4) {
-
     return 68;
-
   }
 
   if (hotel.distance <= 7) {
-
     return 50;
-
   }
 
   if (hotel.distance <= 10) {
-
     return 38;
-
   }
 
   return 25;
-
 }
 
 function calculateStarScore(
   hotel: Hotel
 ) {
-
   if (hotel.stars <= 0) {
-
     return 55;
-
   }
 
   return roundScore(
     (clamp(hotel.stars, 0, 5) / 5) * 100
   );
-
 }
 
 function calculateSavingScore(
   hotel: Hotel
 ) {
-
   if (hotel.saving <= 0) {
-
     return 45;
-
   }
 
   const savingPercent =
@@ -293,33 +261,26 @@ function calculateSavingScore(
   return roundScore(
     45 + savingPercent * 1.7
   );
-
 }
 
 function normalizeTextList(
   values: string[]
 ) {
-
   return values
     .join(" ")
     .toLowerCase();
-
 }
 
 function calculateAmenityScore(
   hotel: Hotel
 ) {
-
-  const text =
-    normalizeTextList([
-      ...hotel.amenities,
-      ...hotel.facilities,
-    ]);
+  const text = normalizeTextList([
+    ...hotel.amenities,
+    ...hotel.facilities,
+  ]);
 
   if (!text) {
-
     return 45;
-
   }
 
   const importantSignals = [
@@ -344,107 +305,221 @@ function calculateAmenityScore(
       text.includes(signal)
     ).length;
 
-  const varietyBonus =
-    clamp(
-      hotel.facilities.length * 1.25,
-      0,
-      14
-    );
+  const varietyBonus = clamp(
+    hotel.facilities.length * 1.25,
+    0,
+    14
+  );
 
   return roundScore(
     45 + matchedSignals * 6 + varietyBonus
   );
+}
 
+function calculateDataQualityScore(
+  hotel: Hotel
+) {
+  const availableData = hotel.availableData;
+
+  if (!availableData) {
+    return 45;
+  }
+
+  let score = 0;
+
+  if (availableData.hasPrice) score += 18;
+  if (availableData.hasBasePrice) score += 5;
+  if (availableData.hasSaving) score += 5;
+  if (availableData.hasStars) score += 8;
+  if (availableData.hasReviewScore) score += 16;
+  if (availableData.hasReviewCount) score += 10;
+  if (availableData.hasDistance) score += 9;
+  if (availableData.hasImage) score += 6;
+  if (availableData.hasAddress) score += 5;
+  if (availableData.hasCoordinates) score += 8;
+  if (availableData.hasAmenities) score += 7;
+
+  if (hotel.dataConfidence === "full") {
+    score += 6;
+  }
+
+  if (hotel.dataConfidence === "limited") {
+    score -= 10;
+  }
+
+  return roundScore(score);
+}
+
+function calculateOfferScore(
+  hotel: Hotel
+) {
+  const offers = hotel.offers ?? [];
+
+  const validOffers =
+    offers.filter((offer) =>
+      hasPositiveNumber(offer.price)
+    );
+
+  if (
+    validOffers.length === 0 &&
+    !hasPositiveNumber(hotel.price)
+  ) {
+    return 25;
+  }
+
+  let score =
+    validOffers.length > 0
+      ? 58
+      : 52;
+
+  if (validOffers.length >= 3) {
+    score += 18;
+  } else if (validOffers.length === 2) {
+    score += 12;
+  } else if (validOffers.length === 1) {
+    score += 7;
+  }
+
+  if (
+    validOffers.some((offer) =>
+      Boolean(offer.deepLink)
+    )
+  ) {
+    score += 7;
+  }
+
+  if (
+    validOffers.some((offer) =>
+      Boolean(offer.cancellationPolicy)
+    )
+  ) {
+    score += 7;
+  }
+
+  if (
+    validOffers.some((offer) =>
+      Boolean(offer.roomName)
+    )
+  ) {
+    score += 5;
+  }
+
+  if (
+    validOffers.some((offer) =>
+      typeof offer.taxesIncluded === "boolean"
+    )
+  ) {
+    score += 5;
+  }
+
+  return roundScore(score);
 }
 
 function calculateReliabilityScore(
-  hotel: Hotel,
-  reviewScore: number,
-  priceScore: number
-) {
-
-  const reviewCount =
-    hotel.reviewCount ?? 0;
-
-  const reviewCountScore =
-    reviewCount <= 0
-      ? 18
-      : roundScore(
-          clamp(
-            Math.log10(reviewCount + 1) / 3,
-            0,
-            1
-          ) * 100
-        );
-
-  const hasUsefulIdentity =
-    Boolean(
+    hotel: Hotel,
+    reviewScore: number,
+    priceScore: number,
+    dataQualityScore: number,
+    offerScore: number
+  ) {
+    const reviewCount =
+      hotel.reviewCount ?? 0;
+  
+    const reviewCountScore =
+      reviewCount <= 0
+        ? 18
+        : roundScore(
+            clamp(
+              Math.log10(reviewCount + 1) / 3,
+              0,
+              1
+            ) * 100
+          );
+  
+    const hasUsefulIdentity = Boolean(
       hotel.name &&
       hotel.provider &&
       hotel.image
     );
-
-  const identityScore =
-    hasUsefulIdentity
-      ? 86
-      : 55;
-
-  const priceSafetyScore =
-    hotel.price > 0
-      ? priceScore
-      : 20;
-
-  const missingReviewPenalty =
-    hotel.reviewScore === null ||
-    reviewCount <= 0
-      ? 16
-      : 0;
-
-  return roundScore(
-    reviewScore * 0.38 +
-    reviewCountScore * 0.32 +
-    identityScore * 0.18 +
-    priceSafetyScore * 0.12 -
-    missingReviewPenalty
-  );
-
-}
-
-function calculateRiskLevel(
-    hotel: Hotel,
-    reliabilityScore: number
-  ): SmartRiskLevel {
   
+    const identityScore =
+      hasUsefulIdentity
+        ? 86
+        : 55;
+  
+    const priceSafetyScore =
+      hasValidOffer(hotel)
+        ? priceScore
+        : 20;
+  
+    const missingReviewPenalty =
+      hotel.reviewScore === null ||
+      reviewCount <= 0
+        ? 16
+        : 0;
+  
+    const dataConfidenceAdjustment =
+      hotel.dataConfidence === "full"
+        ? 8
+        : hotel.dataConfidence === "partial"
+          ? 2
+          : hotel.dataConfidence === "limited"
+            ? -12
+            : 0;
+  
+    const multipleSourcesBonus =
+      (hotel.dataSources?.length ?? 0) >= 2
+        ? 7
+        : 0;
+  
+    return roundScore(
+      reviewScore * 0.3 +
+      reviewCountScore * 0.24 +
+      identityScore * 0.14 +
+      priceSafetyScore * 0.1 +
+      dataQualityScore * 0.14 +
+      offerScore * 0.08 -
+      missingReviewPenalty +
+      dataConfidenceAdjustment +
+      multipleSourcesBonus
+    );
+  }
+  
+  function calculateRiskLevel(
+    hotel: Hotel,
+    reliabilityScore: number,
+    dataQualityScore: number,
+    offerScore: number
+  ): SmartRiskLevel {
     const hasReviewData =
       hotel.reviewScore !== null &&
       (hotel.reviewCount ?? 0) > 0;
   
+    if (!hasValidOffer(hotel)) {
+      return "high";
+    }
+  
+    if (
+      reliabilityScore < 42 ||
+      dataQualityScore < 35 ||
+      offerScore < 35
+    ) {
+      return "high";
+    }
+  
     if (!hasReviewData) {
-  
-      if (reliabilityScore < 45) {
-  
-        return "high";
-  
-      }
-  
       return "medium";
-  
     }
   
-    if (reliabilityScore >= 72) {
-  
-      return "low";
-  
-    }
-  
-    if (reliabilityScore >= 50) {
-  
+    if (
+      hotel.dataConfidence === "limited" ||
+      reliabilityScore < 66 ||
+      dataQualityScore < 58
+    ) {
       return "medium";
-  
     }
   
-    return "high";
-  
+    return "low";
   }
   
   function createBadges(
@@ -453,62 +528,65 @@ function calculateRiskLevel(
     riskLevel: SmartRiskLevel,
     hotel: Hotel
   ): SmartBadge[] {
-  
     const badges: SmartBadge[] = [];
   
-    if (smartScore >= 84) {
-  
+    if (
+      smartScore >= 84 &&
+      riskLevel === "low"
+    ) {
       badges.push("Smart Pick");
+    }
   
+    if (
+      hotel.dataConfidence === "limited" ||
+      breakdown.dataQuality < 48
+    ) {
+      badges.push("Limited Data");
     }
   
     if (breakdown.price >= 82) {
-  
       badges.push("Great Value");
-  
     }
   
     if (breakdown.location >= 82) {
-  
       badges.push("Great Location");
-  
     }
   
     if (
       breakdown.reviews >= 82 &&
       (hotel.reviewCount ?? 0) >= 50
     ) {
-  
       badges.push("Reliable Reviews");
-  
     }
   
     if (breakdown.amenities >= 75) {
-  
       badges.push("Strong Amenities");
-  
     }
   
     if (breakdown.saving >= 75) {
-  
       badges.push("Good Saving");
+    }
   
+    if (breakdown.offer >= 75) {
+      badges.push("Multiple Offers");
+    }
+  
+    if (
+      breakdown.dataQuality >= 75 &&
+      breakdown.reliability >= 70
+    ) {
+      badges.push("Solid Data");
     }
   
     if (riskLevel === "low") {
-  
       badges.push("Low Risk");
-  
     }
   
     if (badges.length === 0) {
-  
       badges.push("Balanced Choice");
-  
     }
   
     return badges.slice(0, 3);
-  
   }
   
   function createReasons(
@@ -516,95 +594,109 @@ function calculateRiskLevel(
     riskLevel: SmartRiskLevel,
     hotel: Hotel
   ) {
-  
     const reasons: string[] = [];
   
     if (
       hotel.reviewScore === null ||
       (hotel.reviewCount ?? 0) <= 0
     ) {
-  
       reasons.push(
         "Limited review data, so SmartStay keeps this score more conservative."
       );
+    }
   
+    if (
+      hotel.dataConfidence === "limited" ||
+      breakdown.dataQuality < 48
+    ) {
+      reasons.push(
+        "Some important hotel data is missing, so SmartStay treats this result with extra caution."
+      );
+    }
+  
+    if (!hasValidOffer(hotel)) {
+      reasons.push(
+        "The available offer data is weak, so this option should be verified carefully before booking."
+      );
     }
   
     if (breakdown.reviews >= 80) {
-  
       reasons.push(
         "Strong guest rating with better review reliability."
       );
-  
     }
   
     if (breakdown.price >= 80) {
-  
       reasons.push(
         "Good price compared to other available stays."
       );
-  
     }
   
     if (breakdown.location >= 80) {
-  
       reasons.push(
         "Convenient location for the selected destination."
       );
-  
     }
   
     if (breakdown.amenities >= 75) {
-  
       reasons.push(
         "Useful amenities and facilities detected."
       );
-  
     }
   
     if (breakdown.saving >= 75) {
-  
       reasons.push(
         "Notable saving compared to the listed base price."
       );
+    }
   
+    if (breakdown.offer >= 75) {
+      reasons.push(
+        "The offer information looks stronger than average for this search."
+      );
+    }
+  
+    if (
+      breakdown.dataQuality >= 75 &&
+      breakdown.reliability >= 70
+    ) {
+      reasons.push(
+        "The available data is solid enough to support a more confident recommendation."
+      );
     }
   
     if (riskLevel === "high") {
-  
       reasons.push(
         "Higher uncertainty due to limited reliability signals."
       );
-  
     }
   
     if (
       reasons.length === 0 &&
       hotel.reviewScore !== null
     ) {
-  
       reasons.push(
         "Balanced option based on price, reviews, and location."
       );
-  
     }
   
     if (reasons.length === 0) {
-  
       reasons.push(
         "Limited data available, but still comparable with other results."
       );
-  
     }
   
-    return reasons.slice(0, 3);
-  
+    return reasons.slice(0, 4);
   }
   
   function applyDataConfidenceAdjustment(
     hotel: Hotel,
-    smartScore: number
+    smartScore: number,
+    dataQualityScore: number,
+    offerScore: number,
+    reliabilityScore: number
   ) {
+    let adjustedScore = smartScore;
   
     const hasReviewScore =
       hotel.reviewScore !== null;
@@ -616,52 +708,62 @@ function calculateRiskLevel(
       !hasReviewScore &&
       !hasReviewCount
     ) {
-  
-      return Math.min(
-        smartScore - 8,
+      adjustedScore = Math.min(
+        adjustedScore - 8,
         72
       );
-  
-    }
-  
-    if (
+    } else if (
       hasReviewScore &&
       !hasReviewCount
     ) {
-  
-      return Math.min(
-        smartScore - 4,
+      adjustedScore = Math.min(
+        adjustedScore - 4,
         78
       );
-  
-    }
-  
-    if (
+    } else if (
       hasReviewCount &&
       (hotel.reviewCount ?? 0) < 10
     ) {
-  
-      return Math.min(
-        smartScore - 3,
+      adjustedScore = Math.min(
+        adjustedScore - 3,
         82
       );
-  
     }
   
-    return smartScore;
+    if (hotel.dataConfidence === "limited") {
+      adjustedScore -= 7;
+    }
   
+    if (dataQualityScore < 50) {
+      adjustedScore -= 5;
+    }
+  
+    if (offerScore < 45) {
+      adjustedScore -= 4;
+    }
+  
+    if (reliabilityScore < 50) {
+      adjustedScore -= 5;
+    }
+  
+    if (!hasValidOffer(hotel)) {
+      adjustedScore = Math.min(
+        adjustedScore - 10,
+        55
+      );
+    }
+  
+    return adjustedScore;
   }
   
   export function evaluateHotelWithSmartStayEngine(
     hotel: Hotel,
     context: SmartStayContext
   ): SmartStayEvaluation {
-  
-    const priceScore =
-      calculatePriceScore(
-        hotel,
-        context
-      );
+    const priceScore = calculatePriceScore(
+      hotel,
+      context
+    );
   
     const reviewScore =
       calculateReviewScore(hotel);
@@ -678,11 +780,19 @@ function calculateRiskLevel(
     const amenityScore =
       calculateAmenityScore(hotel);
   
+    const dataQualityScore =
+      calculateDataQualityScore(hotel);
+  
+    const offerScore =
+      calculateOfferScore(hotel);
+  
     const reliabilityScore =
       calculateReliabilityScore(
         hotel,
         reviewScore,
-        priceScore
+        priceScore,
+        dataQualityScore,
+        offerScore
       );
   
     const breakdown: SmartScoreBreakdown = {
@@ -692,60 +802,62 @@ function calculateRiskLevel(
       stars: starScore,
       saving: savingScore,
       amenities: amenityScore,
+      dataQuality: dataQualityScore,
+      offer: offerScore,
       reliability: reliabilityScore,
     };
   
-    const rawSmartScore =
-      roundScore(
-        priceScore * 0.24 +
-        reviewScore * 0.23 +
-        locationScore * 0.18 +
-        starScore * 0.09 +
-        savingScore * 0.11 +
-        amenityScore * 0.08 +
-        reliabilityScore * 0.07
-      );
+    const rawSmartScore = roundScore(
+      priceScore * 0.22 +
+      reviewScore * 0.2 +
+      locationScore * 0.17 +
+      starScore * 0.08 +
+      savingScore * 0.09 +
+      amenityScore * 0.07 +
+      dataQualityScore * 0.08 +
+      offerScore * 0.04 +
+      reliabilityScore * 0.05
+    );
   
-    const smartScore =
-      roundScore(
-        applyDataConfidenceAdjustment(
-          hotel,
-          rawSmartScore
-        )
-      );
-  
-    const riskLevel =
-      calculateRiskLevel(
+    const smartScore = roundScore(
+      applyDataConfidenceAdjustment(
         hotel,
+        rawSmartScore,
+        dataQualityScore,
+        offerScore,
         reliabilityScore
-      );
+      )
+    );
+  
+    const riskLevel = calculateRiskLevel(
+      hotel,
+      reliabilityScore,
+      dataQualityScore,
+      offerScore
+    );
   
     return {
       hotel,
       smartScore,
       riskLevel,
-      badges:
-        createBadges(
-          breakdown,
-          smartScore,
-          riskLevel,
-          hotel
-        ),
-      reasons:
-        createReasons(
-          breakdown,
-          riskLevel,
-          hotel
-        ),
+      badges: createBadges(
+        breakdown,
+        smartScore,
+        riskLevel,
+        hotel
+      ),
+      reasons: createReasons(
+        breakdown,
+        riskLevel,
+        hotel
+      ),
       breakdown,
     };
-  
   }
   
   export function rankHotelsWithSmartStayEngine(
     hotels: Hotel[]
-  ) {
-  
+  ): SmartStayEvaluation[] {
     const context =
       createSmartStayContext(hotels);
   
@@ -758,63 +870,64 @@ function calculateRiskLevel(
         originalIndex: index,
       }))
       .sort((firstHotel, secondHotel) => {
-  
         if (
           secondHotel.smartScore !==
           firstHotel.smartScore
         ) {
-  
           return (
             secondHotel.smartScore -
             firstHotel.smartScore
           );
-  
         }
   
         if (
           secondHotel.breakdown.reliability !==
           firstHotel.breakdown.reliability
         ) {
-  
           return (
             secondHotel.breakdown.reliability -
             firstHotel.breakdown.reliability
           );
+        }
   
+        if (
+          secondHotel.breakdown.dataQuality !==
+          firstHotel.breakdown.dataQuality
+        ) {
+          return (
+            secondHotel.breakdown.dataQuality -
+            firstHotel.breakdown.dataQuality
+          );
         }
   
         if (
           secondHotel.breakdown.location !==
           firstHotel.breakdown.location
         ) {
-  
           return (
             secondHotel.breakdown.location -
             firstHotel.breakdown.location
           );
-  
         }
   
-        if (
-          firstHotel.hotel.price !==
-          secondHotel.hotel.price
-        ) {
+        const firstPrice =
+          getBestOfferPrice(firstHotel.hotel) ??
+          Infinity;
   
-          return (
-            firstHotel.hotel.price -
-            secondHotel.hotel.price
-          );
+        const secondPrice =
+          getBestOfferPrice(secondHotel.hotel) ??
+          Infinity;
   
+        if (firstPrice !== secondPrice) {
+          return firstPrice - secondPrice;
         }
   
         return (
           firstHotel.originalIndex -
           secondHotel.originalIndex
         );
-  
       })
       .map(({ originalIndex, ...evaluation }) =>
         evaluation
       );
-  
   }
