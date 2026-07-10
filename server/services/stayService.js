@@ -210,7 +210,7 @@ const {
   
       const isNoResultsResponse =
         failedResponse.code === 204 ||
-        failedResponse.totalHotels === 0;
+        failedResponse.code === "NO_RESULTS";
   
       if (isNoResultsResponse) {
   

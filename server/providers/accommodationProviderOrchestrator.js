@@ -71,6 +71,35 @@ function createAllProvidersFailedResponse({
   };
 }
 
+function isProviderNoResultsResponse(
+  failedResponse
+) {
+  return (
+    failedResponse?.code === 204 ||
+    failedResponse?.code === "NO_RESULTS"
+  );
+}
+
+function createAllProvidersNoResultsResponse({
+  currency = "EUR",
+  attempts = [],
+} = {}) {
+  return {
+    success: false,
+    message:
+      "No stays were found for this destination, dates and guest configuration.",
+    code: 204,
+    searchId: null,
+    status: "Completed",
+    searchIncomplete: false,
+    nextResultsKey: null,
+    currency,
+    totalHotels: 0,
+    hotels: [],
+    attempts,
+  };
+}
+
 function createCompletedProviderData({
   providerId,
   currency,
@@ -784,6 +813,16 @@ async function searchHotelsWithPrimaryProvider({
           result.hotels.length,
         failed:
           Boolean(result.failedResponse),
+        outcome:
+          result.failedResponse
+            ? isProviderNoResultsResponse(
+                result.failedResponse
+              )
+              ? "no_results"
+              : "error"
+            : "success",
+        code:
+          result.failedResponse?.code ?? null,
         message:
           result.failedResponse?.message ??
           result.failedResponse?.error ??
@@ -812,12 +851,35 @@ async function searchHotelsWithPrimaryProvider({
         success: false,
         totalHotels: 0,
         failed: true,
+        outcome: "error",
+        code: error.status ?? null,
         status: error.status ?? null,
         message:
           error.message ??
           "Provider search failed.",
       });
     }
+  }
+
+  const allAttemptsReturnedNoResults =
+    attempts.length > 0 &&
+    attempts.every(
+      (attempt) =>
+        attempt.outcome === "no_results"
+    );
+
+  if (allAttemptsReturnedNoResults) {
+    return {
+      providerId: null,
+      data: null,
+      currency: fallbackCurrency,
+      hotels: [],
+      failedResponse:
+        createAllProvidersNoResultsResponse({
+          currency: fallbackCurrency,
+          attempts,
+        }),
+    };
   }
 
   return {

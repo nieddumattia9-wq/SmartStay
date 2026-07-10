@@ -977,20 +977,29 @@ const {
       return !data || extractRecords(data).length === 0;
     }
     
-    function createLiteApiFailedSearchResponse(currency = "EUR") {
-      return {
-        success: false,
-        result: {
-          status: "Completed",
-          currency,
-          hotels: [],
-          nextResultsKey: null,
-        },
-        error:
-          "LiteAPI returned no usable hotel results for this search.",
-      };
-    }
-    
+function createLiteApiFailedSearchResponse(currency = "EUR") {
+  const message =
+    "LiteAPI returned no usable hotel results for this search.";
+
+  return {
+    success: false,
+    message,
+    code: 204,
+    status: "Completed",
+    searchIncomplete: false,
+    nextResultsKey: null,
+    currency,
+    totalHotels: 0,
+    hotels: [],
+    result: {
+      status: "Completed",
+      currency,
+      hotels: [],
+      nextResultsKey: null,
+    },
+    error: message,
+  };
+}
     module.exports = {
       mapLiteApiDestinationResponse,
       mapLiteApiHotelResponse,
