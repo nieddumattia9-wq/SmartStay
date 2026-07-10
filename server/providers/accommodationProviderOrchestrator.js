@@ -190,6 +190,19 @@ function pickNumberValue(source, paths) {
   return null;
 }
 
+function logSelectedProvider(
+  result,
+  options = {}
+) {
+  console.log("[PROVIDER:selected]", {
+    providerId: result.providerId,
+    hotels: result.hotels.length,
+    currency: result.currency,
+    continuation:
+      Boolean(options.continuation),
+  });
+}
+
 function extractCityName(searchData) {
   const rawDestination =
     pickFirstValue(searchData, [
@@ -529,14 +542,46 @@ async function searchHotelsWithLiteApi({
     };
   }
 
+  console.log(
+    "[PROVIDER:liteapi] First hotel sample:",
+    JSON.stringify(
+      Array.isArray(response.data?.hotels)
+        ? response.data.hotels[0]
+        : null,
+      null,
+      2
+    ).slice(0, 3000)
+  );
+
+  console.log(
+    "[PROVIDER:liteapi] First data sample:",
+    JSON.stringify(
+      Array.isArray(response.data?.data)
+        ? response.data.data[0]
+        : null,
+      null,
+      2
+    ).slice(0, 3000)
+  );
+
   const liteApiHotels =
     mapLiteApiHotelResponse(
       response.data,
       currency
     );
 
+  console.log(
+    "[PROVIDER:liteapi] Hotels mapped:",
+    liteApiHotels.length
+  );
+
   const hotels =
     mergeProviderHotelResults(liteApiHotels);
+
+  console.log(
+    "[PROVIDER:liteapi] Hotels after merge:",
+    hotels.length
+  );
 
   if (hotels.length === 0) {
     return {
@@ -601,16 +646,45 @@ async function searchHotelsWithRouteStack({
     };
   }
 
+  console.log("[PROVIDER:routestack] Raw response arrays:", {
+    resultResult:
+      Array.isArray(data?.result?.result)
+        ? data.result.result.length
+        : null,
+    resultHotels:
+      Array.isArray(data?.result?.hotels)
+        ? data.result.hotels.length
+        : null,
+    hotels:
+      Array.isArray(data?.hotels)
+        ? data.hotels.length
+        : null,
+    data:
+      Array.isArray(data?.data)
+        ? data.data.length
+        : null,
+  });
+
   const routeStackHotels =
     mapRouteStackHotelResponse(
       data,
       currency
     );
 
+  console.log(
+    "[PROVIDER:routestack] Hotels mapped:",
+    routeStackHotels.length
+  );
+
   const hotels =
     mergeProviderHotelResults(
       routeStackHotels
     );
+
+  console.log(
+    "[PROVIDER:routestack] Hotels after merge:",
+    hotels.length
+  );
 
   if (hotels.length === 0) {
     return {
@@ -691,11 +765,24 @@ async function searchHotelsWithPrimaryProvider({
   }
 
   if (shouldUseRouteStackContinuation(searchData)) {
-    return searchHotelsWithRouteStack({
-      searchData,
-      title,
-      fallbackCurrency,
-    });
+    const result =
+      await searchHotelsWithRouteStack({
+        searchData,
+        title,
+        fallbackCurrency,
+      });
+
+    if (
+      !result.failedResponse &&
+      result.hotels.length > 0
+    ) {
+      logSelectedProvider(
+        result,
+        { continuation: true }
+      );
+    }
+
+    return result;
   }
 
   const attempts = [];
@@ -729,6 +816,11 @@ async function searchHotelsWithPrimaryProvider({
         !result.failedResponse &&
         result.hotels.length > 0
       ) {
+        logSelectedProvider(
+          result,
+          { continuation: false }
+        );
+
         return result;
       }
     } catch (error) {

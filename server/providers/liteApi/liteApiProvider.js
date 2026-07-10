@@ -2,118 +2,60 @@ const {
     ACCOMMODATION_PROVIDER_IDS,
   } = require("../providerRegistry");
   
-  const SOURCE_PROVIDER =
-    ACCOMMODATION_PROVIDER_IDS.LITE_API;
-  
+  const SOURCE_PROVIDER = ACCOMMODATION_PROVIDER_IDS.LITE_API;
   const PROVIDER_NAME = "LiteAPI";
   
   function clamp(value, min, max) {
-    return Math.max(
-      min,
-      Math.min(max, value)
-    );
+    return Math.max(min, Math.min(max, value));
   }
   
   function isPlainObject(value) {
-    return (
-      value !== null &&
-      typeof value === "object" &&
-      !Array.isArray(value)
-    );
+    return value !== null && typeof value === "object" && !Array.isArray(value);
   }
   
   function asArray(value) {
-    if (Array.isArray(value)) {
-      return value;
-    }
-  
-    if (
-      value === null ||
-      value === undefined
-    ) {
-      return [];
-    }
-  
+    if (Array.isArray(value)) return value;
+    if (value === null || value === undefined) return [];
     return [value];
   }
   
   function asString(value) {
-    if (
-      value === null ||
-      value === undefined
-    ) {
-      return "";
-    }
-  
-    if (typeof value === "string") {
-      return value.trim();
-    }
-  
-    if (
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      return String(value);
-    }
-  
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value.trim();
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
     return "";
   }
   
   function asNumber(value) {
     if (typeof value === "number") {
-      return Number.isFinite(value)
-        ? value
-        : null;
+      return Number.isFinite(value) ? value : null;
     }
   
     if (typeof value === "string") {
-      const parsed = Number(
-        value.replace(",", ".")
-      );
-  
-      return Number.isFinite(parsed)
-        ? parsed
-        : null;
+      const parsed = Number(value.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
     }
   
     if (Array.isArray(value)) {
-      const numbers = value
-        .map(asNumber)
-        .filter((number) => number !== null);
-  
-      return numbers.length > 0
-        ? numbers[0]
-        : null;
+      const numbers = value.map(asNumber).filter((number) => number !== null);
+      return numbers.length > 0 ? numbers[0] : null;
     }
   
     if (isPlainObject(value)) {
-      return asNumber(
-        value.amount ??
-        value.value ??
-        value.total ??
-        value.price
-      );
+      return asNumber(value.amount ?? value.value ?? value.total ?? value.price);
     }
   
     return null;
   }
   
   function asBooleanOrNull(value) {
-    if (typeof value === "boolean") {
-      return value;
-    }
+    if (typeof value === "boolean") return value;
   
     if (typeof value === "string") {
-      const normalized =
-        value.trim().toLowerCase();
+      const normalized = value.trim().toLowerCase();
   
-      if (normalized === "true") {
-        return true;
-      }
-  
-      if (normalized === "false") {
-        return false;
-      }
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
     }
   
     return null;
@@ -121,10 +63,7 @@ const {
   
   function getValueByPath(source, path) {
     return path.reduce((currentValue, key) => {
-      if (
-        currentValue === null ||
-        currentValue === undefined
-      ) {
+      if (currentValue === null || currentValue === undefined) {
         return undefined;
       }
   
@@ -134,14 +73,9 @@ const {
   
   function pickFirst(source, paths) {
     for (const path of paths) {
-      const value =
-        getValueByPath(source, path);
+      const value = getValueByPath(source, path);
   
-      if (
-        value !== null &&
-        value !== undefined &&
-        value !== ""
-      ) {
+      if (value !== null && value !== undefined && value !== "") {
         return value;
       }
     }
@@ -150,94 +84,83 @@ const {
   }
   
   function pickString(source, paths) {
-    const value =
-      pickFirst(source, paths);
-  
-    return asString(value);
+    return asString(pickFirst(source, paths));
   }
   
   function pickNumber(source, paths) {
-    const value =
-      pickFirst(source, paths);
-  
-    return asNumber(value);
+    return asNumber(pickFirst(source, paths));
   }
   
   function pickArray(source, paths) {
-    const value =
-      pickFirst(source, paths);
-  
-    return asArray(value);
+    return asArray(pickFirst(source, paths));
   }
   
-  function calculateSavingPercent(
-    price,
-    basePrice
-  ) {
-    if (
-      !price ||
-      !basePrice ||
-      basePrice <= price
-    ) {
+  function calculateSavingPercent(price, basePrice) {
+    if (!price || !basePrice || basePrice <= price) return 0;
+  
+    const saving = ((basePrice - price) / basePrice) * 100;
+  
+    if (!Number.isFinite(saving) || saving <= 0 || saving > 80) {
       return 0;
     }
   
-    const saving =
-      ((basePrice - price) / basePrice) * 100;
+    return Number(saving.toFixed(2));
+  }
   
-    if (
-      !Number.isFinite(saving) ||
-      saving <= 0 ||
-      saving > 80
-    ) {
-      return 0;
-    }
+  function getPricePaths() {
+    return [
+      ["retailRate", "total", 0, "amount"],
+      ["retailRate", "total", "amount"],
+      ["retailRate", "amount"],
+      ["retailRate", "suggestedSellingPrice", 0, "amount"],
+      ["retailRate", "initialPrice", 0, "amount"],
+      ["price", "amount"],
+      ["price"],
+      ["amount"],
+      ["total"],
+      ["totalPrice"],
+      ["sellingPrice"],
+      ["suggestedSellingPrice"],
+      ["netPrice"],
+    ];
+  }
   
-    return Number(
-      saving.toFixed(2)
-    );
+  function hasUsableRatePrice(record) {
+    const price = pickNumber(record, getPricePaths());
+    return price !== null && price > 0;
   }
   
   function extractRecords(data) {
-    if (Array.isArray(data)) {
-      return data;
-    }
-  
-    if (!isPlainObject(data)) {
-      return [];
-    }
+    if (Array.isArray(data)) return data;
+    if (!isPlainObject(data)) return [];
   
     const candidates = [
-      data.hotels,
-      data.results,
-      data.items,
-      data.rates,
-      data.data?.hotels,
+      data.data,
+      data.data?.rates,
       data.data?.results,
       data.data?.items,
-      data.data?.rates,
-      data.data,
+      data.data?.hotels,
+      data.rates,
+      data.results,
+      data.items,
+      data.hotels,
       data.response,
     ];
   
     for (const candidate of candidates) {
-      if (Array.isArray(candidate)) {
-        return candidate;
-      }
+      if (Array.isArray(candidate)) return candidate;
   
       if (isPlainObject(candidate)) {
         const nestedCandidates = [
-          candidate.hotels,
+          candidate.rates,
           candidate.results,
           candidate.items,
-          candidate.rates,
+          candidate.hotels,
           candidate.data,
         ];
   
         for (const nestedCandidate of nestedCandidates) {
-          if (Array.isArray(nestedCandidate)) {
-            return nestedCandidate;
-          }
+          if (Array.isArray(nestedCandidate)) return nestedCandidate;
         }
       }
     }
@@ -246,23 +169,20 @@ const {
   }
   
   function extractHotelDataRecords(data) {
-    if (!isPlainObject(data)) {
-      return [];
-    }
+    if (!isPlainObject(data)) return [];
   
     const candidates = [
-      data.data,
+      data.hotels,
       data.hotelData,
       data.hotelsData,
       data.hotelDetails,
       data.details,
       data.staticData,
+      data.data?.hotels,
     ];
   
     for (const candidate of candidates) {
-      if (Array.isArray(candidate)) {
-        return candidate;
-      }
+      if (Array.isArray(candidate)) return candidate;
   
       if (isPlainObject(candidate)) {
         const nestedCandidates = [
@@ -273,20 +193,12 @@ const {
         ];
   
         for (const nestedCandidate of nestedCandidates) {
-          if (Array.isArray(nestedCandidate)) {
-            return nestedCandidate;
-          }
+          if (Array.isArray(nestedCandidate)) return nestedCandidate;
         }
   
-        const values =
-          Object.values(candidate);
+        const objectValues = Object.values(candidate).filter(isPlainObject);
   
-        const objectValues =
-          values.filter(isPlainObject);
-  
-        if (objectValues.length > 0) {
-          return objectValues;
-        }
+        if (objectValues.length > 0) return objectValues;
       }
     }
   
@@ -294,9 +206,7 @@ const {
   }
   
   function getHotelObject(record) {
-    if (!isPlainObject(record)) {
-      return {};
-    }
+    if (!isPlainObject(record)) return {};
   
     const hotel =
       record.hotel ??
@@ -305,49 +215,7 @@ const {
       record.property ??
       record.accommodation;
   
-    return isPlainObject(hotel)
-      ? hotel
-      : record;
-  }
-  
-  function getRateRecords(record) {
-    if (!isPlainObject(record)) {
-      return [];
-    }
-  
-    const candidates = [
-      record.rates,
-      record.rate,
-      record.rooms,
-      record.offers,
-      record.availableRates,
-      record.roomRates,
-      record.roomTypes,
-    ];
-  
-    for (const candidate of candidates) {
-      if (Array.isArray(candidate)) {
-        return candidate;
-      }
-  
-      if (isPlainObject(candidate)) {
-        return [candidate];
-      }
-    }
-  
-    const hasDirectPrice =
-      pickNumber(record, [
-        ["price"],
-        ["amount"],
-        ["total"],
-        ["totalPrice"],
-        ["retailRate", "total", 0, "amount"],
-        ["retailRate", "amount"],
-      ]) !== null;
-  
-    return hasDirectPrice
-      ? [record]
-      : [];
+    return isPlainObject(hotel) ? hotel : record;
   }
   
   function getLiteApiHotelId(record, hotel) {
@@ -392,16 +260,8 @@ const {
     );
   }
   
-  function getLiteApiCurrency(
-    data,
-    fallbackCurrency = "EUR"
-  ) {
-    if (
-      !data ||
-      typeof data !== "object"
-    ) {
-      return fallbackCurrency;
-    }
+  function getLiteApiCurrency(data, fallbackCurrency = "EUR") {
+    if (!data || typeof data !== "object") return fallbackCurrency;
   
     return (
       pickString(data, [
@@ -412,48 +272,168 @@ const {
         ["hotels", 0, "rates", 0, "currency"],
         ["hotels", 0, "rates", 0, "retailRate", "currency"],
         ["hotels", 0, "rates", 0, "retailRate", "total", 0, "currency"],
-        ["data", "hotels", 0, "currency"],
-        ["data", "hotels", 0, "rates", 0, "currency"],
-        ["data", "hotels", 0, "rates", 0, "retailRate", "currency"],
-        ["data", "hotels", 0, "rates", 0, "retailRate", "total", 0, "currency"],
+        ["data", 0, "currency"],
+        ["data", 0, "rates", 0, "currency"],
+        ["data", 0, "rates", 0, "retailRate", "currency"],
+        ["data", 0, "rates", 0, "retailRate", "total", 0, "currency"],
+        ["data", 0, "roomTypes", 0, "rates", 0, "retailRate", "total", 0, "currency"],
       ]) ||
       fallbackCurrency ||
       "EUR"
     );
   }
-
+  
   function createHotelDataIndex(data) {
     const index = new Map();
-  
-    const records =
-      extractHotelDataRecords(data);
+    const records = extractHotelDataRecords(data);
   
     for (const record of records) {
-      const hotel =
-        getHotelObject(record);
-  
-      const hotelId =
-        getLiteApiHotelId(record, hotel);
+      const hotel = getHotelObject(record);
+      const hotelId = getLiteApiHotelId(record, hotel);
   
       if (hotelId) {
-        index.set(
-          String(hotelId),
-          hotel
-        );
+        index.set(String(hotelId), hotel);
       }
     }
   
     return index;
   }
   
-  function getImageUrlFromImage(image) {
-    if (typeof image === "string") {
-      return image;
+  function mergeRateWithRoomData(room, rate, index) {
+    const roomName =
+      pickString(rate, [
+        ["roomName"],
+        ["roomType"],
+        ["roomTypeName"],
+        ["name"],
+      ]) ||
+      pickString(room, [
+        ["roomName"],
+        ["roomType"],
+        ["roomTypeName"],
+        ["name"],
+      ]);
+  
+    const boardName =
+      pickString(rate, [
+        ["boardName"],
+        ["board"],
+      ]) ||
+      pickString(room, [
+        ["boardName"],
+        ["board"],
+      ]);
+  
+    return {
+      ...room,
+      ...rate,
+      roomName,
+      roomTypeName: roomName,
+      boardName,
+      offerId:
+        pickString(room, [["offerId"]]) ||
+        pickString(rate, [["offerId"]]),
+      rateId:
+        pickString(rate, [
+          ["rateId"],
+          ["id"],
+          ["rateToken"],
+        ]) ||
+        pickString(room, [
+          ["offerId"],
+          ["roomTypeId"],
+          ["id"],
+        ]) ||
+        `rate_${index + 1}`,
+    };
+  }
+  
+  function getNestedRateCandidates(room) {
+    return [
+      room.rates,
+      room.rate,
+      room.offers,
+      room.availableRates,
+      room.roomRates,
+    ];
+  }
+  
+  function getRateRecords(record) {
+    if (!isPlainObject(record)) return [];
+  
+    const collectedRates = [];
+  
+    const roomCandidates = [
+      record.roomTypes,
+      record.rooms,
+      record.roomRates,
+      record.availableRooms,
+      record.offers,
+    ];
+  
+    for (const roomCandidate of roomCandidates) {
+      const rooms = asArray(roomCandidate);
+  
+      for (const room of rooms) {
+        if (!isPlainObject(room)) continue;
+  
+        const nestedRateCandidates = getNestedRateCandidates(room);
+        let foundNestedRate = false;
+  
+        for (const nestedRateCandidate of nestedRateCandidates) {
+          const rates = asArray(nestedRateCandidate);
+  
+          for (const rate of rates) {
+            if (!isPlainObject(rate)) continue;
+  
+            if (hasUsableRatePrice(rate)) {
+              foundNestedRate = true;
+              collectedRates.push(
+                mergeRateWithRoomData(room, rate, collectedRates.length)
+              );
+            }
+          }
+        }
+  
+        if (!foundNestedRate && hasUsableRatePrice(room)) {
+          collectedRates.push(
+            mergeRateWithRoomData({}, room, collectedRates.length)
+          );
+        }
+      }
     }
   
-    if (!isPlainObject(image)) {
-      return "";
+    const directRateCandidates = [
+      record.rates,
+      record.rate,
+      record.availableRates,
+      record.roomRates,
+    ];
+  
+    for (const directRateCandidate of directRateCandidates) {
+      const rates = asArray(directRateCandidate);
+  
+      for (const rate of rates) {
+        if (isPlainObject(rate) && hasUsableRatePrice(rate)) {
+          collectedRates.push(
+            mergeRateWithRoomData({}, rate, collectedRates.length)
+          );
+        }
+      }
     }
+  
+    if (collectedRates.length === 0 && hasUsableRatePrice(record)) {
+      collectedRates.push(
+        mergeRateWithRoomData({}, record, collectedRates.length)
+      );
+    }
+  
+    return collectedRates;
+  }
+  
+  function getImageUrlFromImage(image) {
+    if (typeof image === "string") return image;
+    if (!isPlainObject(image)) return "";
   
     return (
       asString(image.url) ||
@@ -474,12 +454,9 @@ const {
     ];
   
     for (const image of imageCandidates) {
-      const imageUrl =
-        getImageUrlFromImage(image);
+      const imageUrl = getImageUrlFromImage(image);
   
-      if (imageUrl) {
-        return imageUrl;
-      }
+      if (imageUrl) return imageUrl;
     }
   
     return (
@@ -501,7 +478,7 @@ const {
       ])
     );
   }
-  
+
   function getAmenities(record, hotel) {
     const values = [
       ...pickArray(hotel, [["amenities"]]),
@@ -516,9 +493,7 @@ const {
       ...new Set(
         values
           .map((item) => {
-            if (typeof item === "string") {
-              return item.trim();
-            }
+            if (typeof item === "string") return item.trim();
   
             if (isPlainObject(item)) {
               return (
@@ -545,9 +520,7 @@ const {
         ["policies", "cancellation"],
       ]);
   
-    if (directPolicy) {
-      return directPolicy;
-    }
+    if (directPolicy) return directPolicy;
   
     const policies = [
       ...pickArray(rate, [["cancellationPolicies"]]),
@@ -557,9 +530,7 @@ const {
   
     const policyTexts = policies
       .map((policy) => {
-        if (typeof policy === "string") {
-          return policy;
-        }
+        if (typeof policy === "string") return policy;
   
         if (isPlainObject(policy)) {
           return (
@@ -573,9 +544,7 @@ const {
       })
       .filter(Boolean);
   
-    return policyTexts.length > 0
-      ? policyTexts.join(" ")
-      : null;
+    return policyTexts.length > 0 ? policyTexts.join(" ") : null;
   }
   
   function getRoomName(rate) {
@@ -601,24 +570,14 @@ const {
         ["taxIncluded"],
         ["includesTaxes"],
         ["retailRate", "taxesAndFees", "included"],
+        ["retailRate", "taxesAndFees", 0, "included"],
+        ["retailRate", "taxesAndFees", 0, "includedInPrice"],
       ])
     );
   }
   
   function getRatePrice(rate) {
-    return pickNumber(rate, [
-      ["retailRate", "total", 0, "amount"],
-      ["retailRate", "total", "amount"],
-      ["retailRate", "amount"],
-      ["price", "amount"],
-      ["price"],
-      ["amount"],
-      ["total"],
-      ["totalPrice"],
-      ["sellingPrice"],
-      ["suggestedSellingPrice"],
-      ["netPrice"],
-    ]);
+    return pickNumber(rate, getPricePaths());
   }
   
   function getRateBasePrice(rate) {
@@ -631,17 +590,18 @@ const {
       ["priceBeforeDiscount"],
       ["basePrice", "amount"],
       ["basePrice"],
+      ["retailRate", "suggestedSellingPrice", 0, "amount"],
+      ["retailRate", "initialPrice", 0, "amount"],
     ]);
   }
   
-  function getRateCurrency(
-    rate,
-    fallbackCurrency
-  ) {
+  function getRateCurrency(rate, fallbackCurrency) {
     return (
       pickString(rate, [
         ["retailRate", "total", 0, "currency"],
         ["retailRate", "currency"],
+        ["retailRate", "suggestedSellingPrice", 0, "currency"],
+        ["retailRate", "initialPrice", 0, "currency"],
         ["price", "currency"],
         ["currency"],
       ]) ||
@@ -670,13 +630,9 @@ const {
     index,
     fallbackCurrency,
   }) {
-    const price =
-      getRatePrice(rate);
+    const price = getRatePrice(rate);
   
-    if (
-      price === null ||
-      price <= 0
-    ) {
+    if (price === null || price <= 0) {
       return null;
     }
   
@@ -687,22 +643,17 @@ const {
         ["id"],
         ["roomId"],
         ["rateToken"],
-      ]) || `rate_${index + 1}`;
+      ]) ||
+      `rate_${index + 1}`;
   
-    const basePriceCandidate =
-      getRateBasePrice(rate);
+    const basePriceCandidate = getRateBasePrice(rate);
   
     const basePrice =
-      basePriceCandidate &&
-      basePriceCandidate > price
+      basePriceCandidate && basePriceCandidate > price
         ? basePriceCandidate
         : price;
   
-    const currency =
-      getRateCurrency(
-        rate,
-        fallbackCurrency
-      );
+    const currency = getRateCurrency(rate, fallbackCurrency);
   
     return {
       id: `${SOURCE_PROVIDER}:${hotelId}:${rateId}`,
@@ -710,19 +661,12 @@ const {
       sourceProvider: SOURCE_PROVIDER,
       price,
       basePrice,
-      saving: calculateSavingPercent(
-        price,
-        basePrice
-      ),
+      saving: calculateSavingPercent(price, basePrice),
       currency,
-      cancellationPolicy:
-        getCancellationPolicy(rate),
-      taxesIncluded:
-        getTaxesIncluded(rate),
-      roomName:
-        getRoomName(rate),
-      deepLink:
-        getRateDeepLink(rate),
+      cancellationPolicy: getCancellationPolicy(rate),
+      taxesIncluded: getTaxesIncluded(rate),
+      roomName: getRoomName(rate),
+      deepLink: getRateDeepLink(rate),
     };
   }
   
@@ -741,34 +685,17 @@ const {
     amenities,
   }) {
     return {
-      hasPrice:
-        Number.isFinite(price) &&
-        price > 0,
-      hasBasePrice:
-        Number.isFinite(basePrice) &&
-        basePrice > price,
-      hasSaving:
-        Number.isFinite(saving) &&
-        saving > 0,
-      hasStars:
-        Number.isFinite(stars) &&
-        stars > 0,
-      hasReviewScore:
-        reviewScore !== null,
-      hasReviewCount:
-        reviewCount !== null &&
-        reviewCount > 0,
-      hasDistance:
-        distance !== null,
-      hasImage:
-        Boolean(image),
-      hasAddress:
-        Boolean(address),
-      hasCoordinates:
-        latitude !== null &&
-        longitude !== null,
-      hasAmenities:
-        amenities.length > 0,
+      hasPrice: Number.isFinite(price) && price > 0,
+      hasBasePrice: Number.isFinite(basePrice) && basePrice > price,
+      hasSaving: Number.isFinite(saving) && saving > 0,
+      hasStars: Number.isFinite(stars) && stars > 0,
+      hasReviewScore: reviewScore !== null,
+      hasReviewCount: reviewCount !== null && reviewCount > 0,
+      hasDistance: distance !== null,
+      hasImage: Boolean(image),
+      hasAddress: Boolean(address),
+      hasCoordinates: latitude !== null && longitude !== null,
+      hasAmenities: amenities.length > 0,
     };
   }
   
@@ -784,45 +711,23 @@ const {
     if (availableData.hasReviewCount) score += 1;
     if (availableData.hasAmenities) score += 1;
   
-    if (score >= 7) {
-      return "full";
-    }
-  
-    if (score >= 4) {
-      return "partial";
-    }
+    if (score >= 7) return "full";
+    if (score >= 4) return "partial";
   
     return "limited";
   }
   
   function createReviewText(reviewScore) {
-    if (reviewScore === null) {
-      return "No reviews";
-    }
-  
-    if (reviewScore >= 9) {
-      return "Excellent";
-    }
-  
-    if (reviewScore >= 8) {
-      return "Very good";
-    }
-  
-    if (reviewScore >= 7) {
-      return "Good";
-    }
+    if (reviewScore === null) return "No reviews";
+    if (reviewScore >= 9) return "Excellent";
+    if (reviewScore >= 8) return "Very good";
+    if (reviewScore >= 7) return "Good";
   
     return "Guest rated";
   }
-
-  function mergeHotelObjects(
-    indexedHotel,
-    recordHotel
-  ) {
-    if (
-      !indexedHotel ||
-      !isPlainObject(indexedHotel)
-    ) {
+  
+  function mergeHotelObjects(indexedHotel, recordHotel) {
+    if (!indexedHotel || !isPlainObject(indexedHotel)) {
       return recordHotel;
     }
   
@@ -837,38 +742,21 @@ const {
     fallbackCurrency = "EUR",
     hotelDataIndex = new Map()
   ) {
-    const recordHotel =
-      getHotelObject(record);
+    const recordHotel = getHotelObject(record);
   
-    const preliminaryHotelId =
-      getLiteApiHotelId(
-        record,
-        recordHotel
-      );
+    const preliminaryHotelId = getLiteApiHotelId(record, recordHotel);
   
-    const indexedHotel =
-      preliminaryHotelId
-        ? hotelDataIndex.get(String(preliminaryHotelId))
-        : null;
+    const indexedHotel = preliminaryHotelId
+      ? hotelDataIndex.get(String(preliminaryHotelId))
+      : null;
   
-    const hotel =
-      mergeHotelObjects(
-        indexedHotel,
-        recordHotel
-      );
+    const hotel = mergeHotelObjects(indexedHotel, recordHotel);
   
-    const sourceHotelId =
-      getLiteApiHotelId(
-        record,
-        hotel
-      );
+    const sourceHotelId = getLiteApiHotelId(record, hotel);
   
-    if (!sourceHotelId) {
-      return null;
-    }
+    if (!sourceHotelId) return null;
   
-    const rates =
-      getRateRecords(record);
+    const rates = getRateRecords(record);
   
     const offers = rates
       .map((rate, index) =>
@@ -880,122 +768,98 @@ const {
         })
       )
       .filter(Boolean)
-      .sort((firstOffer, secondOffer) =>
-        firstOffer.price - secondOffer.price
-      );
+      .sort((firstOffer, secondOffer) => firstOffer.price - secondOffer.price);
   
-    if (offers.length === 0) {
-      return null;
-    }
+    if (offers.length === 0) return null;
   
-    const bestOffer =
-      offers[0];
+    const bestOffer = offers[0];
   
-    const starsRaw =
-      pickNumber(hotel, [
-        ["stars"],
-        ["starRating"],
-        ["hotelStars"],
-        ["rating"],
-        ["star_rating"],
-      ]);
+    const starsRaw = pickNumber(hotel, [
+      ["stars"],
+      ["starRating"],
+      ["hotelStars"],
+      ["star_rating"],
+    ]);
   
     const stars =
       starsRaw === null
         ? 0
         : clamp(starsRaw, 0, 5);
   
-    const reviewScore =
-      pickNumber(hotel, [
-        ["reviewScore"],
-        ["guestReviewScore"],
-        ["guestRating"],
-        ["reviews", "score"],
-        ["reviews", "rating"],
-        ["review", "score"],
-        ["score"],
-      ]);
+    const reviewScore = pickNumber(hotel, [
+      ["reviewScore"],
+      ["guestReviewScore"],
+      ["guestRating"],
+      ["reviews", "score"],
+      ["reviews", "rating"],
+      ["review", "score"],
+      ["rating"],
+      ["score"],
+    ]);
   
-    const reviewCount =
-      pickNumber(hotel, [
-        ["reviewCount"],
-        ["guestReviewCount"],
-        ["reviews", "count"],
-        ["reviewsCount"],
-        ["numberOfReviews"],
-        ["review_count"],
-      ]);
+    const reviewCount = pickNumber(hotel, [
+      ["reviewCount"],
+      ["guestReviewCount"],
+      ["reviews", "count"],
+      ["reviewsCount"],
+      ["numberOfReviews"],
+      ["review_count"],
+    ]);
   
-    const latitude =
-      pickNumber(hotel, [
-        ["latitude"],
-        ["lat"],
-        ["location", "latitude"],
-        ["coordinates", "latitude"],
-        ["coordinates", "lat"],
-      ]);
+    const latitude = pickNumber(hotel, [
+      ["latitude"],
+      ["lat"],
+      ["location", "latitude"],
+      ["coordinates", "latitude"],
+      ["coordinates", "lat"],
+    ]);
   
-    const longitude =
-      pickNumber(hotel, [
-        ["longitude"],
-        ["lng"],
-        ["lon"],
-        ["location", "longitude"],
-        ["coordinates", "longitude"],
-        ["coordinates", "lng"],
-      ]);
-  
-    const address =
-      pickString(hotel, [
+    const longitude = pickNumber(hotel, [
+      ["longitude"],
+      ["lng"],
+      ["lon"],
+      ["location", "longitude"],
+      ["coordinates", "longitude"],
+      ["coordinates", "lng"],
+    ]);
+
+    const address = pickString(hotel, [
         ["address"],
         ["addressLine"],
         ["address1"],
         ["location", "address"],
         ["address_line"],
       ]);
-  
-    const city =
-      pickString(hotel, [
+    
+      const city = pickString(hotel, [
         ["city"],
         ["cityName"],
+        ["city_name"],
         ["location", "city"],
       ]);
-  
-    const country =
-      pickString(hotel, [
+    
+      const country = pickString(hotel, [
         ["country"],
         ["countryName"],
+        ["country_code"],
+        ["countryCode"],
         ["location", "country"],
       ]);
-  
-    const distance =
-      pickNumber(record, [
+    
+      const distance = pickNumber(record, [
         ["distance"],
         ["distanceFromCenter"],
         ["distanceFromCentre"],
         ["hotel", "distance"],
       ]);
-  
-    const image =
-      getPrimaryImage(
-        record,
-        hotel
-      );
-  
-    const amenities =
-      getAmenities(
-        record,
-        hotel
-      );
-  
-    const facilities =
-      amenities;
-  
-    const saving =
-      bestOffer.saving;
-  
-    const availableData =
-      createAvailableData({
+    
+      const image = getPrimaryImage(record, hotel);
+    
+      const amenities = getAmenities(record, hotel);
+      const facilities = amenities;
+      const saving = bestOffer.saving;
+    
+      const availableData = createAvailableData({
         price: bestOffer.price,
         basePrice: bestOffer.basePrice,
         saving,
@@ -1009,143 +873,129 @@ const {
         longitude,
         amenities,
       });
-  
-    const dataConfidence =
-      calculateDataConfidence(availableData);
-  
-    return {
-      id: `${SOURCE_PROVIDER}:${sourceHotelId}`,
-      sourceProvider: SOURCE_PROVIDER,
-      sourceHotelId,
-      dataSources: [SOURCE_PROVIDER],
-      dataConfidence,
-      availableData,
-      offers,
-  
-      name:
-        getLiteApiHotelName(record, hotel),
-      provider:
-        PROVIDER_NAME,
-      stars,
-      reviewScore:
-        reviewScore ?? null,
-      reviewCount:
-        reviewCount ?? null,
-      reviewText:
-        createReviewText(reviewScore ?? null),
-  
-      price:
-        bestOffer.price,
-      basePrice:
-        bestOffer.basePrice,
-      saving,
-      currency:
-        bestOffer.currency,
-  
-      distance:
-        distance ?? null,
-      image,
-      address,
-      city,
-      country,
-      latitude:
-        latitude ?? null,
-      longitude:
-        longitude ?? null,
-      amenities,
-      facilities,
-    };
-  }
-  
-  function mapLiteApiDestinationResponse(data) {
-    const records =
-      extractRecords(data);
-  
-    return records
-      .map((record) => {
-        const hotel =
-          getHotelObject(record);
-  
-        const id =
-          getLiteApiHotelId(record, hotel);
-  
-        const name =
-          getLiteApiHotelName(record, hotel);
-  
-        if (!id || !name) {
-          return null;
-        }
-  
-        return {
-          id,
-          name,
-          type: "hotel",
-          city:
-            pickString(hotel, [
+    
+      const dataConfidence = calculateDataConfidence(availableData);
+    
+      return {
+        id: `${SOURCE_PROVIDER}:${sourceHotelId}`,
+        sourceProvider: SOURCE_PROVIDER,
+        sourceHotelId,
+        dataSources: [SOURCE_PROVIDER],
+        dataConfidence,
+        availableData,
+        offers,
+    
+        name: getLiteApiHotelName(record, hotel),
+        provider: PROVIDER_NAME,
+        stars,
+        reviewScore: reviewScore ?? null,
+        reviewCount: reviewCount ?? null,
+        reviewText: createReviewText(reviewScore ?? null),
+    
+        price: bestOffer.price,
+        basePrice: bestOffer.basePrice,
+        saving,
+        currency: bestOffer.currency,
+    
+        distance: distance ?? null,
+        image,
+        address,
+        city,
+        country,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        amenities,
+        facilities,
+      };
+    }
+    
+    function mapLiteApiDestinationResponse(data) {
+      const records = extractRecords(data);
+    
+      return records
+        .map((record) => {
+          const hotel = getHotelObject(record);
+          const id = getLiteApiHotelId(record, hotel);
+          const name = getLiteApiHotelName(record, hotel);
+    
+          if (!id || !name) return null;
+    
+          return {
+            id,
+            name,
+            type: "hotel",
+            city: pickString(hotel, [
               ["city"],
               ["cityName"],
+              ["city_name"],
               ["location", "city"],
             ]),
-          country:
-            pickString(hotel, [
+            country: pickString(hotel, [
               ["country"],
               ["countryName"],
+              ["country_code"],
+              ["countryCode"],
               ["location", "country"],
             ]),
-        };
-      })
-      .filter(Boolean);
-  }
-  
-  function mapLiteApiHotelResponse(
-    data,
-    fallbackCurrency = "EUR"
-  ) {
-    const records =
-      extractRecords(data);
-  
-    const hotelDataIndex =
-      createHotelDataIndex(data);
-  
-    return records
-      .map((record) =>
-        mapLiteApiRecordToHotel(
-          record,
-          fallbackCurrency,
-          hotelDataIndex
-        )
-      )
-      .filter(Boolean);
-  }
-  
-  function isLiteApiNoResults(data) {
-    return (
-      !data ||
-      extractRecords(data).length === 0
-    );
-  }
-  
-  function createLiteApiFailedSearchResponse(
-    currency = "EUR"
-  ) {
-    return {
-      success: false,
-      result: {
-        status: "Completed",
-        currency,
-        hotels: [],
-        nextResultsKey: null,
-      },
-      error:
-        "LiteAPI returned no usable hotel results for this search.",
+          };
+        })
+        .filter(Boolean);
+    }
+    
+    function mapLiteApiHotelResponse(
+      data,
+      fallbackCurrency = "EUR"
+    ) {
+      const records = extractRecords(data);
+      const hotelDataIndex = createHotelDataIndex(data);
+    
+      return records
+        .map((record) => {
+          const sourceHotelId = getLiteApiHotelId(record, record);
+    
+          const indexedHotel = sourceHotelId
+            ? hotelDataIndex.get(String(sourceHotelId))
+            : null;
+    
+          const enrichedRecord = indexedHotel
+            ? {
+                ...record,
+                hotel: indexedHotel,
+              }
+            : record;
+    
+          return mapLiteApiRecordToHotel(
+            enrichedRecord,
+            fallbackCurrency,
+            hotelDataIndex
+          );
+        })
+        .filter(Boolean);
+    }
+    
+    function isLiteApiNoResults(data) {
+      return !data || extractRecords(data).length === 0;
+    }
+    
+    function createLiteApiFailedSearchResponse(currency = "EUR") {
+      return {
+        success: false,
+        result: {
+          status: "Completed",
+          currency,
+          hotels: [],
+          nextResultsKey: null,
+        },
+        error:
+          "LiteAPI returned no usable hotel results for this search.",
+      };
+    }
+    
+    module.exports = {
+      mapLiteApiDestinationResponse,
+      mapLiteApiHotelResponse,
+      mapLiteApiRecordToHotel,
+      isLiteApiNoResults,
+      getLiteApiCurrency,
+      createLiteApiFailedSearchResponse,
     };
-  }
-  
-  module.exports = {
-    mapLiteApiDestinationResponse,
-    mapLiteApiHotelResponse,
-    mapLiteApiRecordToHotel,
-    isLiteApiNoResults,
-    getLiteApiCurrency,
-    createLiteApiFailedSearchResponse,
-  };
