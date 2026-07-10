@@ -541,29 +541,7 @@ async function searchHotelsWithLiteApi({
         createLiteApiFailedSearchResponse(currency),
     };
   }
-
-  console.log(
-    "[PROVIDER:liteapi] First hotel sample:",
-    JSON.stringify(
-      Array.isArray(response.data?.hotels)
-        ? response.data.hotels[0]
-        : null,
-      null,
-      2
-    ).slice(0, 3000)
-  );
-
-  console.log(
-    "[PROVIDER:liteapi] First data sample:",
-    JSON.stringify(
-      Array.isArray(response.data?.data)
-        ? response.data.data[0]
-        : null,
-      null,
-      2
-    ).slice(0, 3000)
-  );
-
+  
   const liteApiHotels =
     mapLiteApiHotelResponse(
       response.data,
