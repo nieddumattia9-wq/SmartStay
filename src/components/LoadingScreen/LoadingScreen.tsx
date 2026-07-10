@@ -68,6 +68,15 @@ import {
   
   const MINIMUM_LOADING_TIME_MS =
     3500;
+
+  const MAXIMUM_SEARCH_TIME_MS =
+    6 * 60 * 1000;
+
+  const MAXIMUM_POLLING_CYCLES =
+    40;
+
+  const SEARCH_TIMEOUT_MESSAGE =
+    "The search took too long to complete. Please try again with different dates or another destination.";
   
   type SearchProgressResponse = {
     success: boolean;
@@ -628,11 +637,29 @@ import {
             await resolveSearchId();
   
           let finished = false;
+
+          let pollingCycles = 0;
   
           while (
             isMounted.current &&
             !finished
           ) {
+            const elapsedSearchTime =
+              Date.now() - startedAt;
+
+            if (
+              elapsedSearchTime >=
+                MAXIMUM_SEARCH_TIME_MS ||
+              pollingCycles >=
+                MAXIMUM_POLLING_CYCLES
+            ) {
+              throw new Error(
+                SEARCH_TIMEOUT_MESSAGE
+              );
+            }
+
+            pollingCycles += 1;
+
             const statusResponse =
               await getSearchStatus(
                 activeSearchId
@@ -673,6 +700,15 @@ import {
               );
             }
   
+            if (
+              Date.now() - startedAt >=
+              MAXIMUM_SEARCH_TIME_MS
+            ) {
+              throw new Error(
+                SEARCH_TIMEOUT_MESSAGE
+              );
+            }
+
             const continueResponse =
               await continueHotelSearch(
                 activeSearchId
@@ -711,6 +747,15 @@ import {
         } catch (err) {
           console.error(err);
   
+          const isSearchTimeout =
+            err instanceof Error &&
+            err.message ===
+              SEARCH_TIMEOUT_MESSAGE;
+
+          if (isSearchTimeout) {
+            clearActiveSearchIdFromStorage();
+          }
+
           if (ownsSearchLock) {
             clearSearchLock();
           }
