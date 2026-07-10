@@ -2,31 +2,93 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:3001/api";
 
+const STANDARD_REQUEST_TIMEOUT_MS =
+  25_000;
+
+const HOTEL_REQUEST_TIMEOUT_MS =
+  165_000;
+
 async function requestJson<T>(
   url: string,
   options?: RequestInit,
-  fallbackErrorMessage = "API request failed."
+  fallbackErrorMessage = "API request failed.",
+  timeoutMs = STANDARD_REQUEST_TIMEOUT_MS,
+  timeoutErrorMessage =
+    "The request took too long. Please try again."
 ): Promise<T> {
 
-  const response = await fetch(
-    url,
-    options
-  );
+  const controller =
+    new AbortController();
 
-  const data = await response
-    .json()
-    .catch(() => null);
+  const timeoutId =
+    window.setTimeout(
+      () => controller.abort(),
+      timeoutMs
+    );
 
-  if (!response.ok) {
+  try {
+
+    const response = await fetch(
+      url,
+      {
+        ...options,
+        signal: controller.signal,
+      }
+    );
+
+    const data = await response
+      .json()
+      .catch(() => null);
+
+    if (!response.ok) {
+
+      throw new Error(
+        data?.message ||
+        fallbackErrorMessage
+      );
+
+    }
+
+    return data as T;
+
+  } catch (error) {
+
+    if (
+      error instanceof DOMException &&
+      error.name === "AbortError"
+    ) {
+
+      throw new Error(
+        timeoutErrorMessage
+      );
+
+    }
+
+    if (error instanceof TypeError) {
+
+      throw new Error(
+        fallbackErrorMessage
+      );
+
+    }
+
+    if (error instanceof Error) {
+
+      throw error;
+
+    }
 
     throw new Error(
-      data?.message ||
       fallbackErrorMessage
     );
 
-  }
+  } finally {
 
-  return data as T;
+    window.clearTimeout(
+      timeoutId
+    );
+
+  }
 
 }
 
@@ -59,7 +121,9 @@ export async function searchDestinations(
         query,
       }),
     },
-    "Unable to search destinations."
+    "Unable to search destinations.",
+    STANDARD_REQUEST_TIMEOUT_MS,
+    "Destination search took too long. Please try again."
   );
 
 }
@@ -77,7 +141,9 @@ export async function searchHotels(
       },
       body: JSON.stringify(payload),
     },
-    "Unable to search hotels."
+    "Unable to search hotels.",
+    HOTEL_REQUEST_TIMEOUT_MS,
+    "The hotel search took too long. Please try again."
   );
 
 }
@@ -97,7 +163,9 @@ export async function continueHotelSearch(
         searchId,
       }),
     },
-    "Unable to continue hotel search."
+    "Unable to continue hotel search.",
+    HOTEL_REQUEST_TIMEOUT_MS,
+    "The hotel search took too long to continue. Please try again."
   );
 
 }
@@ -119,7 +187,9 @@ export async function getHotelDetails(
         searchId,
       }),
     },
-    "Unable to retrieve hotel details."
+    "Unable to retrieve hotel details.",
+    HOTEL_REQUEST_TIMEOUT_MS,
+    "Hotel details took too long to load. Please try again."
   );
 
 }
@@ -131,7 +201,9 @@ export async function getSearchStatus(
   return requestJson(
     `${API_URL}/search-status${createSearchIdQuery(searchId)}`,
     undefined,
-    "Unable to retrieve search status."
+    "Unable to retrieve search status.",
+    STANDARD_REQUEST_TIMEOUT_MS,
+    "Retrieving the search status took too long."
   );
 
 }
@@ -143,7 +215,9 @@ export async function getSearchSession(
   return requestJson(
     `${API_URL}/search-session${createSearchIdQuery(searchId)}`,
     undefined,
-    "Unable to retrieve search session."
+    "Unable to retrieve search session.",
+    STANDARD_REQUEST_TIMEOUT_MS,
+    "Retrieving the search results took too long."
   );
 
 }
