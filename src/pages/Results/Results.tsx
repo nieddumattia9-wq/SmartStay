@@ -11,6 +11,10 @@ import {
   
   import HotelCard from "../../components/HotelCard/HotelCard";
   
+  import {
+    sliderOptions,
+  } from "../../components/SmartOptimizer/sliderData";
+  
   import { getSearchSession } from "../../services/api";
   
   import type {
@@ -22,8 +26,202 @@ import {
     rankHotelsWithSmartStayEngine,
   } from "../../utils/smartStayEngine";
   
-  function Results() {
+  const SEARCH_META_STORAGE_PREFIX =
+    "smartstay_search_meta_";
   
+  const DEFAULT_PREFERENCE_INDEX =
+    2;
+  
+  type SearchMeta = {
+    destinationLabel?: string;
+    smartPreference?: unknown;
+    budget?: string;
+  };
+  
+  function getSearchMetaStorageKey(
+    searchId: string
+  ) {
+    return `${SEARCH_META_STORAGE_PREFIX}${searchId}`;
+  }
+  
+  function readSearchMeta(
+    searchId: string | null
+  ): SearchMeta | null {
+    if (!searchId) {
+      return null;
+    }
+  
+    const rawSearchMeta =
+      sessionStorage.getItem(
+        getSearchMetaStorageKey(searchId)
+      );
+  
+    if (!rawSearchMeta) {
+      return null;
+    }
+  
+    try {
+      const parsed =
+        JSON.parse(rawSearchMeta) as SearchMeta;
+  
+      if (
+        !parsed ||
+        typeof parsed !== "object"
+      ) {
+        return null;
+      }
+  
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+  
+  function getSelectedPreferenceIndex(
+    searchMeta: SearchMeta | null
+  ) {
+    const smartPreference =
+      searchMeta?.smartPreference;
+  
+    if (
+      !smartPreference ||
+      typeof smartPreference !== "object" ||
+      !("selectedIndex" in smartPreference)
+    ) {
+      return DEFAULT_PREFERENCE_INDEX;
+    }
+  
+    const selectedIndex =
+      Number(
+        smartPreference.selectedIndex
+      );
+  
+    if (!Number.isFinite(selectedIndex)) {
+      return DEFAULT_PREFERENCE_INDEX;
+    }
+  
+    return Math.min(
+      Math.max(
+        Math.round(selectedIndex),
+        0
+      ),
+      sliderOptions.length - 1
+    );
+  }
+  
+  function getRecommendationLimit(
+    preferenceId: string
+  ) {
+    if (
+      preferenceId === "maximum-comfort" ||
+      preferenceId === "comfort"
+    ) {
+      return 3;
+    }
+  
+    return 4;
+  }
+  
+  function getPreferenceSummary(
+    preferenceId: string
+  ) {
+    if (preferenceId === "maximum-comfort") {
+      return "Prioritizing premium comfort, stronger reliability signals and fewer compromises.";
+    }
+  
+    if (preferenceId === "comfort") {
+      return "Prioritizing comfort, quality and location while still keeping value in mind.";
+    }
+  
+    if (preferenceId === "savings") {
+      return "Prioritizing stronger price advantages while keeping reliability under control.";
+    }
+  
+    if (preferenceId === "maximum-savings") {
+      return "Prioritizing the lowest smart cost first. Future split-stay options will be evaluated here.";
+    }
+  
+    return "Balancing comfort, savings, location and reliability.";
+  }
+  
+  function getBestHotelPrice(hotel: Hotel) {
+    const validOfferPrices =
+      hotel.offers
+        ?.map((offer) => offer.price)
+        .filter((price) => (
+          Number.isFinite(price) &&
+          price > 0
+        )) ?? [];
+  
+    if (validOfferPrices.length > 0) {
+      return Math.min(...validOfferPrices);
+    }
+  
+    if (
+      Number.isFinite(hotel.price) &&
+      hotel.price > 0
+    ) {
+      return hotel.price;
+    }
+  
+    return null;
+  }
+  
+  function calculateAverageSearchPrice(
+    hotels: Hotel[]
+  ) {
+    const validPrices = hotels
+      .map(getBestHotelPrice)
+      .filter((price): price is number => (
+        price !== null &&
+        Number.isFinite(price) &&
+        price > 0
+      ));
+  
+    if (validPrices.length === 0) {
+      return null;
+    }
+  
+    const total = validPrices.reduce(
+      (sum, price) => sum + price,
+      0
+    );
+  
+    return total / validPrices.length;
+  }
+  
+  function calculatePriceAdvantagePercent(
+    hotel: Hotel,
+    averageSearchPrice: number | null
+  ) {
+    const hotelPrice =
+      getBestHotelPrice(hotel);
+  
+    if (
+      hotelPrice === null ||
+      averageSearchPrice === null ||
+      averageSearchPrice <= 0 ||
+      hotelPrice >= averageSearchPrice
+    ) {
+      return null;
+    }
+  
+    const advantagePercent =
+      ((averageSearchPrice - hotelPrice) /
+        averageSearchPrice) *
+      100;
+  
+    if (
+      !Number.isFinite(advantagePercent) ||
+      advantagePercent < 5
+    ) {
+      return null;
+    }
+  
+    return Math.round(advantagePercent);
+  }
+
+  function Results() {
     const navigate =
       useNavigate();
   
@@ -45,30 +243,79 @@ import {
     const [status, setStatus] =
       useState<string | null>(null);
   
+    const [searchMeta, setSearchMeta] =
+      useState<SearchMeta | null>(null);
+  
+    const [showFullList, setShowFullList] =
+      useState(false);
+  
+    const selectedPreferenceIndex =
+      useMemo(() => {
+        return getSelectedPreferenceIndex(
+          searchMeta
+        );
+      }, [searchMeta]);
+  
+    const selectedPreference =
+      sliderOptions[selectedPreferenceIndex] ??
+      sliderOptions[DEFAULT_PREFERENCE_INDEX];
+  
+    const recommendationLimit =
+      getRecommendationLimit(
+        selectedPreference.id
+      );
+  
     const rankedHotels =
       useMemo(() => {
+    return rankHotelsWithSmartStayEngine(
+      hotels
+    );
+  }, [
+    hotels,
+  ]);
   
-        return rankHotelsWithSmartStayEngine(
+    const averageSearchPrice =
+      useMemo(() => {
+        return calculateAverageSearchPrice(
           hotels
         );
-  
       }, [hotels]);
   
+    const recommendedHotels =
+      useMemo(() => {
+        return rankedHotels.slice(
+          0,
+          recommendationLimit
+        );
+      }, [
+        rankedHotels,
+        recommendationLimit,
+      ]);
+  
+    const remainingHotels =
+      useMemo(() => {
+        return rankedHotels.slice(
+          recommendationLimit
+        );
+      }, [
+        rankedHotels,
+        recommendationLimit,
+      ]);
+  
     useEffect(() => {
-  
       async function loadResults() {
-  
         try {
-  
           if (!searchId) {
-  
             setError(
               "Missing searchId. Please start a new search."
             );
   
             return;
-  
           }
+  
+          setSearchMeta(
+            readSearchMeta(searchId)
+          );
   
           const response =
             await getSearchSession(
@@ -82,50 +329,35 @@ import {
           setStatus(
             response.session.status ?? null
           );
-  
         } catch (err) {
-  
           console.error(err);
   
           setError(
             "Unable to load hotels."
           );
-  
         } finally {
-  
           setLoading(false);
-  
         }
-  
       }
   
       loadResults();
-  
     }, [searchId]);
   
     if (loading) {
-  
       return (
-  
         <div
           style={{
             padding: "80px",
             textAlign: "center",
           }}
         >
-  
           Loading hotels...
-  
         </div>
-  
       );
-  
     }
   
     if (error) {
-  
       return (
-  
         <div
           style={{
             padding: "80px",
@@ -133,7 +365,6 @@ import {
             color: "#dc2626",
           }}
         >
-  
           <h1>
             Results not available
           </h1>
@@ -156,19 +387,13 @@ import {
             }}
             onClick={() => navigate("/")}
           >
-  
             Start a new search
-  
           </button>
-  
         </div>
-  
       );
-  
     }
   
     return (
-  
       <main
         style={{
           maxWidth: "1300px",
@@ -176,137 +401,315 @@ import {
           padding: "0 24px",
         }}
       >
-  
-        <h1
+        <section
           style={{
-            fontSize: "2.4rem",
-            marginBottom: "8px",
+            marginBottom: "36px",
           }}
         >
+          <p
+            style={{
+              margin: "0 0 10px",
+              color: "#16a34a",
+              fontSize: "0.82rem",
+              fontWeight: 900,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Ranked by SmartStay Engine
+          </p>
   
-          SmartStay Results
+          <h1
+            style={{
+              fontSize: "2.55rem",
+              lineHeight: 1.08,
+              margin: "0 0 12px",
+              letterSpacing: "-0.04em",
+            }}
+          >
+            Your SmartStay recommendations
+          </h1>
   
-        </h1>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "16px",
+              padding: "9px 13px",
+              borderRadius: "999px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <span
+              style={{
+                width: "9px",
+                height: "9px",
+                borderRadius: "999px",
+                background: selectedPreference.color,
+              }}
+            />
   
-        <p
-          style={{
-            color: "#6b7280",
-            marginBottom: "8px",
-          }}
-        >
-  
-          {hotels.length} stays found
-  
-        </p>
-  
-        <p
-          style={{
-            color: "#16a34a",
-            marginBottom: status ? "12px" : "40px",
-            fontSize: "0.95rem",
-            fontWeight: 600,
-          }}
-        >
-  
-          Ranked by SmartStay Engine
-  
-        </p>
-  
-        {status && (
+            <span
+              style={{
+                color: "#0f172a",
+                fontSize: "0.88rem",
+                fontWeight: 800,
+              }}
+            >
+              {selectedPreference.title} mode
+            </span>
+          </div>
   
           <p
             style={{
-              color: "#9ca3af",
-              marginBottom: "40px",
-              fontSize: "0.95rem",
+              maxWidth: "760px",
+              color: "#64748b",
+              fontSize: "1.02rem",
+              lineHeight: 1.65,
+              margin: "0",
             }}
           >
-  
-            Search status: {status}
-  
+            We analyzed {hotels.length} available stays and selected the strongest options first.
+            {searchMeta?.destinationLabel ? ` Destination: ${searchMeta.destinationLabel}.` : ""}
+            {" "}
+            {getPreferenceSummary(selectedPreference.id)}
           </p>
   
-        )}
-  
-        {hotels.length === 0 ? (
-  
-          <div
-            style={{
-              padding: "60px",
-              textAlign: "center",
-              background: "#ffffff",
-              borderRadius: "20px",
-              boxShadow: "0 10px 30px rgba(0, 0, 0, .08)",
-            }}
-          >
-  
-            <h2>
-              No stays found
-            </h2>
-  
+          {searchMeta?.budget && (
             <p
               style={{
-                color: "#6b7280",
-                marginTop: "10px",
+                marginTop: "12px",
+                color: "#64748b",
+                fontSize: "0.94rem",
               }}
             >
-  
-              Try another destination or different dates.
-  
+              Budget preference: €{searchMeta.budget}
             </p>
+          )}
   
-            <button
-              type="button"
+          {status && (
+            <p
               style={{
-                marginTop: "24px",
-                border: "none",
-                borderRadius: "12px",
-                padding: "12px 22px",
-                cursor: "pointer",
-                background: "#00b96b",
-                color: "white",
-                fontWeight: 600,
+                color: "#94a3b8",
+                marginTop: "14px",
+                fontSize: "0.92rem",
               }}
-              onClick={() => navigate("/")}
             >
-  
-              Search again
-  
-            </button>
-  
-          </div>
-  
-        ) : (
-  
-          <div
+              Search status: {status}
+            </p>
+          )}
+        </section>
+
+        {hotels.length === 0 ? (
+        <div
+          style={{
+            padding: "60px",
+            textAlign: "center",
+            background: "#ffffff",
+            borderRadius: "20px",
+            boxShadow: "0 10px 30px rgba(0, 0, 0, .08)",
+          }}
+        >
+          <h2>
+            No stays found
+          </h2>
+
+          <p
+            style={{
+              color: "#6b7280",
+              marginTop: "10px",
+            }}
+          >
+            Try another destination or different dates.
+          </p>
+
+          <button
+            type="button"
+            style={{
+              marginTop: "24px",
+              border: "none",
+              borderRadius: "12px",
+              padding: "12px 22px",
+              cursor: "pointer",
+              background: "#00b96b",
+              color: "white",
+              fontWeight: 600,
+            }}
+            onClick={() => navigate("/")}
+          >
+            Search again
+          </button>
+        </div>
+      ) : (
+        <>
+          <section
             style={{
               display: "flex",
               flexDirection: "column",
               gap: "28px",
             }}
           >
-  
-            {rankedHotels.map((evaluation) => (
-  
-              <HotelCard
+            {recommendedHotels.map((evaluation, index) => (
+              <div
                 key={evaluation.hotel.id}
-                hotel={evaluation.hotel}
-                smartScore={evaluation.smartScore}
-                riskLevel={evaluation.riskLevel}
-                badges={evaluation.badges}
-                reasons={evaluation.reasons}
-              />
-  
+              >
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    color: "#059669",
+                    fontSize: "0.82rem",
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.07em",
+                  }}
+                >
+                  SmartStay pick #{index + 1}
+                </p>
+
+                <HotelCard
+                  hotel={evaluation.hotel}
+                  smartScore={evaluation.smartScore}
+                  riskLevel={evaluation.riskLevel}
+                  badges={evaluation.badges}
+                  reasons={evaluation.reasons}
+                  priceAdvantagePercent={calculatePriceAdvantagePercent(
+                    evaluation.hotel,
+                    averageSearchPrice
+                  )}
+                />
+              </div>
             ))}
-  
-          </div>
-  
-        )}
-  
-      </main>
-  
-    );
-  
-  }
-  
-  export default Results;
+          </section>
+
+          {remainingHotels.length > 0 && (
+            <section
+              style={{
+                marginTop: "44px",
+              }}
+            >
+              {!showFullList ? (
+                <div
+                  style={{
+                    padding: "30px",
+                    borderRadius: "26px",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 14px 35px rgba(15, 23, 42, .07)",
+                    textAlign: "center",
+                  }}
+                >
+                  <h2
+                    style={{
+                      margin: "0",
+                      fontSize: "1.45rem",
+                      letterSpacing: "-0.03em",
+                    }}
+                  >
+                    Want to explore every ranked option?
+                  </h2>
+
+                  <p
+                    style={{
+                      maxWidth: "660px",
+                      margin: "10px auto 0",
+                      color: "#64748b",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    SmartStay selected the strongest recommendations above for your {selectedPreference.title.toLowerCase()} preference.
+                    You can still open the full ranked list if you want to compare all available stays.
+                  </p>
+
+                  <button
+                    type="button"
+                    style={{
+                      marginTop: "22px",
+                      border: "none",
+                      borderRadius: "15px",
+                      padding: "14px 26px",
+                      cursor: "pointer",
+                      background: "#0f172a",
+                      color: "white",
+                      fontWeight: 800,
+                      boxShadow: "0 12px 25px rgba(15, 23, 42, .18)",
+                    }}
+                    onClick={() => setShowFullList(true)}
+                  >
+                    View full SmartStay ranked list
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      marginBottom: "24px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: "0 0 8px",
+                        color: "#16a34a",
+                        fontSize: "0.82rem",
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      Full ranked list
+                    </p>
+
+                    <h2
+                      style={{
+                        margin: "0",
+                        fontSize: "1.85rem",
+                        letterSpacing: "-0.04em",
+                      }}
+                    >
+                      All remaining stays ranked by SmartStay
+                    </h2>
+
+                    <p
+                      style={{
+                        marginTop: "8px",
+                        color: "#64748b",
+                      }}
+                    >
+                      These are still ordered by SmartScore, but the strongest recommendations are already shown above.
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "28px",
+                    }}
+                  >
+                    {remainingHotels.map((evaluation) => (
+                      <HotelCard
+                        key={evaluation.hotel.id}
+                        hotel={evaluation.hotel}
+                        smartScore={evaluation.smartScore}
+                        riskLevel={evaluation.riskLevel}
+                        badges={evaluation.badges}
+                        reasons={evaluation.reasons}
+                        priceAdvantagePercent={calculatePriceAdvantagePercent(
+                          evaluation.hotel,
+                          averageSearchPrice
+                        )}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+        </>
+      )}
+    </main>
+  );
+}
+
+export default Results;

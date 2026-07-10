@@ -111,7 +111,7 @@ const {
   // =========================
   
   async function searchHotels(searchData) {
-  
+
     const providerResult =
       await searchHotelsWithPrimaryProvider({
         searchData,
@@ -123,9 +123,117 @@ const {
           searchData.currency ?? "USD",
       });
   
+    function saveEmptySearchSession({
+      providerId = null,
+      currency = searchData.currency ?? "USD",
+      message = "No stays found for this search.",
+      code = 204,
+    } = {}) {
+  
+      const emptySession =
+        saveSearchSession({
+          originalSearchData:
+            searchData,
+  
+          providerId,
+  
+          status:
+            "Completed",
+  
+          searchIncomplete:
+            false,
+  
+          token:
+            null,
+  
+          correlationId:
+            null,
+  
+          currency,
+  
+          nextResultsKey:
+            null,
+  
+          totalHotels:
+            0,
+  
+          hotels:
+            [],
+  
+          isContinuing:
+            false,
+  
+          lastError:
+            null,
+        });
+  
+      console.log(
+        "💾 Empty search session saved:",
+        emptySession.searchId
+      );
+  
+      return {
+        success:
+          true,
+  
+        message,
+  
+        code,
+  
+        searchId:
+          emptySession.searchId,
+  
+        status:
+          "Completed",
+  
+        searchIncomplete:
+          false,
+  
+        nextResultsKey:
+          null,
+  
+        currency,
+  
+        totalHotels:
+          0,
+  
+        hotels:
+          [],
+      };
+  
+    }
+  
     if (providerResult.failedResponse) {
   
-      return providerResult.failedResponse;
+      const failedResponse =
+        providerResult.failedResponse;
+  
+      const isNoResultsResponse =
+        failedResponse.code === 204 ||
+        failedResponse.totalHotels === 0;
+  
+      if (isNoResultsResponse) {
+  
+        return saveEmptySearchSession({
+          providerId:
+            providerResult.providerId ?? null,
+  
+          currency:
+            failedResponse.currency ??
+            searchData.currency ??
+            "USD",
+  
+          message:
+            failedResponse.message ??
+            "No stays found for this search.",
+  
+          code:
+            failedResponse.code ?? 204,
+        });
+  
+      }
+  
+      return failedResponse;
   
     }
   
@@ -136,63 +244,73 @@ const {
       providerId,
     } = providerResult;
   
-    let savedSession =
-      null;
+    const isNoResultsResponse =
+      data?.code === 204 ||
+      hotels.length === 0;
   
-    if (
-      data?.success &&
-      data.result?.token &&
-      data.result?.correlationId
-    ) {
+    if (isNoResultsResponse) {
   
-      savedSession =
-        saveSearchSession({
-          originalSearchData:
-            searchData,
+      return saveEmptySearchSession({
+        providerId,
   
-          providerId,
+        currency,
   
-          status:
-            data.result.status ?? "InProgress",
+        message:
+          data?.message ??
+          "No stays found for this search.",
   
-          searchIncomplete:
-            data.searchIncomplete ?? true,
-  
-          token:
-            data.result.token,
-  
-          correlationId:
-            data.result.correlationId,
-  
-          currency,
-  
-          nextResultsKey:
-            data.result.nextResultsKey ?? null,
-  
-          totalHotels:
-            hotels.length,
-  
-          hotels,
-  
-          isContinuing:
-            false,
-  
-          lastError:
-            null,
-        });
-  
-      console.log(
-        "💾 Search session saved:",
-        savedSession.searchId
-      );
+        code:
+          data?.code ?? 204,
+      });
   
     }
+  
+    const savedSession =
+      saveSearchSession({
+        originalSearchData:
+          searchData,
+  
+        providerId,
+  
+        status:
+          data?.result?.status ?? "InProgress",
+  
+        searchIncomplete:
+          data?.searchIncomplete ?? true,
+  
+        token:
+          data?.result?.token ?? null,
+  
+        correlationId:
+          data?.result?.correlationId ?? null,
+  
+        currency,
+  
+        nextResultsKey:
+          data?.result?.nextResultsKey ?? null,
+  
+        totalHotels:
+          hotels.length,
+  
+        hotels,
+  
+        isContinuing:
+          false,
+  
+        lastError:
+          null,
+      });
+  
+    console.log(
+      "💾 Search session saved:",
+      savedSession.searchId
+    );
   
     return createPublicSearchResponse({
       data,
   
       searchId:
-        savedSession?.searchId ?? null,
+        savedSession.searchId,
   
       hotels,
   

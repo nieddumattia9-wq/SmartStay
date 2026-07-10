@@ -138,6 +138,7 @@ function getBestDisplayPrice(hotel: Hotel) {
     price:
       bestOffer?.price ??
       hotel.price,
+
     currency:
       bestOffer?.currency ??
       hotel.currency,
@@ -184,8 +185,11 @@ function HotelCard({
   const riskLabel =
     formatRiskLabel(riskLevel);
 
+  const dataConfidence =
+    hotel.dataConfidence ?? "limited";
+
   const dataConfidenceLabel =
-    formatDataConfidence(hotel.dataConfidence);
+    formatDataConfidence(dataConfidence);
 
   const displayPrice =
     getBestDisplayPrice(hotel);
@@ -195,6 +199,11 @@ function HotelCard({
 
   const hasBadges =
     badges.length > 0;
+
+  const hasPriceAdvantage =
+    typeof priceAdvantagePercent === "number" &&
+    Number.isFinite(priceAdvantagePercent) &&
+    priceAdvantagePercent > 0;
 
   return (
     <article className="hotel-card">
@@ -212,8 +221,13 @@ function HotelCard({
 
         {smartScore !== undefined && (
           <div className="hotel-card__image-score">
-            <span>SmartScore</span>
-            <strong>{smartScore}</strong>
+            <span>
+              SmartScore
+            </span>
+
+            <strong>
+              {smartScore}
+            </strong>
           </div>
         )}
       </div>
@@ -282,7 +296,7 @@ function HotelCard({
               {riskLabel}
             </span>
 
-            <span className={`hotel-card__data-confidence hotel-card__data-confidence--${hotel.dataConfidence}`}>
+            <span className={`hotel-card__data-confidence hotel-card__data-confidence--${dataConfidence}`}>
               {dataConfidenceLabel}
             </span>
           </div>
@@ -318,8 +332,8 @@ function HotelCard({
 
         <div className="hotel-card__bottom">
           <div className="hotel-card__price-block">
-            {priceAdvantagePercent !== null && (
-              <div className="hotel-card__price-advantage">
+            {hasPriceAdvantage && (
+              <div className="hotel-card__saving">
                 {priceAdvantagePercent}% below search average
               </div>
             )}
