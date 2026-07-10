@@ -5,6 +5,13 @@ export type SmartRiskLevel =
   | "medium"
   | "high";
 
+export type SmartStayPreferenceId =
+  | "maximum-comfort"
+  | "comfort"
+  | "balanced"
+  | "savings"
+  | "maximum-savings";
+
 export type SmartBadge =
   | "Smart Pick"
   | "Great Value"
@@ -71,6 +78,22 @@ function roundScore(value: number) {
   return Math.round(
     clamp(value, 0, 100)
   );
+}
+
+function normalizePreferenceId(
+  preferenceId?: string
+): SmartStayPreferenceId {
+  if (
+    preferenceId === "maximum-comfort" ||
+    preferenceId === "comfort" ||
+    preferenceId === "balanced" ||
+    preferenceId === "savings" ||
+    preferenceId === "maximum-savings"
+  ) {
+    return preferenceId;
+  }
+
+  return "balanced";
 }
 
 function isValidNumber(value: unknown): value is number {
@@ -140,60 +163,63 @@ function createSmartStayContext(
 }
 
 function getPreferenceWeights(
-  preferenceId: string
+  preferenceIdInput: string
 ): PreferenceWeights {
+  const preferenceId =
+    normalizePreferenceId(preferenceIdInput);
+
   if (preferenceId === "maximum-comfort") {
     return {
-      price: 0.13,
+      price: 0.12,
       reviews: 0.24,
-      location: 0.2,
-      stars: 0.12,
-      saving: 0.04,
-      amenities: 0.1,
-      dataQuality: 0.09,
+      location: 0.21,
+      stars: 0.11,
+      saving: 0.03,
+      amenities: 0.09,
+      dataQuality: 0.1,
       offer: 0.03,
-      reliability: 0.05,
+      reliability: 0.07,
     };
   }
 
   if (preferenceId === "comfort") {
     return {
-      price: 0.17,
+      price: 0.16,
       reviews: 0.22,
-      location: 0.19,
+      location: 0.2,
       stars: 0.1,
-      saving: 0.06,
-      amenities: 0.09,
-      dataQuality: 0.08,
+      saving: 0.05,
+      amenities: 0.08,
+      dataQuality: 0.09,
       offer: 0.04,
-      reliability: 0.05,
+      reliability: 0.06,
     };
   }
 
   if (preferenceId === "savings") {
     return {
-      price: 0.28,
+      price: 0.3,
       reviews: 0.15,
-      location: 0.13,
-      stars: 0.06,
+      location: 0.12,
+      stars: 0.05,
       saving: 0.15,
-      amenities: 0.05,
+      amenities: 0.04,
       dataQuality: 0.07,
-      offer: 0.06,
+      offer: 0.07,
       reliability: 0.05,
     };
   }
 
   if (preferenceId === "maximum-savings") {
     return {
-      price: 0.34,
-      reviews: 0.12,
-      location: 0.1,
-      stars: 0.05,
+      price: 0.36,
+      reviews: 0.11,
+      location: 0.09,
+      stars: 0.04,
       saving: 0.18,
-      amenities: 0.04,
+      amenities: 0.03,
       dataQuality: 0.06,
-      offer: 0.06,
+      offer: 0.08,
       reliability: 0.05,
     };
   }
@@ -284,52 +310,52 @@ function calculateReviewScore(
 }
 
 function calculateLocationScore(
-    hotel: Hotel
-  ) {
-    if (hotel.distance === null) {
-      return 55;
-    }
-  
-    if (hotel.distance <= 0.5) {
-      return 100;
-    }
-  
-    if (hotel.distance <= 1) {
-      return 92;
-    }
-  
-    if (hotel.distance <= 2) {
-      return 82;
-    }
-  
-    if (hotel.distance <= 4) {
-      return 68;
-    }
-  
-    if (hotel.distance <= 7) {
-      return 50;
-    }
-  
-    if (hotel.distance <= 10) {
-      return 38;
-    }
-  
-    return 25;
+  hotel: Hotel
+) {
+  if (hotel.distance === null) {
+    return 55;
   }
-  
-  function calculateStarScore(
-    hotel: Hotel
-  ) {
-    if (hotel.stars <= 0) {
-      return 55;
-    }
-  
-    return roundScore(
-      (clamp(hotel.stars, 0, 5) / 5) * 100
-    );
+
+  if (hotel.distance <= 0.5) {
+    return 100;
   }
-  
-  function calculateSavingScore(
+
+  if (hotel.distance <= 1) {
+    return 92;
+  }
+
+  if (hotel.distance <= 2) {
+    return 82;
+  }
+
+  if (hotel.distance <= 4) {
+    return 68;
+  }
+
+  if (hotel.distance <= 7) {
+    return 50;
+  }
+
+  if (hotel.distance <= 10) {
+    return 38;
+  }
+
+  return 25;
+}
+
+function calculateStarScore(
+  hotel: Hotel
+) {
+  if (hotel.stars <= 0) {
+    return 55;
+  }
+
+  return roundScore(
+    (clamp(hotel.stars, 0, 5) / 5) * 100
+  );
+}
+
+function calculateSavingScore(
     hotel: Hotel,
     context: SmartStayContext
   ) {
@@ -595,7 +621,7 @@ function calculateLocationScore(
       multipleSourcesBonus
     );
   }
-
+  
   function calculateRiskLevel(
     hotel: Hotel,
     reliabilityScore: number,
@@ -632,7 +658,7 @@ function calculateLocationScore(
   
     return "low";
   }
-  
+
   function createBadges(
     breakdown: SmartScoreBreakdown,
     smartScore: number,
@@ -863,15 +889,77 @@ function calculateLocationScore(
     return adjustedScore;
   }
   
+  function calculatePreferenceAdjustment(
+    breakdown: SmartScoreBreakdown,
+    riskLevel: SmartRiskLevel,
+    preferenceIdInput: string
+  ) {
+    const preferenceId =
+      normalizePreferenceId(preferenceIdInput);
+  
+    let adjustment = 0;
+  
+    if (preferenceId === "maximum-comfort") {
+      if (riskLevel === "low") adjustment += 4;
+      if (riskLevel === "medium") adjustment -= 3;
+      if (riskLevel === "high") adjustment -= 12;
+  
+      if (breakdown.reviews < 50) adjustment -= 4;
+      if (breakdown.location >= 82) adjustment += 3;
+      if (breakdown.stars >= 80) adjustment += 2;
+      if (breakdown.dataQuality >= 75) adjustment += 3;
+      if (breakdown.reliability >= 72) adjustment += 3;
+    }
+  
+    if (preferenceId === "comfort") {
+      if (riskLevel === "low") adjustment += 3;
+      if (riskLevel === "medium") adjustment -= 1;
+      if (riskLevel === "high") adjustment -= 9;
+  
+      if (breakdown.location >= 82) adjustment += 2;
+      if (breakdown.reviews >= 75) adjustment += 2;
+      if (breakdown.dataQuality < 50) adjustment -= 3;
+    }
+  
+    if (preferenceId === "savings") {
+      if (breakdown.price >= 80) adjustment += 4;
+      if (breakdown.saving >= 70) adjustment += 3;
+      if (breakdown.offer >= 70) adjustment += 2;
+  
+      if (riskLevel === "high") adjustment -= 8;
+      if (breakdown.reliability < 50) adjustment -= 4;
+      if (breakdown.dataQuality < 45) adjustment -= 3;
+    }
+  
+    if (preferenceId === "maximum-savings") {
+      if (breakdown.price >= 82) adjustment += 6;
+      if (breakdown.saving >= 70) adjustment += 4;
+      if (breakdown.offer >= 70) adjustment += 3;
+  
+      if (riskLevel === "low") adjustment += 1;
+      if (riskLevel === "medium") adjustment -= 1;
+      if (riskLevel === "high") adjustment -= 12;
+  
+      if (breakdown.reliability < 45) adjustment -= 7;
+      if (breakdown.dataQuality < 40) adjustment -= 5;
+    }
+  
+    return adjustment;
+  }
+  
   export function evaluateHotelWithSmartStayEngine(
     hotel: Hotel,
     context: SmartStayContext,
-    preferenceId = "balanced"
+    preferenceIdInput: string = "balanced"
   ): SmartStayEvaluation {
-    const priceScore = calculatePriceScore(
-      hotel,
-      context
-    );
+    const preferenceId =
+      normalizePreferenceId(preferenceIdInput);
+  
+    const weights =
+      getPreferenceWeights(preferenceId);
+  
+    const priceScore =
+      calculatePriceScore(hotel, context);
   
     const reviewScore =
       calculateReviewScore(hotel);
@@ -883,10 +971,7 @@ function calculateLocationScore(
       calculateStarScore(hotel);
   
     const savingScore =
-      calculateSavingScore(
-        hotel,
-        context
-      );
+      calculateSavingScore(hotel, context);
   
     const amenityScore =
       calculateAmenityScore(hotel);
@@ -918,8 +1003,13 @@ function calculateLocationScore(
       reliability: reliabilityScore,
     };
   
-    const weights =
-      getPreferenceWeights(preferenceId);
+    const riskLevel =
+      calculateRiskLevel(
+        hotel,
+        reliabilityScore,
+        dataQualityScore,
+        offerScore
+      );
   
     const rawSmartScore = roundScore(
       priceScore * weights.price +
@@ -933,21 +1023,21 @@ function calculateLocationScore(
       reliabilityScore * weights.reliability
     );
   
+    const preferenceAdjustment =
+      calculatePreferenceAdjustment(
+        breakdown,
+        riskLevel,
+        preferenceId
+      );
+  
     const smartScore = roundScore(
       applyDataConfidenceAdjustment(
         hotel,
-        rawSmartScore,
+        rawSmartScore + preferenceAdjustment,
         dataQualityScore,
         offerScore,
         reliabilityScore
       )
-    );
-  
-    const riskLevel = calculateRiskLevel(
-      hotel,
-      reliabilityScore,
-      dataQualityScore,
-      offerScore
     );
   
     return {
@@ -971,8 +1061,11 @@ function calculateLocationScore(
   
   export function rankHotelsWithSmartStayEngine(
     hotels: Hotel[],
-    preferenceId = "balanced"
+    preferenceIdInput: string = "balanced"
   ): SmartStayEvaluation[] {
+    const preferenceId =
+      normalizePreferenceId(preferenceIdInput);
+  
     const context =
       createSmartStayContext(hotels);
   

@@ -265,14 +265,16 @@ import {
         selectedPreference.id
       );
   
-    const rankedHotels =
+      const rankedHotels =
       useMemo(() => {
-    return rankHotelsWithSmartStayEngine(
-      hotels
-    );
-  }, [
-    hotels,
-  ]);
+        return rankHotelsWithSmartStayEngine(
+          hotels,
+          selectedPreference.id
+        );
+      }, [
+        hotels,
+        selectedPreference.id,
+      ]);
   
     const averageSearchPrice =
       useMemo(() => {

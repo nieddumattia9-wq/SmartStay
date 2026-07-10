@@ -1,7 +1,7 @@
 const ACCOMMODATION_PROVIDER_IDS = {
+    LITE_API: "liteapi",
     ROUTESTACK: "routestack",
     RATEHAWK: "ratehawk",
-    LITE_API: "liteapi",
   };
   
   const PROVIDER_STATUSES = {
@@ -12,6 +12,7 @@ const ACCOMMODATION_PROVIDER_IDS = {
   
   const PROVIDER_ROLES = {
     PRIMARY_SEARCH_PROVIDER: "primary_search_provider",
+    FALLBACK_SEARCH_PROVIDER: "fallback_search_provider",
     SECONDARY_OFFER_PROVIDER: "secondary_offer_provider",
     ALTERNATIVE_OFFER_PROVIDER: "alternative_offer_provider",
     ENRICHMENT_PROVIDER: "enrichment_provider",
@@ -19,9 +20,9 @@ const ACCOMMODATION_PROVIDER_IDS = {
   
   const accommodationProviders = [
     {
-      id: ACCOMMODATION_PROVIDER_IDS.ROUTESTACK,
+      id: ACCOMMODATION_PROVIDER_IDS.LITE_API,
   
-      name: "RouteStack",
+      name: "LiteAPI / Nuitee",
   
       enabled: true,
   
@@ -32,7 +33,53 @@ const ACCOMMODATION_PROVIDER_IDS = {
       role: PROVIDER_ROLES.PRIMARY_SEARCH_PROVIDER,
   
       notes:
-        "Current active provider. Supports asynchronous hotel search and real availability, but review score and review count are not available in search results.",
+        "Primary provider for the current SmartStay MVP. Used for hotel rates, availability and richer hotel data. RouteStack remains enabled as fallback while LiteAPI integration is validated.",
+  
+      capabilities: {
+        searchDestinations: false,
+        searchHotels: true,
+        continueHotelSearch: false,
+        hotelDetails: true,
+  
+        synchronousSearch: true,
+        asynchronousSearch: false,
+  
+        reviewsInSearch: true,
+        reviewCountInSearch: true,
+        cancellationInSearch: true,
+        taxesInSearch: true,
+        roomDetailsInSearch: true,
+  
+        multipleOffersPerHotel: true,
+  
+        bookingRedirect: false,
+        bookingFormRedirect: false,
+        bookingApi: true,
+  
+        temporaryCachingAllowed: false,
+        temporaryCachingMaxMinutes: null,
+  
+        requiresManagerApproval: false,
+        requiresCertification: false,
+        requiresDisplayCompliance: true,
+      },
+    },
+  
+    {
+      id: ACCOMMODATION_PROVIDER_IDS.ROUTESTACK,
+  
+      name: "RouteStack",
+  
+      enabled: true,
+  
+      priority: 2,
+  
+      status: PROVIDER_STATUSES.ACTIVE,
+  
+      role: PROVIDER_ROLES.FALLBACK_SEARCH_PROVIDER,
+  
+      notes:
+        "Fallback provider. Supports asynchronous hotel search and real availability, but review score and review count are not available in search results. Kept as backup because recent searches returned unstable 204/404 provider errors.",
   
       capabilities: {
         searchDestinations: true,
@@ -71,7 +118,7 @@ const ACCOMMODATION_PROVIDER_IDS = {
   
       enabled: false,
   
-      priority: 2,
+      priority: 3,
   
       status: PROVIDER_STATUSES.CANDIDATE,
   
@@ -109,145 +156,88 @@ const ACCOMMODATION_PROVIDER_IDS = {
         requiresDisplayCompliance: true,
       },
     },
-  
-    {
-      id: ACCOMMODATION_PROVIDER_IDS.LITE_API,
-  
-      name: "LiteAPI",
-  
-      enabled: false,
-  
-      priority: 3,
-  
-      status: PROVIDER_STATUSES.CANDIDATE,
-  
-      role: PROVIDER_ROLES.ALTERNATIVE_OFFER_PROVIDER,
-  
-      notes:
-        "Candidate provider to evaluate for MVP expansion. Potentially useful for hotel search, reviews, hotel details, deeplinks and booking flow. Needs technical validation before activation.",
-  
-      capabilities: {
-        searchDestinations: true,
-        searchHotels: true,
-        continueHotelSearch: false,
-        hotelDetails: true,
-  
-        synchronousSearch: true,
-        asynchronousSearch: false,
-  
-        reviewsInSearch: true,
-        reviewCountInSearch: true,
-        cancellationInSearch: true,
-        taxesInSearch: true,
-        roomDetailsInSearch: true,
-  
-        multipleOffersPerHotel: true,
-  
-        bookingRedirect: true,
-        bookingFormRedirect: false,
-        bookingApi: true,
-  
-        temporaryCachingAllowed: true,
-        temporaryCachingMaxMinutes: null,
-  
-        requiresManagerApproval: false,
-        requiresCertification: false,
-        requiresDisplayCompliance: true,
-      },
-    },
   ];
   
   function sortProvidersByPriority(providers) {
-  
-    return [...providers]
-      .sort((firstProvider, secondProvider) => (
+    return [...providers].sort(
+      (firstProvider, secondProvider) => (
         firstProvider.priority -
         secondProvider.priority
-      ));
-  
+      )
+    );
   }
   
   function getAccommodationProviders() {
-  
     return sortProvidersByPriority(
       accommodationProviders
     );
-  
   }
   
   function getEnabledAccommodationProviders() {
-  
     return sortProvidersByPriority(
       accommodationProviders.filter((provider) =>
         provider.enabled
       )
     );
-  
   }
   
   function getCandidateAccommodationProviders() {
-  
     return sortProvidersByPriority(
       accommodationProviders.filter((provider) => (
         provider.status === PROVIDER_STATUSES.CANDIDATE
       ))
     );
+  }
   
+  function getPrimaryEnabledAccommodationProvider() {
+    return (
+      getEnabledAccommodationProviders()[0] ??
+      null
+    );
   }
   
   function getAccommodationProviderById(providerId) {
-  
-    return accommodationProviders
-      .find((provider) => provider.id === providerId) ??
-      null;
-  
+    return (
+      accommodationProviders.find((provider) =>
+        provider.id === providerId
+      ) ?? null
+    );
   }
   
   function isAccommodationProviderEnabled(providerId) {
-  
     const provider =
       getAccommodationProviderById(providerId);
   
-    return Boolean(
-      provider?.enabled
-    );
-  
+    return Boolean(provider?.enabled);
   }
   
   function getProviderCapabilities(providerId) {
-  
     const provider =
       getAccommodationProviderById(providerId);
   
     return provider?.capabilities ?? null;
-  
   }
   
   function providerSupportsCapability(
     providerId,
     capabilityName
   ) {
-  
     const capabilities =
       getProviderCapabilities(providerId);
   
     if (!capabilities) {
-  
       return false;
-  
     }
   
     return Boolean(
       capabilities[capabilityName]
     );
-  
   }
   
   function getAccommodationProvidersByCapability(
     capabilityName,
     options = {}
   ) {
-  
     const enabledOnly =
       options.enabledOnly ?? false;
   
@@ -259,7 +249,6 @@ const ACCOMMODATION_PROVIDER_IDS = {
     return providers.filter((provider) =>
       Boolean(provider.capabilities?.[capabilityName])
     );
-  
   }
   
   module.exports = {
@@ -269,6 +258,7 @@ const ACCOMMODATION_PROVIDER_IDS = {
     getAccommodationProviders,
     getEnabledAccommodationProviders,
     getCandidateAccommodationProviders,
+    getPrimaryEnabledAccommodationProvider,
     getAccommodationProviderById,
     isAccommodationProviderEnabled,
     getProviderCapabilities,

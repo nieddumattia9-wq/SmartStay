@@ -1,20 +1,1151 @@
-function mapLiteApiDestinationResponse() {
-
-    throw new Error(
-      "LiteAPI destination mapper is not implemented yet."
-    );
+const {
+    ACCOMMODATION_PROVIDER_IDS,
+  } = require("../providerRegistry");
   
+  const SOURCE_PROVIDER =
+    ACCOMMODATION_PROVIDER_IDS.LITE_API;
+  
+  const PROVIDER_NAME = "LiteAPI";
+  
+  function clamp(value, min, max) {
+    return Math.max(
+      min,
+      Math.min(max, value)
+    );
   }
   
-  function mapLiteApiHotelResponse() {
-  
-    throw new Error(
-      "LiteAPI hotel mapper is not implemented yet."
+  function isPlainObject(value) {
+    return (
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value)
     );
+  }
   
+  function asArray(value) {
+    if (Array.isArray(value)) {
+      return value;
+    }
+  
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return [];
+    }
+  
+    return [value];
+  }
+  
+  function asString(value) {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "";
+    }
+  
+    if (typeof value === "string") {
+      return value.trim();
+    }
+  
+    if (
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return String(value);
+    }
+  
+    return "";
+  }
+  
+  function asNumber(value) {
+    if (typeof value === "number") {
+      return Number.isFinite(value)
+        ? value
+        : null;
+    }
+  
+    if (typeof value === "string") {
+      const parsed = Number(
+        value.replace(",", ".")
+      );
+  
+      return Number.isFinite(parsed)
+        ? parsed
+        : null;
+    }
+  
+    if (Array.isArray(value)) {
+      const numbers = value
+        .map(asNumber)
+        .filter((number) => number !== null);
+  
+      return numbers.length > 0
+        ? numbers[0]
+        : null;
+    }
+  
+    if (isPlainObject(value)) {
+      return asNumber(
+        value.amount ??
+        value.value ??
+        value.total ??
+        value.price
+      );
+    }
+  
+    return null;
+  }
+  
+  function asBooleanOrNull(value) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+  
+    if (typeof value === "string") {
+      const normalized =
+        value.trim().toLowerCase();
+  
+      if (normalized === "true") {
+        return true;
+      }
+  
+      if (normalized === "false") {
+        return false;
+      }
+    }
+  
+    return null;
+  }
+  
+  function getValueByPath(source, path) {
+    return path.reduce((currentValue, key) => {
+      if (
+        currentValue === null ||
+        currentValue === undefined
+      ) {
+        return undefined;
+      }
+  
+      return currentValue[key];
+    }, source);
+  }
+  
+  function pickFirst(source, paths) {
+    for (const path of paths) {
+      const value =
+        getValueByPath(source, path);
+  
+      if (
+        value !== null &&
+        value !== undefined &&
+        value !== ""
+      ) {
+        return value;
+      }
+    }
+  
+    return null;
+  }
+  
+  function pickString(source, paths) {
+    const value =
+      pickFirst(source, paths);
+  
+    return asString(value);
+  }
+  
+  function pickNumber(source, paths) {
+    const value =
+      pickFirst(source, paths);
+  
+    return asNumber(value);
+  }
+  
+  function pickArray(source, paths) {
+    const value =
+      pickFirst(source, paths);
+  
+    return asArray(value);
+  }
+  
+  function calculateSavingPercent(
+    price,
+    basePrice
+  ) {
+    if (
+      !price ||
+      !basePrice ||
+      basePrice <= price
+    ) {
+      return 0;
+    }
+  
+    const saving =
+      ((basePrice - price) / basePrice) * 100;
+  
+    if (
+      !Number.isFinite(saving) ||
+      saving <= 0 ||
+      saving > 80
+    ) {
+      return 0;
+    }
+  
+    return Number(
+      saving.toFixed(2)
+    );
+  }
+  
+  function extractRecords(data) {
+    if (Array.isArray(data)) {
+      return data;
+    }
+  
+    if (!isPlainObject(data)) {
+      return [];
+    }
+  
+    const candidates = [
+      data.hotels,
+      data.results,
+      data.items,
+      data.rates,
+      data.data?.hotels,
+      data.data?.results,
+      data.data?.items,
+      data.data?.rates,
+      data.data,
+      data.response,
+    ];
+  
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        return candidate;
+      }
+  
+      if (isPlainObject(candidate)) {
+        const nestedCandidates = [
+          candidate.hotels,
+          candidate.results,
+          candidate.items,
+          candidate.rates,
+          candidate.data,
+        ];
+  
+        for (const nestedCandidate of nestedCandidates) {
+          if (Array.isArray(nestedCandidate)) {
+            return nestedCandidate;
+          }
+        }
+      }
+    }
+  
+    return [];
+  }
+  
+  function extractHotelDataRecords(data) {
+    if (!isPlainObject(data)) {
+      return [];
+    }
+  
+    const candidates = [
+      data.data,
+      data.hotelData,
+      data.hotelsData,
+      data.hotelDetails,
+      data.details,
+      data.staticData,
+    ];
+  
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        return candidate;
+      }
+  
+      if (isPlainObject(candidate)) {
+        const nestedCandidates = [
+          candidate.hotels,
+          candidate.data,
+          candidate.items,
+          candidate.results,
+        ];
+  
+        for (const nestedCandidate of nestedCandidates) {
+          if (Array.isArray(nestedCandidate)) {
+            return nestedCandidate;
+          }
+        }
+  
+        const values =
+          Object.values(candidate);
+  
+        const objectValues =
+          values.filter(isPlainObject);
+  
+        if (objectValues.length > 0) {
+          return objectValues;
+        }
+      }
+    }
+  
+    return [];
+  }
+  
+  function getHotelObject(record) {
+    if (!isPlainObject(record)) {
+      return {};
+    }
+  
+    const hotel =
+      record.hotel ??
+      record.hotelData ??
+      record.hotelInfo ??
+      record.property ??
+      record.accommodation;
+  
+    return isPlainObject(hotel)
+      ? hotel
+      : record;
+  }
+  
+  function getRateRecords(record) {
+    if (!isPlainObject(record)) {
+      return [];
+    }
+  
+    const candidates = [
+      record.rates,
+      record.rate,
+      record.rooms,
+      record.offers,
+      record.availableRates,
+      record.roomRates,
+      record.roomTypes,
+    ];
+  
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        return candidate;
+      }
+  
+      if (isPlainObject(candidate)) {
+        return [candidate];
+      }
+    }
+  
+    const hasDirectPrice =
+      pickNumber(record, [
+        ["price"],
+        ["amount"],
+        ["total"],
+        ["totalPrice"],
+        ["retailRate", "total", 0, "amount"],
+        ["retailRate", "amount"],
+      ]) !== null;
+  
+    return hasDirectPrice
+      ? [record]
+      : [];
+  }
+  
+  function getLiteApiHotelId(record, hotel) {
+    return (
+      pickString(record, [
+        ["hotelId"],
+        ["hotelID"],
+        ["hotel_id"],
+        ["id"],
+        ["hotel", "id"],
+        ["hotel", "hotelId"],
+        ["hotelData", "id"],
+        ["hotelData", "hotelId"],
+      ]) ||
+      pickString(hotel, [
+        ["hotelId"],
+        ["hotelID"],
+        ["hotel_id"],
+        ["id"],
+        ["code"],
+      ])
+    );
+  }
+  
+  function getLiteApiHotelName(record, hotel) {
+    return (
+      pickString(hotel, [
+        ["name"],
+        ["hotelName"],
+        ["title"],
+      ]) ||
+      pickString(record, [
+        ["name"],
+        ["hotelName"],
+        ["title"],
+        ["hotel", "name"],
+        ["hotel", "hotelName"],
+        ["hotelData", "name"],
+        ["hotelData", "hotelName"],
+      ]) ||
+      "Unnamed hotel"
+    );
+  }
+  
+  function getLiteApiCurrency(
+    data,
+    fallbackCurrency = "EUR"
+  ) {
+    if (
+      !data ||
+      typeof data !== "object"
+    ) {
+      return fallbackCurrency;
+    }
+  
+    return (
+      pickString(data, [
+        ["currency"],
+        ["data", "currency"],
+        ["result", "currency"],
+        ["hotels", 0, "currency"],
+        ["hotels", 0, "rates", 0, "currency"],
+        ["hotels", 0, "rates", 0, "retailRate", "currency"],
+        ["hotels", 0, "rates", 0, "retailRate", "total", 0, "currency"],
+        ["data", "hotels", 0, "currency"],
+        ["data", "hotels", 0, "rates", 0, "currency"],
+        ["data", "hotels", 0, "rates", 0, "retailRate", "currency"],
+        ["data", "hotels", 0, "rates", 0, "retailRate", "total", 0, "currency"],
+      ]) ||
+      fallbackCurrency ||
+      "EUR"
+    );
+  }
+
+  function createHotelDataIndex(data) {
+    const index = new Map();
+  
+    const records =
+      extractHotelDataRecords(data);
+  
+    for (const record of records) {
+      const hotel =
+        getHotelObject(record);
+  
+      const hotelId =
+        getLiteApiHotelId(record, hotel);
+  
+      if (hotelId) {
+        index.set(
+          String(hotelId),
+          hotel
+        );
+      }
+    }
+  
+    return index;
+  }
+  
+  function getImageUrlFromImage(image) {
+    if (typeof image === "string") {
+      return image;
+    }
+  
+    if (!isPlainObject(image)) {
+      return "";
+    }
+  
+    return (
+      asString(image.url) ||
+      asString(image.uri) ||
+      asString(image.link) ||
+      asString(image.href)
+    );
+  }
+  
+  function getPrimaryImage(record, hotel) {
+    const imageCandidates = [
+      ...pickArray(hotel, [["images"]]),
+      ...pickArray(hotel, [["photos"]]),
+      ...pickArray(hotel, [["gallery"]]),
+      ...pickArray(record, [["images"]]),
+      ...pickArray(record, [["photos"]]),
+      ...pickArray(record, [["gallery"]]),
+    ];
+  
+    for (const image of imageCandidates) {
+      const imageUrl =
+        getImageUrlFromImage(image);
+  
+      if (imageUrl) {
+        return imageUrl;
+      }
+    }
+  
+    return (
+      pickString(hotel, [
+        ["mainImage"],
+        ["mainPhoto"],
+        ["thumbnail"],
+        ["image"],
+        ["imageUrl"],
+        ["main_photo"],
+      ]) ||
+      pickString(record, [
+        ["mainImage"],
+        ["mainPhoto"],
+        ["thumbnail"],
+        ["image"],
+        ["imageUrl"],
+        ["main_photo"],
+      ])
+    );
+  }
+  
+  function getAmenities(record, hotel) {
+    const values = [
+      ...pickArray(hotel, [["amenities"]]),
+      ...pickArray(hotel, [["facilities"]]),
+      ...pickArray(hotel, [["hotelFacilities"]]),
+      ...pickArray(record, [["amenities"]]),
+      ...pickArray(record, [["facilities"]]),
+      ...pickArray(record, [["hotelFacilities"]]),
+    ];
+  
+    return [
+      ...new Set(
+        values
+          .map((item) => {
+            if (typeof item === "string") {
+              return item.trim();
+            }
+  
+            if (isPlainObject(item)) {
+              return (
+                asString(item.name) ||
+                asString(item.title) ||
+                asString(item.description)
+              );
+            }
+  
+            return "";
+          })
+          .filter(Boolean)
+      ),
+    ];
+  }
+  
+  function getCancellationPolicy(rate) {
+    const directPolicy =
+      pickString(rate, [
+        ["cancellationPolicy"],
+        ["cancellation"],
+        ["refundability"],
+        ["refundable"],
+        ["policies", "cancellation"],
+      ]);
+  
+    if (directPolicy) {
+      return directPolicy;
+    }
+  
+    const policies = [
+      ...pickArray(rate, [["cancellationPolicies"]]),
+      ...pickArray(rate, [["cancelPenalties"]]),
+      ...pickArray(rate, [["policies"]]),
+    ];
+  
+    const policyTexts = policies
+      .map((policy) => {
+        if (typeof policy === "string") {
+          return policy;
+        }
+  
+        if (isPlainObject(policy)) {
+          return (
+            asString(policy.description) ||
+            asString(policy.text) ||
+            asString(policy.name)
+          );
+        }
+  
+        return "";
+      })
+      .filter(Boolean);
+  
+    return policyTexts.length > 0
+      ? policyTexts.join(" ")
+      : null;
+  }
+  
+  function getRoomName(rate) {
+    return (
+      pickString(rate, [
+        ["roomName"],
+        ["roomType"],
+        ["roomTypeName"],
+        ["boardName"],
+        ["roomTypes", 0, "name"],
+        ["roomTypes", 0, "roomName"],
+        ["rooms", 0, "name"],
+        ["name"],
+      ]) ||
+      null
+    );
+  }
+  
+  function getTaxesIncluded(rate) {
+    return asBooleanOrNull(
+      pickFirst(rate, [
+        ["taxesIncluded"],
+        ["taxIncluded"],
+        ["includesTaxes"],
+        ["retailRate", "taxesAndFees", "included"],
+      ])
+    );
+  }
+  
+  function getRatePrice(rate) {
+    return pickNumber(rate, [
+      ["retailRate", "total", 0, "amount"],
+      ["retailRate", "total", "amount"],
+      ["retailRate", "amount"],
+      ["price", "amount"],
+      ["price"],
+      ["amount"],
+      ["total"],
+      ["totalPrice"],
+      ["sellingPrice"],
+      ["suggestedSellingPrice"],
+      ["netPrice"],
+    ]);
+  }
+  
+  function getRateBasePrice(rate) {
+    return pickNumber(rate, [
+      ["originalRetailRate", "total", 0, "amount"],
+      ["originalRetailRate", "amount"],
+      ["strikethroughPrice", "amount"],
+      ["strikethroughPrice"],
+      ["priceBeforeDiscount", "amount"],
+      ["priceBeforeDiscount"],
+      ["basePrice", "amount"],
+      ["basePrice"],
+    ]);
+  }
+  
+  function getRateCurrency(
+    rate,
+    fallbackCurrency
+  ) {
+    return (
+      pickString(rate, [
+        ["retailRate", "total", 0, "currency"],
+        ["retailRate", "currency"],
+        ["price", "currency"],
+        ["currency"],
+      ]) ||
+      fallbackCurrency ||
+      "EUR"
+    );
+  }
+  
+  function getRateDeepLink(rate) {
+    return (
+      pickString(rate, [
+        ["deepLink"],
+        ["deeplink"],
+        ["bookingUrl"],
+        ["bookingURL"],
+        ["checkoutUrl"],
+        ["url"],
+      ]) ||
+      null
+    );
+  }
+  
+  function createLiteApiOffer({
+    rate,
+    hotelId,
+    index,
+    fallbackCurrency,
+  }) {
+    const price =
+      getRatePrice(rate);
+  
+    if (
+      price === null ||
+      price <= 0
+    ) {
+      return null;
+    }
+  
+    const rateId =
+      pickString(rate, [
+        ["offerId"],
+        ["rateId"],
+        ["id"],
+        ["roomId"],
+        ["rateToken"],
+      ]) || `rate_${index + 1}`;
+  
+    const basePriceCandidate =
+      getRateBasePrice(rate);
+  
+    const basePrice =
+      basePriceCandidate &&
+      basePriceCandidate > price
+        ? basePriceCandidate
+        : price;
+  
+    const currency =
+      getRateCurrency(
+        rate,
+        fallbackCurrency
+      );
+  
+    return {
+      id: `${SOURCE_PROVIDER}:${hotelId}:${rateId}`,
+      provider: PROVIDER_NAME,
+      sourceProvider: SOURCE_PROVIDER,
+      price,
+      basePrice,
+      saving: calculateSavingPercent(
+        price,
+        basePrice
+      ),
+      currency,
+      cancellationPolicy:
+        getCancellationPolicy(rate),
+      taxesIncluded:
+        getTaxesIncluded(rate),
+      roomName:
+        getRoomName(rate),
+      deepLink:
+        getRateDeepLink(rate),
+    };
+  }
+  
+  function createAvailableData({
+    price,
+    basePrice,
+    saving,
+    stars,
+    reviewScore,
+    reviewCount,
+    distance,
+    image,
+    address,
+    latitude,
+    longitude,
+    amenities,
+  }) {
+    return {
+      hasPrice:
+        Number.isFinite(price) &&
+        price > 0,
+      hasBasePrice:
+        Number.isFinite(basePrice) &&
+        basePrice > price,
+      hasSaving:
+        Number.isFinite(saving) &&
+        saving > 0,
+      hasStars:
+        Number.isFinite(stars) &&
+        stars > 0,
+      hasReviewScore:
+        reviewScore !== null,
+      hasReviewCount:
+        reviewCount !== null &&
+        reviewCount > 0,
+      hasDistance:
+        distance !== null,
+      hasImage:
+        Boolean(image),
+      hasAddress:
+        Boolean(address),
+      hasCoordinates:
+        latitude !== null &&
+        longitude !== null,
+      hasAmenities:
+        amenities.length > 0,
+    };
+  }
+  
+  function calculateDataConfidence(availableData) {
+    let score = 0;
+  
+    if (availableData.hasPrice) score += 2;
+    if (availableData.hasImage) score += 1;
+    if (availableData.hasAddress) score += 1;
+    if (availableData.hasCoordinates) score += 1;
+    if (availableData.hasStars) score += 1;
+    if (availableData.hasReviewScore) score += 1;
+    if (availableData.hasReviewCount) score += 1;
+    if (availableData.hasAmenities) score += 1;
+  
+    if (score >= 7) {
+      return "full";
+    }
+  
+    if (score >= 4) {
+      return "partial";
+    }
+  
+    return "limited";
+  }
+  
+  function createReviewText(reviewScore) {
+    if (reviewScore === null) {
+      return "No reviews";
+    }
+  
+    if (reviewScore >= 9) {
+      return "Excellent";
+    }
+  
+    if (reviewScore >= 8) {
+      return "Very good";
+    }
+  
+    if (reviewScore >= 7) {
+      return "Good";
+    }
+  
+    return "Guest rated";
+  }
+
+  function mergeHotelObjects(
+    indexedHotel,
+    recordHotel
+  ) {
+    if (
+      !indexedHotel ||
+      !isPlainObject(indexedHotel)
+    ) {
+      return recordHotel;
+    }
+  
+    return {
+      ...indexedHotel,
+      ...recordHotel,
+    };
+  }
+  
+  function mapLiteApiRecordToHotel(
+    record,
+    fallbackCurrency = "EUR",
+    hotelDataIndex = new Map()
+  ) {
+    const recordHotel =
+      getHotelObject(record);
+  
+    const preliminaryHotelId =
+      getLiteApiHotelId(
+        record,
+        recordHotel
+      );
+  
+    const indexedHotel =
+      preliminaryHotelId
+        ? hotelDataIndex.get(String(preliminaryHotelId))
+        : null;
+  
+    const hotel =
+      mergeHotelObjects(
+        indexedHotel,
+        recordHotel
+      );
+  
+    const sourceHotelId =
+      getLiteApiHotelId(
+        record,
+        hotel
+      );
+  
+    if (!sourceHotelId) {
+      return null;
+    }
+  
+    const rates =
+      getRateRecords(record);
+  
+    const offers = rates
+      .map((rate, index) =>
+        createLiteApiOffer({
+          rate,
+          hotelId: sourceHotelId,
+          index,
+          fallbackCurrency,
+        })
+      )
+      .filter(Boolean)
+      .sort((firstOffer, secondOffer) =>
+        firstOffer.price - secondOffer.price
+      );
+  
+    if (offers.length === 0) {
+      return null;
+    }
+  
+    const bestOffer =
+      offers[0];
+  
+    const starsRaw =
+      pickNumber(hotel, [
+        ["stars"],
+        ["starRating"],
+        ["hotelStars"],
+        ["rating"],
+        ["star_rating"],
+      ]);
+  
+    const stars =
+      starsRaw === null
+        ? 0
+        : clamp(starsRaw, 0, 5);
+  
+    const reviewScore =
+      pickNumber(hotel, [
+        ["reviewScore"],
+        ["guestReviewScore"],
+        ["guestRating"],
+        ["reviews", "score"],
+        ["reviews", "rating"],
+        ["review", "score"],
+        ["score"],
+      ]);
+  
+    const reviewCount =
+      pickNumber(hotel, [
+        ["reviewCount"],
+        ["guestReviewCount"],
+        ["reviews", "count"],
+        ["reviewsCount"],
+        ["numberOfReviews"],
+        ["review_count"],
+      ]);
+  
+    const latitude =
+      pickNumber(hotel, [
+        ["latitude"],
+        ["lat"],
+        ["location", "latitude"],
+        ["coordinates", "latitude"],
+        ["coordinates", "lat"],
+      ]);
+  
+    const longitude =
+      pickNumber(hotel, [
+        ["longitude"],
+        ["lng"],
+        ["lon"],
+        ["location", "longitude"],
+        ["coordinates", "longitude"],
+        ["coordinates", "lng"],
+      ]);
+  
+    const address =
+      pickString(hotel, [
+        ["address"],
+        ["addressLine"],
+        ["address1"],
+        ["location", "address"],
+        ["address_line"],
+      ]);
+  
+    const city =
+      pickString(hotel, [
+        ["city"],
+        ["cityName"],
+        ["location", "city"],
+      ]);
+  
+    const country =
+      pickString(hotel, [
+        ["country"],
+        ["countryName"],
+        ["location", "country"],
+      ]);
+  
+    const distance =
+      pickNumber(record, [
+        ["distance"],
+        ["distanceFromCenter"],
+        ["distanceFromCentre"],
+        ["hotel", "distance"],
+      ]);
+  
+    const image =
+      getPrimaryImage(
+        record,
+        hotel
+      );
+  
+    const amenities =
+      getAmenities(
+        record,
+        hotel
+      );
+  
+    const facilities =
+      amenities;
+  
+    const saving =
+      bestOffer.saving;
+  
+    const availableData =
+      createAvailableData({
+        price: bestOffer.price,
+        basePrice: bestOffer.basePrice,
+        saving,
+        stars,
+        reviewScore,
+        reviewCount,
+        distance,
+        image,
+        address,
+        latitude,
+        longitude,
+        amenities,
+      });
+  
+    const dataConfidence =
+      calculateDataConfidence(availableData);
+  
+    return {
+      id: `${SOURCE_PROVIDER}:${sourceHotelId}`,
+      sourceProvider: SOURCE_PROVIDER,
+      sourceHotelId,
+      dataSources: [SOURCE_PROVIDER],
+      dataConfidence,
+      availableData,
+      offers,
+  
+      name:
+        getLiteApiHotelName(record, hotel),
+      provider:
+        PROVIDER_NAME,
+      stars,
+      reviewScore:
+        reviewScore ?? null,
+      reviewCount:
+        reviewCount ?? null,
+      reviewText:
+        createReviewText(reviewScore ?? null),
+  
+      price:
+        bestOffer.price,
+      basePrice:
+        bestOffer.basePrice,
+      saving,
+      currency:
+        bestOffer.currency,
+  
+      distance:
+        distance ?? null,
+      image,
+      address,
+      city,
+      country,
+      latitude:
+        latitude ?? null,
+      longitude:
+        longitude ?? null,
+      amenities,
+      facilities,
+    };
+  }
+  
+  function mapLiteApiDestinationResponse(data) {
+    const records =
+      extractRecords(data);
+  
+    return records
+      .map((record) => {
+        const hotel =
+          getHotelObject(record);
+  
+        const id =
+          getLiteApiHotelId(record, hotel);
+  
+        const name =
+          getLiteApiHotelName(record, hotel);
+  
+        if (!id || !name) {
+          return null;
+        }
+  
+        return {
+          id,
+          name,
+          type: "hotel",
+          city:
+            pickString(hotel, [
+              ["city"],
+              ["cityName"],
+              ["location", "city"],
+            ]),
+          country:
+            pickString(hotel, [
+              ["country"],
+              ["countryName"],
+              ["location", "country"],
+            ]),
+        };
+      })
+      .filter(Boolean);
+  }
+  
+  function mapLiteApiHotelResponse(
+    data,
+    fallbackCurrency = "EUR"
+  ) {
+    const records =
+      extractRecords(data);
+  
+    const hotelDataIndex =
+      createHotelDataIndex(data);
+  
+    return records
+      .map((record) =>
+        mapLiteApiRecordToHotel(
+          record,
+          fallbackCurrency,
+          hotelDataIndex
+        )
+      )
+      .filter(Boolean);
+  }
+  
+  function isLiteApiNoResults(data) {
+    return (
+      !data ||
+      extractRecords(data).length === 0
+    );
+  }
+  
+  function createLiteApiFailedSearchResponse(
+    currency = "EUR"
+  ) {
+    return {
+      success: false,
+      result: {
+        status: "Completed",
+        currency,
+        hotels: [],
+        nextResultsKey: null,
+      },
+      error:
+        "LiteAPI returned no usable hotel results for this search.",
+    };
   }
   
   module.exports = {
     mapLiteApiDestinationResponse,
     mapLiteApiHotelResponse,
+    mapLiteApiRecordToHotel,
+    isLiteApiNoResults,
+    getLiteApiCurrency,
+    createLiteApiFailedSearchResponse,
   };
