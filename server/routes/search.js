@@ -17,15 +17,11 @@ const {
 function getSearchIdFromRequest(req) {
 
   const searchId =
-    req.query.searchId;
+    typeof req.query.searchId === "string"
+      ? req.query.searchId.trim()
+      : "";
 
-  if (typeof searchId !== "string") {
-
-    return null;
-
-  }
-
-  return searchId;
+  return searchId || null;
 
 }
 
@@ -215,10 +211,27 @@ router.post("/hotel-details", async (req, res) => {
 
   try {
 
-    const {
-      hotelId,
-      searchId,
-    } = req.body;
+    if (
+      !req.body ||
+      typeof req.body !== "object"
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Missing hotel details payload.",
+      });
+
+    }
+
+    const hotelId =
+      typeof req.body.hotelId === "string"
+        ? req.body.hotelId.trim()
+        : "";
+
+    const searchId =
+      typeof req.body.searchId === "string"
+        ? req.body.searchId.trim()
+        : "";
 
     if (!hotelId) {
 
@@ -229,10 +242,19 @@ router.post("/hotel-details", async (req, res) => {
 
     }
 
+    if (!searchId) {
+
+      return res.status(400).json({
+        success: false,
+        message: "searchId is required.",
+      });
+
+    }
+
     const result =
       await getHotelDetails(
         hotelId,
-        searchId ?? null
+        searchId
       );
 
     return res.json(result);
@@ -260,6 +282,15 @@ router.get("/search-status", async (req, res) => {
     const searchId =
       getSearchIdFromRequest(req);
 
+    if (!searchId) {
+
+      return res.status(400).json({
+        success: false,
+        message: "searchId is required.",
+      });
+
+    }
+
     const result =
       await getSearchStatus(searchId);
 
@@ -285,6 +316,15 @@ router.get("/search-session", (req, res) => {
 
   const searchId =
     getSearchIdFromRequest(req);
+
+  if (!searchId) {
+
+    return res.status(400).json({
+      success: false,
+      message: "searchId is required.",
+    });
+
+  }
 
   const session =
     getSearchSession(searchId);

@@ -102,7 +102,7 @@ function saveSearchSession(session) {
 
 }
 
-function getSearchSession(searchId = latestSearchId) {
+function getSearchSession(searchId) {
 
   removeExpiredSessions();
 
@@ -214,7 +214,7 @@ function appendHotelsToSearchSession(
 
 }
 
-function clearSearchSession(searchId = latestSearchId) {
+function clearSearchSession(searchId) {
 
   if (!searchId) {
 
