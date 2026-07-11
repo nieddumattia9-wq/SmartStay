@@ -23,6 +23,10 @@ const {
 } = require("./routeStack/routeStackProvider");
 
 const {
+  searchGeoapifyDestinations,
+} = require("./geocoding/geoapifyGeocodingClient");
+
+const {
   searchLiteApiRates,
   getLiteApiHotels,
 } = require("./liteApi/liteApiClient");
@@ -511,20 +515,91 @@ function createLiteApiSearchInput({
   };
 }
 
+function hasUsableDestinations(response) {
+  return (
+    response?.success === true &&
+    Array.isArray(response.destinations) &&
+    response.destinations.length > 0
+  );
+}
+
 async function searchDestinationsAcrossProviders(query) {
-  if (!ensureRouteStackEnabled()) {
-    return {
-      success: false,
-      message: "Destination search provider is not available.",
-      code: "NO_DESTINATION_PROVIDER_AVAILABLE",
-      destinations: [],
-    };
+  let routeStackResponse = null;
+
+  if (ensureRouteStackEnabled()) {
+    try {
+      const data =
+        await searchRouteStackDestinations(query);
+
+      routeStackResponse =
+        mapRouteStackDestinationResponse(data);
+
+      if (
+        hasUsableDestinations(
+          routeStackResponse
+        )
+      ) {
+        console.log(
+          "[DESTINATION:selected]",
+          {
+            providerId:
+              ACCOMMODATION_PROVIDER_IDS.ROUTESTACK,
+
+            destinations:
+              routeStackResponse.destinations.length,
+          }
+        );
+
+        return routeStackResponse;
+      }
+
+      console.warn(
+        "[DESTINATION:routestack] No usable destinations returned."
+      );
+    } catch (error) {
+      console.error(
+        "[DESTINATION:routestack] Search failed:",
+        error.message
+      );
+    }
   }
 
-  const data =
-    await searchRouteStackDestinations(query);
+  try {
+    const geoapifyResponse =
+      await searchGeoapifyDestinations(query);
 
-  return mapRouteStackDestinationResponse(data);
+    console.log(
+      "[DESTINATION:selected]",
+      {
+        providerId:
+          "geoapify",
+
+        destinations:
+          geoapifyResponse.destinations.length,
+      }
+    );
+
+    return geoapifyResponse;
+  } catch (error) {
+    console.error(
+      "[DESTINATION:geoapify] Search failed:",
+      error.message
+    );
+
+    if (routeStackResponse?.success) {
+      return routeStackResponse;
+    }
+
+    const unavailableError =
+      new Error(
+        "No destination search provider is currently available."
+      );
+
+    unavailableError.status =
+      error.status ?? 503;
+
+    throw unavailableError;
+  }
 }
 
 async function searchHotelsWithLiteApi({
