@@ -2,414 +2,333 @@
     position: relative;
     width: 100%;
   }
-  
+
   .guests-selector__input {
     width: 100%;
     height: 50px;
-  
+
     display: flex;
     align-items: center;
-  
+
     padding: 0 18px;
-  
+
     border: 1px solid #cfd8e3;
     border-radius: 14px;
-  
+
     background: #ffffff;
-  
+
     color: #0f172a;
-  
+
     font-size: 15px;
     font-weight: 500;
-  
+
     cursor: pointer;
-  
+    outline: none;
+
     transition:
-      border-color .22s ease,
-      box-shadow .22s ease;
+      border-color 0.22s ease,
+      box-shadow 0.22s ease;
   }
-  
-  .guests-selector__input:hover {
+
+  .guests-selector__input:hover:not(:disabled) {
     border-color: #cbd5e1;
   }
-  
-  .guests-selector__input:focus-within {
-    border-color: #16e06e;
-  
-    box-shadow:
-      0 0 0 4px rgba(22,224,110,.12);
-  }
-  .guests-selector__left {
 
+  .guests-selector__input:focus-visible {
+    border-color: #16e06e;
+
+    box-shadow:
+      0 0 0 4px rgba(22, 224, 110, 0.12);
+  }
+
+  .guests-selector__input:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .guests-selector__left {
     display: flex;
-  
     align-items: center;
-  
+
     gap: 10px;
-  
+
     color: #16e06e;
   }
-  
+
   .guests-selector__left span {
-  
     color: #0f172a;
-  
+
     font-size: 15px;
-  
     font-weight: 500;
   }
-  
+
   .guests-selector__popup {
-  
     position: absolute;
-  
+
     top: calc(100% + 8px);
     left: 0;
-  
+
     z-index: 1000;
-  
+
     width: 310px;
-  
+
+    max-height:
+      min(620px, calc(100vh - 120px));
+
     padding: 18px;
-  
+
+    overflow-y: auto;
+
     border: 1px solid #e2e8f0;
     border-radius: 16px;
-  
-    background: #ffffff;
-  
-    box-shadow:
-      0 18px 40px rgba(15,23,42,.10),
-      0 4px 12px rgba(15,23,42,.06);
-  
-    animation: guestsPopup .18s ease;
-  }
-  .guest-row {
 
+    background: #ffffff;
+
+    box-shadow:
+      0 18px 40px rgba(15, 23, 42, 0.1),
+      0 4px 12px rgba(15, 23, 42, 0.06);
+
+    animation: guests-popup 0.18s ease;
+  }
+
+  .guest-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-  
+
     padding: 14px 0;
   }
-  
+
   .guest-row:not(:last-child) {
-  
     border-bottom: 1px solid #eef2f7;
   }
-  
+
   .guest-row h4 {
-  
     margin: 0;
-  
+
+    color: #0f172a;
+
     font-size: 15px;
     font-weight: 600;
-  
-    color: #0f172a;
   }
-  
+
   .guest-row span {
-  
     display: block;
-  
+
     margin-top: 4px;
-  
+
+    color: #94a3b8;
+
     font-size: 13px;
-  
-    color: #94a3b8;
-  }
-  
-  .counter {
-  
-    display: flex;
-    align-items: center;
-  
-    gap: 14px;
-  }
-  
-  .counter strong {
-  
-    min-width: 22px;
-  
-    text-align: center;
-  
-    font-size: 16px;
-    font-weight: 700;
-  
-    color: #0f172a;
-  }
-  .counter button {
-
-    width: 32px;
-    height: 32px;
-  
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  
-    border: 1px solid #dbe3ec;
-    border-radius: 50%;
-  
-    background: #ffffff;
-  
-    color: #0f172a;
-  
-    font-size: 18px;
-    font-weight: 500;
-  
-    cursor: pointer;
-  
-    transition:
-      background-color .18s ease,
-      border-color .18s ease,
-      transform .18s ease,
-      color .18s ease;
-  }
-  
-  .counter button:hover {
-  
-    background: #f8fafc;
-  
-    border-color: #16e06e;
-  
-    color: #16e06e;
-  
-    transform: scale(1.06);
-  }
-  
-  .counter button:active {
-  
-    transform: scale(.94);
-  }
-  
-  .counter button:disabled {
-  
-    opacity: .35;
-  
-    cursor: not-allowed;
-  
-    border-color: #e2e8f0;
-  
-    color: #94a3b8;
-  
-    background: #ffffff;
-  }
-  
-  .counter button:disabled:hover {
-  
-    transform: none;
-  
-    background: #ffffff;
-  
-    border-color: #e2e8f0;
-  
-    color: #94a3b8;
-  }
-  
-  @keyframes guestsPopup {
-  
-    from {
-  
-      opacity: 0;
-  
-      transform:
-        translateY(-8px)
-        scale(.98);
-    }
-  
-    to {
-  
-      opacity: 1;
-  
-      transform:
-        translateY(0)
-        scale(1);
-    }
-  }
-  
-  @media (max-width: 640px) {
-  
-    .guests-selector__popup {
-  
-      left: 50%;
-  
-      width: min(calc(100vw - 24px), 340px);
-  
-      transform: translateX(-50%);
-    }
-  
-    .guest-row {
-  
-      padding: 12px 0;
-    }
-  
-    .counter {
-  
-      gap: 10px;
-    }
-  
-    .counter button {
-  
-      width: 30px;
-      height: 30px;
-    }
   }
 
   .counter {
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+  }
+
+  .counter strong {
+    min-width: 22px;
+
+    text-align: center;
+
+    color: #0f172a;
+
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .counter button {
+    width: 32px;
+    height: 32px;
 
     display: flex;
-  
     align-items: center;
-  
-    gap: 14px;
-  
-  }
-  
-  .counter strong {
-  
-    min-width: 22px;
-  
-    text-align: center;
-  
-    font-size: 16px;
-  
-    font-weight: 700;
-  
-    color: #0f172a;
-  
-  }
-  
-  .counter button {
-  
-    width: 32px;
-  
-    height: 32px;
-  
-    display: flex;
-  
-    align-items: center;
-  
     justify-content: center;
-  
+
     border: 1px solid #dbe3ec;
-  
     border-radius: 50%;
-  
+
     background: #ffffff;
-  
+
     color: #0f172a;
-  
+
     font-size: 18px;
-  
     font-weight: 500;
-  
+
     cursor: pointer;
-  
     outline: none;
-  
+
     transition:
-      background-color .18s ease,
-      border-color .18s ease,
-      transform .18s ease,
-      color .18s ease,
-      box-shadow .18s ease;
-  
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      transform 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease;
   }
-  
+
   .counter button:hover:not(:disabled) {
-  
-    background: #f8fafc;
-  
     border-color: #16e06e;
-  
+
+    background: #f8fafc;
+
     color: #16e06e;
-  
+
     transform: scale(1.06);
-  
   }
-  
+
   .counter button:active:not(:disabled) {
-  
-    transform: scale(.94);
-  
+    transform: scale(0.94);
   }
-  
+
   .counter button:focus-visible {
-  
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, .14);
-  
+      0 0 0 4px rgba(22, 224, 110, 0.14);
   }
-  
+
   .counter button:disabled {
-  
-    opacity: .35;
-  
-    cursor: not-allowed;
-  
     border-color: #e2e8f0;
-  
-    color: #94a3b8;
-  
+
     background: #ffffff;
-  
+
+    color: #94a3b8;
+
+    cursor: not-allowed;
+    opacity: 0.35;
   }
-  
-  @keyframes guestsPopup {
-  
+
+  .child-ages {
+    padding: 14px 0;
+
+    border-bottom: 1px solid #eef2f7;
+  }
+
+  .child-ages__heading {
+    margin-bottom: 12px;
+  }
+
+  .child-ages__heading h4 {
+    margin: 0;
+
+    color: #0f172a;
+
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .child-ages__heading span {
+    display: block;
+
+    margin-top: 4px;
+
+    color: #94a3b8;
+
+    font-size: 13px;
+  }
+
+  .child-ages__grid {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 10px;
+  }
+
+  .child-age {
+    display: flex;
+    flex-direction: column;
+
+    gap: 6px;
+  }
+
+  .child-age span {
+    color: #64748b;
+
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .child-age select {
+    width: 100%;
+    height: 40px;
+
+    padding: 0 10px;
+
+    border: 1px solid #dbe3ec;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #0f172a;
+
+    font-size: 14px;
+
+    cursor: pointer;
+    outline: none;
+
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .child-age select:hover {
+    border-color: #cbd5e1;
+  }
+
+  .child-age select:focus {
+    border-color: #16e06e;
+
+    box-shadow:
+      0 0 0 4px rgba(22, 224, 110, 0.12);
+  }
+
+  @keyframes guests-popup {
     from {
-  
       opacity: 0;
-  
+
       transform:
         translateY(-8px)
-        scale(.98);
-  
+        scale(0.98);
     }
-  
+
     to {
-  
       opacity: 1;
-  
+
       transform:
         translateY(0)
         scale(1);
-  
     }
-  
   }
-  
+
   @media (max-width: 640px) {
-  
     .guests-selector__popup {
-  
       left: 50%;
-  
-      width: min(calc(100vw - 24px), 340px);
-  
+
+      width:
+        min(calc(100vw - 24px), 340px);
+
       transform: translateX(-50%);
-  
     }
-  
+
     .guest-row {
-  
       padding: 12px 0;
-  
+
       gap: 16px;
-  
     }
-  
+
     .counter {
-  
       gap: 10px;
-  
     }
-  
+
     .counter button {
-  
       width: 30px;
-  
       height: 30px;
-  
     }
-  
+
+    .child-ages__grid {
+      grid-template-columns: 1fr;
+    }
   }
