@@ -2,8 +2,28 @@ const {
     ACCOMMODATION_PROVIDER_IDS,
   } = require("../providerRegistry");
   
-  const SOURCE_PROVIDER = ACCOMMODATION_PROVIDER_IDS.LITE_API;
+  const {
+  createLiteApiOffer:
+    createMappedLiteApiOffer,
+
+  getLiteApiOfferRecords,
+} = require("./liteApiOfferMapper");
+const SOURCE_PROVIDER = ACCOMMODATION_PROVIDER_IDS.LITE_API;
   const PROVIDER_NAME = "LiteAPI";
+
+function createLiteApiOfferFromMapper(
+  options
+) {
+  return createMappedLiteApiOffer({
+    ...options,
+
+    sourceProvider:
+      SOURCE_PROVIDER,
+
+    providerName:
+      PROVIDER_NAME,
+  });
+}
   
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -823,11 +843,11 @@ const {
   
     if (!sourceHotelId) return null;
   
-    const rates = getRateRecords(record);
+    const rates = getLiteApiOfferRecords(record);
   
     const offers = rates
       .map((rate, index) =>
-        createLiteApiOffer({
+        createLiteApiOfferFromMapper({
           rate,
           hotelId: sourceHotelId,
           index,
@@ -963,7 +983,57 @@ const {
         basePrice: bestOffer.basePrice,
         saving,
         currency: bestOffer.currency,
-    
+
+        providerPrice:
+          bestOffer.providerPrice,
+
+        taxesIncluded:
+          bestOffer.taxesIncluded,
+
+        includedTaxes:
+          bestOffer.includedTaxes,
+
+        excludedTaxes:
+          bestOffer.excludedTaxes,
+
+        unknownTaxes:
+          bestOffer.unknownTaxes,
+
+        taxBreakdown:
+          bestOffer.taxBreakdown,
+
+        totalKnownCost:
+          bestOffer.totalKnownCost,
+
+        cancellationPolicy:
+          bestOffer.cancellationPolicy,
+
+        refundableTag:
+          bestOffer.refundableTag,
+
+        refundable:
+          bestOffer.refundable,
+
+        freeCancellationUntil:
+          bestOffer.freeCancellationUntil,
+
+        cancellationPenalty:
+          bestOffer.cancellationPenalty,
+
+        cancellationPenaltyCurrency:
+          bestOffer
+            .cancellationPenaltyCurrency,
+
+        cancellationPenaltyType:
+          bestOffer
+            .cancellationPenaltyType,
+
+        cancellationTimezone:
+          bestOffer
+            .cancellationTimezone,
+
+        cancellationPolicies:
+          bestOffer.cancellationPolicies,
         distance: distance ?? null,
         image,
         address,
