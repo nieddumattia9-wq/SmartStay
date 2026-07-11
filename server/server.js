@@ -90,6 +90,76 @@ app.use((req, res) => {
 });
 
 // =========================
+// Global Error Handler
+// =========================
+
+app.use((error, req, res, next) => {
+
+  if (res.headersSent) {
+
+    return next(error);
+
+  }
+
+  const isMalformedJson =
+    error instanceof SyntaxError &&
+    error.status === 400 &&
+    error.type === "entity.parse.failed";
+
+  if (isMalformedJson) {
+
+    console.error(
+      "Invalid JSON payload received."
+    );
+
+    console.error({
+      method: req.method,
+      path: req.originalUrl,
+      message: error.message,
+    });
+
+    return res.status(400).json({
+      success: false,
+      message: "Invalid JSON payload.",
+    });
+
+  }
+
+  const rawStatus =
+    error.status ?? error.statusCode;
+
+  const status =
+    Number.isInteger(rawStatus) &&
+    rawStatus >= 400 &&
+    rawStatus <= 599
+      ? rawStatus
+      : 500;
+
+  console.error(
+    "Unhandled request error."
+  );
+
+  console.error({
+    method: req.method,
+    path: req.originalUrl,
+    status,
+    message: error.message,
+    stack: error.stack,
+  });
+
+  const publicMessage =
+    status >= 500
+      ? "Internal server error."
+      : "Request failed.";
+
+  return res.status(status).json({
+    success: false,
+    message: publicMessage,
+  });
+
+});
+
+// =========================
 // Start Server
 // =========================
 

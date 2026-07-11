@@ -27,18 +27,26 @@ function getSearchIdFromRequest(req) {
 
 function sendRouteError(res, error, fallbackMessage) {
 
+  const providerStatus =
+    error.response?.status;
+
+  const status =
+    Number.isInteger(providerStatus) &&
+    providerStatus >= 400 &&
+    providerStatus <= 599
+      ? providerStatus
+      : 500;
+
   console.error(fallbackMessage);
-  console.error("Status:", error.response?.status);
+  console.error("Status:", status);
   console.error("Data:", error.response?.data);
   console.error("Message:", error.message);
 
   return res
-    .status(error.response?.status || 500)
+    .status(status)
     .json({
       success: false,
       message: fallbackMessage,
-      error: error.message,
-      details: error.response?.data ?? null,
     });
 
 }
