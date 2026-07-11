@@ -109,6 +109,8 @@ const {
   
   function getPricePaths() {
     return [
+      ["offerRetailRate", "amount"],
+      ["offerRetailRate"],
       ["retailRate", "total", 0, "amount"],
       ["retailRate", "total", "amount"],
       ["retailRate", "amount"],
@@ -376,29 +378,50 @@ const {
   
       for (const room of rooms) {
         if (!isPlainObject(room)) continue;
-  
-        const nestedRateCandidates = getNestedRateCandidates(room);
-        let foundNestedRate = false;
-  
-        for (const nestedRateCandidate of nestedRateCandidates) {
-          const rates = asArray(nestedRateCandidate);
-  
-          for (const rate of rates) {
-            if (!isPlainObject(rate)) continue;
-  
-            if (hasUsableRatePrice(rate)) {
-              foundNestedRate = true;
-              collectedRates.push(
-                mergeRateWithRoomData(room, rate, collectedRates.length)
-              );
-            }
-          }
+
+        /*
+         * LiteAPI groups all requested occupancies inside one
+         * roomType offer. offerRetailRate is the total price for
+         * every room in that offer.
+         */
+        if (hasUsableRatePrice(room)) {
+          collectedRates.push(
+            mergeRateWithRoomData(
+              {},
+              room,
+              collectedRates.length
+            )
+          );
+
+          continue;
         }
   
-        if (!foundNestedRate && hasUsableRatePrice(room)) {
-          collectedRates.push(
-            mergeRateWithRoomData({}, room, collectedRates.length)
-          );
+        const nestedRateCandidates =
+          getNestedRateCandidates(room);
+  
+        for (
+          const nestedRateCandidate
+          of nestedRateCandidates
+        ) {
+          const rates =
+            asArray(nestedRateCandidate);
+  
+          for (const rate of rates) {
+            if (
+              !isPlainObject(rate) ||
+              !hasUsableRatePrice(rate)
+            ) {
+              continue;
+            }
+  
+            collectedRates.push(
+              mergeRateWithRoomData(
+                room,
+                rate,
+                collectedRates.length
+              )
+            );
+          }
         }
       }
     }
@@ -410,21 +433,39 @@ const {
       record.roomRates,
     ];
   
-    for (const directRateCandidate of directRateCandidates) {
-      const rates = asArray(directRateCandidate);
+    for (
+      const directRateCandidate
+      of directRateCandidates
+    ) {
+      const rates =
+        asArray(directRateCandidate);
   
       for (const rate of rates) {
-        if (isPlainObject(rate) && hasUsableRatePrice(rate)) {
+        if (
+          isPlainObject(rate) &&
+          hasUsableRatePrice(rate)
+        ) {
           collectedRates.push(
-            mergeRateWithRoomData({}, rate, collectedRates.length)
+            mergeRateWithRoomData(
+              {},
+              rate,
+              collectedRates.length
+            )
           );
         }
       }
     }
   
-    if (collectedRates.length === 0 && hasUsableRatePrice(record)) {
+    if (
+      collectedRates.length === 0 &&
+      hasUsableRatePrice(record)
+    ) {
       collectedRates.push(
-        mergeRateWithRoomData({}, record, collectedRates.length)
+        mergeRateWithRoomData(
+          {},
+          record,
+          collectedRates.length
+        )
       );
     }
   
@@ -548,6 +589,31 @@ const {
   }
   
   function getRoomName(rate) {
+    const nestedRoomNames =
+      pickArray(rate, [["rates"]])
+        .map((nestedRate) =>
+          pickString(nestedRate, [
+            ["roomName"],
+            ["roomType"],
+            ["roomTypeName"],
+            ["name"],
+          ])
+        )
+        .filter(Boolean);
+
+    const uniqueRoomNames =
+      [...new Set(nestedRoomNames)];
+
+    if (uniqueRoomNames.length === 1) {
+      return nestedRoomNames.length > 1
+        ? `${uniqueRoomNames[0]} × ${nestedRoomNames.length}`
+        : uniqueRoomNames[0];
+    }
+
+    if (uniqueRoomNames.length > 1) {
+      return uniqueRoomNames.join(" + ");
+    }
+
     return (
       pickString(rate, [
         ["roomName"],
@@ -598,6 +664,7 @@ const {
   function getRateCurrency(rate, fallbackCurrency) {
     return (
       pickString(rate, [
+        ["offerRetailRate", "currency"],
         ["retailRate", "total", 0, "currency"],
         ["retailRate", "currency"],
         ["retailRate", "suggestedSellingPrice", 0, "currency"],

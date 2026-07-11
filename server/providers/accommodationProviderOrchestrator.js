@@ -385,18 +385,7 @@ function extractAdults(searchData) {
   );
 }
 
-function extractChildren(searchData) {
-  const children =
-    pickFirstValue(searchData, [
-      ["children"],
-      ["childrenAges"],
-      ["guests", "children"],
-      ["guests", "childrenAges"],
-      ["occupancy", "children"],
-      ["rooms", 0, "childrenAges"],
-      ["rooms", 0, "childAges"],
-    ]);
-
+function normalizeChildAges(children) {
   if (!Array.isArray(children)) {
     return [];
   }
@@ -408,7 +397,8 @@ function extractChildren(searchData) {
       }
 
       if (typeof child === "string") {
-        const parsed = Number(child);
+        const parsed =
+          Number(child);
 
         return Number.isFinite(parsed)
           ? parsed
@@ -421,6 +411,76 @@ function extractChildren(searchData) {
       child !== null &&
       child >= 0
     );
+}
+
+function extractChildren(searchData) {
+  const children =
+    pickFirstValue(searchData, [
+      ["children"],
+      ["childrenAges"],
+      ["guests", "children"],
+      ["guests", "childrenAges"],
+      ["occupancy", "children"],
+      ["rooms", 0, "childrenAges"],
+      ["rooms", 0, "childAges"],
+    ]);
+
+  return normalizeChildAges(children);
+}
+
+function extractLiteApiOccupancies(
+  searchData
+) {
+  const rooms =
+    Array.isArray(searchData?.rooms)
+      ? searchData.rooms
+      : [];
+
+  if (rooms.length === 0) {
+    return [
+      {
+        adults:
+          extractAdults(searchData),
+
+        children:
+          extractChildren(searchData),
+      },
+    ];
+  }
+
+  return rooms.map((room) => {
+    const parsedAdults =
+      typeof room?.adults === "number"
+        ? room.adults
+        : Number(room?.adults);
+
+    const adults =
+      Number.isFinite(parsedAdults) &&
+      parsedAdults > 0
+        ? Math.max(
+            1,
+            Math.round(parsedAdults)
+          )
+        : 1;
+
+    const childAges =
+      room?.childrenAges ??
+      room?.childAges ??
+      (
+        Array.isArray(room?.children)
+          ? room.children
+          : []
+      );
+
+    return {
+      adults,
+
+      children:
+        normalizeChildAges(
+          childAges
+        ),
+    };
+  });
 }
 
 function extractCurrency(
@@ -472,11 +532,10 @@ function createLiteApiSearchInput({
   const checkout =
     extractCheckout(searchData);
 
-  const adults =
-    extractAdults(searchData);
-
-  const children =
-    extractChildren(searchData);
+  const occupancies =
+    extractLiteApiOccupancies(
+      searchData
+    );
 
   const currency =
     extractCurrency(
@@ -509,8 +568,7 @@ function createLiteApiSearchInput({
     radius,
     checkin,
     checkout,
-    adults,
-    children,
+    occupancies,
     currency,
   };
 }

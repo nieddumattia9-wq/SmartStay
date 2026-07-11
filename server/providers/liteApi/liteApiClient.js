@@ -268,118 +268,193 @@ async function getLiteApiRates(payload = {}) {
   });
 }
 
+function normalizeLiteApiChildren(
+  children
+) {
+  if (!Array.isArray(children)) {
+    return [];
+  }
+
+  return children
+    .map((age) => {
+      const parsedAge =
+        typeof age === "number"
+          ? age
+          : Number(age);
+
+      if (
+        !Number.isFinite(parsedAge) ||
+        parsedAge < 0
+      ) {
+        return null;
+      }
+
+      return Math.round(parsedAge);
+    })
+    .filter((age) => age !== null);
+}
+
+function normalizeLiteApiOccupancy(
+  occupancy = {}
+) {
+  const parsedAdults =
+    typeof occupancy.adults === "number"
+      ? occupancy.adults
+      : Number(occupancy.adults);
+
+  const adults =
+    Number.isFinite(parsedAdults) &&
+    parsedAdults > 0
+      ? Math.max(
+          1,
+          Math.round(parsedAdults)
+        )
+      : 1;
+
+  return {
+    adults,
+
+    children:
+      normalizeLiteApiChildren(
+        occupancy.children
+      ),
+  };
+}
+
 function createLiteApiOccupancies({
+  occupancies = null,
   adults = 2,
   children = [],
 } = {}) {
+  const normalizedOccupancies =
+    Array.isArray(occupancies)
+      ? occupancies.map(
+          normalizeLiteApiOccupancy
+        )
+      : [];
+
+  if (normalizedOccupancies.length > 0) {
+    return normalizedOccupancies;
+  }
+
   return [
-    {
+    normalizeLiteApiOccupancy({
       adults,
       children,
-    },
+    }),
   ];
 }
 
 function createLiteApiRatesPayload({
-    cityName,
-    countryCode = "IT",
-    latitude = null,
-    longitude = null,
-    radius = 8000,
+  cityName,
+  countryCode = "IT",
+  latitude = null,
+  longitude = null,
+  radius = 8000,
+  checkin,
+  checkout,
+  occupancies = null,
+  adults = 2,
+  children = [],
+  currency = LITEAPI_DEFAULT_CURRENCY,
+  guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
+  limit = LITEAPI_RESULTS_LIMIT,
+  sessionId = createLiteApiSessionId(),
+} = {}) {
+  const payload = {
     checkin,
     checkout,
-    adults = 2,
-    children = [],
-    currency = LITEAPI_DEFAULT_CURRENCY,
-    guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
-    limit = LITEAPI_RESULTS_LIMIT,
-    sessionId = createLiteApiSessionId(),
-  } = {}) {
-    const payload = {
-      checkin,
-      checkout,
-      currency,
-      guestNationality,
-      occupancies: createLiteApiOccupancies({
+    currency,
+    guestNationality,
+
+    occupancies:
+      createLiteApiOccupancies({
+        occupancies,
         adults,
         children,
       }),
-      limit,
-      timeout: LITEAPI_TIMEOUT_SECONDS,
-      maxRatesPerHotel: 1,
-      roomMapping: true,
-      includeHotelData: true,
-      sessionId,
-    };
-  
-    if (
-      cityName &&
-      countryCode
-    ) {
-      payload.cityName = cityName;
-      payload.countryCode = countryCode;
-      return payload;
-    }
-  
-    if (
-      Number.isFinite(latitude) &&
-      Number.isFinite(longitude)
-    ) {
-      payload.latitude = latitude;
-      payload.longitude = longitude;
-      payload.radius = Math.max(
-        Number(radius) || 8000,
-        1500
-      );
-  
-      return payload;
-    }
-  
-    throw new Error(
-      "LiteAPI rates search requires either cityName/countryCode or latitude/longitude/radius."
+
+    limit,
+    timeout: LITEAPI_TIMEOUT_SECONDS,
+    maxRatesPerHotel: 1,
+    roomMapping: true,
+    includeHotelData: true,
+    sessionId,
+  };
+
+  if (
+    cityName &&
+    countryCode
+  ) {
+    payload.cityName = cityName;
+    payload.countryCode = countryCode;
+
+    return payload;
+  }
+
+  if (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude)
+  ) {
+    payload.latitude = latitude;
+    payload.longitude = longitude;
+
+    payload.radius = Math.max(
+      Number(radius) || 8000,
+      1500
     );
+
+    return payload;
   }
-  
-  async function searchLiteApiRates({
-    cityName,
-    countryCode = "IT",
-    latitude = null,
-    longitude = null,
-    radius = 8000,
-    checkin,
-    checkout,
-    adults = 2,
-    children = [],
-    currency = LITEAPI_DEFAULT_CURRENCY,
-    guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
-    limit = LITEAPI_RESULTS_LIMIT,
-    sessionId = createLiteApiSessionId(),
-  } = {}) {
-    const payload =
-      createLiteApiRatesPayload({
-        cityName,
-        countryCode,
-        latitude,
-        longitude,
-        radius,
-        checkin,
-        checkout,
-        adults,
-        children,
-        currency,
-        guestNationality,
-        limit,
-        sessionId,
-      });
-  
-    return getLiteApiRates(payload);
-  }
-  
-  async function searchLiteApiRatesByCity(options = {}) {
-    return searchLiteApiRates(options);
-  }
-  
-  module.exports = {
+
+  throw new Error(
+    "LiteAPI rates search requires either cityName/countryCode or latitude/longitude/radius."
+  );
+}
+
+async function searchLiteApiRates({
+  cityName,
+  countryCode = "IT",
+  latitude = null,
+  longitude = null,
+  radius = 8000,
+  checkin,
+  checkout,
+  occupancies = null,
+  adults = 2,
+  children = [],
+  currency = LITEAPI_DEFAULT_CURRENCY,
+  guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
+  limit = LITEAPI_RESULTS_LIMIT,
+  sessionId = createLiteApiSessionId(),
+} = {}) {
+  const payload =
+    createLiteApiRatesPayload({
+      cityName,
+      countryCode,
+      latitude,
+      longitude,
+      radius,
+      checkin,
+      checkout,
+      occupancies,
+      adults,
+      children,
+      currency,
+      guestNationality,
+      limit,
+      sessionId,
+    });
+
+  return getLiteApiRates(payload);
+}
+
+async function searchLiteApiRatesByCity(
+  options = {}
+) {
+  return searchLiteApiRates(options);
+}
+module.exports = {
     callLiteApiGet,
     callLiteApiPost,
     getLiteApiHotels,
