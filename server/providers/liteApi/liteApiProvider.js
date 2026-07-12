@@ -1201,8 +1201,6 @@ function createLiteApiOfferFromMapper(
         saving,
         currency: bestOffer.currency,
 
-        providerPrice:
-          bestOffer.providerPrice,
 
         taxesIncluded:
           bestOffer.taxesIncluded,

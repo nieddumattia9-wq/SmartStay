@@ -284,31 +284,6 @@ function getPublicPrice(rate) {
   ]);
 }
 
-function getProviderPrice(rate) {
-  return pickNumber(rate, [
-    [
-      "offerRetailRate",
-      "amount",
-    ],
-    ["offerRetailRate"],
-    [
-      "retailRate",
-      "total",
-      0,
-      "amount",
-    ],
-    [
-      "retailRate",
-      "total",
-      "amount",
-    ],
-    [
-      "retailRate",
-      "amount",
-    ],
-  ]);
-}
-
 function getRateCurrency(
   rate,
   fallbackCurrency = "EUR"
@@ -1078,8 +1053,6 @@ function createLiteApiOffer({
       price
     );
 
-  const providerPrice =
-    getProviderPrice(rate);
 
   const currency =
     getRateCurrency(
@@ -1115,11 +1088,6 @@ function createLiteApiOffer({
 
     price,
 
-    providerPrice:
-      providerPrice &&
-      providerPrice > 0
-        ? providerPrice
-        : price,
 
     basePrice,
 
