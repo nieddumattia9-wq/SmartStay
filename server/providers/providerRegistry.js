@@ -31,6 +31,17 @@ const ACCOMMODATION_PROVIDER_IDS = {
       status: PROVIDER_STATUSES.ACTIVE,
   
       role: PROVIDER_ROLES.PRIMARY_SEARCH_PROVIDER,
+
+      adapterLoader:
+        async () => {
+          const {
+            loadLiteApiAdapter,
+          } = require(
+            "./liteApi/liteApiAdapter"
+          );
+
+          return loadLiteApiAdapter();
+        },
   
       notes:
         "Primary provider for the current SmartStay MVP. Used for hotel rates, availability and richer hotel data. RouteStack remains enabled as fallback while LiteAPI integration is validated.",
@@ -70,11 +81,11 @@ const ACCOMMODATION_PROVIDER_IDS = {
   
       name: "RouteStack",
   
-      enabled: true,
+      enabled: false,
   
       priority: 2,
   
-      status: PROVIDER_STATUSES.ACTIVE,
+      status: PROVIDER_STATUSES.DISABLED,
   
       role: PROVIDER_ROLES.FALLBACK_SEARCH_PROVIDER,
   
