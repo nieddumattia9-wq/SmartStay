@@ -981,6 +981,293 @@ function normalizeText(value = "") {
     };
   }
 
+  function getFiniteNumber(value) {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return null;
+    }
+
+    const number =
+      Number(value);
+
+    return Number.isFinite(number)
+      ? number
+      : null;
+  }
+
+  function getValidStars(value) {
+    const stars =
+      getFiniteNumber(value);
+
+    return (
+      stars !== null &&
+      stars > 0 &&
+      stars <= 5
+    )
+      ? stars
+      : null;
+  }
+
+  function getValidLatitude(value) {
+    const latitude =
+      getFiniteNumber(value);
+
+    return (
+      latitude !== null &&
+      latitude >= -90 &&
+      latitude <= 90
+    )
+      ? latitude
+      : null;
+  }
+
+  function getValidLongitude(value) {
+    const longitude =
+      getFiniteNumber(value);
+
+    return (
+      longitude !== null &&
+      longitude >= -180 &&
+      longitude <= 180
+    )
+      ? longitude
+      : null;
+  }
+
+  function getValidDistance(value) {
+    const distance =
+      getFiniteNumber(value);
+
+    return (
+      distance !== null &&
+      distance >= 0
+    )
+      ? distance
+      : null;
+  }
+
+  function hasValidCoordinatePair(
+    hotel = {}
+  ) {
+    return (
+      getValidLatitude(
+        hotel.latitude
+      ) !== null &&
+      getValidLongitude(
+        hotel.longitude
+      ) !== null
+    );
+  }
+
+  function getImageQuality(
+    hotel = {}
+  ) {
+    if (hotel.mainImage) {
+      return 3;
+    }
+
+    if (hotel.thumbnail) {
+      return 2;
+    }
+
+    if (hotel.image) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  function compareRankVectors(
+    firstRank,
+    secondRank
+  ) {
+    const length =
+      Math.max(
+        firstRank.length,
+        secondRank.length
+      );
+
+    for (
+      let index = 0;
+      index < length;
+      index += 1
+    ) {
+      const firstValue =
+        Number(
+          firstRank[index] ?? 0
+        );
+
+      const secondValue =
+        Number(
+          secondRank[index] ?? 0
+        );
+
+      if (
+        firstValue >
+        secondValue
+      ) {
+        return 1;
+      }
+
+      if (
+        firstValue <
+        secondValue
+      ) {
+        return -1;
+      }
+    }
+
+    return 0;
+  }
+
+  function createStableHotelMetadataKey(
+    hotel = {}
+  ) {
+    return [
+      normalizeText(
+        hotel.sourceProvider
+      ),
+      normalizeText(
+        hotel.sourceHotelId
+      ),
+      normalizeText(
+        hotel.id
+      ),
+      normalizeText(
+        hotel.mainImage
+      ),
+      normalizeText(
+        hotel.thumbnail
+      ),
+      normalizeText(
+        hotel.image
+      ),
+      normalizeText(
+        hotel.address
+      ),
+      String(
+        hotel.latitude ?? ""
+      ),
+      String(
+        hotel.longitude ?? ""
+      ),
+      String(
+        hotel.stars ?? ""
+      ),
+    ].join("|");
+  }
+
+  function chooseRankedHotel(
+    firstHotel,
+    secondHotel,
+    getRank
+  ) {
+    const comparison =
+      compareRankVectors(
+        getRank(firstHotel),
+        getRank(secondHotel)
+      );
+
+    if (comparison > 0) {
+      return firstHotel;
+    }
+
+    if (comparison < 0) {
+      return secondHotel;
+    }
+
+    const firstKey =
+      createStableHotelMetadataKey(
+        firstHotel
+      );
+
+    const secondKey =
+      createStableHotelMetadataKey(
+        secondHotel
+      );
+
+    return (
+      firstKey.localeCompare(
+        secondKey
+      ) <= 0
+    )
+      ? firstHotel
+      : secondHotel;
+  }
+
+  function chooseDescriptiveHotel(
+    firstHotel,
+    secondHotel
+  ) {
+    return chooseRankedHotel(
+      firstHotel,
+      secondHotel,
+      (hotel) => [
+        getConfidenceRank(
+          hotel.dataConfidence
+        ),
+        getImageQuality(hotel),
+        getValidStars(
+          hotel.stars
+        ) !== null
+          ? 1
+          : 0,
+      ]
+    );
+  }
+
+  function chooseLocationHotel(
+    firstHotel,
+    secondHotel
+  ) {
+    return chooseRankedHotel(
+      firstHotel,
+      secondHotel,
+      (hotel) => [
+        hasValidCoordinatePair(
+          hotel
+        )
+          ? 1
+          : 0,
+
+        (
+          getValidDistance(
+            hotel.distance
+          ) !== null &&
+          hotel.distanceSource ===
+            "calculated"
+        )
+          ? 1
+          : 0,
+
+        getValidDistance(
+          hotel.distance
+        ) !== null
+          ? 1
+          : 0,
+
+        hotel.address
+          ? 1
+          : 0,
+
+        hotel.city
+          ? 1
+          : 0,
+
+        hotel.country
+          ? 1
+          : 0,
+
+        getConfidenceRank(
+          hotel.dataConfidence
+        ),
+      ]
+    );
+  }
+
   function mergeHotelRecords(firstHotel, secondHotel) {
     const offers =
       mergeOffers(
@@ -1023,6 +1310,89 @@ function normalizeText(value = "") {
         firstHotel,
         secondHotel
       );
+
+    const descriptiveHotel =
+      chooseDescriptiveHotel(
+        firstHotel,
+        secondHotel
+      );
+
+    const locationHotel =
+      chooseLocationHotel(
+        firstHotel,
+        secondHotel
+      );
+
+    const stars =
+      getValidStars(
+        descriptiveHotel.stars
+      ) ?? 0;
+
+    const image =
+      preferValue(
+        descriptiveHotel.image,
+        preferValue(
+          descriptiveHotel.mainImage,
+          descriptiveHotel.thumbnail
+        )
+      ) ?? null;
+
+    const thumbnail =
+      preferValue(
+        descriptiveHotel.thumbnail,
+        image
+      ) ?? null;
+
+    const mainImage =
+      preferValue(
+        descriptiveHotel.mainImage,
+        image
+      ) ?? null;
+
+    const latitude =
+      getValidLatitude(
+        locationHotel.latitude
+      );
+
+    const longitude =
+      getValidLongitude(
+        locationHotel.longitude
+      );
+
+    const distance =
+      getValidDistance(
+        locationHotel.distance
+      );
+
+    const distanceUnit =
+      distance !== null
+        ? (
+            locationHotel
+              .distanceUnit ??
+            null
+          )
+        : null;
+
+    const distanceSource =
+      distance !== null
+        ? (
+            locationHotel
+              .distanceSource ??
+            null
+          )
+        : null;
+
+    const address =
+      locationHotel.address ??
+      null;
+
+    const city =
+      locationHotel.city ??
+      null;
+
+    const country =
+      locationHotel.country ??
+      null;
 
     const dataSources =
       uniqueValues([
@@ -1081,6 +1451,9 @@ function normalizeText(value = "") {
         Number.isFinite(saving) &&
         saving > 0,
 
+      hasStars:
+        stars > 0,
+
       hasReviewScore:
         hasReviewScore(
           reviewBundle
@@ -1092,10 +1465,22 @@ function normalizeText(value = "") {
         ) &&
         reviewBundle.reviewCount > 0,
 
+      hasImage:
+        Boolean(image),
+
+      hasAddress:
+        Boolean(address),
+
+      hasCoordinates:
+        latitude !== null &&
+        longitude !== null,
+
+      hasDistance:
+        distance !== null,
+
       hasAmenities:
         amenities.length > 0,
     };
-
     return {
       ...firstHotel,
 
@@ -1126,11 +1511,17 @@ function normalizeText(value = "") {
           secondHotel.name
         ),
 
-      stars:
-        preferHigherNumber(
-          firstHotel.stars,
-          secondHotel.stars
-        ),
+      stars,
+
+      descriptiveSourceProvider:
+        descriptiveHotel
+          .sourceProvider ??
+        null,
+
+      descriptiveSourceHotelId:
+        descriptiveHotel
+          .sourceHotelId ??
+        null,
 
       reviewScore:
         reviewBundle.reviewScore,
@@ -1149,47 +1540,29 @@ function normalizeText(value = "") {
 
       ...commercialData,
 
-      distance:
-        preferLowerDistance(
-          firstHotel.distance,
-          secondHotel.distance
-        ),
+      distance,
+      distanceUnit,
+      distanceSource,
 
-      image:
-        preferValue(
-          firstHotel.image,
-          secondHotel.image
-        ),
+      locationSourceProvider:
+        locationHotel
+          .sourceProvider ??
+        null,
 
-      address:
-        preferValue(
-          firstHotel.address,
-          secondHotel.address
-        ),
+      locationSourceHotelId:
+        locationHotel
+          .sourceHotelId ??
+        null,
 
-      city:
-        preferValue(
-          firstHotel.city,
-          secondHotel.city
-        ),
+      image,
+      thumbnail,
+      mainImage,
 
-      country:
-        preferValue(
-          firstHotel.country,
-          secondHotel.country
-        ),
-
-      latitude:
-        preferValue(
-          firstHotel.latitude,
-          secondHotel.latitude
-        ),
-
-      longitude:
-        preferValue(
-          firstHotel.longitude,
-          secondHotel.longitude
-        ),
+      address,
+      city,
+      country,
+      latitude,
+      longitude,
 
       amenities,
 
