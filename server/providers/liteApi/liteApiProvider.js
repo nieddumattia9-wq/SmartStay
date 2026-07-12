@@ -757,6 +757,94 @@ function createLiteApiOfferFromMapper(
     };
   }
   
+  function isValidLatitude(value) {
+    return (
+      Number.isFinite(value) &&
+      value >= -90 &&
+      value <= 90
+    );
+  }
+
+  function isValidLongitude(value) {
+    return (
+      Number.isFinite(value) &&
+      value >= -180 &&
+      value <= 180
+    );
+  }
+
+  function toRadians(value) {
+    return value * (Math.PI / 180);
+  }
+
+  function calculateDistanceKilometers(
+    originLatitude,
+    originLongitude,
+    destinationLatitude,
+    destinationLongitude
+  ) {
+    if (
+      !isValidLatitude(originLatitude) ||
+      !isValidLongitude(originLongitude) ||
+      !isValidLatitude(destinationLatitude) ||
+      !isValidLongitude(destinationLongitude)
+    ) {
+      return null;
+    }
+
+    const earthRadiusKilometers =
+      6371.0088;
+
+    const latitudeDifference =
+      toRadians(
+        destinationLatitude -
+        originLatitude
+      );
+
+    const longitudeDifference =
+      toRadians(
+        destinationLongitude -
+        originLongitude
+      );
+
+    const originLatitudeRadians =
+      toRadians(originLatitude);
+
+    const destinationLatitudeRadians =
+      toRadians(destinationLatitude);
+
+    const haversineValue =
+      Math.sin(
+        latitudeDifference / 2
+      ) ** 2 +
+      Math.cos(
+        originLatitudeRadians
+      ) *
+        Math.cos(
+          destinationLatitudeRadians
+        ) *
+        Math.sin(
+          longitudeDifference / 2
+        ) ** 2;
+
+    const angularDistance =
+      2 *
+      Math.asin(
+        Math.min(
+          1,
+          Math.sqrt(haversineValue)
+        )
+      );
+
+    const distance =
+      earthRadiusKilometers *
+      angularDistance;
+
+    return Number(
+      distance.toFixed(2)
+    );
+  }
+
   function createAvailableData({
     price,
     basePrice,
@@ -771,39 +859,108 @@ function createLiteApiOfferFromMapper(
     longitude,
     amenities,
   }) {
+    const hasValidLatitude =
+      Number.isFinite(latitude) &&
+      latitude >= -90 &&
+      latitude <= 90;
+
+    const hasValidLongitude =
+      Number.isFinite(longitude) &&
+      longitude >= -180 &&
+      longitude <= 180;
+
     return {
-      hasPrice: Number.isFinite(price) && price > 0,
-      hasBasePrice: Number.isFinite(basePrice) && basePrice > price,
-      hasSaving: Number.isFinite(saving) && saving > 0,
-      hasStars: Number.isFinite(stars) && stars > 0,
-      hasReviewScore: reviewScore !== null,
-      hasReviewCount: reviewCount !== null && reviewCount > 0,
-      hasDistance: distance !== null,
-      hasImage: Boolean(image),
-      hasAddress: Boolean(address),
-      hasCoordinates: latitude !== null && longitude !== null,
-      hasAmenities: amenities.length > 0,
+      hasPrice:
+        Number.isFinite(price) &&
+        price > 0,
+
+      hasBasePrice:
+        Number.isFinite(basePrice) &&
+        basePrice > price,
+
+      hasSaving:
+        Number.isFinite(saving) &&
+        saving > 0,
+
+      hasStars:
+        Number.isFinite(stars) &&
+        stars > 0 &&
+        stars <= 5,
+
+      hasReviewScore:
+        Number.isFinite(reviewScore) &&
+        reviewScore >= 0,
+
+      hasReviewCount:
+        Number.isFinite(reviewCount) &&
+        reviewCount > 0,
+
+      hasDistance:
+        Number.isFinite(distance) &&
+        distance >= 0,
+
+      hasImage:
+        Boolean(image),
+
+      hasAddress:
+        Boolean(address),
+
+      hasCoordinates:
+        hasValidLatitude &&
+        hasValidLongitude,
+
+      hasAmenities:
+        Array.isArray(amenities) &&
+        amenities.length > 0,
     };
   }
-  
-  function calculateDataConfidence(availableData) {
-    let score = 0;
-  
-    if (availableData.hasPrice) score += 2;
-    if (availableData.hasImage) score += 1;
-    if (availableData.hasAddress) score += 1;
-    if (availableData.hasCoordinates) score += 1;
-    if (availableData.hasStars) score += 1;
-    if (availableData.hasReviewScore) score += 1;
-    if (availableData.hasReviewCount) score += 1;
-    if (availableData.hasAmenities) score += 1;
-  
-    if (score >= 7) return "full";
-    if (score >= 4) return "partial";
-  
+
+  function calculateDataConfidence(
+    availableData
+  ) {
+    const coreSignals = [
+      availableData.hasPrice,
+      availableData.hasImage,
+      availableData.hasAddress,
+      availableData.hasCoordinates,
+      availableData.hasStars,
+      availableData.hasReviewScore,
+      availableData.hasReviewCount,
+    ];
+
+    const coreScore =
+      coreSignals.filter(Boolean).length;
+
+    const hasFullCoverage =
+      coreScore === coreSignals.length &&
+      availableData.hasDistance &&
+      availableData.hasAmenities;
+
+    if (hasFullCoverage) {
+      return "full";
+    }
+
+    if (
+      availableData.hasPrice &&
+      coreScore >= 5
+    ) {
+      return "partial";
+    }
+
     return "limited";
   }
-  
+
+  function normalizeCountry(value) {
+    const country =
+      asString(value);
+
+    if (country.length === 2) {
+      return country.toUpperCase();
+    }
+
+    return country;
+  }
+
   function createReviewText(reviewScore) {
     if (reviewScore === null) return "No reviews";
     if (reviewScore >= 9) return "Excellent";
@@ -827,7 +984,8 @@ function createLiteApiOfferFromMapper(
   function mapLiteApiRecordToHotel(
     record,
     fallbackCurrency = "EUR",
-    hotelDataIndex = new Map()
+    hotelDataIndex = new Map(),
+    searchLocation = null
   ) {
     const recordHotel = getHotelObject(record);
   
@@ -909,38 +1067,97 @@ function createLiteApiOfferFromMapper(
       ["coordinates", "longitude"],
       ["coordinates", "lng"],
     ]);
-
     const address = pickString(hotel, [
-        ["address"],
-        ["addressLine"],
-        ["address1"],
-        ["location", "address"],
-        ["address_line"],
-      ]);
-    
-      const city = pickString(hotel, [
-        ["city"],
-        ["cityName"],
-        ["city_name"],
-        ["location", "city"],
-      ]);
-    
-      const country = pickString(hotel, [
+      ["address"],
+      ["addressLine"],
+      ["address1"],
+      ["location", "address"],
+      ["address_line"],
+    ]);
+
+    const city = pickString(hotel, [
+      ["city"],
+      ["cityName"],
+      ["city_name"],
+      ["location", "city"],
+    ]);
+
+    const country = normalizeCountry(
+      pickString(hotel, [
         ["country"],
         ["countryName"],
         ["country_code"],
         ["countryCode"],
         ["location", "country"],
-      ]);
-    
-      const distance = pickNumber(record, [
-        ["distance"],
-        ["distanceFromCenter"],
-        ["distanceFromCentre"],
-        ["hotel", "distance"],
-      ]);
-    
-      const image = getPrimaryImage(record, hotel);
+      ])
+    );
+
+    const providerDistance = pickNumber(record, [
+      ["distance"],
+      ["distanceFromCenter"],
+      ["distanceFromCentre"],
+      ["hotel", "distance"],
+    ]);
+
+    const searchLatitude =
+      asNumber(
+        searchLocation?.latitude ??
+        searchLocation?.lat
+      );
+
+    const searchLongitude =
+      asNumber(
+        searchLocation?.longitude ??
+        searchLocation?.lng ??
+        searchLocation?.lon
+      );
+
+    const calculatedDistance =
+      calculateDistanceKilometers(
+        searchLatitude,
+        searchLongitude,
+        latitude,
+        longitude
+      );
+
+    const distance =
+      calculatedDistance ??
+      providerDistance;
+
+    const distanceSource =
+      calculatedDistance !== null
+        ? "calculated"
+        : providerDistance !== null
+          ? "provider"
+          : null;
+
+    const distanceUnit =
+      calculatedDistance !== null
+        ? "km"
+        : null;
+
+    const image =
+      getPrimaryImage(
+        record,
+        hotel
+      );
+
+    const thumbnail =
+      pickString(hotel, [
+        ["thumbnail"],
+        ["thumbnailUrl"],
+        ["thumbnail_url"],
+      ]) ||
+      image;
+
+    const mainImage =
+      pickString(hotel, [
+        ["main_photo"],
+        ["mainPhoto"],
+        ["mainImage"],
+        ["main_image"],
+      ]) ||
+      image;
     
       const amenities = getAmenities(record, hotel);
       const facilities = amenities;
@@ -1035,7 +1252,11 @@ function createLiteApiOfferFromMapper(
         cancellationPolicies:
           bestOffer.cancellationPolicies,
         distance: distance ?? null,
+        distanceUnit,
+        distanceSource,
         image,
+        thumbnail,
+        mainImage,
         address,
         city,
         country,
@@ -1067,13 +1288,15 @@ function createLiteApiOfferFromMapper(
               ["city_name"],
               ["location", "city"],
             ]),
-            country: pickString(hotel, [
-              ["country"],
-              ["countryName"],
-              ["country_code"],
-              ["countryCode"],
-              ["location", "country"],
-            ]),
+            country: normalizeCountry(
+              pickString(hotel, [
+                ["country"],
+                ["countryName"],
+                ["country_code"],
+                ["countryCode"],
+                ["location", "country"],
+              ])
+            ),
           };
         })
         .filter(Boolean);
@@ -1081,7 +1304,8 @@ function createLiteApiOfferFromMapper(
     
     function mapLiteApiHotelResponse(
       data,
-      fallbackCurrency = "EUR"
+      fallbackCurrency = "EUR",
+      searchLocation = null
     ) {
       const records = extractRecords(data);
       const hotelDataIndex = createHotelDataIndex(data);
@@ -1104,7 +1328,8 @@ function createLiteApiOfferFromMapper(
           return mapLiteApiRecordToHotel(
             enrichedRecord,
             fallbackCurrency,
-            hotelDataIndex
+            hotelDataIndex,
+            searchLocation
           );
         })
         .filter(Boolean);

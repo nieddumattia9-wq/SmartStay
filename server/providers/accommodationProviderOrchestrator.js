@@ -707,7 +707,14 @@ async function searchHotelsWithLiteApi({
   const liteApiHotels =
     mapLiteApiHotelResponse(
       response.data,
-      currency
+      currency,
+      {
+        latitude:
+          liteApiInput.latitude,
+
+        longitude:
+          liteApiInput.longitude,
+      }
     );
 
   console.log(
