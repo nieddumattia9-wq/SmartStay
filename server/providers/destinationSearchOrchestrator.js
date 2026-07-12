@@ -42,6 +42,12 @@ const {
   "./common/providerSearchOutcomeService"
 );
 
+const {
+  executeProviderOperationWithTimeout,
+} = require(
+  "./common/providerOperationTimeoutService"
+);
+
 function normalizeDestinationQuery(
   query
 ) {
@@ -200,8 +206,23 @@ async function executeDestinationProvider({
       );
 
     const rawResult =
-      await searchDestinations({
-        query,
+      await executeProviderOperationWithTimeout({
+        providerId:
+          provider.id,
+
+        methodName:
+          "searchDestinations",
+
+        operation:
+          searchDestinations,
+
+        timeoutMs:
+          provider.operationTimeouts
+            ?.searchDestinations,
+
+        operationArguments: {
+          query,
+        },
       });
 
     const result =
