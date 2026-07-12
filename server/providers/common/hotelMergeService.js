@@ -631,14 +631,363 @@ function normalizeText(value = "") {
   
   }
   
+  function createReviewBundle(
+    hotel = {}
+  ) {
+    const reviewScore =
+      Number(hotel.reviewScore);
+
+    const reviewCount =
+      Number(hotel.reviewCount);
+
+    return {
+      reviewScore:
+        Number.isFinite(
+          reviewScore
+        )
+          ? reviewScore
+          : null,
+
+      reviewCount:
+        Number.isFinite(
+          reviewCount
+        ) &&
+        reviewCount >= 0
+          ? reviewCount
+          : null,
+
+      reviewText:
+        hotel.reviewText ??
+        null,
+
+      sourceProvider:
+        hotel.reviewSourceProvider ??
+        hotel.sourceProvider ??
+        null,
+
+      sourceHotelId:
+        hotel.reviewSourceHotelId ??
+        hotel.sourceHotelId ??
+        null,
+    };
+  }
+
+  function hasReviewScore(
+    reviewBundle
+  ) {
+    return Number.isFinite(
+      reviewBundle?.reviewScore
+    );
+  }
+
+  function hasReviewCount(
+    reviewBundle
+  ) {
+    return (
+      Number.isFinite(
+        reviewBundle?.reviewCount
+      ) &&
+      reviewBundle.reviewCount >= 0
+    );
+  }
+
+  function chooseReviewBundle(
+    firstHotel,
+    secondHotel
+  ) {
+    const firstBundle =
+      createReviewBundle(
+        firstHotel
+      );
+
+    const secondBundle =
+      createReviewBundle(
+        secondHotel
+      );
+
+    const firstHasScore =
+      hasReviewScore(
+        firstBundle
+      );
+
+    const secondHasScore =
+      hasReviewScore(
+        secondBundle
+      );
+
+    if (
+      firstHasScore !==
+      secondHasScore
+    ) {
+      return secondHasScore
+        ? secondBundle
+        : firstBundle;
+    }
+
+    const firstHasCount =
+      hasReviewCount(
+        firstBundle
+      );
+
+    const secondHasCount =
+      hasReviewCount(
+        secondBundle
+      );
+
+    if (
+      firstHasCount !==
+      secondHasCount
+    ) {
+      return secondHasCount
+        ? secondBundle
+        : firstBundle;
+    }
+
+    if (
+      firstHasCount &&
+      secondHasCount &&
+      firstBundle.reviewCount !==
+        secondBundle.reviewCount
+    ) {
+      return (
+        secondBundle.reviewCount >
+        firstBundle.reviewCount
+      )
+        ? secondBundle
+        : firstBundle;
+    }
+
+    if (
+      !firstBundle.reviewText &&
+      secondBundle.reviewText
+    ) {
+      return secondBundle;
+    }
+
+    return firstBundle;
+  }
+
+  function createCommercialData(
+    bestOffer,
+    fallbackHotel = {}
+  ) {
+    if (!bestOffer) {
+      return {
+        provider:
+          fallbackHotel.provider ??
+          null,
+
+        price:
+          fallbackHotel.price ??
+          null,
+
+        basePrice:
+          fallbackHotel.basePrice ??
+          null,
+
+        saving:
+          fallbackHotel.saving ??
+          0,
+
+        currency:
+          fallbackHotel.currency ??
+          null,
+
+        taxesIncluded:
+          fallbackHotel.taxesIncluded ??
+          null,
+
+        includedTaxes:
+          fallbackHotel.includedTaxes ??
+          0,
+
+        excludedTaxes:
+          fallbackHotel.excludedTaxes ??
+          0,
+
+        unknownTaxes:
+          fallbackHotel.unknownTaxes ??
+          0,
+
+        taxBreakdown:
+          Array.isArray(
+            fallbackHotel.taxBreakdown
+          )
+            ? fallbackHotel.taxBreakdown
+            : [],
+
+        totalKnownCost:
+          fallbackHotel.totalKnownCost ??
+          null,
+
+        cancellationPolicy:
+          fallbackHotel
+            .cancellationPolicy ??
+          null,
+
+        refundableTag:
+          fallbackHotel.refundableTag ??
+          null,
+
+        refundable:
+          fallbackHotel.refundable ??
+          null,
+
+        freeCancellationUntil:
+          fallbackHotel
+            .freeCancellationUntil ??
+          null,
+
+        cancellationPenalty:
+          fallbackHotel
+            .cancellationPenalty ??
+          null,
+
+        cancellationPenaltyCurrency:
+          fallbackHotel
+            .cancellationPenaltyCurrency ??
+          null,
+
+        cancellationPenaltyType:
+          fallbackHotel
+            .cancellationPenaltyType ??
+          null,
+
+        cancellationTimezone:
+          fallbackHotel
+            .cancellationTimezone ??
+          null,
+
+        cancellationPolicies:
+          Array.isArray(
+            fallbackHotel
+              .cancellationPolicies
+          )
+            ? fallbackHotel
+                .cancellationPolicies
+            : [],
+
+        roomName:
+          fallbackHotel.roomName ??
+          null,
+
+        deepLink:
+          fallbackHotel.deepLink ??
+          null,
+      };
+    }
+
+    return {
+      provider:
+        bestOffer.provider ??
+        null,
+
+      price:
+        bestOffer.price ??
+        null,
+
+      basePrice:
+        bestOffer.basePrice ??
+        null,
+
+      saving:
+        bestOffer.saving ??
+        0,
+
+      currency:
+        bestOffer.currency ??
+        null,
+
+      taxesIncluded:
+        bestOffer.taxesIncluded ??
+        null,
+
+      includedTaxes:
+        bestOffer.includedTaxes ??
+        0,
+
+      excludedTaxes:
+        bestOffer.excludedTaxes ??
+        0,
+
+      unknownTaxes:
+        bestOffer.unknownTaxes ??
+        0,
+
+      taxBreakdown:
+        Array.isArray(
+          bestOffer.taxBreakdown
+        )
+          ? bestOffer.taxBreakdown
+          : [],
+
+      totalKnownCost:
+        bestOffer.totalKnownCost ??
+        null,
+
+      cancellationPolicy:
+        bestOffer.cancellationPolicy ??
+        null,
+
+      refundableTag:
+        bestOffer.refundableTag ??
+        null,
+
+      refundable:
+        bestOffer.refundable ??
+        null,
+
+      freeCancellationUntil:
+        bestOffer
+          .freeCancellationUntil ??
+        null,
+
+      cancellationPenalty:
+        bestOffer
+          .cancellationPenalty ??
+        null,
+
+      cancellationPenaltyCurrency:
+        bestOffer
+          .cancellationPenaltyCurrency ??
+        null,
+
+      cancellationPenaltyType:
+        bestOffer
+          .cancellationPenaltyType ??
+        null,
+
+      cancellationTimezone:
+        bestOffer
+          .cancellationTimezone ??
+        null,
+
+      cancellationPolicies:
+        Array.isArray(
+          bestOffer
+            .cancellationPolicies
+        )
+          ? bestOffer
+              .cancellationPolicies
+          : [],
+
+      roomName:
+        bestOffer.roomName ??
+        null,
+
+      deepLink:
+        bestOffer.deepLink ??
+        null,
+    };
+  }
+
   function mergeHotelRecords(firstHotel, secondHotel) {
-  
     const offers =
       mergeOffers(
         getValidOffers(firstHotel),
         getValidOffers(secondHotel)
       );
-  
+
     const preferredCurrency =
       normalizeCurrency(
         firstHotel.currency
@@ -662,7 +1011,19 @@ function normalizeText(value = "") {
         offers,
         preferredCurrency
       );
-  
+
+    const commercialData =
+      createCommercialData(
+        bestOffer,
+        firstHotel
+      );
+
+    const reviewBundle =
+      chooseReviewBundle(
+        firstHotel,
+        secondHotel
+      );
+
     const dataSources =
       uniqueValues([
         ...(firstHotel.dataSources ?? []),
@@ -670,148 +1031,172 @@ function normalizeText(value = "") {
         firstHotel.sourceProvider,
         secondHotel.sourceProvider,
       ]);
-  
+
     const amenities =
       uniqueValues([
         ...(firstHotel.amenities ?? []),
         ...(secondHotel.amenities ?? []),
       ]);
-  
+
     const facilities =
       uniqueValues([
         ...(firstHotel.facilities ?? []),
         ...(secondHotel.facilities ?? []),
       ]);
-  
-    const availableData =
+
+    const mergedAvailableData =
       mergeBooleanData(
         firstHotel.availableData,
         secondHotel.availableData
       );
-  
+
+    const price =
+      Number(
+        commercialData.price
+      );
+
+    const basePrice =
+      Number(
+        commercialData.basePrice
+      );
+
+    const saving =
+      Number(
+        commercialData.saving
+      );
+
+    const availableData = {
+      ...mergedAvailableData,
+
+      hasPrice:
+        Number.isFinite(price) &&
+        price > 0,
+
+      hasBasePrice:
+        Number.isFinite(basePrice) &&
+        Number.isFinite(price) &&
+        basePrice > price,
+
+      hasSaving:
+        Number.isFinite(saving) &&
+        saving > 0,
+
+      hasReviewScore:
+        hasReviewScore(
+          reviewBundle
+        ),
+
+      hasReviewCount:
+        hasReviewCount(
+          reviewBundle
+        ) &&
+        reviewBundle.reviewCount > 0,
+
+      hasAmenities:
+        amenities.length > 0,
+    };
+
     return {
       ...firstHotel,
-  
+
       id:
         firstHotel.id,
-  
+
       sourceProvider:
         firstHotel.sourceProvider,
-  
+
       sourceHotelId:
         firstHotel.sourceHotelId,
-  
+
       dataSources,
-  
+
       dataConfidence:
         getBestDataConfidence(
           firstHotel.dataConfidence,
           secondHotel.dataConfidence
         ),
-  
+
       availableData,
-  
+
       offers,
-  
+
       name:
         preferValue(
           firstHotel.name,
           secondHotel.name
         ),
-  
-      provider:
-        bestOffer?.provider ??
-        firstHotel.provider,
-  
+
       stars:
         preferHigherNumber(
           firstHotel.stars,
           secondHotel.stars
         ),
-  
+
       reviewScore:
-        preferValue(
-          firstHotel.reviewScore,
-          secondHotel.reviewScore
-        ),
-  
+        reviewBundle.reviewScore,
+
       reviewCount:
-        preferHigherNumber(
-          firstHotel.reviewCount,
-          secondHotel.reviewCount
-        ),
-  
+        reviewBundle.reviewCount,
+
       reviewText:
-        preferValue(
-          firstHotel.reviewText,
-          secondHotel.reviewText
-        ),
-  
-      price:
-        bestOffer?.price ??
-        firstHotel.price,
-  
-      basePrice:
-        bestOffer?.basePrice ??
-        firstHotel.basePrice,
-  
-      saving:
-        bestOffer?.saving ??
-        firstHotel.saving,
-  
-      currency:
-        bestOffer?.currency ??
-        firstHotel.currency,
-  
+        reviewBundle.reviewText,
+
+      reviewSourceProvider:
+        reviewBundle.sourceProvider,
+
+      reviewSourceHotelId:
+        reviewBundle.sourceHotelId,
+
+      ...commercialData,
+
       distance:
         preferLowerDistance(
           firstHotel.distance,
           secondHotel.distance
         ),
-  
+
       image:
         preferValue(
           firstHotel.image,
           secondHotel.image
         ),
-  
+
       address:
         preferValue(
           firstHotel.address,
           secondHotel.address
         ),
-  
+
       city:
         preferValue(
           firstHotel.city,
           secondHotel.city
         ),
-  
+
       country:
         preferValue(
           firstHotel.country,
           secondHotel.country
         ),
-  
+
       latitude:
         preferValue(
           firstHotel.latitude,
           secondHotel.latitude
         ),
-  
+
       longitude:
         preferValue(
           firstHotel.longitude,
           secondHotel.longitude
         ),
-  
+
       amenities,
-  
+
       facilities,
     };
-  
   }
-  
+
   function mergeProviderHotelResults(hotels = []) {
   
     if (!Array.isArray(hotels)) {
