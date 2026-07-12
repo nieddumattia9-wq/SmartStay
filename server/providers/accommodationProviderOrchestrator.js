@@ -51,6 +51,12 @@ const {
   "./common/providerSearchOutcomeService"
 );
 
+const {
+  executeProviderOperationWithTimeout,
+} = require(
+  "./common/providerOperationTimeoutService"
+);
+
 function getEnabledProvidersForCapability(
   capabilityName
 ) {
@@ -317,11 +323,24 @@ async function executeProviderOperation({
       );
 
     const rawResult =
-      await operation({
-        request,
+      await executeProviderOperationWithTimeout({
+        providerId:
+          provider.id,
 
-        context: {
-          title,
+        methodName,
+
+        operation,
+
+        timeoutMs:
+          provider.operationTimeouts
+            ?.[methodName],
+
+        operationArguments: {
+          request,
+
+          context: {
+            title,
+          },
         },
       });
 
@@ -700,9 +719,24 @@ async function getHotelDetailsFromProvider({
       );
 
     const details =
-      await getHotelDetails({
-        hotelId,
-        providerContext,
+      await executeProviderOperationWithTimeout({
+        providerId:
+          provider.id,
+
+        methodName:
+          "getHotelDetails",
+
+        operation:
+          getHotelDetails,
+
+        timeoutMs:
+          provider.operationTimeouts
+            ?.getHotelDetails,
+
+        operationArguments: {
+          hotelId,
+          providerContext,
+        },
       });
 
     recordProviderHealthyResponse(
