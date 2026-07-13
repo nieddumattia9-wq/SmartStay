@@ -7,6 +7,7 @@ const {
   const {
     saveSearchSession,
     requireSearchSession,
+    tryAcquireSearchContinuation,
     updateSearchSession,
     appendHotelsToSearchSession,
   } = require("../storage/searchSession");
@@ -403,38 +404,51 @@ const {
   // Continue Hotel Search
   // =========================
 
+  function createContinuingSearchResponse(
+    session
+  ) {
+
+    return {
+      success:
+        true,
+
+      searchId:
+        session.searchId,
+
+      status:
+        session.status ??
+        "InProgress",
+
+      searchIncomplete:
+        session.searchIncomplete ??
+        true,
+
+      isContinuing:
+        true,
+
+      totalHotels:
+        session.hotels?.length ??
+        0,
+
+      nextResultsKey:
+        getPublicNextResultsKey(
+          session.continuation
+        ),
+
+      hotels:
+        session.hotels ?? [],
+    };
+
+  }
+
   async function continueHotelSearch(searchId) {
 const session =
       requireSearchSession(searchId);
 if (session.isContinuing) {
 
-      return {
-        success:
-          true,
-
-        searchId:
-          session.searchId,
-
-        status:
-          session.status ?? "InProgress",
-
-        searchIncomplete:
-          session.searchIncomplete ?? true,
-
-        isContinuing:
-          true,
-
-        totalHotels:
-          session.hotels?.length ?? 0,
-
-        nextResultsKey:
-          getPublicNextResultsKey(
-            session.continuation
-          ),
-
-        hotels:
-          session.hotels ?? [],
-      };
+      return createContinuingSearchResponse(
+        session
+      );
 
     }
 
@@ -518,16 +532,22 @@ if (session.isContinuing) {
       };
 
     }
+    const continuationLock =
+      tryAcquireSearchContinuation(
+        searchId
+      );
 
-    updateSearchSession(searchId, {
-        isContinuing:
-          true,
+    if (
+      !continuationLock.acquired
+    ) {
 
-        lastError:
-          null,
-      });
+      return createContinuingSearchResponse(
+        continuationLock.session
+      );
 
-      try {
+    }
+
+    try {
 
         const payload = {
           ...session.originalSearchData,

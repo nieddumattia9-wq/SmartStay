@@ -367,6 +367,76 @@ function requireSearchSession(
 
 }
 
+function tryAcquireSearchContinuation(
+  searchId
+) {
+
+  const normalizedSearchId =
+    normalizeSearchId(
+      searchId
+    );
+
+  const currentSession =
+    requireSearchSession(
+      normalizedSearchId
+    );
+
+  if (
+    currentSession.isContinuing
+  ) {
+
+    return {
+      acquired:
+        false,
+
+      session:
+        currentSession,
+    };
+
+  }
+
+  const now =
+    Date.now();
+
+  const internalSession =
+    sessions.get(
+      normalizedSearchId
+    );
+
+  const lockedSession = {
+    ...internalSession,
+
+    isContinuing:
+      true,
+
+    lastError:
+      null,
+
+    updatedAt:
+      now,
+
+    expiresAt:
+      now +
+      SEARCH_SESSION_TTL_MS,
+  };
+
+  sessions.set(
+    normalizedSearchId,
+    lockedSession
+  );
+
+  return {
+    acquired:
+      true,
+
+    session:
+      cloneSearchSessionData(
+        lockedSession
+      ),
+  };
+
+}
+
 function updateSearchSession(searchId, updates = {}) {
 
   if (!searchId) {
@@ -514,6 +584,7 @@ module.exports = {
   getSearchSession,
   getSearchSessionState,
   requireSearchSession,
+  tryAcquireSearchContinuation,
   updateSearchSession,
   appendHotelsToSearchSession,
   clearSearchSession,
