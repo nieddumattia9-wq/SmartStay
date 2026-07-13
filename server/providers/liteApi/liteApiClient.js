@@ -141,6 +141,7 @@ async function callLiteApiGet({
   params = {},
   title = "GET",
   timeoutMs = DEFAULT_HTTP_TIMEOUT_MS,
+  signal,
 }) {
   const url =
     buildLiteApiUrl(endpointPath);
@@ -158,6 +159,7 @@ async function callLiteApiGet({
       headers: createLiteApiHeaders(),
       params,
       timeout: timeoutMs,
+      signal,
       validateStatus: () => true,
     }
   );
@@ -199,6 +201,7 @@ async function callLiteApiPost({
   payload = {},
   title = "POST",
   timeoutMs = DEFAULT_HTTP_TIMEOUT_MS,
+  signal,
 }) {
   const url =
     buildLiteApiUrl(endpointPath);
@@ -216,6 +219,7 @@ async function callLiteApiPost({
     {
       headers: createLiteApiHeaders(),
       timeout: timeoutMs,
+      signal,
       validateStatus: () => true,
     }
   );
@@ -252,19 +256,31 @@ async function callLiteApiPost({
   };
 }
 
-async function getLiteApiHotels(params = {}) {
+async function getLiteApiHotels(
+  params = {},
+  {
+    signal,
+  } = {}
+) {
   return callLiteApiGet({
     endpointPath: "/data/hotels",
     params,
     title: "GET HOTEL DATA",
+    signal,
   });
 }
 
-async function getLiteApiRates(payload = {}) {
+async function getLiteApiRates(
+  payload = {},
+  {
+    signal,
+  } = {}
+) {
   return callLiteApiPost({
     endpointPath: "/hotels/rates",
     payload,
     title: "GET HOTEL RATES",
+    signal,
   });
 }
 
@@ -427,6 +443,7 @@ async function searchLiteApiRates({
   guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
   limit = LITEAPI_RESULTS_LIMIT,
   sessionId = createLiteApiSessionId(),
+  signal,
 } = {}) {
   const payload =
     createLiteApiRatesPayload({
@@ -446,7 +463,12 @@ async function searchLiteApiRates({
       sessionId,
     });
 
-  return getLiteApiRates(payload);
+  return getLiteApiRates(
+    payload,
+    {
+      signal,
+    }
+  );
 }
 
 async function searchLiteApiRatesByCity(

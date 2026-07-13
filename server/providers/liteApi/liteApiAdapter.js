@@ -152,6 +152,7 @@ function createLiteApiAdapter(
 
     async searchHotels({
       request,
+      signal,
     } = {}) {
       const providerInput =
         createLiteApiSearchInput(
@@ -159,9 +160,10 @@ function createLiteApiAdapter(
         );
 
       const response =
-        await searchLiteApiRates(
-          providerInput
-        );
+        await searchLiteApiRates({
+          ...providerInput,
+          signal,
+        });
 
       const rawData =
         response?.data ?? null;
@@ -247,6 +249,7 @@ function createLiteApiAdapter(
 
     async getHotelDetails({
       hotelId,
+      signal,
     } = {}) {
       if (
         hotelId === null ||
@@ -264,10 +267,15 @@ function createLiteApiAdapter(
         throw error;
       }
 
-      return getLiteApiHotels({
-        hotelIds:
-          hotelId,
-      });
+      return getLiteApiHotels(
+        {
+          hotelIds:
+            hotelId,
+        },
+        {
+          signal,
+        }
+      );
     },
   };
 }
