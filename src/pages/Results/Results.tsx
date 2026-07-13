@@ -1,27 +1,32 @@
 import {
-    useEffect,
-    useMemo,
-    useState,
-  } from "react";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
   
   import {
     useNavigate,
     useSearchParams,
   } from "react-router-dom";
   
-  import HotelCard from "../../components/HotelCard/HotelCard";
+import HotelCard from "../../components/HotelCard/HotelCard";
+import HotelDetailsPanel from "../../components/HotelDetailsPanel/HotelDetailsPanel";
   
   import {
     sliderOptions,
   } from "../../components/SmartOptimizer/sliderData";
-  import {
-    ApiRequestError,
-    getSearchSession,
-  } from "../../services/api";
-  import type {
-    Hotel,
-    SearchSessionResponse,
-  } from "../../types/hotel";
+import {
+  ApiRequestError,
+  getHotelDetails,
+  getSearchSession,
+} from "../../services/api";
+import type {
+  Hotel,
+  HotelDetails,
+  SearchSessionResponse,
+} from "../../types/hotel";
   
   import {
     rankHotelsWithSmartStayEngine,
@@ -338,6 +343,50 @@ import {
 
   }
 
+function getHotelDetailsFailureMessage(
+  error: unknown
+) {
+  if (
+    !(error instanceof ApiRequestError)
+  ) {
+    return "Accommodation details are temporarily unavailable.";
+  }
+
+  if (
+    error.code ===
+    "SEARCH_SESSION_EXPIRED"
+  ) {
+    return "This search has expired. Start a new search to refresh the available stays.";
+  }
+
+  if (
+    error.code ===
+    "SEARCH_SESSION_NOT_FOUND"
+  ) {
+    return "This search is no longer available. Start a new search.";
+  }
+
+  if (
+    error.code ===
+    "HOTEL_NOT_IN_SEARCH"
+  ) {
+    return "This accommodation is no longer part of the current search.";
+  }
+
+  if (
+    error.code ===
+      "REQUEST_TIMEOUT" ||
+    error.status === 408
+  ) {
+    return "The accommodation details took too long to load. Please try again.";
+  }
+
+  return (
+    error.message ||
+    "Accommodation details are temporarily unavailable."
+  );
+}
+
   function Results() {
     const navigate =
       useNavigate();
@@ -365,6 +414,24 @@ import {
   
     const [showFullList, setShowFullList] =
       useState(false);
+
+    const [detailsOpen, setDetailsOpen] =
+      useState(false);
+
+    const [hotelDetails, setHotelDetails] =
+      useState<HotelDetails | null>(null);
+
+    const [hotelDetailsLoading, setHotelDetailsLoading] =
+      useState(false);
+
+    const [hotelDetailsError, setHotelDetailsError] =
+      useState("");
+
+    const [activeDetailsHotelId, setActiveDetailsHotelId] =
+      useState<string | null>(null);
+
+    const detailsRequestIdRef =
+      useRef(0);
   
     const selectedPreferenceIndex =
       useMemo(() => {
@@ -479,7 +546,99 @@ import {
   
       loadResults();
     }, [searchId]);
-  
+
+    const handleCloseHotelDetails =
+      useCallback(() => {
+        detailsRequestIdRef.current += 1;
+
+        setDetailsOpen(false);
+        setHotelDetailsLoading(false);
+        setActiveDetailsHotelId(null);
+      }, []);
+
+    const handleViewHotelDetails =
+      useCallback(
+        async (
+          hotel: Hotel
+        ) => {
+          const requestId =
+            detailsRequestIdRef.current + 1;
+
+          detailsRequestIdRef.current =
+            requestId;
+
+          setDetailsOpen(true);
+          setHotelDetails(null);
+          setHotelDetailsError("");
+          setHotelDetailsLoading(true);
+          setActiveDetailsHotelId(
+            hotel.id
+          );
+
+          if (!searchId) {
+            setHotelDetailsError(
+              "The current search is missing. Start a new search."
+            );
+
+            setHotelDetailsLoading(false);
+
+            return;
+          }
+
+          try {
+            const response =
+              await getHotelDetails(
+                hotel.id,
+                searchId
+              );
+
+            if (
+              detailsRequestIdRef.current !==
+              requestId
+            ) {
+              return;
+            }
+
+            if (!response.hotel) {
+              setHotelDetailsError(
+                "No additional information is available for this accommodation."
+              );
+
+              return;
+            }
+
+            setHotelDetails(
+              response.hotel
+            );
+          } catch (error) {
+            console.error(
+              error
+            );
+
+            if (
+              detailsRequestIdRef.current !==
+              requestId
+            ) {
+              return;
+            }
+
+            setHotelDetailsError(
+              getHotelDetailsFailureMessage(
+                error
+              )
+            );
+          } finally {
+            if (
+              detailsRequestIdRef.current ===
+              requestId
+            ) {
+              setHotelDetailsLoading(false);
+            }
+          }
+        },
+        [searchId]
+      );
+
     if (loading) {
       return (
         <div
@@ -715,7 +874,15 @@ import {
                     evaluation.hotel,
                     averageSearchPrice
                   )}
-                />
+                  detailsLoading={
+                    hotelDetailsLoading &&
+                    activeDetailsHotelId ===
+                      evaluation.hotel.id
+                  }
+                  onViewDetails={
+                    handleViewHotelDetails
+                  }
+                  />
               </div>
             ))}
           </section>
@@ -836,7 +1003,15 @@ import {
                           evaluation.hotel,
                           averageSearchPrice
                         )}
-                      />
+                        detailsLoading={
+                          hotelDetailsLoading &&
+                          activeDetailsHotelId ===
+                            evaluation.hotel.id
+                        }
+                        onViewDetails={
+                          handleViewHotelDetails
+                        }
+                        />
                     ))}
                   </div>
                 </>
@@ -845,6 +1020,15 @@ import {
           )}
         </>
       )}
+      {detailsOpen && (
+        <HotelDetailsPanel
+          details={hotelDetails}
+          loading={hotelDetailsLoading}
+          error={hotelDetailsError}
+          onClose={handleCloseHotelDetails}
+        />
+      )}
+
     </main>
   );
 }

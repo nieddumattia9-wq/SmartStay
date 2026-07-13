@@ -1,3 +1,7 @@
+import type {
+  HotelDetailsResponse,
+} from "../types/hotel";
+
 const API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:3001/api";
@@ -255,9 +259,9 @@ export async function continueHotelSearch(
 export async function getHotelDetails(
   hotelId: string,
   searchId?: string | null
-) {
+): Promise<HotelDetailsResponse> {
 
-  return requestJson(
+  return requestJson<HotelDetailsResponse>(
     `${API_URL}/hotel-details`,
     {
       method: "POST",

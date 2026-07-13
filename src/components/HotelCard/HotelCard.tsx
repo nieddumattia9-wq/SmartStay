@@ -14,6 +14,8 @@ type HotelCardProps = {
   badges?: SmartBadge[];
   reasons?: string[];
   priceAdvantagePercent?: number | null;
+  detailsLoading?: boolean;
+  onViewDetails: (hotel: Hotel) => void;
 };
 
 function formatPrice(
@@ -172,6 +174,8 @@ function HotelCard({
   badges = [],
   reasons = [],
   priceAdvantagePercent = null,
+  detailsLoading = false,
+  onViewDetails,
 }: HotelCardProps) {
   const hasImage =
     Boolean(hotel.image);
@@ -353,8 +357,17 @@ function HotelCard({
           <button
             type="button"
             className="hotel-card__button"
+            onClick={() => {
+              onViewDetails(
+                hotel
+              );
+            }}
+            disabled={detailsLoading}
+            aria-busy={detailsLoading}
           >
-            View Details
+            {detailsLoading
+              ? "Loading details..."
+              : "View Details"}
           </button>
         </div>
       </div>

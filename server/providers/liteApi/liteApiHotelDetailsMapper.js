@@ -573,6 +573,232 @@ function buildAddress(
 
 }
 
+function decodeCodePoint(
+  value,
+  radix
+) {
+
+  const codePoint =
+    Number.parseInt(
+      value,
+      radix
+    );
+
+  if (
+    !Number.isInteger(
+      codePoint
+    ) ||
+    codePoint < 0 ||
+    codePoint > 0x10ffff
+  ) {
+
+    return "";
+
+  }
+
+  try {
+
+    return String.fromCodePoint(
+      codePoint
+    );
+
+  } catch {
+
+    return "";
+
+  }
+
+}
+
+function decodeHtmlEntities(
+  value
+) {
+
+  return value
+    .replace(
+      /&amp;/gi,
+      "&"
+    )
+    .replace(
+      /&nbsp;/gi,
+      " "
+    )
+    .replace(
+      /&quot;/gi,
+      '"'
+    )
+    .replace(
+      /&apos;/gi,
+      "'"
+    )
+    .replace(
+      /&#39;/gi,
+      "'"
+    )
+    .replace(
+      /&lt;/gi,
+      "<"
+    )
+    .replace(
+      /&gt;/gi,
+      ">"
+    )
+    .replace(
+      /&#x([0-9a-f]+);/gi,
+      (
+        _match,
+        value
+      ) =>
+        decodeCodePoint(
+          value,
+          16
+        )
+    )
+    .replace(
+      /&#([0-9]+);/g,
+      (
+        _match,
+        value
+      ) =>
+        decodeCodePoint(
+          value,
+          10
+        )
+    );
+
+}
+
+function normalizeDescription(
+  value
+) {
+
+  const rawDescription =
+    asText(
+      value
+    );
+
+  if (!rawDescription) {
+
+    return null;
+
+  }
+
+  const decoded =
+    decodeHtmlEntities(
+      rawDescription
+    );
+
+  const plainText =
+    decoded
+      .replace(
+        /<!--[\s\S]*?-->/g,
+        " "
+      )
+      .replace(
+        /<script\b[^>]*>[\s\S]*?<\/script>/gi,
+        " "
+      )
+      .replace(
+        /<style\b[^>]*>[\s\S]*?<\/style>/gi,
+        " "
+      )
+      .replace(
+        /<\s*br\s*\/?\s*>/gi,
+        "\n"
+      )
+      .replace(
+        /<\s*\/\s*(p|div|li|h[1-6]|section|article)\s*>/gi,
+        "\n"
+      )
+      .replace(
+        /<\s*li\b[^>]*>/gi,
+        "? "
+      )
+      .replace(
+        /<[^>]+>/g,
+        " "
+      )
+      .replace(
+        /\r/g,
+        ""
+      )
+      .replace(
+        /[ \t]+\n/g,
+        "\n"
+      )
+      .replace(
+        /\n[ \t]+/g,
+        "\n"
+      )
+      .replace(
+        /[ \t]{2,}/g,
+        " "
+      )
+      .replace(
+        /\n{3,}/g,
+        "\n\n"
+      )
+      .trim();
+
+  return plainText ||
+    null;
+
+}
+
+function normalizeCountry(
+  value
+) {
+
+  const country =
+    asText(
+      value
+    );
+
+  if (!country) {
+
+    return "";
+
+  }
+
+  if (
+    !/^[a-z]{2}$/i.test(
+      country
+    )
+  ) {
+
+    return country;
+
+  }
+
+  const countryCode =
+    country.toUpperCase();
+
+  try {
+
+    const displayNames =
+      new Intl.DisplayNames(
+        ["en"],
+        {
+          type:
+            "region",
+        }
+      );
+
+    return (
+      displayNames.of(
+        countryCode
+      ) ||
+      countryCode
+    );
+
+  } catch {
+
+    return countryCode;
+
+  }
+
+}
+
 function findMatchingRecord(
   records,
   requestedHotelId
@@ -696,17 +922,18 @@ function mapLiteApiHotelDetailsResponse(
       "Accommodation",
 
     description:
-      pickText(
-        sources,
-        [
-          ["description"],
-          ["hotelDescription"],
-          ["overview"],
-          ["shortDescription"],
-          ["descriptions", "en"],
-        ]
-      ) ||
-      null,
+      normalizeDescription(
+        pickText(
+          sources,
+          [
+            ["description"],
+            ["hotelDescription"],
+            ["overview"],
+            ["shortDescription"],
+            ["descriptions", "en"],
+          ]
+        )
+      ),
 
     stars:
       stars ?? 0,
@@ -732,15 +959,17 @@ function mapLiteApiHotelDetailsResponse(
       ),
 
     country:
-      pickText(
-        sources,
-        [
-          ["country"],
-          ["countryName"],
-          ["location", "country"],
-          ["address", "country"],
-          ["country", "name"],
-        ]
+      normalizeCountry(
+        pickText(
+          sources,
+          [
+            ["country"],
+            ["countryName"],
+            ["location", "country"],
+            ["address", "country"],
+            ["country", "name"],
+          ]
+        )
       ),
 
     latitude:

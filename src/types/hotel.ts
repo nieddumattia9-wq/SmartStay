@@ -35,8 +35,6 @@ export interface HotelOffer {
 
   provider: string;
 
-  sourceProvider: string;
-
   price: number;
 
   basePrice: number;
@@ -58,10 +56,6 @@ export interface HotelOffer {
 export interface Hotel {
 
   id: string;
-
-  sourceProvider: string;
-
-  sourceHotelId: string;
 
   dataSources: string[];
 
@@ -108,6 +102,52 @@ export interface Hotel {
   amenities: string[];
 
   facilities: string[];
+
+}
+
+export interface HotelDetails {
+
+  id: string;
+
+  provider: string;
+
+  name: string;
+
+  description: string | null;
+
+  stars: number;
+
+  reviewScore: number | null;
+
+  reviewCount: number | null;
+
+  address: string;
+
+  city: string;
+
+  country: string;
+
+  latitude: number | null;
+
+  longitude: number | null;
+
+  images: string[];
+
+  amenities: string[];
+
+  facilities: string[];
+
+  checkIn: string | null;
+
+  checkOut: string | null;
+
+}
+
+export interface HotelDetailsResponse {
+
+  success: boolean;
+
+  hotel: HotelDetails | null;
 
 }
 
