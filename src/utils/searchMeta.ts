@@ -1,6 +1,18 @@
+import {
+  normalizeSmartPreference,
+  normalizeSmartStaySearchProfile,
+  type SmartStayPreference,
+  type SmartStaySearchProfile,
+} from "./smartStaySearchProfile";
+
 export type StoredSearchMeta = {
   destinationLabel: string;
-  smartPreference: unknown;
+  smartPreference:
+    SmartStayPreference;
+
+  smartStayProfile:
+    SmartStaySearchProfile | null;
+
   totalBudget: number | null;
   currency: string;
   checkIn: string;
@@ -12,6 +24,7 @@ export type StoredSearchMeta = {
 type CreateStoredSearchMetaInput = {
   destinationLabel: string;
   smartPreference: unknown;
+  smartStayProfile?: unknown;
   budgetInput: unknown;
   currency: string;
   checkIn: string;
@@ -194,6 +207,22 @@ export function normalizeMaxDistanceKm(
 export function createStoredSearchMeta(
   input: CreateStoredSearchMetaInput
 ): StoredSearchMeta {
+  const legacySmartPreference =
+    normalizeSmartPreference(
+      input.smartPreference
+    );
+
+  const smartStayProfile =
+    normalizeSmartStaySearchProfile(
+      input.smartStayProfile,
+      legacySmartPreference
+    );
+
+  const effectiveSmartPreference =
+    smartStayProfile
+      ?.effectivePreference ??
+    legacySmartPreference;
+
   return {
     destinationLabel:
       normalizeText(
@@ -201,7 +230,9 @@ export function createStoredSearchMeta(
       ),
 
     smartPreference:
-      input.smartPreference,
+      effectiveSmartPreference,
+
+    smartStayProfile,
 
     totalBudget:
       normalizeTotalBudget(
@@ -263,6 +294,22 @@ export function normalizeStoredSearchMeta(
       source.checkOut
     );
 
+  const legacySmartPreference =
+    normalizeSmartPreference(
+      source.smartPreference
+    );
+
+  const smartStayProfile =
+    normalizeSmartStaySearchProfile(
+      source.smartStayProfile,
+      legacySmartPreference
+    );
+
+  const effectiveSmartPreference =
+    smartStayProfile
+      ?.effectivePreference ??
+    legacySmartPreference;
+
   return {
     destinationLabel:
       normalizeText(
@@ -270,7 +317,9 @@ export function normalizeStoredSearchMeta(
       ),
 
     smartPreference:
-      source.smartPreference,
+      effectiveSmartPreference,
+
+    smartStayProfile,
 
     totalBudget:
       normalizeTotalBudget(
