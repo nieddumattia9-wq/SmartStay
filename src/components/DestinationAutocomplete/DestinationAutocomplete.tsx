@@ -105,7 +105,18 @@ export type DestinationAutocompleteProps = {
 
 };
 
-export function DestinationAutocomplete({
+export function cleanDestinationCountry(
+  country: string
+) {
+  return country
+    .replace(
+      /,\s*[A-Z]{2}$/i,
+      ""
+    )
+    .trim();
+}
+
+function DestinationAutocomplete({
   value,
   onChange,
   onSelect,
@@ -144,6 +155,11 @@ export function DestinationAutocomplete({
   const [suggestions, setSuggestions] =
     useState<Destination[]>([]);
 
+  const selectedDestinationLabelRef =
+    useRef<string | null>(
+      null
+    );
+
   const debouncedQuery =
     useDebounce(value, 300);
 
@@ -159,10 +175,21 @@ export function DestinationAutocomplete({
     destination: Destination
   ) => {
 
+    const countryLabel =
+      cleanDestinationCountry(
+        destination.country
+      );
+
     const label =
-      destination.country
-        ? `${destination.name}, ${destination.country}`
+      countryLabel
+        ? `${destination.name}, ${countryLabel}`
         : destination.name;
+
+    selectedDestinationLabelRef.current =
+      label;
+
+    setSuggestions([]);
+    setLoading(false);
 
     onChange(label);
 
@@ -186,6 +213,17 @@ export function DestinationAutocomplete({
 
       const query =
         debouncedQuery.trim();
+
+      if (
+        selectedDestinationLabelRef.current ===
+        query
+      ) {
+        setSuggestions([]);
+        setLoading(false);
+        closeDropdown();
+
+        return;
+      }
 
       if (query.length < 2) {
 
@@ -343,6 +381,8 @@ export function DestinationAutocomplete({
   useEffect(() => {
 
     if (value.trim().length === 0) {
+      selectedDestinationLabelRef.current =
+        null;
 
       setSuggestions([]);
 
@@ -384,21 +424,19 @@ export function DestinationAutocomplete({
   function handleInputChange(
     nextValue: string
   ) {
+    selectedDestinationLabelRef.current =
+      null;
+
+    setSuggestions([]);
 
     onChange(nextValue);
-
     onClearSelection?.();
 
     if (nextValue.trim().length > 0) {
-
       setIsOpen(true);
-
     } else {
-
       closeDropdown();
-
     }
-
   }
 
   function handleKeyDown(
@@ -481,7 +519,9 @@ export function DestinationAutocomplete({
   const showDropdown =
     isOpen &&
     suggestions.length > 0 &&
-    !disabled;
+    !disabled &&
+    selectedDestinationLabelRef.current ===
+      null;
 
   return (
 
@@ -590,9 +630,11 @@ export function DestinationAutocomplete({
                 <span className="destination-autocomplete__country">
 
                   {highlightMatch(
-                    destination.country,
-                    debouncedQuery
-                  )}
+  cleanDestinationCountry(
+    destination.country
+  ),
+  debouncedQuery
+)}
 
                 </span>
 

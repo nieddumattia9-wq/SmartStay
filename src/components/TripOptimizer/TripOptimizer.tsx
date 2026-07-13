@@ -3,9 +3,14 @@ import {
   createStoredSearchMeta,
   type StoredSearchMeta,
 } from "../../utils/searchMeta";
+
+import {
+  calculateAutomaticPreferenceBalance,
+} from "../../utils/preferenceBalance";
 import { useNavigate } from "react-router-dom";
 
 import {
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -84,10 +89,6 @@ const DEFAULT_GUESTS: GuestsSelectorValue = {
   children: 0,
   childAges: [],
   rooms: 1,
-};
-
-const DEFAULT_SMART_PREFERENCE: SmartOptimizerValue = {
-  selectedIndex: 2,
 };
 
 function createRoomsPayload(
@@ -177,11 +178,11 @@ function TripOptimizer() {
     );
 
   const [
-    smartPreference,
-    setSmartPreference,
+    manualSmartPreference,
+    setManualSmartPreference,
   ] =
-    useState<SmartOptimizerValue>(
-      DEFAULT_SMART_PREFERENCE
+    useState<SmartOptimizerValue | null>(
+      null
     );
 
   const [budget, setBudget] =
@@ -327,7 +328,8 @@ function TripOptimizer() {
               destinationLabel:
                 destination,
 
-              smartPreference,
+              smartPreference:
+                effectiveSmartPreference,
 
               budgetInput:
                 budget,
@@ -386,6 +388,87 @@ function TripOptimizer() {
         )
       : null;
 
+  const automaticPreferenceBalance =
+    calculateAutomaticPreferenceBalance({
+      hasDestination:
+        selectedDestination !== null,
+
+      totalBudget:
+        budget,
+
+      nightCount:
+        currentNightCount,
+
+      roomCount:
+        guests.rooms,
+
+      maxDistanceKm,
+    });
+
+  const effectiveSmartPreference:
+    SmartOptimizerValue =
+      automaticPreferenceBalance.isReady &&
+      manualSmartPreference !== null
+        ? manualSmartPreference
+        : {
+            selectedIndex:
+              automaticPreferenceBalance
+                .selectedIndex,
+          };
+
+  useEffect(() => {
+    setManualSmartPreference(null);
+  }, [
+    selectedDestination,
+    dates.checkIn,
+    dates.checkOut,
+    budget,
+    guests.rooms,
+    maxDistanceKm,
+  ]);
+
+  function handleSmartPreferenceChange(
+    value: SmartOptimizerValue
+  ) {
+    if (
+      !automaticPreferenceBalance.isReady
+    ) {
+      return;
+    }
+
+    setManualSmartPreference(value);
+  }
+
+  const numericBudget =
+    Number(
+      budget
+        .trim()
+        .replace(",", ".")
+    );
+
+  const formattedBalanceBudget =
+    Number.isFinite(numericBudget) &&
+    numericBudget > 0
+      ? new Intl.NumberFormat(
+          "en-IE",
+          {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 0,
+          }
+        ).format(numericBudget)
+      : null;
+
+  const distanceLimitDescription =
+    maxDistanceKm === null
+      ? "flexible distance setting"
+      : `${maxDistanceKm} km distance limit`;
+
+  const manualBalanceExplanation =
+    formattedBalanceBudget
+      ? `You adjusted the ranking priority. Your ${formattedBalanceBudget} budget and ${distanceLimitDescription} remain unchanged.`
+      : "You adjusted the ranking priority. Your budget and distance limits remain unchanged.";
+
   return (
     <div className="trip-card">
       <DestinationAutocomplete
@@ -436,11 +519,79 @@ function TripOptimizer() {
         />
       </div>
 
+      <div
+        className={`trip-card__balance-status ${
+          !automaticPreferenceBalance.isReady
+            ? "trip-card__balance-status--locked"
+            : manualSmartPreference
+              ? "trip-card__balance-status--manual"
+              : "trip-card__balance-status--automatic"
+        }`}
+        aria-live="polite"
+      >
+        <div className="trip-card__balance-status-header">
+          <strong>
+            Your SmartStay balance
+          </strong>
+
+          <div className="trip-card__balance-status-actions">
+            <span
+              className={`trip-card__balance-badge ${
+                !automaticPreferenceBalance.isReady
+                  ? "trip-card__balance-badge--waiting"
+                  : manualSmartPreference
+                    ? "trip-card__balance-badge--manual"
+                    : "trip-card__balance-badge--automatic"
+              }`}
+            >
+              {
+                !automaticPreferenceBalance.isReady
+                  ? "Waiting"
+                  : manualSmartPreference
+                    ? "Manual"
+                    : "Automatic"
+              }
+            </span>
+
+            {
+              automaticPreferenceBalance.isReady &&
+              manualSmartPreference && (
+                <button
+                  type="button"
+                  className="trip-card__balance-reset"
+                  onClick={() =>
+                    setManualSmartPreference(null)
+                  }
+                >
+                  Use automatic suggestion
+                </button>
+              )
+            }
+          </div>
+        </div>
+
+        <p>
+          {
+            manualSmartPreference
+              ? manualBalanceExplanation
+              : automaticPreferenceBalance
+                  .explanation
+          }
+        </p>
+      </div>
+
       <SmartOptimizer
-        value={smartPreference}
-        onChange={
-          setSmartPreference
+        value={
+          effectiveSmartPreference
         }
+        onChange={
+          handleSmartPreferenceChange
+        }
+        disabled={
+          !automaticPreferenceBalance
+            .isReady
+        }
+        className="smart-optimizer--guided"
       />
 
       <button

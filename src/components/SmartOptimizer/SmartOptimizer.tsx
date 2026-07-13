@@ -297,18 +297,18 @@ function SmartOptimizer({
 
       <h3 className="optimizer-title">
 
-        Optimization Preference
+        Your SmartStay balance
 
       </h3>
 
       <div className="optimizer-labels">
 
         <span>
-          Comfort
+          More comfort
         </span>
 
         <span>
-          Savings
+          More savings
         </span>
 
       </div>

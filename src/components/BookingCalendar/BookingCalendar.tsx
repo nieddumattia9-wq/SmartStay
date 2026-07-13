@@ -54,9 +54,14 @@ function isPastDate(date: Date) {
 }
 
 function formatDate(date: Date) {
-
-  return date.toLocaleDateString("en-GB");
-
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  ).format(date);
 }
 
 function BookingCalendar({

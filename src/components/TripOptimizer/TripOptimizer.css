@@ -241,3 +241,120 @@
   }
 
 }
+/* =========================
+   SMART BALANCE STATUS
+========================= */
+
+.trip-card__balance-status {
+  margin-top: 24px;
+  padding: 13px 15px;
+
+  border: 1px solid #dbe3ec;
+  border-radius: 15px;
+
+  background: #f8fafc;
+}
+
+.trip-card__balance-status--automatic {
+  border-color:
+    rgba(22, 224, 110, 0.28);
+
+  background:
+    rgba(22, 224, 110, 0.05);
+}
+
+.trip-card__balance-status--manual {
+  background: #ffffff;
+}
+
+.trip-card__balance-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.trip-card__balance-status strong {
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.trip-card__balance-status-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.trip-card__balance-badge {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 24px;
+  padding: 3px 9px;
+
+  border-radius: 999px;
+
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.trip-card__balance-badge--automatic {
+  background: rgba(22, 224, 110, 0.13);
+  color: #15803d;
+}
+
+.trip-card__balance-badge--manual {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.trip-card__balance-badge--waiting {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.trip-card__balance-status p {
+  margin: 7px 0 0;
+
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.trip-card__balance-reset {
+  padding: 0;
+
+  border: 0;
+  background: transparent;
+
+  color: #16a34a;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.trip-card__balance-reset:hover {
+  text-decoration: underline;
+}
+
+.trip-card .smart-optimizer--guided {
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .trip-card__balance-status-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .trip-card__balance-status-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

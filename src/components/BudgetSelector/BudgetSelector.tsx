@@ -238,7 +238,7 @@ function BudgetSelector({
 
       <label className="budget-selector__manual">
         <span className="budget-selector__manual-label">
-          Exact amount
+          Exact total budget
         </span>
 
         <span className="budget-selector__input-wrapper">
@@ -267,7 +267,7 @@ function BudgetSelector({
 
       <p className="budget-selector__helper">
         {averagePerNight !== null
-          ? `About ${formatMoney(
+          ? `Your budget averages ${formatMoney(
               averagePerNight,
               currency
             )} per night for ${nightCount} ${nightCount === 1

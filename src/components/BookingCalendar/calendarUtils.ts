@@ -126,10 +126,17 @@ export function formatMonthYear(date: Date): string {
 
 }
 
-export function formatDisplayDate(date: Date): string {
-
-  return date.toLocaleDateString("en-GB");
-
+export function formatDisplayDate(
+  date: Date
+): string {
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  ).format(date);
 }
 
 export function toApiDateString(date: Date): string {
