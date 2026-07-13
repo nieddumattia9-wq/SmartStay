@@ -133,6 +133,27 @@ const {
 
   }
 
+  function createStayServiceError({
+    code,
+    message,
+    status,
+  }) {
+
+    const error =
+      new Error(
+        message
+      );
+
+    error.code =
+      code;
+
+    error.status =
+      status;
+
+    return error;
+
+  }
+
   function findHotelInSession(session, hotelId) {
 
     if (!session || !Array.isArray(session.hotels)) {
@@ -148,27 +169,108 @@ const {
 
   }
 
-  function getProviderHotelId(hotelId, hotel = null) {
+  function requireHotelInSession(
+    session,
+    hotelId
+  ) {
 
-    if (hotel?.sourceHotelId) {
+    const normalizedHotelId =
+      typeof hotelId ===
+        "string"
+        ? hotelId.trim()
+        : "";
 
-      return hotel.sourceHotelId;
+    if (!normalizedHotelId) {
+
+      throw createStayServiceError({
+        code:
+          "HOTEL_ID_REQUIRED",
+
+        message:
+          "hotelId is required.",
+
+        status:
+          400,
+      });
 
     }
 
+    const hotel =
+      findHotelInSession(
+        session,
+        normalizedHotelId
+      );
+
+    if (!hotel) {
+
+      throw createStayServiceError({
+        code:
+          "HOTEL_NOT_IN_SEARCH",
+
+        message:
+          "The requested hotel does not belong to this search.",
+
+        status:
+          404,
+      });
+
+    }
+
+    return hotel;
+
+  }
+
+  function getProviderHotelId(
+    hotel
+  ) {
+
+    const sourceHotelId =
+      typeof hotel?.sourceHotelId ===
+        "string"
+        ? hotel.sourceHotelId.trim()
+        : "";
+
+    if (sourceHotelId) {
+
+      return sourceHotelId;
+
+    }
+
+    const canonicalHotelId =
+      typeof hotel?.id ===
+        "string"
+        ? hotel.id.trim()
+        : "";
+
     if (
-      typeof hotelId === "string" &&
-      hotelId.includes(":")
+      canonicalHotelId.includes(
+        ":"
+      )
     ) {
 
-      return hotelId
+      return canonicalHotelId
         .split(":")
         .slice(1)
         .join(":");
 
     }
 
-    return hotelId;
+    if (canonicalHotelId) {
+
+      return canonicalHotelId;
+
+    }
+
+    throw createStayServiceError({
+      code:
+        "HOTEL_PROVIDER_ID_UNAVAILABLE",
+
+      message:
+        "The provider hotel identifier is unavailable.",
+
+      status:
+        500,
+    });
 
   }
 
@@ -714,25 +816,19 @@ if (session.isContinuing) {
       searchId
     ) {
 
-      if (!hotelId) {
-
-        throw new Error(
-          "hotelId is required to retrieve hotel details."
+      const session =
+        requireSearchSession(
+          searchId
         );
 
-      }
-
-      const session =
-        requireSearchSession(searchId);
-const hotel =
-        findHotelInSession(
+      const hotel =
+        requireHotelInSession(
           session,
           hotelId
         );
 
       const providerHotelId =
         getProviderHotelId(
-          hotelId,
           hotel
         );
 

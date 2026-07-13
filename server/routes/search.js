@@ -30,6 +30,8 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "SEARCH_ID_REQUIRED",
     "SEARCH_SESSION_NOT_FOUND",
     "SEARCH_SESSION_EXPIRED",
+    "HOTEL_ID_REQUIRED",
+    "HOTEL_NOT_IN_SEARCH",
   ]);
 
 function isValidHttpStatus(
@@ -317,6 +319,7 @@ router.post("/hotel-details", async (req, res) => {
 
       return res.status(400).json({
         success: false,
+        code: "HOTEL_ID_REQUIRED",
         message: "hotelId is required.",
       });
 
