@@ -274,6 +274,226 @@ const {
 
   }
 
+  function getDetailText(
+    value,
+    fallback = ""
+  ) {
+
+    return typeof value ===
+      "string" &&
+      value.trim()
+        ? value.trim()
+        : fallback;
+
+  }
+
+  function getDetailNumber(
+    value,
+    fallback = null
+  ) {
+
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+
+      return fallback;
+
+    }
+
+    const number =
+      Number(
+        value
+      );
+
+    return Number.isFinite(
+      number
+    )
+      ? number
+      : fallback;
+
+  }
+
+  function mergeDetailStrings(
+    ...collections
+  ) {
+
+    return Array.from(
+      new Set(
+        collections
+          .flatMap(
+            (collection) =>
+              Array.isArray(
+                collection
+              )
+                ? collection
+                : []
+          )
+          .map(
+            (item) =>
+              getDetailText(
+                item
+              )
+          )
+          .filter(
+            Boolean
+          )
+      )
+    );
+
+  }
+
+  function createHotelDetailsResponse({
+    hotel,
+    providerDetails,
+  }) {
+
+    const details =
+      providerDetails &&
+      typeof providerDetails ===
+        "object" &&
+      !Array.isArray(
+        providerDetails
+      )
+        ? providerDetails
+        : {};
+
+    const sessionImage =
+      getDetailText(
+        hotel?.image
+      );
+
+    return {
+      success:
+        true,
+
+      hotel: {
+        id:
+          hotel.id,
+
+        provider:
+          getDetailText(
+            hotel.provider,
+            "Provider"
+          ),
+
+        name:
+          getDetailText(
+            details.name
+          ) ||
+          getDetailText(
+            hotel.name,
+            "Accommodation"
+          ),
+
+        description:
+          getDetailText(
+            details.description
+          ) ||
+          null,
+
+        stars:
+          getDetailNumber(
+            details.stars
+          ) ??
+          getDetailNumber(
+            hotel.stars,
+            0
+          ),
+
+        reviewScore:
+          getDetailNumber(
+            details.reviewScore
+          ) ??
+          getDetailNumber(
+            hotel.reviewScore
+          ),
+
+        reviewCount:
+          getDetailNumber(
+            details.reviewCount
+          ) ??
+          getDetailNumber(
+            hotel.reviewCount
+          ),
+
+        address:
+          getDetailText(
+            details.address
+          ) ||
+          getDetailText(
+            hotel.address
+          ),
+
+        city:
+          getDetailText(
+            details.city
+          ) ||
+          getDetailText(
+            hotel.city
+          ),
+
+        country:
+          getDetailText(
+            details.country
+          ) ||
+          getDetailText(
+            hotel.country
+          ),
+
+        latitude:
+          getDetailNumber(
+            details.latitude
+          ) ??
+          getDetailNumber(
+            hotel.latitude
+          ),
+
+        longitude:
+          getDetailNumber(
+            details.longitude
+          ) ??
+          getDetailNumber(
+            hotel.longitude
+          ),
+
+        images:
+          mergeDetailStrings(
+            details.images,
+            sessionImage
+              ? [sessionImage]
+              : []
+          ),
+
+        amenities:
+          mergeDetailStrings(
+            details.amenities,
+            hotel.amenities
+          ),
+
+        facilities:
+          mergeDetailStrings(
+            details.facilities,
+            hotel.facilities
+          ),
+
+        checkIn:
+          getDetailText(
+            details.checkIn
+          ) ||
+          null,
+
+        checkOut:
+          getDetailText(
+            details.checkOut
+          ) ||
+          null,
+      },
+    };
+
+  }
+
   // =========================
   // Search Destinations
   // =========================
@@ -837,15 +1057,21 @@ if (session.isContinuing) {
         session.providerId ??
         null;
 
-      return getHotelDetailsFromProvider({
-        sourceProvider,
+      const providerDetails =
+        await getHotelDetailsFromProvider({
+          sourceProvider,
 
-        hotelId:
-          providerHotelId,
+          hotelId:
+            providerHotelId,
 
-        providerContext:
-          hotel?.providerContext ??
-          null,
+          providerContext:
+            hotel?.providerContext ??
+            null,
+        });
+
+      return createHotelDetailsResponse({
+        hotel,
+        providerDetails,
       });
 
     }

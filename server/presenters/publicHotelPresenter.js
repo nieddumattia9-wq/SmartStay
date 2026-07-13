@@ -438,8 +438,134 @@ function createPublicHotels(
 
 }
 
+function createPublicHotelDetails(
+  hotel
+) {
+
+  if (
+    !hotel ||
+    typeof hotel !==
+      "object" ||
+    Array.isArray(
+      hotel
+    )
+  ) {
+
+    return null;
+
+  }
+
+  const id =
+    getText(
+      hotel.id
+    );
+
+  if (!id) {
+
+    return null;
+
+  }
+
+  const images =
+    getStringArray(
+      hotel.images
+    )
+      .map(
+        getSafeHttpUrl
+      )
+      .filter(
+        Boolean
+      );
+
+  return {
+    id,
+
+    provider:
+      getText(
+        hotel.provider,
+        "Provider"
+      ),
+
+    name:
+      getText(
+        hotel.name,
+        "Accommodation"
+      ),
+
+    description:
+      getNullableText(
+        hotel.description
+      ),
+
+    stars:
+      getFiniteNumber(
+        hotel.stars,
+        0
+      ),
+
+    reviewScore:
+      getFiniteNumber(
+        hotel.reviewScore
+      ),
+
+    reviewCount:
+      getFiniteNumber(
+        hotel.reviewCount
+      ),
+
+    address:
+      getText(
+        hotel.address
+      ),
+
+    city:
+      getText(
+        hotel.city
+      ),
+
+    country:
+      getText(
+        hotel.country
+      ),
+
+    latitude:
+      getFiniteNumber(
+        hotel.latitude
+      ),
+
+    longitude:
+      getFiniteNumber(
+        hotel.longitude
+      ),
+
+    images,
+
+    amenities:
+      getStringArray(
+        hotel.amenities
+      ),
+
+    facilities:
+      getStringArray(
+        hotel.facilities
+      ),
+
+    checkIn:
+      getNullableText(
+        hotel.checkIn
+      ),
+
+    checkOut:
+      getNullableText(
+        hotel.checkOut
+      ),
+  };
+
+}
+
 module.exports = {
   createPublicHotel,
+  createPublicHotelDetails,
   createPublicHotelOffer,
   createPublicHotels,
   getSafeHttpUrl,

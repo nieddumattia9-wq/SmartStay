@@ -92,12 +92,17 @@ function loadDefaultDependencies() {
     mapLiteApiHotelResponse,
   } = require("./liteApiProvider");
 
+  const {
+    mapLiteApiHotelDetailsResponse,
+  } = require("./liteApiHotelDetailsMapper");
+
   return {
     searchLiteApiRates,
     getLiteApiHotels,
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
+    mapLiteApiHotelDetailsResponse,
     mergeProviderHotelResults,
   };
 }
@@ -115,6 +120,7 @@ function createLiteApiAdapter(
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
+    mapLiteApiHotelDetailsResponse,
     mergeProviderHotelResults:
       mergeHotels,
   } = resolvedDependencies;
@@ -125,6 +131,7 @@ function createLiteApiAdapter(
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
+    mapLiteApiHotelDetailsResponse,
     mergeHotels,
   };
 
@@ -267,14 +274,33 @@ function createLiteApiAdapter(
         throw error;
       }
 
-      return getLiteApiHotels(
-        {
-          hotelIds:
-            hotelId,
-        },
-        {
-          signal,
-        }
+      const normalizedHotelId =
+        String(
+          hotelId
+        ).trim();
+
+      const response =
+        await getLiteApiHotels(
+          {
+            hotelIds:
+              normalizedHotelId,
+          },
+          {
+            signal,
+          }
+        );
+
+      if (
+        response?.noContent
+      ) {
+
+        return null;
+
+      }
+
+      return mapLiteApiHotelDetailsResponse(
+        response?.data ?? null,
+        normalizedHotelId
       );
     },
   };

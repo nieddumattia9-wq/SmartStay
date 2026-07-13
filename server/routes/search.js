@@ -7,6 +7,7 @@ const {
 } = require("../storage/searchSession");
 
 const {
+  createPublicHotelDetails,
   createPublicHotels,
 } = require("../presenters/publicHotelPresenter");
 
@@ -380,7 +381,15 @@ router.post("/hotel-details", async (req, res) => {
         searchId
       );
 
-    return res.json(result);
+    return res.json({
+      success:
+        true,
+
+      hotel:
+        createPublicHotelDetails(
+          result.hotel
+        ),
+    });
 
   } catch (error) {
 
