@@ -13,6 +13,12 @@ export type SmartStayPreferenceId =
   | "savings"
   | "maximum-savings";
 
+export type SmartStaySearchConstraints = {
+  totalBudget?: number | null;
+  maxDistanceKm?: number | null;
+  currency?: string | null;
+};
+
 export type SmartBadge =
   | "Smart Pick"
   | "Great Value"
@@ -50,6 +56,9 @@ type SmartStayContext = {
   averagePrice: number;
   minPrice: number;
   maxPrice: number;
+  totalBudget: number | null;
+  maxDistanceKm: number | null;
+  currency: string | null;
 };
 
 type PreferenceWeights = {
@@ -111,6 +120,90 @@ function hasPositiveNumber(value: unknown): value is number {
   );
 }
 
+function normalizePositiveConstraint(
+  value: unknown
+): number | null {
+  return hasPositiveNumber(value)
+    ? value
+    : null;
+}
+
+function normalizeConstraintCurrency(
+  value: unknown
+): string | null {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    return null;
+  }
+
+  const normalized =
+    value.trim().toUpperCase();
+
+  return /^[A-Z]{3}$/.test(normalized)
+    ? normalized
+    : null;
+}
+
+function getComparableBudgetCost(
+  hotel: Hotel,
+  context: SmartStayContext
+) {
+  const cost =
+    getBestComparableStayCost(hotel);
+
+  if (!cost) {
+    return null;
+  }
+
+  if (
+    context.currency &&
+    cost.currency !== context.currency
+  ) {
+    return null;
+  }
+
+  return cost;
+}
+
+function getBudgetPriority(
+  evaluation: SmartStayEvaluation,
+  context: SmartStayContext
+) {
+  if (context.totalBudget === null) {
+    return 0;
+  }
+
+  const cost =
+    getComparableBudgetCost(
+      evaluation.hotel,
+      context
+    );
+
+  if (!cost) {
+    return 4;
+  }
+
+  const isWithinBudget =
+    cost.amount <= context.totalBudget;
+
+  const isReliableBudgetCost =
+    evaluation.riskLevel !== "high" &&
+    cost.completeness ===
+      "reported-complete";
+
+  if (isReliableBudgetCost) {
+    return isWithinBudget
+      ? 0
+      : 1;
+  }
+
+  return isWithinBudget
+    ? 2
+    : 3;
+}
+
 function getBestOfferPrice(hotel: Hotel) {
   return (
     getBestComparableStayCost(
@@ -131,15 +224,35 @@ function getValidPrices(hotels: Hotel[]) {
 }
 
 function createSmartStayContext(
-  hotels: Hotel[]
+  hotels: Hotel[],
+  constraints:
+    SmartStaySearchConstraints = {}
 ): SmartStayContext {
   const prices = getValidPrices(hotels);
+
+  const totalBudget =
+    normalizePositiveConstraint(
+      constraints.totalBudget
+    );
+
+  const maxDistanceKm =
+    normalizePositiveConstraint(
+      constraints.maxDistanceKm
+    );
+
+  const currency =
+    normalizeConstraintCurrency(
+      constraints.currency
+    );
 
   if (prices.length === 0) {
     return {
       averagePrice: 0,
       minPrice: 0,
       maxPrice: 0,
+      totalBudget,
+      maxDistanceKm,
+      currency,
     };
   }
 
@@ -149,9 +262,18 @@ function createSmartStayContext(
   );
 
   return {
-    averagePrice: totalPrice / prices.length,
-    minPrice: Math.min(...prices),
-    maxPrice: Math.max(...prices),
+    averagePrice:
+      totalPrice / prices.length,
+
+    minPrice:
+      Math.min(...prices),
+
+    maxPrice:
+      Math.max(...prices),
+
+    totalBudget,
+    maxDistanceKm,
+    currency,
   };
 }
 
@@ -230,41 +352,126 @@ function getPreferenceWeights(
   };
 }
 
+function calculateBudgetFitScore(
+  hotel: Hotel,
+  context: SmartStayContext
+): number | null {
+  if (context.totalBudget === null) {
+    return null;
+  }
+
+  const cost =
+    getComparableBudgetCost(
+      hotel,
+      context
+    );
+
+  if (!cost) {
+    return 30;
+  }
+
+  const ratio =
+    cost.amount / context.totalBudget;
+
+  let score: number;
+
+  if (ratio <= 0.75) {
+    score = 100;
+  } else if (ratio <= 1) {
+    score =
+      100 -
+      ((ratio - 0.75) / 0.25) * 8;
+  } else if (ratio <= 1.05) {
+    score =
+      92 -
+      ((ratio - 1) / 0.05) * 17;
+  } else if (ratio <= 1.15) {
+    score =
+      75 -
+      ((ratio - 1.05) / 0.1) * 20;
+  } else if (ratio <= 1.3) {
+    score =
+      55 -
+      ((ratio - 1.15) / 0.15) * 20;
+  } else {
+    score =
+      Math.max(
+        10,
+        35 - (ratio - 1.3) * 30
+      );
+  }
+
+  if (cost.completeness === "partial") {
+    score -= 6;
+  }
+
+  if (cost.completeness === "unknown") {
+    score -= 14;
+  }
+
+  return roundScore(score);
+}
+
 function calculatePriceScore(
   hotel: Hotel,
   context: SmartStayContext
 ) {
-  const hotelPrice = getBestOfferPrice(hotel);
+  const hotelPrice =
+    getBestOfferPrice(hotel);
+
+  let marketPriceScore = 40;
 
   if (
-    !hotelPrice ||
-    context.averagePrice <= 0
+    hotelPrice &&
+    context.averagePrice > 0
   ) {
-    return 40;
+    if (
+      context.minPrice ===
+      context.maxPrice
+    ) {
+      marketPriceScore = 72;
+    } else {
+      const pricePosition =
+        (hotelPrice - context.minPrice) /
+        (
+          context.maxPrice -
+          context.minPrice
+        );
+
+      const rangeScore =
+        100 - pricePosition * 75;
+
+      const comparedToAverage =
+        context.averagePrice /
+        hotelPrice;
+
+      const averageBonus = clamp(
+        (comparedToAverage - 1) * 22,
+        -16,
+        16
+      );
+
+      marketPriceScore =
+        roundScore(
+          rangeScore +
+          averageBonus
+        );
+    }
   }
 
-  if (context.minPrice === context.maxPrice) {
-    return 72;
+  const budgetFitScore =
+    calculateBudgetFitScore(
+      hotel,
+      context
+    );
+
+  if (budgetFitScore === null) {
+    return marketPriceScore;
   }
-
-  const pricePosition =
-    (hotelPrice - context.minPrice) /
-    (context.maxPrice - context.minPrice);
-
-  const rangeScore =
-    100 - pricePosition * 75;
-
-  const comparedToAverage =
-    context.averagePrice / hotelPrice;
-
-  const averageBonus = clamp(
-    (comparedToAverage - 1) * 22,
-    -16,
-    16
-  );
 
   return roundScore(
-    rangeScore + averageBonus
+    marketPriceScore * 0.55 +
+    budgetFitScore * 0.45
   );
 }
 
@@ -302,7 +509,7 @@ function calculateReviewScore(
   );
 }
 
-function calculateLocationScore(
+function calculateAbsoluteLocationScore(
   hotel: Hotel
 ) {
   if (hotel.distance === null) {
@@ -334,6 +541,71 @@ function calculateLocationScore(
   }
 
   return 25;
+}
+
+function calculatePreferredDistanceFit(
+  distance: number,
+  maxDistanceKm: number
+) {
+  const ratio =
+    distance / maxDistanceKm;
+
+  if (ratio <= 0.5) {
+    return 100;
+  }
+
+  if (ratio <= 0.75) {
+    return 96;
+  }
+
+  if (ratio <= 1) {
+    return 90;
+  }
+
+  if (ratio <= 1.25) {
+    return 72;
+  }
+
+  if (ratio <= 1.5) {
+    return 56;
+  }
+
+  if (ratio <= 2) {
+    return 38;
+  }
+
+  return 22;
+}
+
+function calculateLocationScore(
+  hotel: Hotel,
+  context: SmartStayContext
+) {
+  const absoluteScore =
+    calculateAbsoluteLocationScore(
+      hotel
+    );
+
+  if (
+    context.maxDistanceKm === null
+  ) {
+    return absoluteScore;
+  }
+
+  if (hotel.distance === null) {
+    return 42;
+  }
+
+  const preferredDistanceScore =
+    calculatePreferredDistanceFit(
+      hotel.distance,
+      context.maxDistanceKm
+    );
+
+  return roundScore(
+    preferredDistanceScore * 0.75 +
+    absoluteScore * 0.25
+  );
 }
 
 function calculateStarScore(
@@ -958,7 +1230,10 @@ function calculateSavingScore(
       calculateReviewScore(hotel);
   
     const locationScore =
-      calculateLocationScore(hotel);
+      calculateLocationScore(
+        hotel,
+        context
+      );
   
     const starScore =
       calculateStarScore(hotel);
@@ -1051,102 +1326,152 @@ function calculateSavingScore(
       breakdown,
     };
   }
-  
-  export function rankHotelsWithSmartStayEngine(
-    hotels: Hotel[],
-    preferenceIdInput: string = "balanced"
-  ): SmartStayEvaluation[] {
-    const preferenceId =
-      normalizePreferenceId(preferenceIdInput);
-  
-    const context =
-      createSmartStayContext(hotels);
-  
-    return hotels
-      .map((hotel, index) => ({
-        ...evaluateHotelWithSmartStayEngine(
+export function rankHotelsWithSmartStayEngine(
+  hotels: Hotel[],
+  preferenceIdInput:
+    string = "balanced",
+  constraints:
+    SmartStaySearchConstraints = {}
+): SmartStayEvaluation[] {
+  const preferenceId =
+    normalizePreferenceId(
+      preferenceIdInput
+    );
+
+  const context =
+    createSmartStayContext(
+      hotels,
+      constraints
+    );
+
+  return hotels
+    .map((hotel, index) => {
+      const evaluation =
+        evaluateHotelWithSmartStayEngine(
           hotel,
           context,
           preferenceId
-        ),
-        originalIndex: index,
-      }))
-      .sort((firstHotel, secondHotel) => {
-        if (
-          secondHotel.smartScore !==
-          firstHotel.smartScore
-        ) {
-          return (
-            secondHotel.smartScore -
-            firstHotel.smartScore
-          );
-        }
-  
-        if (
-          preferenceId === "savings" ||
-          preferenceId === "maximum-savings"
-        ) {
-          const firstPrice =
-            getBestOfferPrice(firstHotel.hotel) ??
-            Infinity;
-  
-          const secondPrice =
-            getBestOfferPrice(secondHotel.hotel) ??
-            Infinity;
-  
-          if (firstPrice !== secondPrice) {
-            return firstPrice - secondPrice;
-          }
-        }
-  
-        if (
-          secondHotel.breakdown.reliability !==
-          firstHotel.breakdown.reliability
-        ) {
-          return (
-            secondHotel.breakdown.reliability -
-            firstHotel.breakdown.reliability
-          );
-        }
-  
-        if (
-          secondHotel.breakdown.dataQuality !==
-          firstHotel.breakdown.dataQuality
-        ) {
-          return (
-            secondHotel.breakdown.dataQuality -
-            firstHotel.breakdown.dataQuality
-          );
-        }
-  
-        if (
-          secondHotel.breakdown.location !==
-          firstHotel.breakdown.location
-        ) {
-          return (
-            secondHotel.breakdown.location -
-            firstHotel.breakdown.location
-          );
-        }
-  
-        const firstPrice =
-          getBestOfferPrice(firstHotel.hotel) ??
-          Infinity;
-  
-        const secondPrice =
-          getBestOfferPrice(secondHotel.hotel) ??
-          Infinity;
-  
-        if (firstPrice !== secondPrice) {
-          return firstPrice - secondPrice;
-        }
-  
-        return (
-          firstHotel.originalIndex -
-          secondHotel.originalIndex
         );
-      })
-      .map(({ originalIndex, ...evaluation }) =>
-        evaluation
+
+      return {
+        ...evaluation,
+
+        budgetPriority:
+          getBudgetPriority(
+            evaluation,
+            context
+          ),
+
+        originalIndex: index,
+      };
+    })
+    .sort((firstHotel, secondHotel) => {
+      if (
+        firstHotel.budgetPriority !==
+        secondHotel.budgetPriority
+      ) {
+        return (
+          firstHotel.budgetPriority -
+          secondHotel.budgetPriority
+        );
+      }
+
+      if (
+        secondHotel.smartScore !==
+        firstHotel.smartScore
+      ) {
+        return (
+          secondHotel.smartScore -
+          firstHotel.smartScore
+        );
+      }
+
+      if (
+        preferenceId === "savings" ||
+        preferenceId ===
+          "maximum-savings"
+      ) {
+        const firstPrice =
+          getBestOfferPrice(
+            firstHotel.hotel
+          ) ?? Infinity;
+
+        const secondPrice =
+          getBestOfferPrice(
+            secondHotel.hotel
+          ) ?? Infinity;
+
+        if (firstPrice !== secondPrice) {
+          return (
+            firstPrice -
+            secondPrice
+          );
+        }
+      }
+
+      if (
+        secondHotel.breakdown
+          .reliability !==
+        firstHotel.breakdown
+          .reliability
+      ) {
+        return (
+          secondHotel.breakdown
+            .reliability -
+          firstHotel.breakdown
+            .reliability
+        );
+      }
+
+      if (
+        secondHotel.breakdown
+          .dataQuality !==
+        firstHotel.breakdown
+          .dataQuality
+      ) {
+        return (
+          secondHotel.breakdown
+            .dataQuality -
+          firstHotel.breakdown
+            .dataQuality
+        );
+      }
+
+      if (
+        secondHotel.breakdown.location !==
+        firstHotel.breakdown.location
+      ) {
+        return (
+          secondHotel.breakdown.location -
+          firstHotel.breakdown.location
+        );
+      }
+
+      const firstPrice =
+        getBestOfferPrice(
+          firstHotel.hotel
+        ) ?? Infinity;
+
+      const secondPrice =
+        getBestOfferPrice(
+          secondHotel.hotel
+        ) ?? Infinity;
+
+      if (firstPrice !== secondPrice) {
+        return (
+          firstPrice -
+          secondPrice
+        );
+      }
+
+      return (
+        firstHotel.originalIndex -
+        secondHotel.originalIndex
       );
-  }
+    })
+    .map(({
+      originalIndex,
+      budgetPriority,
+      ...evaluation
+    }) => evaluation);
+}

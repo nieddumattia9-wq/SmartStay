@@ -537,11 +537,27 @@ function getHotelDetailsFailureMessage(
       useMemo(() => {
         return rankHotelsWithSmartStayEngine(
           hotels,
-          selectedPreference.id
+          selectedPreference.id,
+          {
+            totalBudget:
+              searchMeta?.totalBudget ??
+              null,
+
+            maxDistanceKm:
+              searchMeta?.maxDistanceKm ??
+              null,
+
+            currency:
+              searchMeta?.currency ??
+              null,
+          }
         );
       }, [
         hotels,
         selectedPreference.id,
+        searchMeta?.totalBudget,
+        searchMeta?.maxDistanceKm,
+        searchMeta?.currency,
       ]);
   
     const averageSearchPrice =
