@@ -1,3 +1,4 @@
+import { normalizeStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
 import {
   getBestComparableStayCost,
   getComparableOfferAmount,
@@ -43,12 +44,9 @@ import type {
   const DEFAULT_PREFERENCE_INDEX =
     2;
   
-  type SearchMeta = {
-    destinationLabel?: string;
-    smartPreference?: unknown;
-    budget?: string;
-  };
-  
+  type SearchMeta =
+    StoredSearchMeta;
+
   function getSearchMetaStorageKey(
     searchId: string
   ) {
@@ -61,33 +59,60 @@ import type {
     if (!searchId) {
       return null;
     }
-  
+
     const rawSearchMeta =
       sessionStorage.getItem(
-        getSearchMetaStorageKey(searchId)
+        getSearchMetaStorageKey(
+          searchId
+        )
       );
-  
+
     if (!rawSearchMeta) {
       return null;
     }
-  
+
     try {
       const parsed =
-        JSON.parse(rawSearchMeta) as SearchMeta;
-  
-      if (
-        !parsed ||
-        typeof parsed !== "object"
-      ) {
-        return null;
-      }
-  
-      return parsed;
+        JSON.parse(
+          rawSearchMeta
+        ) as unknown;
+
+      return normalizeStoredSearchMeta(
+        parsed
+      );
     } catch {
       return null;
     }
   }
-  
+
+  function formatSearchMoney(
+    amount: number,
+    currency: string
+  ) {
+    const normalizedCurrency =
+      /^[A-Z]{3}$/.test(currency)
+        ? currency
+        : "EUR";
+
+    try {
+      return new Intl.NumberFormat(
+        "en-US",
+        {
+          style: "currency",
+          currency:
+            normalizedCurrency,
+          maximumFractionDigits: 2,
+        }
+      ).format(amount);
+    } catch {
+      return (
+        normalizedCurrency +
+        " " +
+        amount.toFixed(2)
+      );
+    }
+  }
+
   function getSelectedPreferenceIndex(
     searchMeta: SearchMeta | null
   ) {
@@ -832,18 +857,50 @@ function getHotelDetailsFailureMessage(
             {getPreferenceSummary(selectedPreference.id)}
           </p>
   
-          {searchMeta?.budget && (
-            <p
+          {searchMeta &&
+          searchMeta.totalBudget !== null && (
+            <div
               style={{
                 marginTop: "12px",
                 color: "#64748b",
                 fontSize: "0.94rem",
               }}
             >
-              Budget preference: €{searchMeta.budget}
-            </p>
+              <p
+                style={{
+                  margin: 0,
+                }}
+              >
+                Total stay budget:{" "}
+                {formatSearchMoney(
+                  searchMeta.totalBudget,
+                  searchMeta.currency
+                )}
+              </p>
+
+              {searchMeta.nightCount !== null && (
+                <p
+                  style={{
+                    margin:
+                      "4px 0 0",
+                  }}
+                >
+                  Average budget:{" "}
+                  {formatSearchMoney(
+                    searchMeta.totalBudget /
+                      searchMeta.nightCount,
+                    searchMeta.currency
+                  )}{" "}
+                  per night ?{" "}
+                  {searchMeta.nightCount}{" "}
+                  {searchMeta.nightCount === 1
+                    ? "night"
+                    : "nights"}
+                </p>
+              )}
+            </div>
           )}
-  
+
           {status && (
             <p
               style={{

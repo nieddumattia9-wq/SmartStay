@@ -1,3 +1,4 @@
+import { normalizeStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
 import {
     useEffect,
     useMemo,
@@ -98,20 +99,12 @@ import {
     lastError?: string | null;
   };
   
-  type PendingSearchMeta = {
-    destinationLabel?: string;
-  
-    smartPreference?: unknown;
-  
-    budget?: string;
-  };
-  
   type PendingSearch = {
     searchPayload: unknown;
-  
-    searchMeta?: PendingSearchMeta;
+
+    searchMeta?: StoredSearchMeta;
   };
-  
+
   function shuffleArray(array: string[]) {
     const copy =
       [...array];
@@ -207,16 +200,25 @@ import {
   
   function saveSearchMetaForSearchId(
     searchId: string,
-    searchMeta?: PendingSearchMeta
+    searchMeta?: unknown
   ) {
-    if (!searchMeta) {
+    const normalizedSearchMeta =
+      normalizeStoredSearchMeta(
+        searchMeta
+      );
+
+    if (!normalizedSearchMeta) {
       return;
     }
-  
+
     try {
       sessionStorage.setItem(
-        getSearchMetaStorageKey(searchId),
-        JSON.stringify(searchMeta)
+        getSearchMetaStorageKey(
+          searchId
+        ),
+        JSON.stringify(
+          normalizedSearchMeta
+        )
       );
     } catch (error) {
       console.warn(
@@ -225,35 +227,68 @@ import {
       );
     }
   }
-  
-  function readPendingSearch(): PendingSearch | null {
+
+  function readPendingSearch():
+    PendingSearch | null {
     const rawPendingSearch =
       sessionStorage.getItem(
         PENDING_SEARCH_STORAGE_KEY
       );
-  
+
     if (!rawPendingSearch) {
       return null;
     }
-  
+
     try {
       const parsed =
-        JSON.parse(rawPendingSearch) as PendingSearch;
-  
+        JSON.parse(
+          rawPendingSearch
+        ) as unknown;
+
       if (
         !parsed ||
         typeof parsed !== "object" ||
-        !("searchPayload" in parsed)
+        Array.isArray(parsed)
       ) {
         return null;
       }
-  
-      return parsed;
+
+      const source =
+        parsed as Record<
+          string,
+          unknown
+        >;
+
+      if (
+        !(
+          "searchPayload" in
+          source
+        )
+      ) {
+        return null;
+      }
+
+      const normalizedSearchMeta =
+        normalizeStoredSearchMeta(
+          source.searchMeta
+        );
+
+      return {
+        searchPayload:
+          source.searchPayload,
+
+        ...(normalizedSearchMeta
+          ? {
+              searchMeta:
+                normalizedSearchMeta,
+            }
+          : {}),
+      };
     } catch {
       return null;
     }
   }
-  
+
   function clearPendingSearch() {
     sessionStorage.removeItem(
       PENDING_SEARCH_STORAGE_KEY

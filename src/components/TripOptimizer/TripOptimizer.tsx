@@ -1,3 +1,4 @@
+import { createStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -54,11 +55,7 @@ type HotelSearchPayload = {
 type PendingSearch = {
   searchPayload: HotelSearchPayload;
 
-  searchMeta: {
-    destinationLabel: string;
-    smartPreference: SmartOptimizerValue;
-    budget: string;
-  };
+  searchMeta: StoredSearchMeta;
 };
 
 const PENDING_SEARCH_STORAGE_KEY =
@@ -310,14 +307,25 @@ function TripOptimizer() {
         PendingSearch = {
           searchPayload,
 
-          searchMeta: {
-            destinationLabel:
-              destination,
+          searchMeta:
+            createStoredSearchMeta({
+              destinationLabel:
+                destination,
 
-            smartPreference,
+              smartPreference,
 
-            budget,
-          },
+              budgetInput:
+                budget,
+
+              currency:
+                searchPayload.currency,
+
+              checkIn:
+                searchPayload.checkIn,
+
+              checkOut:
+                searchPayload.checkOut,
+            }),
         };
 
       sessionStorage.removeItem(
@@ -384,8 +392,11 @@ function TripOptimizer() {
 
           <input
             type="number"
-            min="0"
-            placeholder="Budget €"
+            min="0.01"
+            step="0.01"
+            inputMode="decimal"
+            aria-label="Total stay budget"
+            placeholder="Total stay budget (€)"
             className="budget-input__field"
             value={budget}
             onChange={(event) =>

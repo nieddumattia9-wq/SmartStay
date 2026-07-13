@@ -1,0 +1,252 @@
+export type StoredSearchMeta = {
+  destinationLabel: string;
+  smartPreference: unknown;
+  totalBudget: number | null;
+  currency: string;
+  checkIn: string;
+  checkOut: string;
+  nightCount: number | null;
+};
+
+type CreateStoredSearchMetaInput = {
+  destinationLabel: string;
+  smartPreference: unknown;
+  budgetInput: unknown;
+  currency: string;
+  checkIn: string;
+  checkOut: string;
+};
+
+function normalizeCurrency(
+  value: unknown
+) {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    return "EUR";
+  }
+
+  return value
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeText(
+  value: unknown
+) {
+  return typeof value === "string"
+    ? value.trim()
+    : "";
+}
+
+export function normalizeTotalBudget(
+  value: unknown
+): number | null {
+  const normalizedValue =
+    typeof value === "string"
+      ? value
+          .trim()
+          .replace(",", ".")
+      : value;
+
+  if (
+    normalizedValue === "" ||
+    normalizedValue === null ||
+    normalizedValue === undefined
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    Number(normalizedValue);
+
+  if (
+    !Number.isFinite(numericValue) ||
+    numericValue <= 0
+  ) {
+    return null;
+  }
+
+  return Math.round(
+    numericValue * 100
+  ) / 100;
+}
+
+function parseIsoDateToUtc(
+  value: unknown
+): number | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(value.trim());
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const timestamp =
+    Date.UTC(
+      year,
+      month - 1,
+      day
+    );
+
+  const parsedDate =
+    new Date(timestamp);
+
+  if (
+    parsedDate.getUTCFullYear() !== year ||
+    parsedDate.getUTCMonth() !==
+      month - 1 ||
+    parsedDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return timestamp;
+}
+
+export function calculateStayNights(
+  checkIn: unknown,
+  checkOut: unknown
+): number | null {
+  const checkInTimestamp =
+    parseIsoDateToUtc(checkIn);
+
+  const checkOutTimestamp =
+    parseIsoDateToUtc(checkOut);
+
+  if (
+    checkInTimestamp === null ||
+    checkOutTimestamp === null ||
+    checkOutTimestamp <=
+      checkInTimestamp
+  ) {
+    return null;
+  }
+
+  const millisecondsPerDay =
+    24 * 60 * 60 * 1000;
+
+  const nightCount =
+    (
+      checkOutTimestamp -
+      checkInTimestamp
+    ) / millisecondsPerDay;
+
+  if (
+    !Number.isInteger(nightCount) ||
+    nightCount <= 0
+  ) {
+    return null;
+  }
+
+  return nightCount;
+}
+
+export function createStoredSearchMeta(
+  input: CreateStoredSearchMetaInput
+): StoredSearchMeta {
+  return {
+    destinationLabel:
+      normalizeText(
+        input.destinationLabel
+      ),
+
+    smartPreference:
+      input.smartPreference,
+
+    totalBudget:
+      normalizeTotalBudget(
+        input.budgetInput
+      ),
+
+    currency:
+      normalizeCurrency(
+        input.currency
+      ),
+
+    checkIn:
+      normalizeText(
+        input.checkIn
+      ),
+
+    checkOut:
+      normalizeText(
+        input.checkOut
+      ),
+
+    nightCount:
+      calculateStayNights(
+        input.checkIn,
+        input.checkOut
+      ),
+  };
+}
+
+export function normalizeStoredSearchMeta(
+  value: unknown
+): StoredSearchMeta | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  const source =
+    value as Record<
+      string,
+      unknown
+    >;
+
+  const checkIn =
+    normalizeText(
+      source.checkIn
+    );
+
+  const checkOut =
+    normalizeText(
+      source.checkOut
+    );
+
+  return {
+    destinationLabel:
+      normalizeText(
+        source.destinationLabel
+      ),
+
+    smartPreference:
+      source.smartPreference,
+
+    totalBudget:
+      normalizeTotalBudget(
+        source.totalBudget ??
+        source.budget
+      ),
+
+    currency:
+      normalizeCurrency(
+        source.currency
+      ),
+
+    checkIn,
+
+    checkOut,
+
+    nightCount:
+      calculateStayNights(
+        checkIn,
+        checkOut
+      ),
+  };
+}
