@@ -7,6 +7,10 @@ const {
 } = require("../storage/searchSession");
 
 const {
+  createPublicHotels,
+} = require("../presenters/publicHotelPresenter");
+
+const {
   searchDestinations,
   searchHotels,
   continueHotelSearch,
@@ -124,9 +128,39 @@ function sendRouteError(
 
 }
 
-function createPublicSearchSession(session) {
+function createPublicHotelResponse(
+  payload
+) {
+
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    Array.isArray(payload)
+  ) {
+
+    return payload;
+
+  }
+
+  const hotels =
+    createPublicHotels(
+      payload.hotels
+    );
 
   return {
+    ...payload,
+
+    totalHotels:
+      hotels.length,
+
+    hotels,
+  };
+
+}
+
+function createPublicSearchSession(session) {
+
+  return createPublicHotelResponse({
     searchId:
       session.searchId,
 
@@ -145,9 +179,6 @@ function createPublicSearchSession(session) {
     nextResultsKey:
       session.nextResultsKey ?? null,
 
-    totalHotels:
-      session.hotels?.length ?? session.totalHotels ?? 0,
-
     hotels:
       session.hotels ?? [],
 
@@ -159,7 +190,7 @@ function createPublicSearchSession(session) {
 
     updatedAt:
       session.updatedAt ?? null,
-  };
+  });
 
 }
 
@@ -231,7 +262,11 @@ router.post("/search-hotels", async (req, res) => {
     const results =
       await searchHotels(req.body);
 
-    return res.json(results);
+    return res.json(
+      createPublicHotelResponse(
+        results
+      )
+    );
 
   } catch (error) {
 
@@ -271,7 +306,11 @@ router.post("/search-hotels/continue", async (req, res) => {
     const result =
       await continueHotelSearch(searchId);
 
-    return res.json(result);
+    return res.json(
+      createPublicHotelResponse(
+        result
+      )
+    );
 
   } catch (error) {
 
