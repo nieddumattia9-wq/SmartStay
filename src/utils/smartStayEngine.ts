@@ -1,3 +1,4 @@
+import { getBestComparableStayCost } from "./stayCost";
 import type { Hotel } from "../types/hotel";
 
 export type SmartRiskLevel =
@@ -111,20 +112,12 @@ function hasPositiveNumber(value: unknown): value is number {
 }
 
 function getBestOfferPrice(hotel: Hotel) {
-  const offerPrices =
-    hotel.offers
-      ?.map((offer) => offer.price)
-      .filter(hasPositiveNumber) ?? [];
-
-  if (offerPrices.length > 0) {
-    return Math.min(...offerPrices);
-  }
-
-  if (hasPositiveNumber(hotel.price)) {
-    return hotel.price;
-  }
-
-  return null;
+  return (
+    getBestComparableStayCost(
+      hotel
+    )?.amount ??
+    null
+  );
 }
 
 function hasValidOffer(hotel: Hotel) {

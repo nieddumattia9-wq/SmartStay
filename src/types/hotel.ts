@@ -47,6 +47,14 @@ export interface HotelOffer {
 
   taxesIncluded: boolean | null;
 
+  includedTaxes?: number;
+
+  excludedTaxes?: number;
+
+  unknownTaxes?: number;
+
+  totalKnownCost?: number | null;
+
   roomName: string | null;
 
   bookable: boolean;
@@ -84,6 +92,16 @@ export interface Hotel {
   saving: number;
 
   currency: string;
+
+  taxesIncluded?: boolean | null;
+
+  includedTaxes?: number;
+
+  excludedTaxes?: number;
+
+  unknownTaxes?: number;
+
+  totalKnownCost?: number | null;
 
   distance: number | null;
 

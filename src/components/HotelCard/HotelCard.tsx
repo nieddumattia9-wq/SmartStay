@@ -1,3 +1,4 @@
+import { getBestComparableStayCost } from "../../utils/stayCost";
 import "./HotelCard.css";
 
 import type { Hotel } from "../../types/hotel";
@@ -123,28 +124,23 @@ function formatDataConfidence(
 }
 
 function getBestDisplayPrice(hotel: Hotel) {
-  const validOffers =
-    hotel.offers
-      ?.filter((offer) => (
-        Number.isFinite(offer.price) &&
-        offer.price > 0
-      ))
-      .sort((firstOffer, secondOffer) => (
-        firstOffer.price -
-        secondOffer.price
-      )) ?? [];
-
-  const bestOffer =
-    validOffers[0] ?? null;
+  const comparableCost =
+    getBestComparableStayCost(
+      hotel
+    );
 
   return {
     price:
-      bestOffer?.price ??
+      comparableCost?.amount ??
       hotel.price,
 
     currency:
-      bestOffer?.currency ??
+      comparableCost?.currency ??
       hotel.currency,
+
+    completeness:
+      comparableCost?.completeness ??
+      "unknown",
   };
 }
 
@@ -352,7 +348,13 @@ function HotelCard({
             </p>
 
             <p className="hotel-card__price-note">
-              Total price from available offer data
+              {displayPrice.completeness ===
+              "reported-complete"
+                ? "Total stay cost based on mandatory charges reported by the provider"
+                : displayPrice.completeness ===
+                    "partial"
+                  ? "Total known stay cost; some mandatory charges may still be uncertain"
+                  : "Price from available offer data; final mandatory charges may vary"}
             </p>
           </div>
 

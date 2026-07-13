@@ -239,6 +239,29 @@ function createPublicHotelOffer(
         source.taxesIncluded
       ),
 
+    includedTaxes:
+      getFiniteNumber(
+        source.includedTaxes,
+        0
+      ),
+
+    excludedTaxes:
+      getFiniteNumber(
+        source.excludedTaxes,
+        0
+      ),
+
+    unknownTaxes:
+      getFiniteNumber(
+        source.unknownTaxes,
+        0
+      ),
+
+    totalKnownCost:
+      getFiniteNumber(
+        source.totalKnownCost
+      ),
+
     roomName:
       getNullableText(
         source.roomName
@@ -370,6 +393,34 @@ function createPublicHotel(
       getText(
         hotel.currency,
         "EUR"
+      ),
+
+    taxesIncluded:
+      getNullableBoolean(
+        hotel.taxesIncluded
+      ),
+
+    includedTaxes:
+      getFiniteNumber(
+        hotel.includedTaxes,
+        0
+      ),
+
+    excludedTaxes:
+      getFiniteNumber(
+        hotel.excludedTaxes,
+        0
+      ),
+
+    unknownTaxes:
+      getFiniteNumber(
+        hotel.unknownTaxes,
+        0
+      ),
+
+    totalKnownCost:
+      getFiniteNumber(
+        hotel.totalKnownCost
       ),
 
     distance:

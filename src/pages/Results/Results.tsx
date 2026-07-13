@@ -1,4 +1,8 @@
 import {
+  getBestComparableStayCost,
+  getComparableOfferAmount,
+} from "../../utils/stayCost";
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -152,28 +156,14 @@ import type {
   }
   
   function getBestHotelPrice(hotel: Hotel) {
-    const validOfferPrices =
-      hotel.offers
-        ?.map((offer) => offer.price)
-        .filter((price) => (
-          Number.isFinite(price) &&
-          price > 0
-        )) ?? [];
-  
-    if (validOfferPrices.length > 0) {
-      return Math.min(...validOfferPrices);
-    }
-  
-    if (
-      Number.isFinite(hotel.price) &&
-      hotel.price > 0
-    ) {
-      return hotel.price;
-    }
-  
-    return null;
+    return (
+      getBestComparableStayCost(
+        hotel
+      )?.amount ??
+      null
+    );
   }
-  
+
   function calculateAverageSearchPrice(
     hotels: Hotel[]
   ) {
@@ -366,8 +356,18 @@ function getHotelBookingUrl(
           firstOffer,
           secondOffer
         ) =>
-          firstOffer.price -
-          secondOffer.price
+          (
+            getComparableOfferAmount(
+              firstOffer
+            ) ??
+            Infinity
+          ) -
+          (
+            getComparableOfferAmount(
+              secondOffer
+            ) ??
+            Infinity
+          )
       );
 
   const bestBookableOffer =
