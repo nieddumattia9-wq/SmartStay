@@ -1,0 +1,155 @@
+.distance-selector {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 150px;
+  padding: 17px 18px 15px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  border: 1px solid #dbe3ec;
+  border-radius: 14px;
+
+  background: #ffffff;
+}
+
+.distance-selector__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.distance-selector__identity {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.distance-selector__icon {
+  width: auto;
+  height: auto;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  background: transparent;
+  color: #16e06e;
+}
+
+.distance-selector__title {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.distance-selector__value {
+  display: block;
+  margin-top: 2px;
+
+  color: #0f172a;
+
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.distance-selector__range {
+  width: 100%;
+  height: 18px;
+  margin: 12px 0 0;
+
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+
+.distance-selector__range:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.distance-selector__range:focus-visible {
+  outline: 3px solid rgba(22, 224, 110, .18);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.distance-selector__labels {
+  width: 100%;
+  margin-top: 2px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+
+  color: #94a3b8;
+
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.distance-selector__labels span:first-child {
+  text-align: left;
+}
+
+.distance-selector__labels span:last-child {
+  text-align: right;
+}
+
+.distance-selector__helper {
+  margin: 8px 0 0;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+  .distance-selector {
+    min-height: 144px;
+  }
+}
+
+/* DISTANCE VISUAL REFINEMENT */
+
+.distance-selector {
+  font-family: inherit;
+}
+
+
+
+.distance-selector__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.distance-selector__value {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.distance-selector__labels {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.distance-selector__helper {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}

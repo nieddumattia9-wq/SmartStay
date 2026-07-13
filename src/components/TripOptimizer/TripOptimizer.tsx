@@ -1,4 +1,8 @@
-import { createStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
+import {
+  calculateStayNights,
+  createStoredSearchMeta,
+  type StoredSearchMeta,
+} from "../../utils/searchMeta";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -7,7 +11,6 @@ import {
 } from "react";
 
 import {
-  Wallet,
   Sparkles,
 } from "lucide-react";
 
@@ -27,7 +30,11 @@ import GuestsSelector, {
   type GuestsSelectorValue,
 } from "../GuestsSelector/GuestsSelector";
 
+import BudgetSelector from "../BudgetSelector/BudgetSelector";
+
 import DestinationAutocomplete from "../DestinationAutocomplete/DestinationAutocomplete";
+
+import DistanceSelector from "../DistanceSelector/DistanceSelector";
 
 import SmartOptimizer, {
   type SmartOptimizerValue,
@@ -180,6 +187,14 @@ function TripOptimizer() {
   const [budget, setBudget] =
     useState("");
 
+  const [
+    maxDistanceKm,
+    setMaxDistanceKm,
+  ] =
+    useState<number | null>(
+      null
+    );
+
   function clearSelectedDestination() {
     setSelectedDestination(null);
   }
@@ -325,6 +340,8 @@ function TripOptimizer() {
 
               checkOut:
                 searchPayload.checkOut,
+
+              maxDistanceKm,
             }),
         };
 
@@ -356,6 +373,19 @@ function TripOptimizer() {
     }
   }
 
+  const currentNightCount =
+    dates.checkIn &&
+    dates.checkOut
+      ? calculateStayNights(
+          toApiDateString(
+            dates.checkIn
+          ),
+          toApiDateString(
+            dates.checkOut
+          )
+        )
+      : null;
+
   return (
     <div className="trip-card">
       <DestinationAutocomplete
@@ -377,35 +407,33 @@ function TripOptimizer() {
         />
       </div>
 
-      <div className="row">
-        <GuestsSelector
-          value={guests}
-          onChange={setGuests}
-        />
-
-        <div className="budget-input">
-          <Wallet
-            size={18}
-            strokeWidth={2}
-            className="budget-input__icon"
+      <div className="trip-card__preferences-grid">
+        <div className="trip-card__preference-column">
+          <GuestsSelector
+            value={guests}
+            onChange={setGuests}
           />
 
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputMode="decimal"
-            aria-label="Total stay budget"
-            placeholder="Total stay budget (€)"
-            className="budget-input__field"
-            value={budget}
-            onChange={(event) =>
-              handleBudgetChange(
-                event.target.value
-              )
+          <DistanceSelector
+            value={
+              maxDistanceKm
+            }
+            onChange={
+              setMaxDistanceKm
             }
           />
         </div>
+
+        <BudgetSelector
+          value={budget}
+          onChange={
+            handleBudgetChange
+          }
+          nightCount={
+            currentNightCount
+          }
+          currency="EUR"
+        />
       </div>
 
       <SmartOptimizer

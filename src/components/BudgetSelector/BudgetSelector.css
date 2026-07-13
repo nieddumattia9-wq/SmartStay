@@ -1,0 +1,277 @@
+.budget-selector {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 215px;
+  height: 100%;
+  padding: 17px 18px 15px;
+
+  display: flex;
+  flex-direction: column;
+
+  border: 1px solid #dbe3ec;
+  border-radius: 14px;
+
+  background: #ffffff;
+}
+
+.budget-selector__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.budget-selector__identity {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-selector__icon {
+  width: auto;
+  height: auto;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  background: transparent;
+  color: #16e06e;
+}
+
+.budget-selector__title {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.budget-selector__value {
+  display: block;
+  margin-top: 2px;
+
+  color: #0f172a;
+
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.budget-selector__clear {
+  padding: 4px 0;
+
+  border: 0;
+  background: transparent;
+
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.budget-selector__clear:hover {
+  color: #16a34a;
+}
+
+.budget-selector__clear:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.budget-selector__slider {
+  margin-top: 13px;
+}
+
+.budget-selector__range {
+  width: 100%;
+  height: 18px;
+  margin: 0;
+
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+
+.budget-selector__range--unset {
+  opacity: .5;
+}
+
+.budget-selector__range:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.budget-selector__range:focus-visible {
+  outline: 3px solid rgba(22, 224, 110, .18);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.budget-selector__scale {
+  margin-top: 1px;
+
+  display: flex;
+  justify-content: space-between;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.budget-selector__manual {
+  margin-top: 13px;
+
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-selector__manual-label {
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.budget-selector__input-wrapper {
+  position: relative;
+  min-width: 0;
+}
+
+.budget-selector__currency {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  pointer-events: none;
+
+  transform: translateY(-50%);
+}
+
+.budget-selector__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px 0 29px;
+
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+
+  background: #f8fafc;
+  color: #0f172a;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  outline: none;
+
+  transition:
+    border-color .2s ease,
+    box-shadow .2s ease,
+    background-color .2s ease;
+}
+
+.budget-selector__input:hover {
+  border-color: #cbd5e1;
+}
+
+.budget-selector__input:focus {
+  border-color: #16e06e;
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(22, 224, 110, .12);
+}
+
+.budget-selector__input:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.budget-selector__helper {
+  margin: auto 0 0;
+  padding-top: 10px;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+@media (max-width: 640px) {
+  .budget-selector {
+    min-height: 205px;
+  }
+}
+  
+/* BUDGET VISUAL REFINEMENT */
+
+.budget-selector {
+  font-family: inherit;
+}
+
+
+
+.budget-selector__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.budget-selector__value {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.budget-selector__clear {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.budget-selector__scale {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.budget-selector__manual-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.budget-selector__input {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.budget-selector__currency {
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.budget-selector__helper {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}

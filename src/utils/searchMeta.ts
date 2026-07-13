@@ -6,6 +6,7 @@ export type StoredSearchMeta = {
   checkIn: string;
   checkOut: string;
   nightCount: number | null;
+  maxDistanceKm: number | null;
 };
 
 type CreateStoredSearchMetaInput = {
@@ -15,6 +16,7 @@ type CreateStoredSearchMetaInput = {
   currency: string;
   checkIn: string;
   checkOut: string;
+  maxDistanceKm: unknown;
 };
 
 function normalizeCurrency(
@@ -152,6 +154,43 @@ export function calculateStayNights(
   return nightCount;
 }
 
+const ALLOWED_DISTANCE_VALUES = [
+  0.5,
+  1,
+  2,
+  5,
+  10,
+] as const;
+
+export function normalizeMaxDistanceKm(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    Number(value);
+
+  if (
+    !Number.isFinite(numericValue)
+  ) {
+    return null;
+  }
+
+  return ALLOWED_DISTANCE_VALUES
+    .includes(
+      numericValue as
+        typeof ALLOWED_DISTANCE_VALUES[number]
+    )
+      ? numericValue
+      : null;
+}
+
 export function createStoredSearchMeta(
   input: CreateStoredSearchMetaInput
 ): StoredSearchMeta {
@@ -188,6 +227,11 @@ export function createStoredSearchMeta(
       calculateStayNights(
         input.checkIn,
         input.checkOut
+      ),
+
+    maxDistanceKm:
+      normalizeMaxDistanceKm(
+        input.maxDistanceKm
       ),
   };
 }
@@ -247,6 +291,13 @@ export function normalizeStoredSearchMeta(
       calculateStayNights(
         checkIn,
         checkOut
+      ),
+
+    maxDistanceKm:
+      normalizeMaxDistanceKm(
+        source.maxDistanceKm ??
+        source.distanceKm ??
+        source.maxDistance
       ),
   };
 }
