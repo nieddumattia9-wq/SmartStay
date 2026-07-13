@@ -1,3 +1,6 @@
+export const SMARTSTAY_HOME_BALANCE_VERSION =
+  "home-balance-v1";
+
 const DEFAULT_PREFERENCE_INDEX = 2;
 const MIN_PREFERENCE_INDEX = 0;
 const MAX_PREFERENCE_INDEX = 4;
@@ -88,6 +91,69 @@ function copyPreference(
   return {
     selectedIndex:
       value.selectedIndex,
+  };
+}
+
+export function createSmartStaySearchProfile(
+  input: {
+    automaticPreference: unknown;
+    manualPreference?: unknown;
+    explanation?: unknown;
+    calculationVersion?: unknown;
+  }
+): SmartStaySearchProfile {
+  const automaticPreference =
+    normalizeSmartPreference(
+      input.automaticPreference
+    );
+
+  const manualPreference =
+    normalizePreferenceCandidate(
+      input.manualPreference
+    );
+
+  const preferenceSource:
+    SmartStayPreferenceSource =
+      manualPreference
+        ? "manual"
+        : "automatic";
+
+  const effectivePreference =
+    manualPreference
+      ? copyPreference(
+          manualPreference
+        )
+      : copyPreference(
+          automaticPreference
+        );
+
+  return {
+    automaticPreference:
+      copyPreference(
+        automaticPreference
+      ),
+
+    manualPreference:
+      manualPreference
+        ? copyPreference(
+            manualPreference
+          )
+        : null,
+
+    effectivePreference,
+
+    preferenceSource,
+
+    explanation:
+      normalizeText(
+        input.explanation
+      ),
+
+    calculationVersion:
+      normalizeText(
+        input.calculationVersion
+      ) ||
+      SMARTSTAY_HOME_BALANCE_VERSION,
   };
 }
 

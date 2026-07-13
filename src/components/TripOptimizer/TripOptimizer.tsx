@@ -7,6 +7,11 @@ import {
 import {
   calculateAutomaticPreferenceBalance,
 } from "../../utils/preferenceBalance";
+
+import {
+  createSmartStaySearchProfile,
+  SMARTSTAY_HOME_BALANCE_VERSION,
+} from "../../utils/smartStaySearchProfile";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -331,6 +336,9 @@ function TripOptimizer() {
               smartPreference:
                 effectiveSmartPreference,
 
+              smartStayProfile:
+                smartStaySearchProfile,
+
               budgetInput:
                 budget,
 
@@ -468,6 +476,29 @@ function TripOptimizer() {
     formattedBalanceBudget
       ? `You adjusted the ranking priority. Your ${formattedBalanceBudget} budget and ${distanceLimitDescription} remain unchanged.`
       : "You adjusted the ranking priority. Your budget and distance limits remain unchanged.";
+
+  const smartStaySearchProfile =
+    automaticPreferenceBalance.isReady
+      ? createSmartStaySearchProfile({
+          automaticPreference: {
+            selectedIndex:
+              automaticPreferenceBalance
+                .selectedIndex,
+          },
+
+          manualPreference:
+            manualSmartPreference,
+
+          explanation:
+            manualSmartPreference
+              ? manualBalanceExplanation
+              : automaticPreferenceBalance
+                  .explanation,
+
+          calculationVersion:
+            SMARTSTAY_HOME_BALANCE_VERSION,
+        })
+      : null;
 
   return (
     <div className="trip-card">
