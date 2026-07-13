@@ -8,6 +8,43 @@ const STANDARD_REQUEST_TIMEOUT_MS =
 const HOTEL_REQUEST_TIMEOUT_MS =
   165_000;
 
+type ApiRequestErrorOptions = {
+  message: string;
+  status?: number | null;
+  code?: string | null;
+};
+
+export class ApiRequestError extends Error {
+
+  readonly status:
+    number | null;
+
+  readonly code:
+    string | null;
+
+  constructor({
+    message,
+    status = null,
+    code = null,
+  }: ApiRequestErrorOptions) {
+
+    super(
+      message
+    );
+
+    this.name =
+      "ApiRequestError";
+
+    this.status =
+      status;
+
+    this.code =
+      code;
+
+  }
+
+}
+
 async function requestJson<T>(
   url: string,
   options?: RequestInit,
@@ -42,10 +79,30 @@ async function requestJson<T>(
 
     if (!response.ok) {
 
-      throw new Error(
-        data?.message ||
-        fallbackErrorMessage
-      );
+      const responseMessage =
+        typeof data?.message ===
+          "string" &&
+        data.message.trim()
+          ? data.message
+          : fallbackErrorMessage;
+
+      const responseCode =
+        typeof data?.code ===
+          "string" &&
+        data.code.trim()
+          ? data.code
+          : null;
+
+      throw new ApiRequestError({
+        message:
+          responseMessage,
+
+        status:
+          response.status,
+
+        code:
+          responseCode,
+      });
 
     }
 
@@ -58,29 +115,54 @@ async function requestJson<T>(
       error.name === "AbortError"
     ) {
 
-      throw new Error(
-        timeoutErrorMessage
-      );
+      throw new ApiRequestError({
+        message:
+          timeoutErrorMessage,
+
+        status:
+          408,
+
+        code:
+          "REQUEST_TIMEOUT",
+      });
 
     }
 
-    if (error instanceof TypeError) {
-
-      throw new Error(
-        fallbackErrorMessage
-      );
-
-    }
-
-    if (error instanceof Error) {
+    if (
+      error instanceof
+      ApiRequestError
+    ) {
 
       throw error;
 
     }
 
-    throw new Error(
-      fallbackErrorMessage
-    );
+    if (error instanceof TypeError) {
+
+      throw new ApiRequestError({
+        message:
+          fallbackErrorMessage,
+
+        code:
+          "NETWORK_ERROR",
+      });
+
+    }
+
+    if (error instanceof Error) {
+
+      throw new ApiRequestError({
+        message:
+          error.message ||
+          fallbackErrorMessage,
+      });
+
+    }
+
+    throw new ApiRequestError({
+      message:
+        fallbackErrorMessage,
+    });
 
   } finally {
 

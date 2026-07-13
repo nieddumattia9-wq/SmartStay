@@ -14,9 +14,10 @@ import {
   import {
     sliderOptions,
   } from "../../components/SmartOptimizer/sliderData";
-  
-  import { getSearchSession } from "../../services/api";
-  
+  import {
+    ApiRequestError,
+    getSearchSession,
+  } from "../../services/api";
   import type {
     Hotel,
     SearchSessionResponse,
@@ -221,6 +222,122 @@ import {
     return Math.round(advantagePercent);
   }
 
+  type ResultsLoadFailure = {
+    message: string;
+    clearStoredMeta: boolean;
+  };
+
+  function getResultsLoadFailure(
+    error: unknown
+  ): ResultsLoadFailure {
+
+    if (
+      !(error instanceof ApiRequestError)
+    ) {
+
+      return {
+        message:
+          "Unable to load hotels.",
+
+        clearStoredMeta:
+          false,
+      };
+
+    }
+
+    if (
+      error.code ===
+        "SEARCH_SESSION_EXPIRED" ||
+      error.status ===
+        410
+    ) {
+
+      return {
+        message:
+          "This search has expired. Please start a new search.",
+
+        clearStoredMeta:
+          true,
+      };
+
+    }
+
+    if (
+      error.code ===
+        "SEARCH_SESSION_NOT_FOUND" ||
+      error.status ===
+        404
+    ) {
+
+      return {
+        message:
+          "These search results are no longer available. Please start a new search.",
+
+        clearStoredMeta:
+          true,
+      };
+
+    }
+
+    if (
+      error.code ===
+        "SEARCH_ID_REQUIRED" ||
+      error.status ===
+        400
+    ) {
+
+      return {
+        message:
+          "This search link is not valid. Please start a new search.",
+
+        clearStoredMeta:
+          true,
+      };
+
+    }
+
+    if (
+      error.code ===
+        "REQUEST_TIMEOUT" ||
+      error.status ===
+        408
+    ) {
+
+      return {
+        message:
+          "Retrieving the search results took too long. Please try again.",
+
+        clearStoredMeta:
+          false,
+      };
+
+    }
+
+    if (
+      error.code ===
+        "NETWORK_ERROR"
+    ) {
+
+      return {
+        message:
+          "SmartStay could not be reached. Check your connection and try again.",
+
+        clearStoredMeta:
+          false,
+      };
+
+    }
+
+    return {
+      message:
+        "Unable to load hotels.",
+
+      clearStoredMeta:
+        false,
+    };
+
+  }
+
   function Results() {
     const navigate =
       useNavigate();
@@ -333,9 +450,27 @@ import {
           );
         } catch (err) {
           console.error(err);
-  
+
+          const failure =
+            getResultsLoadFailure(
+              err
+            );
+
+          if (
+            failure.clearStoredMeta &&
+            searchId
+          ) {
+
+            sessionStorage.removeItem(
+              getSearchMetaStorageKey(
+                searchId
+              )
+            );
+
+          }
+
           setError(
-            "Unable to load hotels."
+            failure.message
           );
         } finally {
           setLoading(false);
