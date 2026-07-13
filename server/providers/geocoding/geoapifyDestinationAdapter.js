@@ -58,6 +58,7 @@ function createGeoapifyDestinationAdapter(
 
     async searchDestinations({
       query,
+      signal,
     } = {}) {
       const normalizedQuery =
         normalizeDestinationQuery(
@@ -81,7 +82,10 @@ function createGeoapifyDestinationAdapter(
 
       const response =
         await searchGeoapifyDestinations(
-          normalizedQuery
+          normalizedQuery,
+          {
+            signal,
+          }
         );
 
       const destinations =

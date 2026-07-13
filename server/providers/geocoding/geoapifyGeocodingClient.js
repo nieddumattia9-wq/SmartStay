@@ -235,7 +235,12 @@ function removeDuplicateDestinations(
 }
 
 async function searchGeoapifyDestinations(
-  query
+  query,
+  {
+    signal,
+    timeoutMs =
+      GEOAPIFY_REQUEST_TIMEOUT_MS,
+  } = {}
 ) {
 
   const normalizedQuery =
@@ -285,10 +290,51 @@ async function searchGeoapifyDestinations(
   const controller =
     new AbortController();
 
+  const parsedTimeoutMs =
+    Number(
+      timeoutMs
+    );
+
+  const resolvedTimeoutMs =
+    Number.isFinite(
+      parsedTimeoutMs
+    ) &&
+    parsedTimeoutMs > 0
+      ? parsedTimeoutMs
+      : GEOAPIFY_REQUEST_TIMEOUT_MS;
+
+  let internalTimeoutTriggered =
+    false;
+
+  const abortFromExternalSignal =
+    () => {
+      controller.abort(
+        signal?.reason
+      );
+    };
+
+  if (signal?.aborted) {
+    abortFromExternalSignal();
+  } else {
+    signal?.addEventListener(
+      "abort",
+      abortFromExternalSignal,
+      {
+        once:
+          true,
+      }
+    );
+  }
+
   const timeoutId =
     setTimeout(
-      () => controller.abort(),
-      GEOAPIFY_REQUEST_TIMEOUT_MS
+      () => {
+        internalTimeoutTriggered =
+          true;
+
+        controller.abort();
+      },
+      resolvedTimeoutMs
     );
 
   try {
@@ -357,8 +403,38 @@ async function searchGeoapifyDestinations(
 
   } catch (error) {
 
-    if (error.name === "AbortError") {
+    if (
+      signal?.aborted &&
+      !internalTimeoutTriggered
+    ) {
+      if (
+        signal.reason instanceof
+          Error
+      ) {
+        throw signal.reason;
+      }
 
+      const cancellationError =
+        new Error(
+          "Geoapify destination search was cancelled."
+        );
+
+      cancellationError.name =
+        "AbortError";
+
+      cancellationError.status =
+        499;
+
+      cancellationError.code =
+        "PROVIDER_REQUEST_ABORTED";
+
+      throw cancellationError;
+    }
+
+    if (
+      internalTimeoutTriggered ||
+      error.name === "AbortError"
+    ) {
       const timeoutError =
         new Error(
           "Geoapify destination search timed out."
@@ -371,14 +447,20 @@ async function searchGeoapifyDestinations(
         "GEOAPIFY_TIMEOUT";
 
       throw timeoutError;
-
     }
 
     throw error;
 
   } finally {
 
-    clearTimeout(timeoutId);
+    clearTimeout(
+      timeoutId
+    );
+
+    signal?.removeEventListener(
+      "abort",
+      abortFromExternalSignal
+    );
 
   }
 
