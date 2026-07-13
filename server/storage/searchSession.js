@@ -5,6 +5,29 @@ const SEARCH_SESSION_TTL_MS =
 
 const sessions = new Map();
 
+function cloneSearchSessionData(
+  value
+) {
+  try {
+    return structuredClone(
+      value
+    );
+  } catch (error) {
+    const cloneError =
+      new Error(
+        "Search session data must be safely cloneable."
+      );
+
+    cloneError.code =
+      "INVALID_SEARCH_SESSION_DATA";
+
+    cloneError.cause =
+      error;
+
+    throw cloneError;
+  }
+}
+
 function removeExpiredSessions() {
 
   const now = Date.now();
@@ -41,16 +64,23 @@ function saveSearchSession(session) {
 
   const now = Date.now();
 
+  const sessionSnapshot =
+    cloneSearchSessionData(
+      session
+    );
+
   const searchId =
-    session.searchId || createSearchId();
+    sessionSnapshot.searchId ||
+    createSearchId();
 
   const savedSession = {
-    ...session,
+    ...sessionSnapshot,
 
     searchId,
 
     createdAt:
-      session.createdAt ?? now,
+      sessionSnapshot.createdAt ??
+      now,
 
     updatedAt:
       now,
@@ -59,26 +89,37 @@ function saveSearchSession(session) {
       now + SEARCH_SESSION_TTL_MS,
 
     hotels:
-      Array.isArray(session.hotels)
-        ? session.hotels
+      Array.isArray(
+        sessionSnapshot.hotels
+      )
+        ? sessionSnapshot.hotels
         : [],
 
     status:
-      session.status ?? "InProgress",
+      sessionSnapshot.status ??
+      "InProgress",
 
     searchIncomplete:
-      session.searchIncomplete ?? true,
+      sessionSnapshot.searchIncomplete ??
+      true,
 
     isContinuing:
-      session.isContinuing ?? false,
+      sessionSnapshot.isContinuing ??
+      false,
 
     lastError:
-      session.lastError ?? null,
+      sessionSnapshot.lastError ??
+      null,
   };
 
-  sessions.set(searchId, savedSession);
+  sessions.set(
+    searchId,
+    savedSession
+  );
 
-  return savedSession;
+  return cloneSearchSessionData(
+    savedSession
+  );
 
 }
 
@@ -92,7 +133,16 @@ function getSearchSession(searchId) {
 
   }
 
-  return sessions.get(searchId) ?? null;
+  const session =
+    sessions.get(
+      searchId
+    );
+
+  return session
+    ? cloneSearchSessionData(
+        session
+      )
+    : null;
 
 }
 
@@ -107,7 +157,9 @@ function updateSearchSession(searchId, updates = {}) {
   removeExpiredSessions();
 
   const currentSession =
-    sessions.get(searchId);
+    sessions.get(
+      searchId
+    );
 
   if (!currentSession) {
 
@@ -117,9 +169,14 @@ function updateSearchSession(searchId, updates = {}) {
 
   const now = Date.now();
 
+  const updatesSnapshot =
+    cloneSearchSessionData(
+      updates
+    );
+
   const updatedSession = {
     ...currentSession,
-    ...updates,
+    ...updatesSnapshot,
 
     searchId:
       currentSession.searchId,
@@ -134,9 +191,14 @@ function updateSearchSession(searchId, updates = {}) {
       now + SEARCH_SESSION_TTL_MS,
   };
 
-  sessions.set(searchId, updatedSession);
+  sessions.set(
+    searchId,
+    updatedSession
+  );
 
-  return updatedSession;
+  return cloneSearchSessionData(
+    updatedSession
+  );
 
 }
 
