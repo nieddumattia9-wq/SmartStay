@@ -15,6 +15,7 @@ type HotelCardProps = {
   reasons?: string[];
   priceAdvantagePercent?: number | null;
   detailsLoading?: boolean;
+  bookingUrl?: string | null;
   onViewDetails: (hotel: Hotel) => void;
 };
 
@@ -175,6 +176,7 @@ function HotelCard({
   reasons = [],
   priceAdvantagePercent = null,
   detailsLoading = false,
+  bookingUrl = null,
   onViewDetails,
 }: HotelCardProps) {
   const hasImage =
@@ -354,21 +356,34 @@ function HotelCard({
             </p>
           </div>
 
-          <button
-            type="button"
-            className="hotel-card__button"
-            onClick={() => {
-              onViewDetails(
-                hotel
-              );
-            }}
-            disabled={detailsLoading}
-            aria-busy={detailsLoading}
-          >
-            {detailsLoading
-              ? "Loading details..."
-              : "View Details"}
-          </button>
+          <div className="hotel-card__actions">
+            <button
+              type="button"
+              className="hotel-card__button"
+              onClick={() => {
+                onViewDetails(
+                  hotel
+                );
+              }}
+              disabled={detailsLoading}
+              aria-busy={detailsLoading}
+            >
+              {detailsLoading
+                ? "Loading details..."
+                : "View Details"}
+            </button>
+
+            {bookingUrl && (
+              <a
+                className="hotel-card__booking-link"
+                href={bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View booking offer
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </article>

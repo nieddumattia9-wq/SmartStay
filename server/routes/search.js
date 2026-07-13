@@ -19,6 +19,10 @@ const {
   getSearchStatus,
 } = require("../services/stayService");
 
+const {
+  resolveBookingRedirect,
+} = require("../services/bookingRedirectService");
+
 function getSearchIdFromRequest(req) {
 
   const searchId =
@@ -37,6 +41,10 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "SEARCH_SESSION_EXPIRED",
     "HOTEL_ID_REQUIRED",
     "HOTEL_NOT_IN_SEARCH",
+    "OFFER_ID_REQUIRED",
+    "OFFER_ID_INVALID",
+    "OFFER_NOT_IN_HOTEL",
+    "OFFER_NOT_BOOKABLE",
   ]);
 
 function isValidHttpStatus(
@@ -319,6 +327,67 @@ router.post("/search-hotels/continue", async (req, res) => {
       res,
       error,
       "Unable to continue hotel search."
+    );
+
+  }
+
+});
+
+// =========================
+// Booking Redirect
+// =========================
+
+router.get("/booking-redirect", (req, res) => {
+
+  try {
+
+    const searchId =
+      typeof req.query.searchId ===
+        "string"
+        ? req.query.searchId.trim()
+        : "";
+
+    const hotelId =
+      typeof req.query.hotelId ===
+        "string"
+        ? req.query.hotelId.trim()
+        : "";
+
+    const offerId =
+      typeof req.query.offerId ===
+        "string"
+        ? req.query.offerId.trim()
+        : "";
+
+    const {
+      redirectUrl,
+    } = resolveBookingRedirect({
+      searchId,
+      hotelId,
+      offerId,
+    });
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
+
+    res.set(
+      "Referrer-Policy",
+      "no-referrer"
+    );
+
+    return res.redirect(
+      302,
+      redirectUrl
+    );
+
+  } catch (error) {
+
+    return sendRouteError(
+      res,
+      error,
+      "Unable to open this booking offer."
     );
 
   }

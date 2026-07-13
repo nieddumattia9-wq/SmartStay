@@ -19,6 +19,7 @@ import HotelDetailsPanel from "../../components/HotelDetailsPanel/HotelDetailsPa
   } from "../../components/SmartOptimizer/sliderData";
 import {
   ApiRequestError,
+  createBookingRedirectUrl,
   getHotelDetails,
   getSearchSession,
 } from "../../services/api";
@@ -343,6 +344,50 @@ import type {
 
   }
 
+function getHotelBookingUrl(
+  hotel: Hotel | null,
+  searchId: string | null
+) {
+
+  if (!hotel) {
+
+    return null;
+
+  }
+
+  const bookableOffers =
+    [...(hotel.offers ?? [])]
+      .filter(
+        (offer) =>
+          offer.bookable === true
+      )
+      .sort(
+        (
+          firstOffer,
+          secondOffer
+        ) =>
+          firstOffer.price -
+          secondOffer.price
+      );
+
+  const bestBookableOffer =
+    bookableOffers[0] ??
+    null;
+
+  if (!bestBookableOffer) {
+
+    return null;
+
+  }
+
+  return createBookingRedirectUrl(
+    searchId,
+    hotel.id,
+    bestBookableOffer.id
+  );
+
+}
+
 function getHotelDetailsFailureMessage(
   error: unknown
 ) {
@@ -432,6 +477,20 @@ function getHotelDetailsFailureMessage(
 
     const detailsRequestIdRef =
       useRef(0);
+
+    const activeDetailsHotel =
+      hotels.find(
+        (hotel) =>
+          hotel.id ===
+          activeDetailsHotelId
+      ) ??
+      null;
+
+    const activeDetailsBookingUrl =
+      getHotelBookingUrl(
+        activeDetailsHotel,
+        searchId
+      );
   
     const selectedPreferenceIndex =
       useMemo(() => {
@@ -879,6 +938,12 @@ function getHotelDetailsFailureMessage(
                     activeDetailsHotelId ===
                       evaluation.hotel.id
                   }
+                  bookingUrl={
+                    getHotelBookingUrl(
+                      evaluation.hotel,
+                      searchId
+                    )
+                  }
                   onViewDetails={
                     handleViewHotelDetails
                   }
@@ -1008,6 +1073,12 @@ function getHotelDetailsFailureMessage(
                           activeDetailsHotelId ===
                             evaluation.hotel.id
                         }
+                        bookingUrl={
+                          getHotelBookingUrl(
+                            evaluation.hotel,
+                            searchId
+                          )
+                        }
                         onViewDetails={
                           handleViewHotelDetails
                         }
@@ -1025,6 +1096,7 @@ function getHotelDetailsFailureMessage(
           details={hotelDetails}
           loading={hotelDetailsLoading}
           error={hotelDetailsError}
+          bookingUrl={activeDetailsBookingUrl}
           onClose={handleCloseHotelDetails}
         />
       )}

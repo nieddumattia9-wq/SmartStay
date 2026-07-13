@@ -12,6 +12,7 @@ type HotelDetailsPanelProps = {
   details: HotelDetails | null;
   loading: boolean;
   error: string;
+  bookingUrl?: string | null;
   onClose: () => void;
 };
 
@@ -59,6 +60,7 @@ function HotelDetailsPanel({
   details,
   loading,
   error,
+  bookingUrl = null,
   onClose,
 }: HotelDetailsPanelProps) {
   useEffect(() => {
@@ -237,6 +239,17 @@ function HotelDetailsPanel({
                 title="Facilities"
                 items={details.facilities}
               />
+
+              {bookingUrl && (
+                <a
+                  className="hotel-details-panel__booking"
+                  href={bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Continue to booking
+                </a>
+              )}
 
               <p className="hotel-details-panel__provider">
                 Accommodation information supplied by {details.provider}.

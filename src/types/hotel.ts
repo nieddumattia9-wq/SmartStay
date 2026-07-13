@@ -49,7 +49,7 @@ export interface HotelOffer {
 
   roomName: string | null;
 
-  deepLink: string | null;
+  bookable: boolean;
 
 }
 

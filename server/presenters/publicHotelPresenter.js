@@ -244,9 +244,11 @@ function createPublicHotelOffer(
         source.roomName
       ),
 
-    deepLink:
-      getSafeHttpUrl(
-        source.deepLink
+    bookable:
+      Boolean(
+        getSafeHttpUrl(
+          source.deepLink
+        )
       ),
   };
 

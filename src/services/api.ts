@@ -256,6 +256,43 @@ export async function continueHotelSearch(
 
 }
 
+export function createBookingRedirectUrl(
+  searchId?: string | null,
+  hotelId?: string | null,
+  offerId?: string | null
+) {
+  const normalizedSearchId =
+    searchId?.trim() ?? "";
+
+  const normalizedHotelId =
+    hotelId?.trim() ?? "";
+
+  const normalizedOfferId =
+    offerId?.trim() ?? "";
+
+  if (
+    !normalizedSearchId ||
+    !normalizedHotelId ||
+    !normalizedOfferId
+  ) {
+    return null;
+  }
+
+  const searchParams =
+    new URLSearchParams({
+      searchId:
+        normalizedSearchId,
+
+      hotelId:
+        normalizedHotelId,
+
+      offerId:
+        normalizedOfferId,
+    });
+
+  return `${API_URL}/booking-redirect?${searchParams.toString()}`;
+}
+
 export async function getHotelDetails(
   hotelId: string,
   searchId?: string | null

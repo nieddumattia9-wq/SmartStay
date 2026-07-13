@@ -197,3 +197,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+.hotel-details-panel__booking {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 32px;
+  border-radius: 16px;
+  padding: 15px 20px;
+  background: #059669;
+  color: #ffffff;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(5, 150, 105, 0.22);
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.hotel-details-panel__booking:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+.hotel-details-panel__booking:focus-visible {
+  outline: 3px solid rgba(5, 150, 105, 0.28);
+  outline-offset: 3px;
+}

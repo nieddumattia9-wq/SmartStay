@@ -519,7 +519,7 @@ function calculateSavingScore(
   
     if (
       validOffers.some((offer) =>
-        Boolean(offer.deepLink)
+        offer.bookable === true
       )
     ) {
       score += 7;
