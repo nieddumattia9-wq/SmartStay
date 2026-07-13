@@ -5,8 +5,6 @@ const SEARCH_SESSION_TTL_MS =
 
 const sessions = new Map();
 
-let latestSearchId = null;
-
 function removeExpiredSessions() {
 
   const now = Date.now();
@@ -17,23 +15,7 @@ function removeExpiredSessions() {
 
       sessions.delete(searchId);
 
-      if (latestSearchId === searchId) {
-
-        latestSearchId = null;
-
-      }
-
     }
-
-  }
-
-  if (!latestSearchId && sessions.size > 0) {
-
-    const remainingSearchIds =
-      Array.from(sessions.keys());
-
-    latestSearchId =
-      remainingSearchIds[remainingSearchIds.length - 1];
 
   }
 
@@ -96,8 +78,6 @@ function saveSearchSession(session) {
 
   sessions.set(searchId, savedSession);
 
-  latestSearchId = searchId;
-
   return savedSession;
 
 }
@@ -155,8 +135,6 @@ function updateSearchSession(searchId, updates = {}) {
   };
 
   sessions.set(searchId, updatedSession);
-
-  latestSearchId = searchId;
 
   return updatedSession;
 
@@ -223,18 +201,6 @@ function clearSearchSession(searchId) {
   }
 
   sessions.delete(searchId);
-
-  if (latestSearchId === searchId) {
-
-    const remainingSearchIds =
-      Array.from(sessions.keys());
-
-    latestSearchId =
-      remainingSearchIds.length > 0
-        ? remainingSearchIds[remainingSearchIds.length - 1]
-        : null;
-
-  }
 
 }
 
