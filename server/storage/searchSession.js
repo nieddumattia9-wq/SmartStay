@@ -3,7 +3,28 @@ const crypto = require("crypto");
 const SEARCH_SESSION_TTL_MS =
   30 * 60 * 1000;
 
+const EXPIRED_SEARCH_ID_RETENTION_MS =
+  SEARCH_SESSION_TTL_MS;
+
+const SEARCH_SESSION_STATES =
+  Object.freeze({
+    MISSING:
+      "missing",
+
+    ACTIVE:
+      "active",
+
+    EXPIRED:
+      "expired",
+
+    NOT_FOUND:
+      "not_found",
+  });
+
 const sessions = new Map();
+
+const expiredSearchIds =
+  new Map();
 
 function cloneSearchSessionData(
   value
@@ -32,11 +53,47 @@ function removeExpiredSessions() {
 
   const now = Date.now();
 
-  for (const [searchId, session] of sessions.entries()) {
+  for (
+    const [
+      searchId,
+      session,
+    ] of sessions.entries()
+  ) {
 
-    if (session.expiresAt <= now) {
+    if (
+      session.expiresAt <=
+      now
+    ) {
 
-      sessions.delete(searchId);
+      sessions.delete(
+        searchId
+      );
+
+      expiredSearchIds.set(
+        searchId,
+        now +
+          EXPIRED_SEARCH_ID_RETENTION_MS
+      );
+
+    }
+
+  }
+
+  for (
+    const [
+      searchId,
+      retentionExpiresAt,
+    ] of expiredSearchIds.entries()
+  ) {
+
+    if (
+      retentionExpiresAt <=
+      now
+    ) {
+
+      expiredSearchIds.delete(
+        searchId
+      );
 
     }
 
@@ -72,6 +129,10 @@ function saveSearchSession(session) {
   const searchId =
     sessionSnapshot.searchId ||
     createSearchId();
+
+  expiredSearchIds.delete(
+    searchId
+  );
 
   const savedSession = {
     ...sessionSnapshot,
@@ -123,26 +184,186 @@ function saveSearchSession(session) {
 
 }
 
-function getSearchSession(searchId) {
+function normalizeSearchId(
+  searchId
+) {
+
+  return typeof searchId ===
+    "string"
+    ? searchId.trim()
+    : "";
+
+}
+
+function getSearchSessionState(
+  searchId
+) {
 
   removeExpiredSessions();
 
-  if (!searchId) {
+  const normalizedSearchId =
+    normalizeSearchId(
+      searchId
+    );
+
+  if (!normalizedSearchId) {
+
+    return SEARCH_SESSION_STATES
+      .MISSING;
+
+  }
+
+  if (
+    sessions.has(
+      normalizedSearchId
+    )
+  ) {
+
+    return SEARCH_SESSION_STATES
+      .ACTIVE;
+
+  }
+
+  if (
+    expiredSearchIds.has(
+      normalizedSearchId
+    )
+  ) {
+
+    return SEARCH_SESSION_STATES
+      .EXPIRED;
+
+  }
+
+  return SEARCH_SESSION_STATES
+    .NOT_FOUND;
+
+}
+
+function createSearchSessionError({
+  code,
+  message,
+  status,
+}) {
+
+  const error =
+    new Error(
+      message
+    );
+
+  error.code =
+    code;
+
+  error.status =
+    status;
+
+  return error;
+
+}
+
+function getSearchSession(searchId) {
+
+  const normalizedSearchId =
+    normalizeSearchId(
+      searchId
+    );
+
+  if (
+    getSearchSessionState(
+      normalizedSearchId
+    ) !==
+    SEARCH_SESSION_STATES
+      .ACTIVE
+  ) {
 
     return null;
 
   }
 
-  const session =
+  return cloneSearchSessionData(
     sessions.get(
+      normalizedSearchId
+    )
+  );
+
+}
+
+function requireSearchSession(
+  searchId
+) {
+
+  const normalizedSearchId =
+    normalizeSearchId(
       searchId
     );
 
-  return session
-    ? cloneSearchSessionData(
-        session
-      )
-    : null;
+  const state =
+    getSearchSessionState(
+      normalizedSearchId
+    );
+
+  if (
+    state ===
+    SEARCH_SESSION_STATES
+      .MISSING
+  ) {
+
+    throw createSearchSessionError({
+      code:
+        "SEARCH_ID_REQUIRED",
+
+      message:
+        "searchId is required.",
+
+      status:
+        400,
+    });
+
+  }
+
+  if (
+    state ===
+    SEARCH_SESSION_STATES
+      .EXPIRED
+  ) {
+
+    throw createSearchSessionError({
+      code:
+        "SEARCH_SESSION_EXPIRED",
+
+      message:
+        "This search session has expired. Start a new search.",
+
+      status:
+        410,
+    });
+
+  }
+
+  if (
+    state ===
+    SEARCH_SESSION_STATES
+      .NOT_FOUND
+  ) {
+
+    throw createSearchSessionError({
+      code:
+        "SEARCH_SESSION_NOT_FOUND",
+
+      message:
+        "The requested search session was not found.",
+
+      status:
+        404,
+    });
+
+  }
+
+  return cloneSearchSessionData(
+    sessions.get(
+      normalizedSearchId
+    )
+  );
 
 }
 
@@ -256,13 +477,24 @@ function appendHotelsToSearchSession(
 
 function clearSearchSession(searchId) {
 
-  if (!searchId) {
+  const normalizedSearchId =
+    normalizeSearchId(
+      searchId
+    );
+
+  if (!normalizedSearchId) {
 
     return;
 
   }
 
-  sessions.delete(searchId);
+  sessions.delete(
+    normalizedSearchId
+  );
+
+  expiredSearchIds.delete(
+    normalizedSearchId
+  );
 
 }
 
@@ -275,8 +507,13 @@ function getSearchSessionCount() {
 }
 
 module.exports = {
+  SEARCH_SESSION_TTL_MS,
+  EXPIRED_SEARCH_ID_RETENTION_MS,
+  SEARCH_SESSION_STATES,
   saveSearchSession,
   getSearchSession,
+  getSearchSessionState,
+  requireSearchSession,
   updateSearchSession,
   appendHotelsToSearchSession,
   clearSearchSession,

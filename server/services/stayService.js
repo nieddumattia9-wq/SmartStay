@@ -6,7 +6,7 @@ const {
 
   const {
     saveSearchSession,
-    getSearchSession,
+    requireSearchSession,
     updateSearchSession,
     appendHotelsToSearchSession,
   } = require("../storage/searchSession");
@@ -404,27 +404,9 @@ const {
   // =========================
 
   async function continueHotelSearch(searchId) {
-
-    if (!searchId) {
-
-      throw new Error(
-        "searchId is required to continue hotel search."
-      );
-
-    }
-
-    const session =
-      getSearchSession(searchId);
-
-    if (!session) {
-
-      throw new Error(
-        "No active hotel search session."
-      );
-
-    }
-
-    if (session.isContinuing) {
+const session =
+      requireSearchSession(searchId);
+if (session.isContinuing) {
 
       return {
         success:
@@ -709,7 +691,7 @@ const {
 
     async function getHotelDetails(
       hotelId,
-      searchId = null
+      searchId
     ) {
 
       if (!hotelId) {
@@ -721,17 +703,8 @@ const {
       }
 
       const session =
-        getSearchSession(searchId);
-
-      if (!session) {
-
-        throw new Error(
-          "No active hotel search session."
-        );
-
-      }
-
-      const hotel =
+        requireSearchSession(searchId);
+const hotel =
         findHotelInSession(
           session,
           hotelId
@@ -765,24 +738,11 @@ const {
     // Search Status
     // =========================
 
-    async function getSearchStatus(searchId = null) {
+    async function getSearchStatus(searchId) {
 
       const session =
-        getSearchSession(searchId);
-
-      if (!session) {
-
-        return {
-          success:
-            false,
-
-          message:
-            "No active search session.",
-        };
-
-      }
-
-      return {
+        requireSearchSession(searchId);
+return {
         success:
           true,
 

@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  getSearchSession,
+  requireSearchSession,
 } = require("../storage/searchSession");
 
 const {
@@ -25,28 +25,99 @@ function getSearchIdFromRequest(req) {
 
 }
 
-function sendRouteError(res, error, fallbackMessage) {
+const PUBLIC_ROUTE_ERROR_CODES =
+  new Set([
+    "SEARCH_ID_REQUIRED",
+    "SEARCH_SESSION_NOT_FOUND",
+    "SEARCH_SESSION_EXPIRED",
+  ]);
+
+function isValidHttpStatus(
+  status
+) {
+
+  return (
+    Number.isInteger(
+      status
+    ) &&
+    status >= 400 &&
+    status <= 599
+  );
+
+}
+
+function sendRouteError(
+  res,
+  error,
+  fallbackMessage
+) {
+
+  const directStatus =
+    error?.status;
 
   const providerStatus =
-    error.response?.status;
+    error?.response?.status;
 
   const status =
-    Number.isInteger(providerStatus) &&
-    providerStatus >= 400 &&
-    providerStatus <= 599
-      ? providerStatus
-      : 500;
+    isValidHttpStatus(
+      directStatus
+    )
+      ? directStatus
+      : isValidHttpStatus(
+          providerStatus
+        )
+        ? providerStatus
+        : 500;
 
-  console.error(fallbackMessage);
-  console.error("Status:", status);
-  console.error("Data:", error.response?.data);
-  console.error("Message:", error.message);
+  const publicCode =
+    PUBLIC_ROUTE_ERROR_CODES.has(
+      error?.code
+    )
+      ? error.code
+      : null;
+
+  const publicMessage =
+    publicCode
+      ? error.message
+      : fallbackMessage;
+
+  console.error(
+    fallbackMessage
+  );
+
+  console.error(
+    "Status:",
+    status
+  );
+
+  console.error(
+    "Code:",
+    error?.code
+  );
+
+  console.error(
+    "Data:",
+    error?.response?.data
+  );
+
+  console.error(
+    "Message:",
+    error?.message
+  );
 
   return res
-    .status(status)
+    .status(
+      status
+    )
     .json({
-      success: false,
-      message: fallbackMessage,
+      success:
+        false,
+
+      code:
+        publicCode,
+
+      message:
+        publicMessage,
     });
 
 }
@@ -189,6 +260,7 @@ router.post("/search-hotels/continue", async (req, res) => {
 
       return res.status(400).json({
         success: false,
+        code: "SEARCH_ID_REQUIRED",
         message: "searchId is required.",
       });
 
@@ -254,6 +326,7 @@ router.post("/hotel-details", async (req, res) => {
 
       return res.status(400).json({
         success: false,
+        code: "SEARCH_ID_REQUIRED",
         message: "searchId is required.",
       });
 
@@ -294,6 +367,7 @@ router.get("/search-status", async (req, res) => {
 
       return res.status(400).json({
         success: false,
+        code: "SEARCH_ID_REQUIRED",
         message: "searchId is required.",
       });
 
@@ -322,34 +396,37 @@ router.get("/search-status", async (req, res) => {
 
 router.get("/search-session", (req, res) => {
 
-  const searchId =
-    getSearchIdFromRequest(req);
+  try {
 
-  if (!searchId) {
+    const searchId =
+      getSearchIdFromRequest(
+        req
+      );
 
-    return res.status(400).json({
-      success: false,
-      message: "searchId is required.",
+    const session =
+      requireSearchSession(
+        searchId
+      );
+
+    return res.json({
+      success:
+        true,
+
+      session:
+        createPublicSearchSession(
+          session
+        ),
     });
 
-  }
+  } catch (error) {
 
-  const session =
-    getSearchSession(searchId);
-
-  if (!session) {
-
-    return res.status(404).json({
-      success: false,
-      message: "No active search session.",
-    });
+    return sendRouteError(
+      res,
+      error,
+      "Unable to retrieve search session."
+    );
 
   }
-
-  return res.json({
-    success: true,
-    session: createPublicSearchSession(session),
-  });
 
 });
 
