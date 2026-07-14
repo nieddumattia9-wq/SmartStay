@@ -52,14 +52,24 @@ export type SmartStayEvaluation = {
   breakdown: SmartScoreBreakdown;
 };
 
-type SmartStayContext = {
+export type SmartStayPriceBaseline = {
   averagePrice: number;
+  medianPrice: number;
+  firstQuartilePrice: number;
+  thirdQuartilePrice: number;
   minPrice: number;
   maxPrice: number;
-  totalBudget: number | null;
-  maxDistanceKm: number | null;
-  currency: string | null;
+  comparablePriceCount: number;
+  referencePriceCount: number;
+  excludedOutlierCount: number;
 };
+
+type SmartStayContext =
+  SmartStayPriceBaseline & {
+    totalBudget: number | null;
+    maxDistanceKm: number | null;
+    currency: string | null;
+  };
 
 type PreferenceWeights = {
   price: number;
@@ -217,9 +227,207 @@ function hasValidOffer(hotel: Hotel) {
   return getBestOfferPrice(hotel) !== null;
 }
 
-function getValidPrices(hotels: Hotel[]) {
+function calculateAverage(
+  values: number[]
+) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const total =
+    values.reduce(
+      (sum, value) =>
+        sum + value,
+      0
+    );
+
+  return total / values.length;
+}
+
+function calculateQuantile(
+  sortedValues: number[],
+  quantile: number
+) {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+
+  if (sortedValues.length === 1) {
+    return sortedValues[0];
+  }
+
+  const position =
+    (
+      sortedValues.length - 1
+    ) *
+    clamp(
+      quantile,
+      0,
+      1
+    );
+
+  const lowerIndex =
+    Math.floor(position);
+
+  const upperIndex =
+    Math.ceil(position);
+
+  if (lowerIndex === upperIndex) {
+    return sortedValues[lowerIndex];
+  }
+
+  const interpolationWeight =
+    position - lowerIndex;
+
+  return (
+    sortedValues[lowerIndex] +
+    (
+      sortedValues[upperIndex] -
+      sortedValues[lowerIndex]
+    ) *
+    interpolationWeight
+  );
+}
+
+export function createSmartStayPriceBaseline(
+  values: number[]
+): SmartStayPriceBaseline {
+  const sortedPrices =
+    values
+      .filter(hasPositiveNumber)
+      .slice()
+      .sort(
+        (firstPrice, secondPrice) =>
+          firstPrice - secondPrice
+      );
+
+  if (sortedPrices.length === 0) {
+    return {
+      averagePrice: 0,
+      medianPrice: 0,
+      firstQuartilePrice: 0,
+      thirdQuartilePrice: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      comparablePriceCount: 0,
+      referencePriceCount: 0,
+      excludedOutlierCount: 0,
+    };
+  }
+
+  const medianPrice =
+    calculateQuantile(
+      sortedPrices,
+      0.5
+    );
+
+  const firstQuartilePrice =
+    calculateQuantile(
+      sortedPrices,
+      0.25
+    );
+
+  const thirdQuartilePrice =
+    calculateQuantile(
+      sortedPrices,
+      0.75
+    );
+
+  const interquartileRange =
+    thirdQuartilePrice -
+    firstQuartilePrice;
+
+  let referencePrices =
+    sortedPrices;
+
+  if (
+    sortedPrices.length >= 5 &&
+    interquartileRange > 0
+  ) {
+    const lowerFence =
+      firstQuartilePrice -
+      interquartileRange * 1.5;
+
+    const upperFence =
+      thirdQuartilePrice +
+      interquartileRange * 1.5;
+
+    const pricesWithinFences =
+      sortedPrices.filter(
+        (price) =>
+          price >= lowerFence &&
+          price <= upperFence
+      );
+
+    if (
+      pricesWithinFences.length >= 3
+    ) {
+      referencePrices =
+        pricesWithinFences;
+    }
+  }
+
+  return {
+    averagePrice:
+      calculateAverage(
+        referencePrices
+      ),
+
+    medianPrice,
+
+    firstQuartilePrice,
+
+    thirdQuartilePrice,
+
+    minPrice:
+      referencePrices[0],
+
+    maxPrice:
+      referencePrices[
+        referencePrices.length - 1
+      ],
+
+    comparablePriceCount:
+      sortedPrices.length,
+
+    referencePriceCount:
+      referencePrices.length,
+
+    excludedOutlierCount:
+      sortedPrices.length -
+      referencePrices.length,
+  };
+}
+
+function getValidPrices(
+  hotels: Hotel[],
+  currency: string | null
+) {
   return hotels
-    .map(getBestOfferPrice)
+    .map((hotel) => {
+      const cost =
+        getBestComparableStayCost(
+          hotel
+        );
+
+      if (!cost) {
+        return null;
+      }
+
+      const costCurrency =
+        normalizeConstraintCurrency(
+          cost.currency
+        );
+
+      if (
+        currency &&
+        costCurrency !== currency
+      ) {
+        return null;
+      }
+
+      return cost.amount;
+    })
     .filter(hasPositiveNumber);
 }
 
@@ -228,8 +436,6 @@ function createSmartStayContext(
   constraints:
     SmartStaySearchConstraints = {}
 ): SmartStayContext {
-  const prices = getValidPrices(hotels);
-
   const totalBudget =
     normalizePositiveConstraint(
       constraints.totalBudget
@@ -245,32 +451,19 @@ function createSmartStayContext(
       constraints.currency
     );
 
-  if (prices.length === 0) {
-    return {
-      averagePrice: 0,
-      minPrice: 0,
-      maxPrice: 0,
-      totalBudget,
-      maxDistanceKm,
-      currency,
-    };
-  }
+  const prices =
+    getValidPrices(
+      hotels,
+      currency
+    );
 
-  const totalPrice = prices.reduce(
-    (sum, price) => sum + price,
-    0
-  );
+  const priceBaseline =
+    createSmartStayPriceBaseline(
+      prices
+    );
 
   return {
-    averagePrice:
-      totalPrice / prices.length,
-
-    minPrice:
-      Math.min(...prices),
-
-    maxPrice:
-      Math.max(...prices),
-
+    ...priceBaseline,
     totalBudget,
     maxDistanceKm,
     currency,
