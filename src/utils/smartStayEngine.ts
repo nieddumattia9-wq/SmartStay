@@ -1362,12 +1362,136 @@ function calculateSavingScore(
     return badges.slice(0, 3);
   }
   
+  function formatComparisonMagnitude(
+    value: number,
+    maximumFractionDigits: number = 1
+  ) {
+    return Math.abs(
+      value
+    ).toLocaleString(
+      "en-US",
+      {
+        maximumFractionDigits,
+      }
+    );
+  }
+
+  function createComparisonReasons(
+    comparison: SmartStayComparison
+  ) {
+    const reasons: string[] = [];
+
+    const budgetDifferencePercent =
+      comparison.budgetDifferencePercent;
+
+    if (
+      budgetDifferencePercent !== null
+    ) {
+      if (
+        budgetDifferencePercent < -0.1
+      ) {
+        reasons.push(
+          `The total stay cost is ${formatComparisonMagnitude(
+            budgetDifferencePercent
+          )}% below your budget.`
+        );
+      } else if (
+        budgetDifferencePercent > 0.1
+      ) {
+        reasons.push(
+          `The total stay cost is ${formatComparisonMagnitude(
+            budgetDifferencePercent
+          )}% above your budget.`
+        );
+      } else {
+        reasons.push(
+          "The total stay cost matches your budget."
+        );
+      }
+    }
+
+    const distanceDifferenceKm =
+      comparison.distanceDifferenceKm;
+
+    if (
+      distanceDifferenceKm !== null
+    ) {
+      if (
+        distanceDifferenceKm < -0.01
+      ) {
+        reasons.push(
+          `This stay is ${formatComparisonMagnitude(
+            distanceDifferenceKm,
+            2
+          )} km inside your selected distance limit.`
+        );
+      } else if (
+        distanceDifferenceKm > 0.01
+      ) {
+        reasons.push(
+          `This stay is ${formatComparisonMagnitude(
+            distanceDifferenceKm,
+            2
+          )} km beyond your selected distance limit.`
+        );
+      } else {
+        reasons.push(
+          "This stay matches your selected distance limit."
+        );
+      }
+    }
+
+    const priceVsMedianPercent =
+      comparison.priceVsMedianPercent;
+
+    if (
+      priceVsMedianPercent !== null &&
+      priceVsMedianPercent <= -5
+    ) {
+      reasons.push(
+        `The total price is ${formatComparisonMagnitude(
+          priceVsMedianPercent
+        )}% below the median for this search.`
+      );
+    } else if (
+      priceVsMedianPercent !== null &&
+      priceVsMedianPercent >= 5
+    ) {
+      reasons.push(
+        `The total price is ${formatComparisonMagnitude(
+          priceVsMedianPercent
+        )}% above the median for this search.`
+      );
+    }
+
+    return reasons;
+  }
+
   function createReasons(
+    comparison: SmartStayComparison,
     breakdown: SmartScoreBreakdown,
     riskLevel: SmartRiskLevel,
     hotel: Hotel
   ) {
-    const reasons: string[] = [];
+    const reasons =
+      createComparisonReasons(
+        comparison
+      );
+
+    const hasPriceComparisonReason =
+      comparison.budgetDifferencePercent !==
+        null ||
+      (
+        comparison.priceVsMedianPercent !==
+          null &&
+        Math.abs(
+          comparison.priceVsMedianPercent
+        ) >= 5
+      );
+
+    const hasDistanceComparisonReason =
+      comparison.distanceDifferenceKm !==
+      null;
   
     if (
       hotel.reviewScore === null ||
@@ -1399,13 +1523,19 @@ function calculateSavingScore(
       );
     }
   
-    if (breakdown.price >= 80) {
+    if (
+      !hasPriceComparisonReason &&
+      breakdown.price >= 80
+    ) {
       reasons.push(
         "Good price compared to other available stays."
       );
     }
   
-    if (breakdown.location >= 80) {
+    if (
+      !hasDistanceComparisonReason &&
+      breakdown.location >= 80
+    ) {
       reasons.push(
         "Convenient location for the selected destination."
       );
@@ -1417,7 +1547,10 @@ function calculateSavingScore(
       );
     }
   
-    if (breakdown.saving >= 75) {
+    if (
+      !hasPriceComparisonReason &&
+      breakdown.saving >= 75
+    ) {
       reasons.push(
         "The price is clearly below the average available option for this search."
       );
@@ -1721,6 +1854,7 @@ function calculateSavingScore(
         hotel
       ),
       reasons: createReasons(
+        comparison,
         breakdown,
         riskLevel,
         hotel
