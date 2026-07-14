@@ -224,12 +224,16 @@ function HotelCard({
         {smartScore !== undefined && (
           <div className="hotel-card__image-score">
             <span>
-              SmartScore
+              Your SmartScore
             </span>
 
             <strong>
               {smartScore}
             </strong>
+
+            <small>
+              For this search
+            </small>
           </div>
         )}
       </div>
