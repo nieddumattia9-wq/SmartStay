@@ -43,12 +43,19 @@ export type SmartScoreBreakdown = {
   reliability: number;
 };
 
+export type SmartStayFitBreakdown = {
+  marketPriceFit: number;
+  budgetFit: number | null;
+  distanceFit: number | null;
+};
+
 export type SmartStayEvaluation = {
   hotel: Hotel;
   smartScore: number;
   riskLevel: SmartRiskLevel;
   badges: SmartBadge[];
   reasons: string[];
+  fit: SmartStayFitBreakdown;
   breakdown: SmartScoreBreakdown;
 };
 
@@ -605,12 +612,14 @@ function calculateBudgetFitScore(
   return roundScore(score);
 }
 
-function calculatePriceScore(
+function calculateMarketPriceFitScore(
   hotel: Hotel,
   context: SmartStayContext
 ) {
   const hotelPrice =
-    getBestOfferPrice(hotel);
+    getBestOfferPrice(
+      hotel
+    );
 
   let marketPriceScore = 40;
 
@@ -625,24 +634,33 @@ function calculatePriceScore(
       marketPriceScore = 72;
     } else {
       const pricePosition =
-        (hotelPrice - context.minPrice) /
+        (
+          hotelPrice -
+          context.minPrice
+        ) /
         (
           context.maxPrice -
           context.minPrice
         );
 
       const rangeScore =
-        100 - pricePosition * 75;
+        100 -
+        pricePosition * 75;
 
       const comparedToAverage =
         context.averagePrice /
         hotelPrice;
 
-      const averageBonus = clamp(
-        (comparedToAverage - 1) * 22,
-        -16,
-        16
-      );
+      const averageBonus =
+        clamp(
+          (
+            comparedToAverage -
+            1
+          ) *
+          22,
+          -16,
+          16
+        );
 
       marketPriceScore =
         roundScore(
@@ -651,6 +669,19 @@ function calculatePriceScore(
         );
     }
   }
+
+  return marketPriceScore;
+}
+
+function calculatePriceScore(
+  hotel: Hotel,
+  context: SmartStayContext
+) {
+  const marketPriceScore =
+    calculateMarketPriceFitScore(
+      hotel,
+      context
+    );
 
   const budgetFitScore =
     calculateBudgetFitScore(
@@ -770,6 +801,26 @@ function calculatePreferredDistanceFit(
   return 22;
 }
 
+function calculateDistanceFitScore(
+  hotel: Hotel,
+  context: SmartStayContext
+): number | null {
+  if (
+    context.maxDistanceKm === null
+  ) {
+    return null;
+  }
+
+  if (hotel.distance === null) {
+    return 42;
+  }
+
+  return calculatePreferredDistanceFit(
+    hotel.distance,
+    context.maxDistanceKm
+  );
+}
+
 function calculateLocationScore(
   hotel: Hotel,
   context: SmartStayContext
@@ -779,24 +830,22 @@ function calculateLocationScore(
       hotel
     );
 
-  if (
-    context.maxDistanceKm === null
-  ) {
+  const distanceFitScore =
+    calculateDistanceFitScore(
+      hotel,
+      context
+    );
+
+  if (distanceFitScore === null) {
     return absoluteScore;
   }
 
   if (hotel.distance === null) {
-    return 42;
+    return distanceFitScore;
   }
 
-  const preferredDistanceScore =
-    calculatePreferredDistanceFit(
-      hotel.distance,
-      context.maxDistanceKm
-    );
-
   return roundScore(
-    preferredDistanceScore * 0.75 +
+    distanceFitScore * 0.75 +
     absoluteScore * 0.25
   );
 }
@@ -1416,9 +1465,30 @@ function calculateSavingScore(
     const weights =
       getPreferenceWeights(preferenceId);
   
+    const marketPriceFit =
+      calculateMarketPriceFitScore(
+        hotel,
+        context
+      );
+
+    const budgetFit =
+      calculateBudgetFitScore(
+        hotel,
+        context
+      );
+
+    const distanceFit =
+      calculateDistanceFitScore(
+        hotel,
+        context
+      );
+
     const priceScore =
-      calculatePriceScore(hotel, context);
-  
+      calculatePriceScore(
+        hotel,
+        context
+      );
+
     const reviewScore =
       calculateReviewScore(hotel);
   
@@ -1516,6 +1586,13 @@ function calculateSavingScore(
         riskLevel,
         hotel
       ),
+
+      fit: {
+        marketPriceFit,
+        budgetFit,
+        distanceFit,
+      },
+
       breakdown,
     };
   }
