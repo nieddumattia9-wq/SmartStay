@@ -42,6 +42,8 @@ import type {
     rankHotelsWithSmartStayEngine,
   } from "../../utils/smartStayEngine";
   
+import "./Results.css";
+
   const SEARCH_META_STORAGE_PREFIX =
     "smartstay_search_meta_";
   
@@ -117,6 +119,16 @@ import type {
     }
   }
 
+  function formatDistanceLimit(
+    maxDistanceKm: number | null
+  ) {
+    if (maxDistanceKm === null) {
+      return "Flexible distance";
+    }
+
+    return `Within ${maxDistanceKm} km`;
+  }
+
   function getSelectedPreferenceIndex(
     searchMeta: SearchMeta | null
   ) {
@@ -167,7 +179,7 @@ import type {
     }
   
     if (preferenceId === "maximum-savings") {
-      return "Prioritizing the lowest smart cost first. Future split-stay options will be evaluated here.";
+      return "Prioritizing the lowest reliable total prices while respecting your budget and distance limits.";
     }
   
     return "Balancing comfort, savings, location and reliability.";
@@ -520,7 +532,32 @@ function getHotelDetailsFailureMessage(
     const selectedPreference =
       sliderOptions[selectedPreferenceIndex] ??
       sliderOptions[DEFAULT_PREFERENCE_INDEX];
-  
+
+    const smartStayProfile =
+      searchMeta?.smartStayProfile ??
+      null;
+
+    const balanceSourceLabel =
+      smartStayProfile
+        ?.preferenceSource === "manual"
+        ? "Your choice"
+        : smartStayProfile
+          ? "Automatic"
+          : "Saved preference";
+
+    const balanceSourceClassName =
+      smartStayProfile
+        ?.preferenceSource === "manual"
+        ? "results-balance-card__source--manual"
+        : "results-balance-card__source--automatic";
+
+    const balanceExplanation =
+      smartStayProfile
+        ?.explanation ||
+      getPreferenceSummary(
+        selectedPreference.id
+      );
+
     const recommendationLimit =
       getRecommendationLimit(
         selectedPreference.id
@@ -819,96 +856,77 @@ function getHotelDetailsFailureMessage(
             Your SmartStay recommendations
           </h1>
   
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "16px",
-              padding: "9px 13px",
-              borderRadius: "999px",
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <span
-              style={{
-                width: "9px",
-                height: "9px",
-                borderRadius: "999px",
-                background: selectedPreference.color,
-              }}
-            />
-  
-            <span
-              style={{
-                color: "#0f172a",
-                fontSize: "0.88rem",
-                fontWeight: 800,
-              }}
-            >
-              {selectedPreference.title} mode
-            </span>
-          </div>
-  
-          <p
-            style={{
-              maxWidth: "760px",
-              color: "#64748b",
-              fontSize: "1.02rem",
-              lineHeight: 1.65,
-              margin: "0",
-            }}
-          >
-            We analyzed {hotels.length} available stays and selected the strongest options first.
-            {searchMeta?.destinationLabel ? ` Destination: ${searchMeta.destinationLabel}.` : ""}
-            {" "}
-            {getPreferenceSummary(selectedPreference.id)}
+          <p className="results-search-summary">
+            SmartStay analyzed {hotels.length} stays
+            {searchMeta?.destinationLabel
+              ? ` found for your search in ${searchMeta.destinationLabel}`
+              : " found for your search"}
+            {" "}and ranked the strongest matches first.
           </p>
-  
-          {searchMeta &&
-          searchMeta.totalBudget !== null && (
-            <div
-              style={{
-                marginTop: "12px",
-                color: "#64748b",
-                fontSize: "0.94rem",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                }}
-              >
-                Total stay budget:{" "}
-                {formatSearchMoney(
-                  searchMeta.totalBudget,
-                  searchMeta.currency
-                )}
-              </p>
 
-              {searchMeta.nightCount !== null && (
-                <p
-                  style={{
-                    margin:
-                      "4px 0 0",
-                  }}
-                >
-                  Average budget:{" "}
-                  {formatSearchMoney(
-                    searchMeta.totalBudget /
-                      searchMeta.nightCount,
-                    searchMeta.currency
-                  )}{" "}
-                  per night ?{" "}
-                  {searchMeta.nightCount}{" "}
-                  {searchMeta.nightCount === 1
-                    ? "night"
-                    : "nights"}
+          <div className="results-balance-card">
+            <div className="results-balance-card__header">
+              <div>
+                <p className="results-balance-card__eyebrow">
+                  Your SmartStay balance
                 </p>
-              )}
+
+                <div className="results-balance-card__title-row">
+                  <span
+                    className="results-balance-card__dot"
+                    style={{
+                      background:
+                        selectedPreference.color,
+                    }}
+                    aria-hidden="true"
+                  />
+
+                  <strong>
+                    {selectedPreference.title}
+                  </strong>
+                </div>
+              </div>
+
+              <span
+                className={`results-balance-card__source ${balanceSourceClassName}`}
+              >
+                {balanceSourceLabel}
+              </span>
             </div>
-          )}
+
+            <p className="results-balance-card__explanation">
+              {balanceExplanation}
+            </p>
+
+            {searchMeta && (
+              <div className="results-balance-card__facts">
+                {searchMeta.totalBudget !== null && (
+                  <span>
+                    {formatSearchMoney(
+                      searchMeta.totalBudget,
+                      searchMeta.currency
+                    )}{" "}
+                    total budget
+                  </span>
+                )}
+
+                {searchMeta.nightCount !== null && (
+                  <span>
+                    {searchMeta.nightCount}{" "}
+                    {searchMeta.nightCount === 1
+                      ? "night"
+                      : "nights"}
+                  </span>
+                )}
+
+                <span>
+                  {formatDistanceLimit(
+                    searchMeta.maxDistanceKm
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
 
           {status && (
             <p
