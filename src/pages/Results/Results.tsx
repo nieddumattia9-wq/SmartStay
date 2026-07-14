@@ -39,8 +39,12 @@ import type {
 } from "../../types/hotel";
   
   import {
-    rankHotelsWithSmartStayEngine,
-  } from "../../utils/smartStayEngine";
+  rankHotelsWithSmartStayEngine,
+} from "../../utils/smartStayEngine";
+
+import {
+  selectSmartStayRecommendationRoles,
+} from "../../utils/smartStayRecommendationRoles";
   
 import "./Results.css";
 
@@ -150,18 +154,6 @@ import "./Results.css";
     );
   }
 
-  function getRecommendationLimit(
-    preferenceId: string
-  ) {
-    if (
-      preferenceId === "maximum-comfort" ||
-      preferenceId === "comfort"
-    ) {
-      return 3;
-    }
-  
-    return 4;
-  }
   
   function getPreferenceSummary(
     preferenceId: string
@@ -558,12 +550,7 @@ function getHotelDetailsFailureMessage(
         selectedPreference.id
       );
 
-    const recommendationLimit =
-      getRecommendationLimit(
-        selectedPreference.id
-      );
-  
-      const rankedHotels =
+const rankedHotels =
       useMemo(() => {
         return rankHotelsWithSmartStayEngine(
           hotels,
@@ -597,27 +584,40 @@ function getHotelDetailsFailureMessage(
         );
       }, [hotels]);
   
-    const recommendedHotels =
+    const recommendationPicks =
       useMemo(() => {
-        return rankedHotels.slice(
-          0,
-          recommendationLimit
+        return selectSmartStayRecommendationRoles(
+          rankedHotels
         );
       }, [
         rankedHotels,
-        recommendationLimit,
       ]);
-  
+
+    const recommendationHotelIds =
+      useMemo(() => {
+        return new Set(
+          recommendationPicks.map(
+            (pick) =>
+              pick.evaluation.hotel.id
+          )
+        );
+      }, [
+        recommendationPicks,
+      ]);
+
     const remainingHotels =
       useMemo(() => {
-        return rankedHotels.slice(
-          recommendationLimit
+        return rankedHotels.filter(
+          (evaluation) =>
+            !recommendationHotelIds.has(
+              evaluation.hotel.id
+            )
         );
       }, [
         rankedHotels,
-        recommendationLimit,
+        recommendationHotelIds,
       ]);
-  
+
     useEffect(() => {
       async function loadResults() {
         try {
@@ -983,58 +983,57 @@ function getHotelDetailsFailureMessage(
         </div>
       ) : (
         <>
-          <section
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "28px",
-            }}
-          >
-            {recommendedHotels.map((evaluation, index) => (
-              <div
-                key={evaluation.hotel.id}
-              >
-                <p
-                  style={{
-                    margin: "0 0 10px",
-                    color: "#059669",
-                    fontSize: "0.82rem",
-                    fontWeight: 900,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em",
-                  }}
-                >
-                  SmartStay pick #{index + 1}
-                </p>
+          {recommendationPicks.length > 0 && (
+            <section className="results__recommendations">
+              {recommendationPicks.map((pick) => {
+                const evaluation =
+                  pick.evaluation;
 
-                <HotelCard
-                  hotel={evaluation.hotel}
-                  smartScore={evaluation.smartScore}
-                  riskLevel={evaluation.riskLevel}
-                  badges={evaluation.badges}
-                  reasons={evaluation.reasons}
-                  priceAdvantagePercent={calculatePriceAdvantagePercent(
-                    evaluation.hotel,
-                    averageSearchPrice
-                  )}
-                  detailsLoading={
-                    hotelDetailsLoading &&
-                    activeDetailsHotelId ===
-                      evaluation.hotel.id
-                  }
-                  bookingUrl={
-                    getHotelBookingUrl(
-                      evaluation.hotel,
-                      searchId
-                    )
-                  }
-                  onViewDetails={
-                    handleViewHotelDetails
-                  }
-                  />
-              </div>
-            ))}
-          </section>
+                return (
+                  <div
+                    key={`${pick.role}-${evaluation.hotel.id}`}
+                    className={`results__recommendation results__recommendation--${pick.role}`}
+                  >
+                    <div className="results__recommendation-heading">
+                      <p className="results__recommendation-role">
+                        {pick.label}
+                      </p>
+
+                      <p className="results__recommendation-summary">
+                        {pick.reason}
+                      </p>
+                    </div>
+
+                    <HotelCard
+                      hotel={evaluation.hotel}
+                      smartScore={evaluation.smartScore}
+                      riskLevel={evaluation.riskLevel}
+                      badges={evaluation.badges}
+                      reasons={evaluation.reasons}
+                      priceAdvantagePercent={calculatePriceAdvantagePercent(
+                        evaluation.hotel,
+                        averageSearchPrice
+                      )}
+                      detailsLoading={
+                        hotelDetailsLoading &&
+                        activeDetailsHotelId ===
+                          evaluation.hotel.id
+                      }
+                      bookingUrl={
+                        getHotelBookingUrl(
+                          evaluation.hotel,
+                          searchId
+                        )
+                      }
+                      onViewDetails={
+                        handleViewHotelDetails
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </section>
+          )}
 
           {remainingHotels.length > 0 && (
             <section
