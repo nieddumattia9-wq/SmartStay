@@ -49,12 +49,32 @@ export type SmartStayFitBreakdown = {
   distanceFit: number | null;
 };
 
+export type SmartStayComparison = {
+  priceVsMedianPercent: number | null;
+
+  budgetDifferenceAmount:
+    number | null;
+
+  budgetDifferencePercent:
+    number | null;
+
+  distanceDifferenceKm:
+    number | null;
+
+  isWithinBudget:
+    boolean | null;
+
+  isWithinDistance:
+    boolean | null;
+};
+
 export type SmartStayEvaluation = {
   hotel: Hotel;
   smartScore: number;
   riskLevel: SmartRiskLevel;
   badges: SmartBadge[];
   reasons: string[];
+  comparison: SmartStayComparison;
   fit: SmartStayFitBreakdown;
   breakdown: SmartScoreBreakdown;
 };
@@ -474,6 +494,119 @@ function createSmartStayContext(
     totalBudget,
     maxDistanceKm,
     currency,
+  };
+}
+
+function roundComparisonValue(
+  value: number,
+  fractionDigits: number
+) {
+  const factor =
+    10 ** fractionDigits;
+
+  const rounded =
+    Math.round(
+      value * factor
+    ) / factor;
+
+  return Object.is(
+    rounded,
+    -0
+  )
+    ? 0
+    : rounded;
+}
+
+function createSmartStayComparison(
+  hotel: Hotel,
+  context: SmartStayContext
+): SmartStayComparison {
+  const cost =
+    getComparableBudgetCost(
+      hotel,
+      context
+    );
+
+  const priceVsMedianPercent =
+    cost &&
+    context.medianPrice > 0
+      ? roundComparisonValue(
+          (
+            (
+              cost.amount -
+              context.medianPrice
+            ) /
+            context.medianPrice
+          ) *
+          100,
+          1
+        )
+      : null;
+
+  const budgetDifferenceAmount =
+    cost &&
+    context.totalBudget !== null
+      ? roundComparisonValue(
+          cost.amount -
+          context.totalBudget,
+          2
+        )
+      : null;
+
+  const budgetDifferencePercent =
+    cost &&
+    context.totalBudget !== null
+      ? roundComparisonValue(
+          (
+            (
+              cost.amount -
+              context.totalBudget
+            ) /
+            context.totalBudget
+          ) *
+          100,
+          1
+        )
+      : null;
+
+  const distanceDifferenceKm =
+    hotel.distance !== null &&
+    context.maxDistanceKm !== null
+      ? roundComparisonValue(
+          hotel.distance -
+          context.maxDistanceKm,
+          2
+        )
+      : null;
+
+  const isWithinBudget =
+    context.totalBudget === null
+      ? null
+      : cost
+        ? cost.amount <=
+          context.totalBudget
+        : null;
+
+  const isWithinDistance =
+    context.maxDistanceKm === null
+      ? null
+      : hotel.distance !== null
+        ? hotel.distance <=
+          context.maxDistanceKm
+        : null;
+
+  return {
+    priceVsMedianPercent,
+
+    budgetDifferenceAmount,
+
+    budgetDifferencePercent,
+
+    distanceDifferenceKm,
+
+    isWithinBudget,
+
+    isWithinDistance,
   };
 }
 
@@ -1465,6 +1598,12 @@ function calculateSavingScore(
     const weights =
       getPreferenceWeights(preferenceId);
   
+    const comparison =
+      createSmartStayComparison(
+        hotel,
+        context
+      );
+
     const marketPriceFit =
       calculateMarketPriceFitScore(
         hotel,
@@ -1586,6 +1725,8 @@ function calculateSavingScore(
         riskLevel,
         hotel
       ),
+
+      comparison,
 
       fit: {
         marketPriceFit,
