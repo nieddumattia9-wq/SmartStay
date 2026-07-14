@@ -1,4 +1,8 @@
 import { normalizeStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
+
+import {
+  getEffectiveSmartStayPreference,
+} from "../../utils/smartStaySearchProfile";
 import {
   getBestComparableStayCost,
   getComparableOfferAmount,
@@ -116,35 +120,24 @@ import type {
   function getSelectedPreferenceIndex(
     searchMeta: SearchMeta | null
   ) {
-    const smartPreference =
-      searchMeta?.smartPreference;
-  
-    if (
-      !smartPreference ||
-      typeof smartPreference !== "object" ||
-      !("selectedIndex" in smartPreference)
-    ) {
-      return DEFAULT_PREFERENCE_INDEX;
-    }
-  
-    const selectedIndex =
-      Number(
-        smartPreference.selectedIndex
+    const effectivePreference =
+      getEffectiveSmartStayPreference(
+        searchMeta?.smartStayProfile,
+        searchMeta?.smartPreference
       );
-  
-    if (!Number.isFinite(selectedIndex)) {
-      return DEFAULT_PREFERENCE_INDEX;
-    }
-  
+
     return Math.min(
       Math.max(
-        Math.round(selectedIndex),
+        Math.round(
+          effectivePreference
+            .selectedIndex
+        ),
         0
       ),
       sliderOptions.length - 1
     );
   }
-  
+
   function getRecommendationLimit(
     preferenceId: string
   ) {

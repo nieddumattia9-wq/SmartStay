@@ -170,6 +170,31 @@ export function normalizeSmartPreference(
   );
 }
 
+export function getEffectiveSmartStayPreference(
+  profile:
+    SmartStaySearchProfile |
+    null |
+    undefined,
+  fallbackPreference: unknown
+): SmartStayPreference {
+  const normalizedFallback =
+    normalizeSmartPreference(
+      fallbackPreference
+    );
+
+  if (!profile) {
+    return normalizedFallback;
+  }
+
+  return (
+    normalizeSmartStaySearchProfile(
+      profile,
+      normalizedFallback
+    )?.effectivePreference ??
+    normalizedFallback
+  );
+}
+
 export function normalizeSmartStaySearchProfile(
   value: unknown,
   fallbackPreference: SmartStayPreference
