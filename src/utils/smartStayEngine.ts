@@ -1636,6 +1636,12 @@ function calculateSavingScore(
       );
     }
   
+    if (
+      hotel.dataConfidence === "partial"
+    ) {
+      adjustedScore -= 2;
+    }
+
     if (hotel.dataConfidence === "limited") {
       adjustedScore -= 7;
     }
@@ -1659,6 +1665,26 @@ function calculateSavingScore(
       );
     }
   
+    if (
+      hotel.dataConfidence === "partial"
+    ) {
+      adjustedScore =
+        Math.min(
+          adjustedScore,
+          94
+        );
+    }
+
+    if (
+      hotel.dataConfidence === "limited"
+    ) {
+      adjustedScore =
+        Math.min(
+          adjustedScore,
+          82
+        );
+    }
+
     return adjustedScore;
   }
   
@@ -1668,58 +1694,125 @@ function calculateSavingScore(
     preferenceIdInput: string
   ) {
     const preferenceId =
-      normalizePreferenceId(preferenceIdInput);
-  
+      normalizePreferenceId(
+        preferenceIdInput
+      );
+
     let adjustment = 0;
-  
-    if (preferenceId === "maximum-comfort") {
-      if (riskLevel === "low") adjustment += 4;
-      if (riskLevel === "medium") adjustment -= 3;
-      if (riskLevel === "high") adjustment -= 12;
-  
-      if (breakdown.reviews < 50) adjustment -= 4;
-      if (breakdown.location >= 82) adjustment += 3;
-      if (breakdown.stars >= 80) adjustment += 2;
-      if (breakdown.dataQuality >= 75) adjustment += 3;
-      if (breakdown.reliability >= 72) adjustment += 3;
+
+    if (
+      preferenceId ===
+      "maximum-comfort"
+    ) {
+      if (riskLevel === "medium") {
+        adjustment -= 3;
+      }
+
+      if (riskLevel === "high") {
+        adjustment -= 12;
+      }
+
+      if (breakdown.reviews < 50) {
+        adjustment -= 4;
+      }
+
+      if (
+        breakdown.dataQuality < 50
+      ) {
+        adjustment -= 4;
+      }
+
+      if (
+        breakdown.reliability < 55
+      ) {
+        adjustment -= 4;
+      }
     }
-  
-    if (preferenceId === "comfort") {
-      if (riskLevel === "low") adjustment += 3;
-      if (riskLevel === "medium") adjustment -= 1;
-      if (riskLevel === "high") adjustment -= 9;
-  
-      if (breakdown.location >= 82) adjustment += 2;
-      if (breakdown.reviews >= 75) adjustment += 2;
-      if (breakdown.dataQuality < 50) adjustment -= 3;
+
+    if (
+      preferenceId === "comfort"
+    ) {
+      if (riskLevel === "medium") {
+        adjustment -= 1;
+      }
+
+      if (riskLevel === "high") {
+        adjustment -= 9;
+      }
+
+      if (
+        breakdown.dataQuality < 50
+      ) {
+        adjustment -= 3;
+      }
+
+      if (
+        breakdown.reliability < 50
+      ) {
+        adjustment -= 3;
+      }
     }
-  
-    if (preferenceId === "savings") {
-      if (breakdown.price >= 80) adjustment += 4;
-      if (breakdown.saving >= 70) adjustment += 3;
-      if (breakdown.offer >= 70) adjustment += 2;
-  
-      if (riskLevel === "high") adjustment -= 8;
-      if (breakdown.reliability < 50) adjustment -= 4;
-      if (breakdown.dataQuality < 45) adjustment -= 3;
+
+    if (
+      preferenceId === "savings"
+    ) {
+      if (riskLevel === "high") {
+        adjustment -= 8;
+      }
+
+      if (
+        breakdown.reliability < 50
+      ) {
+        adjustment -= 4;
+      }
+
+      if (
+        breakdown.dataQuality < 45
+      ) {
+        adjustment -= 3;
+      }
+
+      if (breakdown.offer < 45) {
+        adjustment -= 3;
+      }
     }
-  
-    if (preferenceId === "maximum-savings") {
-      if (breakdown.price >= 82) adjustment += 6;
-      if (breakdown.saving >= 70) adjustment += 4;
-      if (breakdown.offer >= 70) adjustment += 3;
-  
-      if (riskLevel === "low") adjustment += 1;
-      if (riskLevel === "medium") adjustment -= 1;
-      if (riskLevel === "high") adjustment -= 12;
-  
-      if (breakdown.reliability < 45) adjustment -= 7;
-      if (breakdown.dataQuality < 40) adjustment -= 5;
+
+    if (
+      preferenceId ===
+      "maximum-savings"
+    ) {
+      if (riskLevel === "medium") {
+        adjustment -= 1;
+      }
+
+      if (riskLevel === "high") {
+        adjustment -= 12;
+      }
+
+      if (
+        breakdown.reliability < 45
+      ) {
+        adjustment -= 7;
+      }
+
+      if (
+        breakdown.dataQuality < 40
+      ) {
+        adjustment -= 5;
+      }
+
+      if (breakdown.offer < 40) {
+        adjustment -= 4;
+      }
     }
-  
-    return adjustment;
+
+    return clamp(
+      adjustment,
+      -18,
+      0
+    );
   }
-  
+
   export function evaluateHotelWithSmartStayEngine(
     hotel: Hotel,
     context: SmartStayContext,
@@ -1814,7 +1907,7 @@ function calculateSavingScore(
         offerScore
       );
   
-    const rawSmartScore = roundScore(
+    const rawSmartScore = (
       priceScore * weights.price +
       reviewScore * weights.reviews +
       locationScore * weights.location +
