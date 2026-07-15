@@ -481,6 +481,13 @@ function getHotelDetailsFailureMessage(
       ) ??
       null;
 
+    const activeDetailsOfferSelection =
+      activeDetailsHotel
+        ? selectHotelOffers(
+            activeDetailsHotel
+          )
+        : null;
+
     const activeDetailsBookingUrl =
       getHotelBookingUrl(
         activeDetailsHotel,
@@ -978,6 +985,7 @@ const rankedHotels =
                     </div>
 
                     <HotelCard
+                      showRecommendationLabel
                       hotel={evaluation.hotel}
                       smartScore={evaluation.smartScore}
                       riskLevel={evaluation.riskLevel}
@@ -1152,6 +1160,10 @@ const rankedHotels =
           details={hotelDetails}
           loading={hotelDetailsLoading}
           error={hotelDetailsError}
+          offers={
+            activeDetailsOfferSelection
+              ?.offers ?? []
+          }
           bookingUrl={activeDetailsBookingUrl}
           onClose={handleCloseHotelDetails}
         />

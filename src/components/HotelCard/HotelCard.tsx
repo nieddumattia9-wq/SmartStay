@@ -19,6 +19,7 @@ type HotelCardProps = {
   priceAdvantagePercent?: number | null;
   detailsLoading?: boolean;
   bookingUrl?: string | null;
+  showRecommendationLabel?: boolean;
   onViewDetails: (hotel: Hotel) => void;
 };
 
@@ -188,6 +189,7 @@ function HotelCard({
   priceAdvantagePercent = null,
   detailsLoading = false,
   bookingUrl = null,
+  showRecommendationLabel = false,
   onViewDetails,
 }: HotelCardProps) {
   const hasImage =
@@ -207,6 +209,9 @@ function HotelCard({
 
   const dataConfidenceLabel =
     formatDataConfidence(dataConfidence);
+
+  const offerSelection =
+    selectHotelOffers(hotel);
 
   const displayPrice =
     getBestDisplayPrice(hotel);
@@ -257,9 +262,11 @@ function HotelCard({
         <div className="hotel-card__main">
           <div className="hotel-card__header">
             <div className="hotel-card__header-left">
-              <p className="hotel-card__eyebrow">
-                SmartStay recommendation
-              </p>
+              {showRecommendationLabel && (
+                <p className="hotel-card__eyebrow">
+                  SmartStay recommendation
+                </p>
+              )}
 
               <h2 className="hotel-card__name">
                 {hotel.name}
@@ -376,6 +383,12 @@ function HotelCard({
                   : "Price from available offer data; final mandatory charges may vary"}
             </p>
           </div>
+
+          {offerSelection.offers.length > 1 && (
+            <p className="hotel-card__offer-count">
+              {offerSelection.offers.length} bookable offers available
+            </p>
+          )}
 
           <div className="hotel-card__actions">
             <button

@@ -6,6 +6,10 @@ import type {
   HotelDetails,
 } from "../../types/hotel";
 
+import type {
+  ComparableHotelOffer,
+} from "../../utils/hotelOfferSelection";
+
 import "./HotelDetailsPanel.css";
 
 type HotelDetailsPanelProps = {
@@ -13,6 +17,7 @@ type HotelDetailsPanelProps = {
   loading: boolean;
   error: string;
   bookingUrl?: string | null;
+  offers?: ComparableHotelOffer[];
   onClose: () => void;
 };
 
@@ -61,6 +66,7 @@ function HotelDetailsPanel({
   loading,
   error,
   bookingUrl = null,
+  offers = [],
   onClose,
 }: HotelDetailsPanelProps) {
   useEffect(() => {
@@ -239,6 +245,19 @@ function HotelDetailsPanel({
                 title="Facilities"
                 items={details.facilities}
               />
+
+              {offers.length > 1 && (
+                <section className="hotel-details-panel__offer-summary">
+                  <strong>
+                    {offers.length} bookable offers available
+                  </strong>
+
+                  <p>
+                    SmartStay selected the best comparable offer as the
+                    primary booking option.
+                  </p>
+                </section>
+              )}
 
               {bookingUrl && (
                 <a

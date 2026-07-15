@@ -224,3 +224,24 @@
   outline: 3px solid rgba(5, 150, 105, 0.28);
   outline-offset: 3px;
 }
+
+.hotel-details-panel__offer-summary {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border: 1px solid #dbe7e2;
+  border-radius: 14px;
+  background: #f7fbf9;
+}
+
+.hotel-details-panel__offer-summary strong {
+  display: block;
+  color: #16352c;
+  font-size: 0.95rem;
+}
+
+.hotel-details-panel__offer-summary p {
+  margin: 6px 0 0;
+  color: #5f6f69;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}

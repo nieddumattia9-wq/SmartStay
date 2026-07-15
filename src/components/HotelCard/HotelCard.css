@@ -587,3 +587,11 @@
   line-height: 1.2;
   white-space: nowrap;
 }
+
+.hotel-card__offer-count {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
