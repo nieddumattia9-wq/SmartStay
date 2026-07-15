@@ -392,7 +392,7 @@ function createLiteApiRatesPayload({
 
     limit,
     timeout: LITEAPI_TIMEOUT_SECONDS,
-    maxRatesPerHotel: 1,
+    maxRatesPerHotel: 3,
     roomMapping: true,
     includeHotelData: true,
     sessionId,
