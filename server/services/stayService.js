@@ -908,6 +908,65 @@ if (session.isContinuing) {
           });
 
         if (providerResult.failedResponse) {
+          const failedResponse =
+            providerResult.failedResponse;
+
+          const isTerminalNoResults =
+            failedResponse.code === 204 ||
+            failedResponse.code === "204" ||
+            failedResponse.code === "NO_RESULTS";
+
+          if (isTerminalNoResults) {
+            const completedSession =
+              updateSearchSession(searchId, {
+                status:
+                  "Completed",
+
+                searchIncomplete:
+                  false,
+
+                isContinuing:
+                  false,
+
+                continuation:
+                  null,
+
+                lastError:
+                  null,
+              });
+
+            return {
+              success:
+                true,
+
+              message:
+                null,
+
+              code:
+                null,
+
+              searchId:
+                completedSession.searchId,
+
+              status:
+                completedSession.status,
+
+              searchIncomplete:
+                false,
+
+              isContinuing:
+                false,
+
+              totalHotels:
+                completedSession.hotels?.length ?? 0,
+
+              nextResultsKey:
+                null,
+
+              hotels:
+                completedSession.hotels ?? [],
+            };
+          }
 
           const failedSession =
             updateSearchSession(searchId, {
@@ -921,11 +980,11 @@ if (session.isContinuing) {
                 false,
 
               lastError:
-                providerResult.failedResponse.message,
+                failedResponse.message,
             });
 
           return {
-            ...providerResult.failedResponse,
+            ...failedResponse,
 
             searchId,
 
@@ -938,9 +997,7 @@ if (session.isContinuing) {
             hotels:
               failedSession.hotels ?? [],
           };
-
         }
-
         const {
           data,
           currency,
