@@ -61,6 +61,9 @@ type HotelRoomPayload = {
 type HotelSearchPayload = {
   destinationId: string;
   destinationType: string;
+  destinationName: string;
+  cityName: string;
+  countryCode: string;
   lat: number;
   long: number;
   checkIn: string;
@@ -298,6 +301,16 @@ function TripOptimizer() {
 
           destinationType:
             selectedDestination.type,
+
+          destinationName:
+            selectedDestination.name,
+
+          cityName:
+            selectedDestination.city ||
+            selectedDestination.name,
+
+          countryCode:
+            selectedDestination.country,
 
           lat:
             selectedDestination.lat,
