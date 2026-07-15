@@ -1,4 +1,6 @@
-import { getBestComparableStayCost } from "../../utils/stayCost";
+import {
+  selectHotelOffers,
+} from "../../utils/hotelOfferSelection";
 import "./HotelCard.css";
 
 import type { Hotel } from "../../types/hotel";
@@ -123,24 +125,37 @@ function formatDataConfidence(
   return "Limited data";
 }
 
-function getBestDisplayPrice(hotel: Hotel) {
-  const comparableCost =
-    getBestComparableStayCost(
+function getBestDisplayPrice(
+  hotel: Hotel
+) {
+  const primaryOffer =
+    selectHotelOffers(
       hotel
-    );
+    ).primary;
+
+  if (primaryOffer) {
+    return {
+      price:
+        primaryOffer.amount,
+
+      currency:
+        primaryOffer.currency,
+
+      completeness:
+        primaryOffer.completeness,
+    };
+  }
 
   return {
     price:
-      comparableCost?.amount ??
+      hotel.totalKnownCost ??
       hotel.price,
 
     currency:
-      comparableCost?.currency ??
       hotel.currency,
 
     completeness:
-      comparableCost?.completeness ??
-      "unknown",
+      "unknown" as const,
   };
 }
 

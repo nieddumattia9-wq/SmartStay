@@ -5,7 +5,6 @@ import {
 } from "../../utils/smartStaySearchProfile";
 import {
   getBestComparableStayCost,
-  getComparableOfferAmount,
 } from "../../utils/stayCost";
 import {
   useCallback,
@@ -45,6 +44,10 @@ import type {
 import {
   selectSmartStayRecommendationRoles,
 } from "../../utils/smartStayRecommendationRoles";
+
+import {
+  selectHotelOffers,
+} from "../../utils/hotelOfferSelection";
   
 import "./Results.css";
 
@@ -360,54 +363,24 @@ function getHotelBookingUrl(
   hotel: Hotel | null,
   searchId: string | null
 ) {
-
   if (!hotel) {
-
     return null;
-
   }
 
-  const bookableOffers =
-    [...(hotel.offers ?? [])]
-      .filter(
-        (offer) =>
-          offer.bookable === true
-      )
-      .sort(
-        (
-          firstOffer,
-          secondOffer
-        ) =>
-          (
-            getComparableOfferAmount(
-              firstOffer
-            ) ??
-            Infinity
-          ) -
-          (
-            getComparableOfferAmount(
-              secondOffer
-            ) ??
-            Infinity
-          )
-      );
+  const primaryOffer =
+    selectHotelOffers(
+      hotel
+    ).primary;
 
-  const bestBookableOffer =
-    bookableOffers[0] ??
-    null;
-
-  if (!bestBookableOffer) {
-
+  if (!primaryOffer) {
     return null;
-
   }
 
   return createBookingRedirectUrl(
     searchId,
     hotel.id,
-    bestBookableOffer.id
+    primaryOffer.offer.id
   );
-
 }
 
 function getHotelDetailsFailureMessage(
