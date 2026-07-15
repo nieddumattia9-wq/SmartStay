@@ -84,9 +84,15 @@ function createProviderContinuation({
   providerId,
   cursor,
 } = {}) {
+  const normalizedCursor =
+    typeof cursor === "string"
+      ? cursor.trim()
+      : cursor;
+
   if (
-    cursor === null ||
-    cursor === undefined
+    normalizedCursor === null ||
+    normalizedCursor === undefined ||
+    normalizedCursor === ""
   ) {
     return null;
   }
@@ -97,7 +103,8 @@ function createProviderContinuation({
         providerId
       ),
 
-    cursor,
+    cursor:
+      normalizedCursor,
   };
 }
 
@@ -154,11 +161,28 @@ function createProviderSuccessResult({
       hotels
     );
 
+  const continuationCursor =
+    continuation &&
+    typeof continuation === "object" &&
+    !Array.isArray(continuation)
+      ? continuation.cursor
+      : continuation;
+
+  const normalizedContinuation =
+    createProviderContinuation({
+      providerId:
+        normalizedProviderId,
+
+      cursor:
+        continuationCursor,
+    });
+
   if (
-    normalizedHotels.length === 0
+    normalizedHotels.length === 0 &&
+    !normalizedContinuation
   ) {
     throw new Error(
-      `Provider "${normalizedProviderId}" cannot return success without hotels.`
+      `Provider "${normalizedProviderId}" cannot return success without hotels or a continuation.`
     );
   }
 
@@ -185,16 +209,7 @@ function createProviderSuccessResult({
       normalizedHotels.length,
 
     continuation:
-      continuation
-        ? createProviderContinuation({
-            providerId:
-              normalizedProviderId,
-
-            cursor:
-              continuation.cursor ??
-              continuation,
-          })
-        : null,
+      normalizedContinuation,
 
     providerContext,
 
@@ -408,14 +423,43 @@ function validateProviderSearchResult(
     );
   }
 
+  const continuationCursor =
+    result.continuation &&
+    typeof result.continuation === "object" &&
+    !Array.isArray(
+      result.continuation
+    )
+      ? result.continuation.cursor
+      : result.continuation;
+
+  const normalizedContinuation =
+    createProviderContinuation({
+      providerId:
+        result.providerId,
+
+      cursor:
+        continuationCursor,
+    });
+
+  if (
+    result.continuation !== null &&
+    result.continuation !== undefined &&
+    !normalizedContinuation
+  ) {
+    throw new Error(
+      "Provider continuation must contain a usable cursor."
+    );
+  }
+
   if (
     result.outcome ===
       PROVIDER_SEARCH_OUTCOMES
         .SUCCESS &&
-    result.hotels.length === 0
+    result.hotels.length === 0 &&
+    !normalizedContinuation
   ) {
     throw new Error(
-      "Successful provider result must contain at least one hotel."
+      "Successful provider result must contain at least one hotel or a continuation."
     );
   }
 
@@ -452,7 +496,12 @@ function validateProviderSearchResult(
     );
   }
 
-  return result;
+  return {
+    ...result,
+
+    continuation:
+      normalizedContinuation,
+  };
 }
 
 module.exports = {

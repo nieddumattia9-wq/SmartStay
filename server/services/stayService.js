@@ -649,7 +649,10 @@ const {
 
     const isNoResultsResponse =
       data?.code === 204 ||
-      hotels.length === 0;
+      (
+        hotels.length === 0 &&
+        !continuation
+      );
 
     if (isNoResultsResponse) {
 
