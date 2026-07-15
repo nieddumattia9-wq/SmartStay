@@ -367,22 +367,22 @@ function getHotelBookingUrl(
     return null;
   }
 
-  const bookingOffer =
+  const primaryOffer =
     selectHotelOffers(
       hotel
-    ).offers.find(
-      (candidate) =>
-        candidate.offer.bookable === true
-    ) ?? null;
+    ).primary;
 
-  if (!bookingOffer) {
+  if (
+    !primaryOffer ||
+    primaryOffer.offer.bookable !== true
+  ) {
     return null;
   }
 
   return createBookingRedirectUrl(
     searchId,
     hotel.id,
-    bookingOffer.offer.id
+    primaryOffer.offer.id
   );
 }
 
