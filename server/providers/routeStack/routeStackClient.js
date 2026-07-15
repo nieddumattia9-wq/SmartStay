@@ -187,6 +187,7 @@ async function callRouteStackPost({
   title,
   timeout,
   errorContext,
+  signal,
 }) {
 
   const partnerToken =
@@ -210,6 +211,8 @@ async function callRouteStackPost({
         headers:
           createAuthHeaders(partnerToken),
 
+        signal,
+
         timeout,
 
         validateStatus:
@@ -228,7 +231,10 @@ async function callRouteStackPost({
 
 }
 
-async function searchRouteStackDestinations(query) {
+async function searchRouteStackDestinations(
+  query,
+  { signal } = {}
+) {
 
   return callRouteStackPost({
     endpointPath:
@@ -242,6 +248,8 @@ async function searchRouteStackDestinations(query) {
     title:
       "SEARCH DESTINATIONS",
 
+    signal,
+
     timeout:
       DESTINATION_SEARCH_TIMEOUT_MS,
 
@@ -253,7 +261,8 @@ async function searchRouteStackDestinations(query) {
 
 async function searchRouteStackHotels(
   payload,
-  title = "SEARCH HOTELS"
+  title = "SEARCH HOTELS",
+  { signal } = {}
 ) {
 
   return callRouteStackPost({
@@ -263,6 +272,8 @@ async function searchRouteStackHotels(
     payload,
 
     title,
+
+    signal,
 
     timeout:
       HOTEL_SEARCH_TIMEOUT_MS,
@@ -277,6 +288,7 @@ async function getRouteStackHotelDetails({
   hotelId,
   token,
   correlationId,
+  signal,
 }) {
 
   return callRouteStackPost({
@@ -292,6 +304,8 @@ async function getRouteStackHotelDetails({
 
     title:
       "HOTEL DETAILS",
+
+    signal,
 
     timeout:
       HOTEL_SEARCH_TIMEOUT_MS,
