@@ -249,12 +249,12 @@ function HotelDetailsPanel({
               {offers.length > 1 && (
                 <section className="hotel-details-panel__offer-summary">
                   <strong>
-                    {offers.length} bookable offers available
+                    {offers.length} available offers
                   </strong>
 
                   <p>
-                    SmartStay selected the best comparable offer as the
-                    primary booking option.
+                    SmartStay selected the best comparable offer based on
+                    the available price data.
                   </p>
                 </section>
               )}

@@ -386,7 +386,7 @@ function HotelCard({
 
           {offerSelection.offers.length > 1 && (
             <p className="hotel-card__offer-count">
-              {offerSelection.offers.length} bookable offers available
+              {offerSelection.offers.length} available offers
             </p>
           )}
 

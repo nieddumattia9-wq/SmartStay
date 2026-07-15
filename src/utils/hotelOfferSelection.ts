@@ -147,7 +147,6 @@ function createCandidate(
   originalIndex: number
 ): ComparableHotelOffer | null {
   if (
-    offer.bookable !== true ||
     !hasPublicOfferId(offer)
   ) {
     return null;
