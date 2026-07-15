@@ -478,8 +478,9 @@ async function searchHotelsWithPrimaryProvider({
   searchData,
   title,
   fallbackCurrency = "EUR",
+  providerContext = null,
 }) {
-  const request =
+  const normalizedRequest =
     normalizeAccommodationSearchRequest(
       searchData,
       {
@@ -488,6 +489,11 @@ async function searchHotelsWithPrimaryProvider({
           8000,
       }
     );
+
+  const request = {
+    ...normalizedRequest,
+    providerContext,
+  };
 
   if (request.continuation) {
     const provider =

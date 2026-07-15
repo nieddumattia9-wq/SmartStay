@@ -142,6 +142,7 @@ function createProviderSuccessResult({
   hotels,
   rawData = null,
   continuation = null,
+  providerContext = null,
 } = {}) {
   const normalizedProviderId =
     normalizeProviderId(
@@ -194,6 +195,8 @@ function createProviderSuccessResult({
               continuation,
           })
         : null,
+
+    providerContext,
 
     rawData,
 

@@ -643,6 +643,10 @@ const {
         providerResult
       );
 
+    const providerContext =
+      providerResult?.providerContext ??
+      null;
+
     const isNoResultsResponse =
       data?.code === 204 ||
       hotels.length === 0;
@@ -686,6 +690,8 @@ const {
           ),
 
         continuation,
+
+        providerContext,
 
         currency,
 
@@ -892,6 +898,10 @@ if (session.isContinuing) {
               session.currency ??
               session.originalSearchData?.currency ??
               "USD",
+
+            providerContext:
+              session.providerContext ??
+              null,
           });
 
         if (providerResult.failedResponse) {
@@ -940,6 +950,11 @@ if (session.isContinuing) {
             providerResult
           );
 
+        const providerContext =
+          providerResult?.providerContext ??
+          session.providerContext ??
+          null;
+
         appendHotelsToSearchSession(
           searchId,
           hotels
@@ -967,6 +982,8 @@ if (session.isContinuing) {
               ),
 
             continuation,
+
+            providerContext,
 
             currency,
 
@@ -1066,6 +1083,7 @@ if (session.isContinuing) {
 
           providerContext:
             hotel?.providerContext ??
+            session.providerContext ??
             null,
         });
 
