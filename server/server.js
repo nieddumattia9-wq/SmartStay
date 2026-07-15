@@ -5,7 +5,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
-const { getToken } = require("./services/tokenManager");
 const searchRoutes = require("./routes/search");
 
 const app = express();
@@ -163,7 +162,7 @@ app.use((error, req, res, next) => {
 // Start Server
 // =========================
 
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
 
   console.log(
     `✅ SmartStay Backend running on port ${PORT}`
@@ -172,23 +171,5 @@ app.listen(PORT, async () => {
   console.log(
     `🌍 Allowed client origin: ${CLIENT_ORIGIN}`
   );
-
-  try {
-
-    await getToken();
-
-    console.log(
-      "🔐 RouteStack connected successfully."
-    );
-
-  } catch (error) {
-
-    console.error(
-      "❌ RouteStack initialization failed."
-    );
-
-    console.error(error.message);
-
-  }
 
 });
