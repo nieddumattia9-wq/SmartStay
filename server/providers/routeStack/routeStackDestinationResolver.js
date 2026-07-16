@@ -92,7 +92,45 @@ function createRouteStackDestinationQuery(
     .join(", ");
 }
 
-function scoreRouteStackDestination(
+const ROUTESTACK_CITY_LEVEL_TYPES =
+  new Set([
+    "city",
+    "locality",
+    "municipality",
+    "town",
+    "village",
+  ]);
+
+const MAX_DESTINATION_DISTANCE_KM =
+  35;
+
+const MAX_TRANSLATED_NAME_DISTANCE_KM =
+  15;
+
+function normalizeRouteStackDestinationType(
+  value
+) {
+  return normalizeComparisonText(
+    value
+  ).replace(
+    /[^a-z0-9]/g,
+    ""
+  );
+}
+
+function isRouteStackCityLevelDestination(
+  candidate
+) {
+  const candidateType =
+    normalizeRouteStackDestinationType(
+      candidate?.type
+    );
+
+  return ROUTESTACK_CITY_LEVEL_TYPES
+    .has(candidateType);
+}
+
+function getRouteStackDestinationMatchInfo(
   candidate,
   request
 ) {
@@ -124,54 +162,50 @@ function scoreRouteStackDestination(
       candidate?.country
     );
 
-  const candidateType =
-    normalizeComparisonText(
-      candidate?.type
-    );
-
-  let score = 0;
-
-  if (
-    requestedCity &&
-    candidateCity === requestedCity
-  ) {
-    score += 120;
-  } else if (
-    requestedCity &&
+  const firstNamePart =
     candidateName
       .split(",")[0]
-      .trim() === requestedCity
-  ) {
-    score += 100;
-  } else if (
-    requestedCity &&
-    candidateName.includes(
-      requestedCity
-    )
-  ) {
-    score += 65;
-  }
+      .trim();
 
-  if (
-    requestedCountry &&
-    candidateCountry ===
-      requestedCountry
-  ) {
-    score += 25;
-  } else if (
-    requestedCountry.length === 2 &&
-    candidateCountry.length === 2 &&
-    candidateCountry !==
-      requestedCountry
-  ) {
-    score -= 35;
-  }
+  const exactCityMatch =
+    Boolean(
+      requestedCity &&
+      candidateCity === requestedCity
+    );
 
-  if (
-    candidateType.includes("city")
-  ) {
-    score += 10;
-  }
+  const exactNameMatch =
+    Boolean(
+      requestedCity &&
+      firstNamePart === requestedCity
+    );
+
+  const partialNameMatch =
+    Boolean(
+      requestedCity &&
+      candidateName.includes(
+        requestedCity
+      )
+    );
+
+  const textMatch =
+    exactCityMatch ||
+    exactNameMatch ||
+    partialNameMatch;
+
+  const countryMatch =
+    Boolean(
+      requestedCountry &&
+      candidateCountry ===
+        requestedCountry
+    );
+
+  const countryConflict =
+    Boolean(
+      requestedCountry.length === 2 &&
+      candidateCountry.length === 2 &&
+      candidateCountry !==
+        requestedCountry
+    );
 
   const distanceKm =
     calculateDistanceKm(
@@ -181,17 +215,130 @@ function scoreRouteStackDestination(
       candidate?.lng
     );
 
-  if (distanceKm !== null) {
-    if (distanceKm <= 25) {
-      score += 55;
+  return {
+    requestedCity,
+    exactCityMatch,
+    exactNameMatch,
+    partialNameMatch,
+    textMatch,
+    countryMatch,
+    countryConflict,
+    distanceKm,
+  };
+}
+
+function isRouteStackDestinationEligible(
+  candidate,
+  request
+) {
+  if (
+    !isRouteStackCityLevelDestination(
+      candidate
+    )
+  ) {
+    return false;
+  }
+
+  const matchInfo =
+    getRouteStackDestinationMatchInfo(
+      candidate,
+      request
+    );
+
+  if (matchInfo.countryConflict) {
+    return false;
+  }
+
+  if (
+    matchInfo.distanceKm !== null &&
+    matchInfo.distanceKm >
+      MAX_DESTINATION_DISTANCE_KM
+  ) {
+    return false;
+  }
+
+  if (!matchInfo.requestedCity) {
+    return (
+      matchInfo.distanceKm !== null &&
+      matchInfo.distanceKm <=
+        MAX_DESTINATION_DISTANCE_KM
+    );
+  }
+
+  if (matchInfo.textMatch) {
+    return true;
+  }
+
+  return (
+    matchInfo.distanceKm !== null &&
+    matchInfo.distanceKm <=
+      MAX_TRANSLATED_NAME_DISTANCE_KM
+  );
+}
+
+function scoreRouteStackDestination(
+  candidate,
+  request
+) {
+  if (
+    !isRouteStackDestinationEligible(
+      candidate,
+      request
+    )
+  ) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const matchInfo =
+    getRouteStackDestinationMatchInfo(
+      candidate,
+      request
+    );
+
+  const candidateType =
+    normalizeRouteStackDestinationType(
+      candidate?.type
+    );
+
+  let score =
+    0;
+
+  if (candidateType === "city") {
+    score += 90;
+  } else if (
+    candidateType === "municipality" ||
+    candidateType === "locality"
+  ) {
+    score += 80;
+  } else {
+    score += 70;
+  }
+
+  if (matchInfo.exactCityMatch) {
+    score += 140;
+  } else if (
+    matchInfo.exactNameMatch
+  ) {
+    score += 120;
+  } else if (
+    matchInfo.partialNameMatch
+  ) {
+    score += 50;
+  }
+
+  if (matchInfo.countryMatch) {
+    score += 30;
+  }
+
+  if (matchInfo.distanceKm !== null) {
+    if (matchInfo.distanceKm <= 5) {
+      score += 100;
     } else if (
-      distanceKm <= 100
+      matchInfo.distanceKm <= 15
     ) {
-      score += 20;
-    } else if (
-      distanceKm > 500
-    ) {
-      score -= 35;
+      score += 70;
+    } else {
+      score += 25;
     }
   }
 
@@ -226,23 +373,33 @@ function selectRouteStackDestination(
             ),
         })
       )
+      .filter(
+        (candidate) =>
+          Number.isFinite(
+            candidate.score
+          )
+      )
       .sort(
         (
           first,
           second
         ) => (
           second.score -
-            first.score ||
+          first.score ||
           first.index -
-            second.index
+          second.index
         )
       );
 
-  return ranked[0].score >= 50
-    ? ranked[0].destination
-    : null;
-}
+  if (
+    ranked.length === 0 ||
+    ranked[0].score < 100
+  ) {
+    return null;
+  }
 
+  return ranked[0].destination;
+}
 function createResolverError({
   message,
   code,
@@ -361,6 +518,8 @@ module.exports = {
   getStringValue,
   calculateDistanceKm,
   createRouteStackDestinationQuery,
+  isRouteStackCityLevelDestination,
+  isRouteStackDestinationEligible,
   scoreRouteStackDestination,
   selectRouteStackDestination,
   createRouteStackDestinationResolver,
