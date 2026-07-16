@@ -225,6 +225,31 @@ function createFingerprint(
 
     String(
       candidate.offer
+        .refundable ?? ""
+    ),
+
+    normalizeText(
+      candidate.offer
+        .freeCancellationUntil
+    ),
+
+    String(
+      candidate.offer
+        .cancellationPenalty ?? ""
+    ),
+
+    normalizeText(
+      candidate.offer
+        .cancellationPenaltyCurrency
+    ),
+
+    normalizeText(
+      candidate.offer
+        .cancellationPenaltyType
+    ),
+
+    String(
+      candidate.offer
         .taxesIncluded ?? ""
     ),
   ].join("|");
@@ -267,6 +292,23 @@ function compareOffers(
   secondOffer:
     ComparableHotelOffer
 ) {
+  const firstBookable =
+    firstOffer.offer.bookable ===
+    true;
+
+  const secondBookable =
+    secondOffer.offer.bookable ===
+    true;
+
+  if (
+    firstBookable !==
+    secondBookable
+  ) {
+    return firstBookable
+      ? -1
+      : 1;
+  }
+
   if (
     firstOffer.amount !==
     secondOffer.amount

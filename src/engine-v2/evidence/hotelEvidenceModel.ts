@@ -7,6 +7,10 @@ import {
 } from "../../utils/stayCost";
 
 import {
+  selectHotelOffers,
+} from "../../utils/hotelOfferSelection";
+
+import {
   getAccommodationCategoryFeaturePolicyV2,
 } from "../categories/accommodationCategoryModel";
 
@@ -472,40 +476,52 @@ function createCurrencyFact(
   capturedAt:
     string | null
 ) {
-  const currencies =
-    new Set<string>();
-
   const hotelCurrency =
     normalizeCurrency(
       hotel.currency
     );
 
+  const primaryCurrency =
+    normalizeCurrency(
+      selectHotelOffers(
+        hotel
+      ).primary?.currency
+    );
+
+  const currencies =
+    new Set<string>();
+
   if (hotelCurrency) {
     currencies.add(
       hotelCurrency
     );
-  }
 
-  for (
-    const offer
-    of hotel.offers ?? []
-  ) {
-    const offerCurrency =
-      normalizeCurrency(
-        offer.currency
-      );
-
-    if (offerCurrency) {
+    if (primaryCurrency) {
       currencies.add(
-        offerCurrency
+        primaryCurrency
       );
+    }
+  }
+  else {
+    for (
+      const offer
+      of hotel.offers ?? []
+    ) {
+      const currency =
+        normalizeCurrency(
+          offer.currency
+        );
+
+      if (currency) {
+        currencies.add(
+          currency
+        );
+      }
     }
   }
 
   const values =
-    [
-      ...currencies,
-    ].sort();
+    [...currencies].sort();
 
   const id =
     createEvidenceId(
@@ -526,7 +542,7 @@ function createCurrencyFact(
         provider,
 
       sourceField:
-        "currency|offers.currency",
+        "currency|canonical-offer.currency",
 
       missingReasonCode:
         "currency-unavailable",
@@ -556,7 +572,7 @@ function createCurrencyFact(
         provider,
 
       sourceField:
-        "currency|offers.currency",
+        "currency|canonical-offer.currency",
 
       missingReasonCode:
         "multiple-currencies-detected",
@@ -578,13 +594,13 @@ function createCurrencyFact(
       values[0],
 
     source:
-      "provider",
+      "derived",
 
     sourceProvider:
       provider,
 
     sourceField:
-      "currency|offers.currency",
+      "currency|canonical-offer.currency",
 
     confidence:
       0.98,
@@ -592,7 +608,6 @@ function createCurrencyFact(
     capturedAt,
   });
 }
-
 function createCostFacts(
   hotel:
     Hotel,
@@ -601,10 +616,26 @@ function createCostFacts(
   capturedAt:
     string | null
 ) {
-  const cost =
-    getBestComparableStayCost(
+  const primaryOffer =
+    selectHotelOffers(
       hotel
-    );
+    ).primary;
+
+  const cost =
+    primaryOffer
+      ? {
+          amount:
+            primaryOffer.amount,
+
+          currency:
+            primaryOffer.currency,
+
+          completeness:
+            primaryOffer.completeness,
+        }
+      : getBestComparableStayCost(
+          hotel
+        );
 
   if (
     !cost ||
@@ -1355,6 +1386,12 @@ function createOfferFacts(
   const offers =
     hotel.offers ?? [];
 
+  const primaryOffer =
+    selectHotelOffers(
+      hotel
+    ).primary?.offer ??
+    null;
+
   if (
     offers.length === 0
   ) {
@@ -1420,58 +1457,232 @@ function createOfferFacts(
           provider,
 
         sourceField:
-          "offers.cancellationPolicy",
+          "offers.cancellation",
 
         missingReasonCode:
           "cancellation-policy-unavailable",
 
         capturedAt,
       }),
+
+      createUnknownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-refundable"
+          ),
+
+        code:
+          "offer.refundable",
+
+        sourceProvider:
+          provider,
+
+        sourceField:
+          "offers.refundable",
+
+        missingReasonCode:
+          "refundability-unavailable",
+
+        capturedAt,
+      }),
+
+      createUnknownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-free-cancellation-until"
+          ),
+
+        code:
+          "offer.free-cancellation-until",
+
+        sourceProvider:
+          provider,
+
+        sourceField:
+          "offers.freeCancellationUntil",
+
+        missingReasonCode:
+          "free-cancellation-deadline-unavailable",
+
+        capturedAt,
+      }),
+
+      createUnknownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-cancellation-penalty"
+          ),
+
+        code:
+          "offer.cancellation-penalty",
+
+        sourceProvider:
+          provider,
+
+        sourceField:
+          "offers.cancellationPenalty",
+
+        missingReasonCode:
+          "cancellation-penalty-unavailable",
+
+        capturedAt,
+      }),
     ];
   }
 
-  const cancellationPolicies =
-    offers
-      .map(
-        (offer) =>
-          offer.cancellationPolicy
-      )
-      .filter(
-        hasText
+  const facts:
+    SmartStayEvidenceFactV2[] = [
+      createKnownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-count"
+          ),
+
+        code:
+          "offer.count",
+
+        value:
+          offers.length,
+
+        unit:
+          "offers",
+
+        source:
+          "provider",
+
+        sourceProvider:
+          provider,
+
+        sourceField:
+          "offers",
+
+        confidence:
+          0.96,
+
+        capturedAt,
+      }),
+    ];
+
+  if (!primaryOffer) {
+    const unavailableFields = [
+      {
+        suffix:
+          "offer-bookable",
+
+        code:
+          "offer.bookable",
+
+        sourceField:
+          "offers.bookable",
+
+        missingReasonCode:
+          "canonical-offer-unavailable",
+      },
+
+      {
+        suffix:
+          "offer-cancellation",
+
+        code:
+          "offer.cancellation",
+
+        sourceField:
+          "offers.cancellation",
+
+        missingReasonCode:
+          "canonical-offer-unavailable",
+      },
+
+      {
+        suffix:
+          "offer-refundable",
+
+        code:
+          "offer.refundable",
+
+        sourceField:
+          "offers.refundable",
+
+        missingReasonCode:
+          "canonical-offer-unavailable",
+      },
+
+      {
+        suffix:
+          "offer-free-cancellation-until",
+
+        code:
+          "offer.free-cancellation-until",
+
+        sourceField:
+          "offers.freeCancellationUntil",
+
+        missingReasonCode:
+          "canonical-offer-unavailable",
+      },
+
+      {
+        suffix:
+          "offer-cancellation-penalty",
+
+        code:
+          "offer.cancellation-penalty",
+
+        sourceField:
+          "offers.cancellationPenalty",
+
+        missingReasonCode:
+          "canonical-offer-unavailable",
+      },
+    ];
+
+    for (
+      const field
+      of unavailableFields
+    ) {
+      facts.push(
+        createUnknownEvidenceFactV2({
+          id:
+            createEvidenceId(
+              hotel,
+              field.suffix
+            ),
+
+          code:
+            field.code,
+
+          sourceProvider:
+            provider,
+
+          sourceField:
+            field.sourceField,
+
+          missingReasonCode:
+            field.missingReasonCode,
+
+          capturedAt,
+        })
       );
+    }
 
-  return [
-    createKnownEvidenceFactV2({
-      id:
-        createEvidenceId(
-          hotel,
-          "offer-count"
-        ),
+    return facts;
+  }
 
-      code:
-        "offer.count",
+  const offerProvider =
+    hasText(
+      primaryOffer.provider
+    )
+      ? primaryOffer.provider
+      : provider;
 
-      value:
-        offers.length,
+  const sourcePrefix =
+    "offers." + primaryOffer.id;
 
-      unit:
-        "offers",
-
-      source:
-        "provider",
-
-      sourceProvider:
-        provider,
-
-      sourceField:
-        "offers",
-
-      confidence:
-        0.96,
-
-      capturedAt,
-    }),
-
+  facts.push(
     createKnownEvidenceFactV2({
       id:
         createEvidenceId(
@@ -1483,27 +1694,51 @@ function createOfferFacts(
         "offer.bookable",
 
       value:
-        offers.some(
-          (offer) =>
-            offer.bookable === true
-        ),
+        primaryOffer.bookable ===
+        true,
 
       source:
         "provider",
 
       sourceProvider:
-        provider,
+        offerProvider,
 
       sourceField:
-        "offers.bookable",
+        sourcePrefix + ".bookable",
 
       confidence:
         0.96,
 
       capturedAt,
-    }),
+    })
+  );
 
-    cancellationPolicies.length > 0
+  const hasPenalty =
+    typeof primaryOffer
+      .cancellationPenalty ===
+      "number" &&
+    Number.isFinite(
+      primaryOffer
+        .cancellationPenalty
+    ) &&
+    primaryOffer
+      .cancellationPenalty >= 0;
+
+  const hasCancellationInformation =
+    hasText(
+      primaryOffer
+        .cancellationPolicy
+    ) ||
+    typeof primaryOffer.refundable ===
+      "boolean" ||
+    hasText(
+      primaryOffer
+        .freeCancellationUntil
+    ) ||
+    hasPenalty;
+
+  facts.push(
+    hasCancellationInformation
       ? createKnownEvidenceFactV2({
           id:
             createEvidenceId(
@@ -1515,22 +1750,19 @@ function createOfferFacts(
             "offer.cancellation",
 
           value:
-            cancellationPolicies.length,
-
-          unit:
-            "policies",
+            true,
 
           source:
             "provider",
 
           sourceProvider:
-            provider,
+            offerProvider,
 
           sourceField:
-            "offers.cancellationPolicy",
+            sourcePrefix + ".cancellation",
 
           confidence:
-            0.9,
+            0.92,
 
           capturedAt,
         })
@@ -1545,17 +1777,238 @@ function createOfferFacts(
             "offer.cancellation",
 
           sourceProvider:
-            provider,
+            offerProvider,
 
           sourceField:
-            "offers.cancellationPolicy",
+            sourcePrefix + ".cancellation",
 
           missingReasonCode:
             "cancellation-policy-unavailable",
 
           capturedAt,
-        }),
-  ];
+        })
+  );
+
+  facts.push(
+    typeof primaryOffer.refundable ===
+      "boolean"
+      ? createKnownEvidenceFactV2({
+          id:
+            createEvidenceId(
+              hotel,
+              "offer-refundable"
+            ),
+
+          code:
+            "offer.refundable",
+
+          value:
+            primaryOffer.refundable,
+
+          source:
+            "provider",
+
+          sourceProvider:
+            offerProvider,
+
+          sourceField:
+            sourcePrefix + ".refundable",
+
+          confidence:
+            0.95,
+
+          capturedAt,
+        })
+      : createUnknownEvidenceFactV2({
+          id:
+            createEvidenceId(
+              hotel,
+              "offer-refundable"
+            ),
+
+          code:
+            "offer.refundable",
+
+          sourceProvider:
+            offerProvider,
+
+          sourceField:
+            sourcePrefix + ".refundable",
+
+          missingReasonCode:
+            "refundability-unavailable",
+
+          capturedAt,
+        })
+  );
+
+  if (
+    hasText(
+      primaryOffer
+        .freeCancellationUntil
+    )
+  ) {
+    facts.push(
+      createKnownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-free-cancellation-until"
+          ),
+
+        code:
+          "offer.free-cancellation-until",
+
+        value:
+          primaryOffer
+            .freeCancellationUntil
+            .trim(),
+
+        source:
+          "provider",
+
+        sourceProvider:
+          offerProvider,
+
+        sourceField:
+          sourcePrefix + ".freeCancellationUntil",
+
+        confidence:
+          0.9,
+
+        capturedAt,
+      })
+    );
+  }
+  else if (
+    primaryOffer.refundable ===
+    false
+  ) {
+    facts.push(
+      createNotApplicableEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-free-cancellation-until"
+          ),
+
+        code:
+          "offer.free-cancellation-until",
+
+        source:
+          "derived",
+
+        sourceProvider:
+          offerProvider,
+
+        sourceField:
+          sourcePrefix + ".refundable",
+
+        missingReasonCode:
+          "offer-non-refundable",
+
+        capturedAt,
+      })
+    );
+  }
+  else {
+    facts.push(
+      createUnknownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-free-cancellation-until"
+          ),
+
+        code:
+          "offer.free-cancellation-until",
+
+        sourceProvider:
+          offerProvider,
+
+        sourceField:
+          sourcePrefix + ".freeCancellationUntil",
+
+        missingReasonCode:
+          "free-cancellation-deadline-unavailable",
+
+        capturedAt,
+      })
+    );
+  }
+
+  if (hasPenalty) {
+    const penaltyCurrency =
+      normalizeCurrency(
+        primaryOffer
+          .cancellationPenaltyCurrency
+      ) ||
+      normalizeCurrency(
+        primaryOffer.currency
+      );
+
+    facts.push(
+      createKnownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-cancellation-penalty"
+          ),
+
+        code:
+          "offer.cancellation-penalty",
+
+        value:
+          primaryOffer
+            .cancellationPenalty as number,
+
+        unit:
+          penaltyCurrency ||
+          null,
+
+        source:
+          "provider",
+
+        sourceProvider:
+          offerProvider,
+
+        sourceField:
+          sourcePrefix + ".cancellationPenalty",
+
+        confidence:
+          0.88,
+
+        capturedAt,
+      })
+    );
+  }
+  else {
+    facts.push(
+      createUnknownEvidenceFactV2({
+        id:
+          createEvidenceId(
+            hotel,
+            "offer-cancellation-penalty"
+          ),
+
+        code:
+          "offer.cancellation-penalty",
+
+        sourceProvider:
+          offerProvider,
+
+        sourceField:
+          sourcePrefix + ".cancellationPenalty",
+
+        missingReasonCode:
+          "cancellation-penalty-unavailable",
+
+        capturedAt,
+      })
+    );
+  }
+
+  return facts;
 }
 
 function isFeatureConfirmedByUnitType(

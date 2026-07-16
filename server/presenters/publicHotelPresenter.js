@@ -234,6 +234,46 @@ function createPublicHotelOffer(
         source.cancellationPolicy
       ),
 
+    refundableTag:
+      getNullableText(
+        source.refundableTag
+      ),
+
+    refundable:
+      getNullableBoolean(
+        source.refundable
+      ),
+
+    freeCancellationUntil:
+      getNullableText(
+        source.freeCancellationUntil
+      ),
+
+    cancellationPenalty:
+      typeof source.cancellationPenalty ===
+        "number" &&
+      Number.isFinite(
+        source.cancellationPenalty
+      ) &&
+      source.cancellationPenalty >= 0
+        ? source.cancellationPenalty
+        : null,
+
+    cancellationPenaltyCurrency:
+      getNullableText(
+        source.cancellationPenaltyCurrency
+      ),
+
+    cancellationPenaltyType:
+      getNullableText(
+        source.cancellationPenaltyType
+      ),
+
+    cancellationTimezone:
+      getNullableText(
+        source.cancellationTimezone
+      ),
+
     taxesIncluded:
       getNullableBoolean(
         source.taxesIncluded

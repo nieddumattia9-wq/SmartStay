@@ -45,6 +45,20 @@ export interface HotelOffer {
 
   cancellationPolicy: string | null;
 
+  refundableTag?: string | null;
+
+  refundable?: boolean | null;
+
+  freeCancellationUntil?: string | null;
+
+  cancellationPenalty?: number | null;
+
+  cancellationPenaltyCurrency?: string | null;
+
+  cancellationPenaltyType?: string | null;
+
+  cancellationTimezone?: string | null;
+
   taxesIncluded: boolean | null;
 
   includedTaxes?: number;
