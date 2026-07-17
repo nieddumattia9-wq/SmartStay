@@ -702,10 +702,44 @@ const rankedHotels =
         recommendationPicks,
       ]);
 
+    const bestChoiceEvaluation =
+      useMemo(() => {
+        return (
+          recommendationPicks.find(
+            (pick) =>
+              pick.role ===
+              "best-choice"
+          )
+            ?.evaluation ??
+          null
+        );
+      }, [
+        recommendationPicks,
+      ]);
+
+    const nearBudgetHotels =
+      useMemo(() => {
+        return rankedHotels.filter(
+          (evaluation) =>
+            evaluation
+              .budgetVisibility ===
+              "near-budget" &&
+            !recommendationHotelIds.has(
+              evaluation.hotel.id
+            )
+        );
+      }, [
+        rankedHotels,
+        recommendationHotelIds,
+      ]);
+
     const remainingHotels =
       useMemo(() => {
         return rankedHotels.filter(
           (evaluation) =>
+            evaluation
+              .budgetVisibility !==
+              "near-budget" &&
             !recommendationHotelIds.has(
               evaluation.hotel.id
             )
@@ -728,6 +762,18 @@ const rankedHotels =
           budgetPolicy
             .hiddenBudgetUnverifiedCount
         : 0;
+
+    const excludedVerificationCount =
+      engineView
+        ?.excludedHotelIds
+        .length ??
+      0;
+
+    const suppressedDuplicateCount =
+      engineView
+        ?.suppressedHotelIds
+        .length ??
+      0;
 
     const budgetVisibilitySummary =
       budgetPolicy &&
@@ -753,13 +799,13 @@ const rankedHotels =
                     ", plus " +
                     budgetPolicy
                       .nearBudgetVisibleCount +
-                    " useful near-budget " +
+                    " near-budget " +
                     (
                       budgetPolicy
                         .nearBudgetVisibleCount ===
                         1
-                        ? "upgrade"
-                        : "upgrades"
+                        ? "alternative"
+                        : "alternatives"
                     )
                   )
                 : ""
@@ -774,11 +820,48 @@ const rankedHotels =
                     " options outside your useful budget range were hidden."
                   )
                 : ""
+            ) +
+            (
+              excludedVerificationCount >
+                0
+                ? (
+                    " " +
+                    excludedVerificationCount +
+                    " other stays did not pass SmartStay verification."
+                  )
+                : ""
+            ) +
+            (
+              suppressedDuplicateCount >
+                0
+                ? (
+                    " " +
+                    suppressedDuplicateCount +
+                    " duplicate " +
+                    (
+                      suppressedDuplicateCount ===
+                        1
+                        ? "offer was"
+                        : "offers were"
+                    ) +
+                    " merged."
+                  )
+                : ""
             )
           )
         : (
             rankedHotels.length +
-            " relevant matches remain visible."
+            " relevant matches remain visible." +
+            (
+              excludedVerificationCount >
+                0
+                ? (
+                    " " +
+                    excludedVerificationCount +
+                    " other stays did not pass SmartStay verification."
+                  )
+                : ""
+            )
           );
 
     useEffect(() => {
@@ -1313,6 +1396,208 @@ const rankedHotels =
             </section>
           )}
 
+          {nearBudgetHotels.length > 0 && (
+            <section
+              className="results__recommendations"
+              aria-label="Near-budget alternatives"
+            >
+              {nearBudgetHotels.map((evaluation) => {
+                const budgetTotal =
+                  budgetPolicy?.totalBudget ??
+                  null;
+
+                const overBudgetAmount =
+                  budgetTotal !== null &&
+                  evaluation.totalCost !==
+                    null
+                    ? Math.max(
+                        evaluation.totalCost -
+                          budgetTotal,
+                        0
+                      )
+                    : null;
+
+                const currency =
+                  searchMeta?.currency ||
+                  evaluation.hotel.currency ||
+                  "EUR";
+
+                const candidateDistanceConstraint =
+                  evaluation
+                    .sourceEvaluation
+                    .constraints
+                    .find(
+                      (constraint) =>
+                        constraint.kind ===
+                        "distance"
+                    );
+
+                const bestChoiceDistanceConstraint =
+                  bestChoiceEvaluation
+                    ?.sourceEvaluation
+                    .constraints
+                    .find(
+                      (constraint) =>
+                        constraint.kind ===
+                        "distance"
+                    );
+
+                const candidateDistance =
+                  typeof candidateDistanceConstraint
+                    ?.actualValue ===
+                    "number" &&
+                  Number.isFinite(
+                    candidateDistanceConstraint
+                      .actualValue
+                  )
+                    ? candidateDistanceConstraint
+                        .actualValue
+                    : null;
+
+                const bestChoiceDistance =
+                  typeof bestChoiceDistanceConstraint
+                    ?.actualValue ===
+                    "number" &&
+                  Number.isFinite(
+                    bestChoiceDistanceConstraint
+                      .actualValue
+                  )
+                    ? bestChoiceDistanceConstraint
+                        .actualValue
+                    : null;
+
+                const distanceGain =
+                  candidateDistance !==
+                    null &&
+                  bestChoiceDistance !==
+                    null
+                    ? (
+                        bestChoiceDistance -
+                        candidateDistance
+                      )
+                    : null;
+
+                const smartScoreDifference =
+                  bestChoiceEvaluation
+                    ? (
+                        evaluation.smartScore -
+                        bestChoiceEvaluation
+                          .smartScore
+                      )
+                    : null;
+
+                let nearBudgetSummary =
+                  overBudgetAmount !==
+                    null
+                    ? (
+                        formatSearchMoney(
+                          overBudgetAmount,
+                          currency
+                        ) +
+                        " over your total budget, but still inside SmartStay's near-budget range."
+                      )
+                    : "A verified option just above your budget.";
+
+                if (
+                  overBudgetAmount !==
+                    null &&
+                  distanceGain !==
+                    null &&
+                  distanceGain >=
+                    0.5
+                ) {
+                  nearBudgetSummary =
+                    formatSearchMoney(
+                      overBudgetAmount,
+                      currency
+                    ) +
+                    " over your total budget, but " +
+                    distanceGain.toFixed(
+                      1
+                    ) +
+                    " km closer than the Best Choice.";
+                }
+                else if (
+                  overBudgetAmount !==
+                    null &&
+                  smartScoreDifference !==
+                    null &&
+                  smartScoreDifference >
+                    0
+                ) {
+                  nearBudgetSummary =
+                    formatSearchMoney(
+                      overBudgetAmount,
+                      currency
+                    ) +
+                    " over your total budget with a SmartScore " +
+                    smartScoreDifference +
+                    " points higher than the Best Choice.";
+                }
+                else if (
+                  overBudgetAmount !==
+                    null &&
+                  smartScoreDifference ===
+                    0
+                ) {
+                  nearBudgetSummary =
+                    formatSearchMoney(
+                      overBudgetAmount,
+                      currency
+                    ) +
+                    " over your total budget with the same SmartScore as the Best Choice.";
+                }
+
+                return (
+                  <div
+                    key={
+                      "near-budget-" +
+                      evaluation.hotel.id
+                    }
+                    className="results__recommendation results__recommendation--near-budget"
+                  >
+                    <div className="results__recommendation-heading">
+                      <p className="results__recommendation-role">
+                        Near-budget alternative
+                      </p>
+
+                      <p className="results__recommendation-summary">
+                        {nearBudgetSummary}
+                      </p>
+                    </div>
+
+                    <HotelCard
+                      hotel={evaluation.hotel}
+                      smartScore={evaluation.smartScore}
+                      riskLevel={evaluation.riskLevel}
+                      dataConfidenceLevel={evaluation.dataConfidenceLevel}
+                      badges={evaluation.badges}
+                      reasons={evaluation.reasons}
+                      priceAdvantagePercent={calculatePriceAdvantagePercent(
+                        evaluation.hotel,
+                        averageSearchPrice
+                      )}
+                      detailsLoading={
+                        hotelDetailsLoading &&
+                        activeDetailsHotelId ===
+                          evaluation.hotel.id
+                      }
+                      bookingUrl={
+                        getHotelBookingUrl(
+                          evaluation.hotel,
+                          searchId
+                        )
+                      }
+                      onViewDetails={
+                        handleViewHotelDetails
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
           {remainingHotels.length > 0 && (
             <section
               style={{
@@ -1337,7 +1622,7 @@ const rankedHotels =
                       letterSpacing: "-0.03em",
                     }}
                   >
-                    Want to compare all budget-relevant options?
+                    Want to compare the other verified options?
                   </h2>
 
                   <p
@@ -1348,8 +1633,8 @@ const rankedHotels =
                       lineHeight: 1.6,
                     }}
                   >
-                    SmartStay selected the strongest recommendations above for your {selectedPreference.title.toLowerCase()} preference.
-                    Open the complete budget-relevant list to compare every verified stay within budget and up to three useful near-budget upgrades.
+                    SmartStay already separated the Best Choice and any near-budget alternatives above.
+                    Open the remaining verified list to compare the other budget-relevant stays.
                   </p>
 
                   <button
@@ -1367,7 +1652,7 @@ const rankedHotels =
                     }}
                     onClick={() => setShowFullList(true)}
                   >
-                    View budget-relevant ranked list
+                    View remaining verified stays
                   </button>
                 </div>
               ) : (
@@ -1387,7 +1672,7 @@ const rankedHotels =
                         letterSpacing: "0.08em",
                       }}
                     >
-                      Budget-relevant list
+                      Remaining verified list
                     </p>
 
                     <h2
@@ -1397,7 +1682,7 @@ const rankedHotels =
                         letterSpacing: "-0.04em",
                       }}
                     >
-                      All remaining budget-relevant stays
+                      Other verified stays
                     </h2>
 
                     <p
@@ -1406,7 +1691,7 @@ const rankedHotels =
                         color: "#64748b",
                       }}
                     >
-                      Within-budget stays come first, followed by up to three near-budget upgrades. Options are ordered by SmartScore inside each budget band.
+                      Near-budget alternatives are already shown above. These remaining options are ordered by SmartScore.
                     </p>
                   </div>
 

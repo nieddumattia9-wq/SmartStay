@@ -1161,7 +1161,31 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "budget-relevant"
+        "const nearBudgetHotels ="
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "Near-budget alternative"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "did not pass SmartStay verification"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "distanceGain.toFixed"
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "useful near-budget upgrade"
       )
     );
   }
