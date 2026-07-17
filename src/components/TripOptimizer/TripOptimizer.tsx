@@ -346,6 +346,12 @@ function TripOptimizer() {
               destinationLabel:
                 destination,
 
+              destinationLatitude:
+                selectedDestination.lat,
+
+              destinationLongitude:
+                selectedDestination.lng,
+
               smartPreference:
                 effectiveSmartPreference,
 

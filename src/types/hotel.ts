@@ -73,6 +73,8 @@ export interface HotelOffer {
 
   bookable: boolean;
 
+  redirectable?: boolean;
+
 }
 
 export interface Hotel {

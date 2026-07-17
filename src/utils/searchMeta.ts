@@ -7,6 +7,13 @@ import {
 
 export type StoredSearchMeta = {
   destinationLabel: string;
+
+  destinationLatitude:
+    number | null;
+
+  destinationLongitude:
+    number | null;
+
   smartPreference:
     SmartStayPreference;
 
@@ -23,6 +30,13 @@ export type StoredSearchMeta = {
 
 type CreateStoredSearchMetaInput = {
   destinationLabel: string;
+
+  destinationLatitude?:
+    unknown;
+
+  destinationLongitude?:
+    unknown;
+
   smartPreference: unknown;
   smartStayProfile?: unknown;
   budgetInput: unknown;
@@ -31,6 +45,64 @@ type CreateStoredSearchMetaInput = {
   checkOut: string;
   maxDistanceKm: unknown;
 };
+
+function normalizeCoordinate(
+  value:
+    unknown,
+  minimum:
+    number,
+  maximum:
+    number
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      numericValue
+    ) ||
+    numericValue <
+      minimum ||
+    numericValue >
+      maximum
+  ) {
+    return null;
+  }
+
+  return numericValue;
+}
+
+function normalizeLatitude(
+  value:
+    unknown
+) {
+  return normalizeCoordinate(
+    value,
+    -90,
+    90
+  );
+}
+
+function normalizeLongitude(
+  value:
+    unknown
+) {
+  return normalizeCoordinate(
+    value,
+    -180,
+    180
+  );
+}
 
 function normalizeCurrency(
   value: unknown
@@ -229,6 +301,16 @@ export function createStoredSearchMeta(
         input.destinationLabel
       ),
 
+    destinationLatitude:
+      normalizeLatitude(
+        input.destinationLatitude
+      ),
+
+    destinationLongitude:
+      normalizeLongitude(
+        input.destinationLongitude
+      ),
+
     smartPreference:
       effectiveSmartPreference,
 
@@ -314,6 +396,21 @@ export function normalizeStoredSearchMeta(
     destinationLabel:
       normalizeText(
         source.destinationLabel
+      ),
+
+    destinationLatitude:
+      normalizeLatitude(
+        source.destinationLatitude ??
+        source.latitude ??
+        source.lat
+      ),
+
+    destinationLongitude:
+      normalizeLongitude(
+        source.destinationLongitude ??
+        source.longitude ??
+        source.lng ??
+        source.long
       ),
 
     smartPreference:

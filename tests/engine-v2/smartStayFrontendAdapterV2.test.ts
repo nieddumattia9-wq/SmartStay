@@ -4,6 +4,11 @@ import {
 } from "node:fs";
 import test from "node:test";
 
+import {
+  createStoredSearchMeta,
+  normalizeStoredSearchMeta,
+} from "../../src/utils/searchMeta";
+
 import type {
   Hotel,
   HotelOffer,
@@ -62,6 +67,9 @@ function createOffer(
       "Double hotel room",
     bookable:
       true,
+
+    redirectable:
+      false,
   };
 }
 
@@ -452,6 +460,112 @@ test(
 );
 
 test(
+  "Live provider offers remain rankable without a redirect URL",
+  () => {
+    const view =
+      buildView(
+        HOTELS
+      );
+
+    assert.ok(
+      view.rankedHotels.length >
+        0
+    );
+
+    for (
+      const evaluation
+      of view.rankedHotels
+    ) {
+      const offer =
+        evaluation.hotel
+          .offers[0];
+
+      assert.equal(
+        offer?.bookable,
+        true
+      );
+
+      assert.equal(
+        offer?.redirectable,
+        false
+      );
+    }
+  }
+);
+
+test(
+  "Search metadata preserves valid destination coordinates",
+  () => {
+    const created =
+      createStoredSearchMeta({
+        destinationLabel:
+          "Florence, Italy",
+
+        destinationLatitude:
+          43.7696,
+
+        destinationLongitude:
+          11.2558,
+
+        smartPreference: {
+          selectedIndex:
+            2,
+        },
+
+        budgetInput:
+          500,
+
+        currency:
+          "EUR",
+
+        checkIn:
+          "2026-09-15",
+
+        checkOut:
+          "2026-09-18",
+
+        maxDistanceKm:
+          5,
+      });
+
+    assert.equal(
+      created
+        .destinationLatitude,
+      43.7696
+    );
+
+    assert.equal(
+      created
+        .destinationLongitude,
+      11.2558
+    );
+
+    const normalized =
+      normalizeStoredSearchMeta({
+        ...created,
+
+        destinationLatitude:
+          91,
+
+        destinationLongitude:
+          181,
+      });
+
+    assert.equal(
+      normalized
+        ?.destinationLatitude,
+      null
+    );
+
+    assert.equal(
+      normalized
+        ?.destinationLongitude,
+      null
+    );
+  }
+);
+
+test(
   "Results and HotelCard no longer depend on legacy ranking bridges",
   () => {
     const resultsSource =
@@ -463,6 +577,30 @@ test(
     const hotelCardSource =
       readFileSync(
         "src/components/HotelCard/HotelCard.tsx",
+        "utf8"
+      );
+
+    const tripOptimizerSource =
+      readFileSync(
+        "src/components/TripOptimizer/TripOptimizer.tsx",
+        "utf8"
+      );
+
+    const searchMetaSource =
+      readFileSync(
+        "src/utils/searchMeta.ts",
+        "utf8"
+      );
+
+    const hotelTypeSource =
+      readFileSync(
+        "src/types/hotel.ts",
+        "utf8"
+      );
+
+    const publicPresenterSource =
+      readFileSync(
+        "server/presenters/publicHotelPresenter.js",
         "utf8"
       );
 
@@ -493,6 +631,66 @@ test(
     assert.ok(
       !hotelCardSource.includes(
         "../../utils/smartStayEngine"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "selectedLocation:"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        ".redirectable ==="
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "primaryOffer.offer.bookable !== true"
+      )
+    );
+
+    assert.ok(
+      tripOptimizerSource.includes(
+        "destinationLatitude:"
+      )
+    );
+
+    assert.ok(
+      tripOptimizerSource.includes(
+        "destinationLongitude:"
+      )
+    );
+
+    assert.ok(
+      searchMetaSource.includes(
+        "destinationLatitude:"
+      )
+    );
+
+    assert.ok(
+      searchMetaSource.includes(
+        "destinationLongitude:"
+      )
+    );
+
+    assert.ok(
+      hotelTypeSource.includes(
+        "redirectable?: boolean;"
+      )
+    );
+
+    assert.ok(
+      publicPresenterSource.includes(
+        "redirectable:"
+      )
+    );
+
+    assert.ok(
+      !/bookable:\s*Boolean\(\s*getSafeHttpUrl\(/s.test(
+        publicPresenterSource
       )
     );
   }

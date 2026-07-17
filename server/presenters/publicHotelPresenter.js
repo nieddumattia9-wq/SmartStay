@@ -307,7 +307,29 @@ function createPublicHotelOffer(
         source.roomName
       ),
 
+    /*
+     * A live provider rate can be commercially usable even when the
+     * provider does not expose a direct redirect URL. Keep availability
+     * separate from booking handoff capability.
+     */
     bookable:
+      getNullableBoolean(
+        source.bookable
+      ) ??
+      (
+        (
+          getFiniteNumber(
+            source.totalKnownCost
+          ) ??
+          getFiniteNumber(
+            source.price
+          ) ??
+          0
+        ) >
+        0
+      ),
+
+    redirectable:
       Boolean(
         getSafeHttpUrl(
           source.deepLink

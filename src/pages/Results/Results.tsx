@@ -224,6 +224,46 @@ function writeStoredRankingV2(
     return `Within ${maxDistanceKm} km`;
   }
 
+  function getSelectedLocation(
+    searchMeta:
+      SearchMeta | null
+  ) {
+    if (
+      searchMeta
+        ?.destinationLatitude ===
+        null ||
+      searchMeta
+        ?.destinationLatitude ===
+        undefined ||
+      searchMeta
+        ?.destinationLongitude ===
+        null ||
+      searchMeta
+        ?.destinationLongitude ===
+        undefined
+    ) {
+      return null;
+    }
+
+    return {
+      latitude:
+        searchMeta
+          .destinationLatitude,
+
+      longitude:
+        searchMeta
+          .destinationLongitude,
+
+      confidence:
+        1,
+
+      label:
+        searchMeta
+          .destinationLabel ||
+        "Selected destination",
+    };
+  }
+
   function getSelectedPreferenceIndex(
     searchMeta: SearchMeta | null
   ) {
@@ -455,22 +495,24 @@ function getHotelBookingUrl(
     return null;
   }
 
-  const primaryOffer =
+  const redirectableOffer =
     selectHotelOffers(
       hotel
-    ).primary;
+    ).offers.find(
+      (candidate) =>
+        candidate.offer
+          .redirectable ===
+        true
+    );
 
-  if (
-    !primaryOffer ||
-    primaryOffer.offer.bookable !== true
-  ) {
+  if (!redirectableOffer) {
     return null;
   }
 
   return createBookingRedirectUrl(
     searchId,
     hotel.id,
-    primaryOffer.offer.id
+    redirectableOffer.offer.id
   );
 }
 
@@ -797,6 +839,11 @@ const rankedHotels =
                     ?.maxDistanceKm ??
                   null,
 
+                selectedLocation:
+                  getSelectedLocation(
+                    searchMeta
+                  ),
+
                 nights:
                   searchMeta
                     ?.nightCount ??
@@ -866,6 +913,12 @@ const rankedHotels =
         ?.totalBudget,
       searchMeta
         ?.maxDistanceKm,
+      searchMeta
+        ?.destinationLatitude,
+      searchMeta
+        ?.destinationLongitude,
+      searchMeta
+        ?.destinationLabel,
       searchMeta
         ?.nightCount,
     ]);
@@ -1111,11 +1164,15 @@ const rankedHotels =
         {rankedHotels.length === 0 ? (
           <div className="results-state results-state--empty">
             <h2>
-              No stays found
+              {hotels.length === 0
+                ? "No stays found"
+                : "No stays passed the current verification checks"}
             </h2>
 
             <p>
-              Try another destination or different dates.
+              {hotels.length === 0
+                ? "Try another destination or different dates."
+                : "SmartStay found stays, but none could be ranked safely with the current availability and location evidence."}
             </p>
 
             <button
