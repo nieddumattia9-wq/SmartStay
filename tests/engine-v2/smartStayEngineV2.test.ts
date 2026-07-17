@@ -500,6 +500,24 @@ test(
       HOTELS.length
     );
 
+    assert.ok(
+      result.ranking.visibleHotelIds.length >
+        0
+    );
+
+    assert.ok(
+      result.recommendationRoles
+        .bestChoiceHotelId
+    );
+
+    assert.ok(
+      result.ranking.visibleHotelIds.some(
+        (hotelId) =>
+          hotelId !==
+          "far-cheap"
+      )
+    );
+
     for (
       const evaluation
       of result.evaluations

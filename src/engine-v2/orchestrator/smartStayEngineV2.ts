@@ -143,7 +143,7 @@ import type {
 } from "../model/smartStayEvaluationV2";
 
 export const SMARTSTAY_ENGINE_V2_PIPELINE_VERSION =
-  "2.0.0-pipeline.1" as const;
+  "2.0.0-pipeline.2" as const;
 
 export interface SmartStayEngineV2SearchInput {
   hotels:
@@ -1173,24 +1173,17 @@ function createExclusionReasonCodes(
     foundation:
       FoundationCandidate;
 
-    priceValue:
-      SmartStayPriceValueEvaluationV2;
-
-    quality:
-      SmartStayQualityEvaluationV2;
-
     location:
       SmartStayLocationEvaluationV2;
 
     comfortFlexibility:
       SmartStayComfortFlexibilityEvaluationV2;
 
-    risk:
-      SmartStayRiskEvaluationV2;
-
     utility:
       SmartStayUserUtilityEvaluationV2;
-  }
+  },
+  input:
+    SmartStayEngineV2SearchInput
 ) {
   const reasons:
     string[] = [];
@@ -1208,69 +1201,6 @@ function createExclusionReasonCodes(
 
   if (
     !candidate
-      .priceValue
-      .eligibleForPrimaryRanking
-  ) {
-    reasons.push(
-      "price-value-ineligible"
-    );
-  }
-
-  if (
-    !candidate
-      .quality
-      .eligibleForPrimaryRanking
-  ) {
-    reasons.push(
-      "quality-ineligible"
-    );
-  }
-
-  if (
-    !candidate
-      .location
-      .eligibleForPrimaryRanking
-  ) {
-    reasons.push(
-      "location-ineligible"
-    );
-  }
-
-  if (
-    candidate
-      .location
-      .constraint
-      .withinLimit ===
-      false
-  ) {
-    reasons.push(
-      "distance-limit-exceeded"
-    );
-  }
-
-  if (
-    !candidate
-      .comfortFlexibility
-      .eligibleForPrimaryRanking
-  ) {
-    reasons.push(
-      "comfort-flexibility-ineligible"
-    );
-  }
-
-  if (
-    !candidate
-      .comfortFlexibility
-      .mandatoryRequirements
-      .satisfied
-  ) {
-    reasons.push(
-      "mandatory-requirements-not-satisfied"
-    );
-  }
-
-  if (
-    !candidate
       .utility
       .eligibleForPrimaryRanking
   ) {
@@ -1279,15 +1209,71 @@ function createExclusionReasonCodes(
     );
   }
 
-  if (
-    candidate
-      .risk
-      .level ===
-      "high"
-  ) {
-    reasons.push(
-      "high-risk"
+  const maximumDistanceKm =
+    normalizeOptionalPositiveNumber(
+      input.maximumDistanceKm
     );
+
+  if (
+    maximumDistanceKm !==
+    null
+  ) {
+    if (
+      candidate
+        .location
+        .constraint
+        .withinLimit ===
+        false
+    ) {
+      reasons.push(
+        "distance-limit-exceeded"
+      );
+    }
+    else if (
+      candidate
+        .location
+        .constraint
+        .withinLimit !==
+        true
+    ) {
+      reasons.push(
+        "distance-limit-unverified"
+      );
+    }
+  }
+
+  if (
+    hasMandatoryPreferences(
+      input.comfortPreferences
+    ) &&
+    !candidate
+      .comfortFlexibility
+      .mandatoryRequirements
+      .satisfied
+  ) {
+    const mandatory =
+      candidate
+        .comfortFlexibility
+        .mandatoryRequirements;
+
+    if (
+      mandatory
+        .unmetFeatureCodes
+        .length >
+        0 ||
+      mandatory
+        .requiredUnitTypeStatus ===
+        "unmet"
+    ) {
+      reasons.push(
+        "mandatory-requirements-not-satisfied"
+      );
+    }
+    else {
+      reasons.push(
+        "mandatory-requirements-unverified"
+      );
+    }
   }
 
   return uniqueSorted(
@@ -1716,15 +1702,15 @@ function createDimensionCandidates(
         });
 
       const exclusionReasonCodes =
-        createExclusionReasonCodes({
-          foundation,
-          priceValue,
-          quality,
-          location,
-          comfortFlexibility,
-          risk,
-          utility,
-        });
+        createExclusionReasonCodes(
+          {
+            foundation,
+            location,
+            comfortFlexibility,
+            utility,
+          },
+          input
+        );
 
       return {
         ...foundation,
