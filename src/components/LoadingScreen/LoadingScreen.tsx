@@ -815,90 +815,94 @@ import {
     ]);
   
     return (
-      <div className="loading-screen">
+      <div
+        className="loading-screen"
+        aria-busy={!error}
+      >
         <div className="loading-card">
           <h1 className="loading-title">
             SmartStay
           </h1>
-  
+
           <p className="loading-subtitle">
             {error
               ? "Something went wrong while searching."
               : "Finding the smartest stay for you..."}
           </p>
-  
-          <div className="loading-progress">
+
+          <div
+            className="loading-progress"
+            role="progressbar"
+            aria-label="Search progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={
+              Math.round(progress)
+            }
+          >
             <div
               className="loading-progress__bar"
+              aria-hidden="true"
               style={{
                 width: `${progress}%`,
               }}
             />
           </div>
-  
-          <p className="loading-percentage">
+
+          <p
+            className="loading-percentage"
+            aria-hidden="true"
+          >
             {Math.round(progress)}%
           </p>
-  
+
           {!error && (
             <p
-              style={{
-                marginTop: "10px",
-                color: "#6b7280",
-                fontSize: "0.95rem",
-              }}
+              className="loading-results-status"
+              role="status"
+              aria-live="polite"
             >
               {totalHotels > 0
                 ? `${totalHotels} stays found so far`
                 : "Starting hotel search..."}
             </p>
           )}
-  
+
           {error && (
             <div
-              style={{
-                marginTop: "24px",
-                color: "#dc2626",
-                fontWeight: 600,
-                textAlign: "center",
-              }}
+              className="loading-error"
+              role="alert"
             >
-              {error}
-  
-              <br />
-  
+              <p>
+                {error}
+              </p>
+
               <button
                 type="button"
-                style={{
-                  marginTop: "18px",
-                  border: "none",
-                  borderRadius: "12px",
-                  padding: "12px 22px",
-                  cursor: "pointer",
-                  background: "#111827",
-                  color: "white",
-                  fontWeight: 600,
-                }}
+                className="loading-error__button"
                 onClick={() => navigate("/")}
               >
                 Start a new search
               </button>
             </div>
           )}
-  
+
           {!error && (
-            <div className="loading-steps">
+            <div
+              className="loading-steps"
+              aria-label="Search steps"
+            >
               {loadingSteps.map((step, index) => {
                 const completed =
                   completedSteps.includes(index);
-  
+
                 const active =
                   currentStep === index;
-  
+
                 if (!completed && !active) {
                   return null;
                 }
-  
+
                 return (
                   <div
                     key={step}
@@ -907,16 +911,25 @@ import {
                         ? "loading-step--completed"
                         : "loading-step--active"
                     }`}
+                    aria-current={
+                      active
+                        ? "step"
+                        : undefined
+                    }
                   >
                     {completed ? (
                       <Check
                         size={18}
                         className="loading-check"
+                        aria-hidden="true"
                       />
                     ) : (
-                      <span className="loading-dot" />
+                      <span
+                        className="loading-dot"
+                        aria-hidden="true"
+                      />
                     )}
-  
+
                     <span>
                       {step}
                     </span>

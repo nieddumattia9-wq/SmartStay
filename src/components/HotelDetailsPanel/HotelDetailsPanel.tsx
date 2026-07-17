@@ -1,5 +1,6 @@
-﻿import {
+import {
   useEffect,
+  useRef,
 } from "react";
 
 import type {
@@ -69,18 +70,126 @@ function HotelDetailsPanel({
   offers = [],
   onClose,
 }: HotelDetailsPanelProps) {
+  const panelRef =
+    useRef<HTMLElement>(null);
+
+  const closeButtonRef =
+    useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     const previousOverflow =
       document.body.style.overflow;
 
+    const previousActiveElement =
+      document.activeElement instanceof
+        HTMLElement
+        ? document.activeElement
+        : null;
+
     document.body.style.overflow =
       "hidden";
+
+    const focusFrameId =
+      window.requestAnimationFrame(
+        () => {
+          (
+            closeButtonRef.current ??
+            panelRef.current
+          )?.focus();
+        }
+      );
+
+    function getFocusableElements() {
+      const panel =
+        panelRef.current;
+
+      if (!panel) {
+        return [];
+      }
+
+      return Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          [
+            'a[href]',
+            'button:not([disabled])',
+            'input:not([disabled])',
+            'select:not([disabled])',
+            'textarea:not([disabled])',
+            '[tabindex]:not([tabindex="-1"])',
+          ].join(",")
+        )
+      ).filter(
+        (element) =>
+          element.getAttribute(
+            "aria-hidden"
+          ) !== "true"
+      );
+    }
 
     function handleKeyDown(
       event: KeyboardEvent
     ) {
       if (event.key === "Escape") {
+        event.preventDefault();
         onClose();
+
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const panel =
+        panelRef.current;
+
+      if (!panel) {
+        return;
+      }
+
+      const focusableElements =
+        getFocusableElements();
+
+      if (
+        focusableElements.length ===
+        0
+      ) {
+        event.preventDefault();
+        panel.focus();
+
+        return;
+      }
+
+      const firstElement =
+        focusableElements[0];
+
+      const lastElement =
+        focusableElements[
+          focusableElements.length - 1
+        ];
+
+      const activeElement =
+        document.activeElement;
+
+      if (
+        event.shiftKey &&
+        (
+          activeElement === firstElement ||
+          !panel.contains(activeElement)
+        )
+      ) {
+        event.preventDefault();
+        lastElement.focus();
+
+        return;
+      }
+
+      if (
+        !event.shiftKey &&
+        activeElement === lastElement
+      ) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
@@ -90,6 +199,10 @@ function HotelDetailsPanel({
     );
 
     return () => {
+      window.cancelAnimationFrame(
+        focusFrameId
+      );
+
       document.body.style.overflow =
         previousOverflow;
 
@@ -97,6 +210,15 @@ function HotelDetailsPanel({
         "keydown",
         handleKeyDown
       );
+
+      if (
+        previousActiveElement &&
+        document.contains(
+          previousActiveElement
+        )
+      ) {
+        previousActiveElement.focus();
+      }
     };
   }, [onClose]);
 
@@ -109,7 +231,7 @@ function HotelDetailsPanel({
     <div
       className="hotel-details-panel__overlay"
       role="presentation"
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         if (
           event.target ===
           event.currentTarget
@@ -119,12 +241,25 @@ function HotelDetailsPanel({
       }}
     >
       <section
+        ref={panelRef}
         className="hotel-details-panel"
         role="dialog"
         aria-modal="true"
-        aria-label="Accommodation details"
+        aria-busy={loading}
+        aria-labelledby={
+          details
+            ? "hotel-details-title"
+            : undefined
+        }
+        aria-label={
+          details
+            ? undefined
+            : "Accommodation details"
+        }
+        tabIndex={-1}
       >
         <button
+          ref={closeButtonRef}
           type="button"
           className="hotel-details-panel__close"
           onClick={onClose}
@@ -134,7 +269,11 @@ function HotelDetailsPanel({
         </button>
 
         {loading && (
-          <div className="hotel-details-panel__state">
+          <div
+            className="hotel-details-panel__state"
+            role="status"
+            aria-live="polite"
+          >
             <strong>
               Loading accommodation details
             </strong>
@@ -146,7 +285,10 @@ function HotelDetailsPanel({
         )}
 
         {!loading && error && (
-          <div className="hotel-details-panel__state hotel-details-panel__state--error">
+          <div
+            className="hotel-details-panel__state hotel-details-panel__state--error"
+            role="alert"
+          >
             <strong>
               Details unavailable
             </strong>

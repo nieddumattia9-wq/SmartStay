@@ -755,45 +755,32 @@ const rankedHotels =
     if (loading) {
       return (
         <div
-          style={{
-            padding: "80px",
-            textAlign: "center",
-          }}
+          className="results-state results-state--loading"
+          role="status"
+          aria-live="polite"
         >
           Loading hotels...
         </div>
       );
     }
-  
+
     if (error) {
       return (
         <div
-          style={{
-            padding: "80px",
-            textAlign: "center",
-            color: "#dc2626",
-          }}
+          className="results-state results-state--error"
+          role="alert"
         >
           <h1>
             Results not available
           </h1>
-  
+
           <p>
             {error}
           </p>
-  
+
           <button
             type="button"
-            style={{
-              marginTop: "20px",
-              border: "none",
-              borderRadius: "12px",
-              padding: "12px 22px",
-              cursor: "pointer",
-              background: "#111827",
-              color: "white",
-              fontWeight: 600,
-            }}
+            className="results-state__button results-state__button--dark"
             onClick={() => navigate("/")}
           >
             Start a new search
@@ -801,44 +788,18 @@ const rankedHotels =
         </div>
       );
     }
-  
+
     return (
-      <main
-        style={{
-          maxWidth: "1300px",
-          margin: "40px auto",
-          padding: "0 24px",
-        }}
-      >
-        <section
-          style={{
-            marginBottom: "36px",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 10px",
-              color: "#16a34a",
-              fontSize: "0.82rem",
-              fontWeight: 900,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
+      <main className="results-page">
+        <section className="results-page__header">
+          <p className="results-page__eyebrow">
             Ranked by SmartStay Engine
           </p>
-  
-          <h1
-            style={{
-              fontSize: "2.55rem",
-              lineHeight: 1.08,
-              margin: "0 0 12px",
-              letterSpacing: "-0.04em",
-            }}
-          >
+
+          <h1 className="results-page__title">
             Your SmartStay recommendations
           </h1>
-  
+
           <p className="results-search-summary">
             SmartStay analyzed {hotels.length} stays
             {searchMeta?.destinationLabel
@@ -913,11 +874,8 @@ const rankedHotels =
 
           {status && (
             <p
-              style={{
-                color: "#94a3b8",
-                marginTop: "14px",
-                fontSize: "0.92rem",
-              }}
+              className="results-page__status"
+              role="status"
             >
               Search status: {status}
             </p>
@@ -925,49 +883,30 @@ const rankedHotels =
         </section>
 
         {hotels.length === 0 ? (
-        <div
-          style={{
-            padding: "60px",
-            textAlign: "center",
-            background: "#ffffff",
-            borderRadius: "20px",
-            boxShadow: "0 10px 30px rgba(0, 0, 0, .08)",
-          }}
-        >
-          <h2>
-            No stays found
-          </h2>
+          <div className="results-state results-state--empty">
+            <h2>
+              No stays found
+            </h2>
 
-          <p
-            style={{
-              color: "#6b7280",
-              marginTop: "10px",
-            }}
-          >
-            Try another destination or different dates.
-          </p>
+            <p>
+              Try another destination or different dates.
+            </p>
 
-          <button
-            type="button"
-            style={{
-              marginTop: "24px",
-              border: "none",
-              borderRadius: "12px",
-              padding: "12px 22px",
-              cursor: "pointer",
-              background: "#00b96b",
-              color: "white",
-              fontWeight: 600,
-            }}
-            onClick={() => navigate("/")}
-          >
-            Search again
-          </button>
-        </div>
+            <button
+              type="button"
+              className="results-state__button results-state__button--primary"
+              onClick={() => navigate("/")}
+            >
+              Search again
+            </button>
+          </div>
       ) : (
         <>
           {recommendationPicks.length > 0 && (
-            <section className="results__recommendations">
+            <section
+              className="results__recommendations"
+              aria-label="SmartStay recommendations"
+            >
               {recommendationPicks.map((pick) => {
                 const evaluation =
                   pick.evaluation;
