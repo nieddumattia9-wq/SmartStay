@@ -6,15 +6,20 @@ import "./HotelCard.css";
 import type { Hotel } from "../../types/hotel";
 
 import type {
-  SmartBadge,
-  SmartRiskLevel,
-} from "../../utils/smartStayEngine";
+  SmartStayFrontendBadgeV2,
+} from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
+
+import type {
+  SmartStayDataConfidenceLevelV2,
+  SmartStayRiskLevelV2,
+} from "../../engine-v2/model/smartStayEvaluationV2";
 
 type HotelCardProps = {
   hotel: Hotel;
   smartScore?: number;
-  riskLevel?: SmartRiskLevel;
-  badges?: SmartBadge[];
+  riskLevel?: SmartStayRiskLevelV2;
+  dataConfidenceLevel?: SmartStayDataConfidenceLevelV2;
+  badges?: SmartStayFrontendBadgeV2[];
   reasons?: string[];
   priceAdvantagePercent?: number | null;
   detailsLoading?: boolean;
@@ -95,7 +100,7 @@ function formatReviewScore(
 }
 
 function formatRiskLabel(
-  riskLevel?: SmartRiskLevel
+  riskLevel?: SmartStayRiskLevelV2
 ) {
   if (riskLevel === "low") {
     return "Low risk";
@@ -113,17 +118,37 @@ function formatRiskLabel(
 }
 
 function formatDataConfidence(
-  dataConfidence: Hotel["dataConfidence"]
+  dataConfidence:
+    SmartStayDataConfidenceLevelV2
 ) {
-  if (dataConfidence === "full") {
-    return "Solid data";
+  if (dataConfidence === "high") {
+    return "High data confidence";
   }
 
-  if (dataConfidence === "partial") {
-    return "Partial data";
+  if (dataConfidence === "medium") {
+    return "Medium data confidence";
   }
 
-  return "Limited data";
+  if (dataConfidence === "low") {
+    return "Limited data confidence";
+  }
+
+  return "Insufficient data";
+}
+
+function getDataConfidenceModifier(
+  dataConfidence:
+    SmartStayDataConfidenceLevelV2
+) {
+  if (dataConfidence === "high") {
+    return "full";
+  }
+
+  if (dataConfidence === "medium") {
+    return "partial";
+  }
+
+  return "limited";
 }
 
 function getBestDisplayPrice(
@@ -160,7 +185,7 @@ function getBestDisplayPrice(
   };
 }
 
-function getBadgeModifier(badge: SmartBadge) {
+function getBadgeModifier(badge: SmartStayFrontendBadgeV2) {
   if (
     badge === "Limited Data" ||
     badge === "Balanced Choice"
@@ -184,6 +209,7 @@ function HotelCard({
   hotel,
   smartScore,
   riskLevel,
+  dataConfidenceLevel = "none",
   badges = [],
   reasons = [],
   priceAdvantagePercent = null,
@@ -205,10 +231,14 @@ function HotelCard({
     formatRiskLabel(riskLevel);
 
   const dataConfidence =
-    hotel.dataConfidence ?? "limited";
+    getDataConfidenceModifier(
+      dataConfidenceLevel
+    );
 
   const dataConfidenceLabel =
-    formatDataConfidence(dataConfidence);
+    formatDataConfidence(
+      dataConfidenceLevel
+    );
 
   const offerSelection =
     selectHotelOffers(hotel);

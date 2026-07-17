@@ -36,14 +36,9 @@ import type {
   HotelDetails,
   SearchSessionResponse,
 } from "../../types/hotel";
-  
-  import {
-  rankHotelsWithSmartStayEngine,
-} from "../../utils/smartStayEngine";
-
-import {
-  selectSmartStayRecommendationRoles,
-} from "../../utils/smartStayRecommendationRoles";
+import type {
+  SmartStayFrontendViewV2,
+} from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
 
 import {
   selectHotelOffers,
@@ -97,6 +92,99 @@ import "./Results.css";
       return null;
     }
   }
+
+const RANKING_V2_STORAGE_PREFIX =
+  "smartstay_ranking_v2_";
+
+function getRankingV2StorageKey(
+  searchId: string
+) {
+  return `${RANKING_V2_STORAGE_PREFIX}${searchId}`;
+}
+
+function readStoredRankingV2(
+  searchId:
+    string |
+    null,
+  hotels:
+    Hotel[]
+) {
+  if (!searchId) {
+    return [];
+  }
+
+  const raw =
+    sessionStorage.getItem(
+      getRankingV2StorageKey(
+        searchId
+      )
+    );
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed =
+      JSON.parse(
+        raw
+      ) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    const availableHotelIds =
+      new Set(
+        hotels.map(
+          (hotel) =>
+            hotel.id
+        )
+      );
+
+    const ranking =
+      parsed.filter(
+        (
+          value
+        ): value is string =>
+          typeof value ===
+            "string" &&
+          availableHotelIds.has(
+            value
+          )
+      );
+
+    return [
+      ...new Set(
+        ranking
+      ),
+    ];
+  }
+  catch {
+    return [];
+  }
+}
+
+function writeStoredRankingV2(
+  searchId:
+    string |
+    null,
+  hotelIds:
+    string[]
+) {
+  if (!searchId) {
+    return;
+  }
+
+  sessionStorage.setItem(
+    getRankingV2StorageKey(
+      searchId
+    ),
+    JSON.stringify(
+      hotelIds
+    )
+  );
+}
 
   function formatSearchMoney(
     amount: number,
@@ -455,6 +543,15 @@ function getHotelDetailsFailureMessage(
     const [searchMeta, setSearchMeta] =
       useState<SearchMeta | null>(null);
   
+    const [engineView, setEngineView] =
+      useState<SmartStayFrontendViewV2 | null>(null);
+
+    const [engineError, setEngineError] =
+      useState("");
+
+    const engineRequestIdRef =
+      useRef(0);
+
     const [showFullList, setShowFullList] =
       useState(false);
 
@@ -534,31 +631,7 @@ function getHotelDetailsFailureMessage(
       );
 
 const rankedHotels =
-      useMemo(() => {
-        return rankHotelsWithSmartStayEngine(
-          hotels,
-          selectedPreference.id,
-          {
-            totalBudget:
-              searchMeta?.totalBudget ??
-              null,
-
-            maxDistanceKm:
-              searchMeta?.maxDistanceKm ??
-              null,
-
-            currency:
-              searchMeta?.currency ??
-              null,
-          }
-        );
-      }, [
-        hotels,
-        selectedPreference.id,
-        searchMeta?.totalBudget,
-        searchMeta?.maxDistanceKm,
-        searchMeta?.currency,
-      ]);
+      engineView?.rankedHotels ?? [];
   
     const averageSearchPrice =
       useMemo(() => {
@@ -568,13 +641,7 @@ const rankedHotels =
       }, [hotels]);
   
     const recommendationPicks =
-      useMemo(() => {
-        return selectSmartStayRecommendationRoles(
-          rankedHotels
-        );
-      }, [
-        rankedHotels,
-      ]);
+      engineView?.recommendationPicks ?? [];
 
     const recommendationHotelIds =
       useMemo(() => {
@@ -659,6 +726,149 @@ const rankedHotels =
   
       loadResults();
     }, [searchId]);
+
+    useEffect(() => {
+      if (hotels.length === 0) {
+        setEngineView(
+          null
+        );
+
+        setEngineError(
+          ""
+        );
+
+        return;
+      }
+
+      const requestId =
+        engineRequestIdRef.current +
+        1;
+
+      engineRequestIdRef.current =
+        requestId;
+
+      let cancelled =
+        false;
+
+      setEngineView(
+        null
+      );
+
+      setEngineError(
+        ""
+      );
+
+      async function rankWithEngineV2() {
+        try {
+          const engineModule =
+            await import(
+              "../../engine-v2/frontend/smartStayFrontendAdapterV2"
+            );
+
+          const previousRankingHotelIds =
+            readStoredRankingV2(
+              searchId,
+              hotels
+            );
+
+          const view =
+            engineModule
+              .buildSmartStayFrontendViewV2({
+                hotels,
+
+                preferenceId:
+                  selectedPreference.id,
+
+                selectedIndex:
+                  selectedPreferenceIndex,
+
+                preferenceSource:
+                  smartStayProfile
+                    ?.preferenceSource ??
+                  "default",
+
+                totalBudget:
+                  searchMeta
+                    ?.totalBudget ??
+                  null,
+
+                maximumDistanceKm:
+                  searchMeta
+                    ?.maxDistanceKm ??
+                  null,
+
+                nights:
+                  searchMeta
+                    ?.nightCount ??
+                  null,
+
+                previousRankingHotelIds,
+
+                maximumVisibleResults:
+                  hotels.length,
+              });
+
+          if (
+            cancelled ||
+            engineRequestIdRef
+              .current !==
+              requestId
+          ) {
+            return;
+          }
+
+          setEngineView(
+            view
+          );
+
+          writeStoredRankingV2(
+            searchId,
+            view.rankedHotels.map(
+              (evaluation) =>
+                evaluation.hotel.id
+            )
+          );
+        }
+        catch (engineFailure) {
+          console.error(
+            engineFailure
+          );
+
+          if (
+            cancelled ||
+            engineRequestIdRef
+              .current !==
+              requestId
+          ) {
+            return;
+          }
+
+          setEngineError(
+            "SmartStay could not rank these stays with Engine V2. Please start a new search."
+          );
+        }
+      }
+
+      void rankWithEngineV2();
+
+      return () => {
+        cancelled =
+          true;
+      };
+    }, [
+      hotels,
+      searchId,
+      selectedPreference.id,
+      selectedPreferenceIndex,
+      smartStayProfile
+        ?.preferenceSource,
+      searchMeta
+        ?.totalBudget,
+      searchMeta
+        ?.maxDistanceKm,
+      searchMeta
+        ?.nightCount,
+    ]);
 
     const handleCloseHotelDetails =
       useCallback(() => {
@@ -764,7 +974,23 @@ const rankedHotels =
       );
     }
 
-    if (error) {
+    if (
+      hotels.length > 0 &&
+      !engineView &&
+      !engineError
+    ) {
+      return (
+        <div
+          className="results-state results-state--loading"
+          role="status"
+          aria-live="polite"
+        >
+          SmartStay Engine V2 is ranking your stays...
+        </div>
+      );
+    }
+
+    if (error || engineError) {
       return (
         <div
           className="results-state results-state--error"
@@ -775,7 +1001,7 @@ const rankedHotels =
           </h1>
 
           <p>
-            {error}
+            {error || engineError}
           </p>
 
           <button
@@ -882,7 +1108,7 @@ const rankedHotels =
           )}
         </section>
 
-        {hotels.length === 0 ? (
+        {rankedHotels.length === 0 ? (
           <div className="results-state results-state--empty">
             <h2>
               No stays found
@@ -931,6 +1157,7 @@ const rankedHotels =
                       hotel={evaluation.hotel}
                       smartScore={evaluation.smartScore}
                       riskLevel={evaluation.riskLevel}
+                      dataConfidenceLevel={evaluation.dataConfidenceLevel}
                       badges={evaluation.badges}
                       reasons={evaluation.reasons}
                       priceAdvantagePercent={calculatePriceAdvantagePercent(
@@ -1068,6 +1295,7 @@ const rankedHotels =
                         hotel={evaluation.hotel}
                         smartScore={evaluation.smartScore}
                         riskLevel={evaluation.riskLevel}
+                        dataConfidenceLevel={evaluation.dataConfidenceLevel}
                         badges={evaluation.badges}
                         reasons={evaluation.reasons}
                         priceAdvantagePercent={calculatePriceAdvantagePercent(
