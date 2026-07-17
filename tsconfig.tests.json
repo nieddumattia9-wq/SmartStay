@@ -24,6 +24,7 @@
   "include": [
     "src/engine-v2/calibration/**/*.ts",
     "src/engine-v2/golden-dataset/**/*.ts",
+    "src/engine-v2/orchestrator/**/*.ts",
     "src/engine-v2/ranking/**/*.ts",
     "tests/engine-v2/**/*.test.ts"
   ],
