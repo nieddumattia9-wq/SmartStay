@@ -287,6 +287,265 @@ const HOTELS: Hotel[] = [
   }),
 ];
 
+const BUDGET_VISIBILITY_HOTELS:
+  Hotel[] = [
+    createHotel({
+      id:
+        "within-budget",
+
+      offerIndex:
+        10,
+
+      name:
+        "Within Budget Hotel",
+
+      totalCost:
+        420,
+
+      stars:
+        4,
+
+      reviewScore:
+        8.8,
+
+      reviewCount:
+        900,
+
+      distance:
+        1,
+
+      latitude:
+        43.77,
+
+      longitude:
+        11.256,
+    }),
+
+    createHotel({
+      id:
+        "near-budget-508",
+
+      offerIndex:
+        11,
+
+      name:
+        "Near Budget 508",
+
+      totalCost:
+        508,
+
+      stars:
+        4,
+
+      reviewScore:
+        9.1,
+
+      reviewCount:
+        1400,
+
+      distance:
+        0.8,
+
+      latitude:
+        43.771,
+
+      longitude:
+        11.257,
+    }),
+
+    createHotel({
+      id:
+        "near-budget-540",
+
+      offerIndex:
+        12,
+
+      name:
+        "Near Budget 540",
+
+      totalCost:
+        540,
+
+      stars:
+        5,
+
+      reviewScore:
+        9.2,
+
+      reviewCount:
+        1600,
+
+      distance:
+        0.7,
+
+      latitude:
+        43.772,
+
+      longitude:
+        11.258,
+    }),
+
+    createHotel({
+      id:
+        "near-budget-575",
+
+      offerIndex:
+        13,
+
+      name:
+        "Near Budget 575",
+
+      totalCost:
+        575,
+
+      stars:
+        5,
+
+      reviewScore:
+        9,
+
+      reviewCount:
+        1200,
+
+      distance:
+        0.9,
+
+      latitude:
+        43.773,
+
+      longitude:
+        11.259,
+    }),
+
+    createHotel({
+      id:
+        "near-budget-600",
+
+      offerIndex:
+        14,
+
+      name:
+        "Near Budget 600",
+
+      totalCost:
+        600,
+
+      stars:
+        5,
+
+      reviewScore:
+        8.9,
+
+      reviewCount:
+        1100,
+
+      distance:
+        1.1,
+
+      latitude:
+        43.774,
+
+      longitude:
+        11.26,
+    }),
+
+    createHotel({
+      id:
+        "far-over-budget-650",
+
+      offerIndex:
+        15,
+
+      name:
+        "Far Over Budget 650",
+
+      totalCost:
+        650,
+
+      stars:
+        5,
+
+      reviewScore:
+        9.4,
+
+      reviewCount:
+        1800,
+
+      distance:
+        0.6,
+
+      latitude:
+        43.775,
+
+      longitude:
+        11.261,
+    }),
+
+    createHotel({
+      id:
+        "far-over-budget-900",
+
+      offerIndex:
+        16,
+
+      name:
+        "Far Over Budget 900",
+
+      totalCost:
+        900,
+
+      stars:
+        5,
+
+      reviewScore:
+        9.5,
+
+      reviewCount:
+        2000,
+
+      distance:
+        0.5,
+
+      latitude:
+        43.776,
+
+      longitude:
+        11.262,
+    }),
+
+    createHotel({
+      id:
+        "far-over-budget-1300",
+
+      offerIndex:
+        17,
+
+      name:
+        "Far Over Budget 1300",
+
+      totalCost:
+        1300,
+
+      stars:
+        5,
+
+      reviewScore:
+        9.6,
+
+      reviewCount:
+        2200,
+
+      distance:
+        0.4,
+
+      latitude:
+        43.777,
+
+      longitude:
+        11.263,
+    }),
+  ];
+
 function buildView(
   hotels:
     Hotel[]
@@ -325,6 +584,194 @@ function buildView(
       hotels.length,
   });
 }
+
+test(
+  "Budget visibility hides far-over-budget stays from the main list",
+  () => {
+    const view =
+      buildView(
+        BUDGET_VISIBILITY_HOTELS
+      );
+
+    assert.equal(
+      view
+        .budgetPolicy
+        .totalBudget,
+      500
+    );
+
+    assert.equal(
+      view
+        .budgetPolicy
+        .nearBudgetLimit,
+      600
+    );
+
+    assert.ok(
+      view.rankedHotels.some(
+        (evaluation) =>
+          evaluation.hotel.id ===
+          "within-budget"
+      )
+    );
+
+    assert.ok(
+      view.rankedHotels.every(
+        (evaluation) =>
+          evaluation.totalCost !==
+            null &&
+          evaluation.totalCost <=
+            600
+      )
+    );
+
+    assert.deepEqual(
+      [
+        ...view
+          .hiddenFarOverBudgetHotelIds,
+      ].sort(),
+      [
+        "far-over-budget-1300",
+        "far-over-budget-650",
+        "far-over-budget-900",
+      ]
+    );
+
+    assert.ok(
+      view.recommendationPicks.every(
+        (pick) =>
+          pick
+            .evaluation
+            .totalCost !==
+            null &&
+          pick
+            .evaluation
+            .totalCost <=
+            600
+      )
+    );
+  }
+);
+
+test(
+  "Budget visibility exposes at most three deterministic near-budget upgrades",
+  () => {
+    const forward =
+      buildView(
+        BUDGET_VISIBILITY_HOTELS
+      );
+
+    const reversed =
+      buildView(
+        [
+          ...BUDGET_VISIBILITY_HOTELS,
+        ].reverse()
+      );
+
+    const forwardIds =
+      forward
+        .rankedHotels
+        .map(
+          (evaluation) =>
+            evaluation.hotel.id
+        );
+
+    const reversedIds =
+      reversed
+        .rankedHotels
+        .map(
+          (evaluation) =>
+            evaluation.hotel.id
+        );
+
+    assert.deepEqual(
+      reversedIds,
+      forwardIds
+    );
+
+    const visibleNearBudget =
+      forward
+        .rankedHotels
+        .filter(
+          (evaluation) =>
+            evaluation
+              .budgetVisibility ===
+            "near-budget"
+        );
+
+    assert.equal(
+      visibleNearBudget.length,
+      3
+    );
+
+    assert.equal(
+      forward
+        .budgetPolicy
+        .nearBudgetCandidateCount,
+      4
+    );
+
+    assert.equal(
+      forward
+        .budgetPolicy
+        .nearBudgetVisibleCount,
+      3
+    );
+
+    assert.equal(
+      forward
+        .budgetPolicy
+        .hiddenNearBudgetCount,
+      1
+    );
+
+    assert.equal(
+      forward
+        .hiddenNearBudgetHotelIds
+        .length,
+      1
+    );
+
+    assert.deepEqual(
+      reversed
+        .hiddenNearBudgetHotelIds,
+      forward
+        .hiddenNearBudgetHotelIds
+    );
+
+    const visibilityOrder =
+      forward
+        .rankedHotels
+        .map(
+          (evaluation) =>
+            evaluation
+              .budgetVisibility
+        );
+
+    const firstNearBudgetIndex =
+      visibilityOrder.indexOf(
+        "near-budget"
+      );
+
+    assert.ok(
+      firstNearBudgetIndex >
+        0
+    );
+
+    assert.ok(
+      visibilityOrder
+        .slice(
+          0,
+          firstNearBudgetIndex
+        )
+        .every(
+          (visibility) =>
+            visibility ===
+            "within-budget"
+        )
+    );
+  }
+);
 
 test(
   "Frontend V2 adapter exposes ranked display evaluations",
@@ -604,6 +1051,12 @@ test(
         "utf8"
       );
 
+    const frontendAdapterSource =
+      readFileSync(
+        "src/engine-v2/frontend/smartStayFrontendAdapterV2.ts",
+        "utf8"
+      );
+
     assert.ok(
       !resultsSource.includes(
         "rankHotelsWithSmartStayEngine"
@@ -691,6 +1144,24 @@ test(
     assert.ok(
       !/bookable:\s*Boolean\(\s*getSafeHttpUrl\(/s.test(
         publicPresenterSource
+      )
+    );
+
+    assert.ok(
+      frontendAdapterSource.includes(
+        "MAXIMUM_NEAR_BUDGET_RESULTS"
+      )
+    );
+
+    assert.ok(
+      frontendAdapterSource.includes(
+        "hiddenFarOverBudgetHotelIds"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "budget-relevant"
       )
     );
   }

@@ -678,9 +678,14 @@ const rankedHotels =
     const averageSearchPrice =
       useMemo(() => {
         return calculateAverageSearchPrice(
-          hotels
+          rankedHotels.map(
+            (evaluation) =>
+              evaluation.hotel
+          )
         );
-      }, [hotels]);
+      }, [
+        rankedHotels,
+      ]);
   
     const recommendationPicks =
       engineView?.recommendationPicks ?? [];
@@ -709,6 +714,72 @@ const rankedHotels =
         rankedHotels,
         recommendationHotelIds,
       ]);
+
+    const budgetPolicy =
+      engineView?.budgetPolicy ??
+      null;
+
+    const hiddenBudgetOptionCount =
+      budgetPolicy
+        ? budgetPolicy
+            .hiddenNearBudgetCount +
+          budgetPolicy
+            .hiddenFarOverBudgetCount +
+          budgetPolicy
+            .hiddenBudgetUnverifiedCount
+        : 0;
+
+    const budgetVisibilitySummary =
+      budgetPolicy &&
+      budgetPolicy.totalBudget !==
+        null
+        ? (
+            budgetPolicy
+              .withinBudgetVisibleCount +
+            " " +
+            (
+              budgetPolicy
+                .withinBudgetVisibleCount ===
+                1
+                ? "stay fits"
+                : "stays fit"
+            ) +
+            " your budget" +
+            (
+              budgetPolicy
+                .nearBudgetVisibleCount >
+                0
+                ? (
+                    ", plus " +
+                    budgetPolicy
+                      .nearBudgetVisibleCount +
+                    " useful near-budget " +
+                    (
+                      budgetPolicy
+                        .nearBudgetVisibleCount ===
+                        1
+                        ? "upgrade"
+                        : "upgrades"
+                    )
+                  )
+                : ""
+            ) +
+            "." +
+            (
+              hiddenBudgetOptionCount >
+                0
+                ? (
+                    " " +
+                    hiddenBudgetOptionCount +
+                    " options outside your useful budget range were hidden."
+                  )
+                : ""
+            )
+          )
+        : (
+            rankedHotels.length +
+            " relevant matches remain visible."
+          );
 
     useEffect(() => {
       async function loadResults() {
@@ -1082,9 +1153,9 @@ const rankedHotels =
           <p className="results-search-summary">
             SmartStay analyzed {hotels.length} stays
             {searchMeta?.destinationLabel
-              ? ` found for your search in ${searchMeta.destinationLabel}`
-              : " found for your search"}
-            {" "}and ranked the strongest matches first.
+              ? ` for your search in ${searchMeta.destinationLabel}`
+              : " for your search"}.
+            {" "}{budgetVisibilitySummary}
           </p>
 
           <div className="results-balance-card">
@@ -1266,7 +1337,7 @@ const rankedHotels =
                       letterSpacing: "-0.03em",
                     }}
                   >
-                    Want to explore every ranked option?
+                    Want to compare all budget-relevant options?
                   </h2>
 
                   <p
@@ -1278,7 +1349,7 @@ const rankedHotels =
                     }}
                   >
                     SmartStay selected the strongest recommendations above for your {selectedPreference.title.toLowerCase()} preference.
-                    You can still open the full ranked list if you want to compare all available stays.
+                    Open the complete budget-relevant list to compare every verified stay within budget and up to three useful near-budget upgrades.
                   </p>
 
                   <button
@@ -1296,7 +1367,7 @@ const rankedHotels =
                     }}
                     onClick={() => setShowFullList(true)}
                   >
-                    View full SmartStay ranked list
+                    View budget-relevant ranked list
                   </button>
                 </div>
               ) : (
@@ -1316,7 +1387,7 @@ const rankedHotels =
                         letterSpacing: "0.08em",
                       }}
                     >
-                      Full ranked list
+                      Budget-relevant list
                     </p>
 
                     <h2
@@ -1326,7 +1397,7 @@ const rankedHotels =
                         letterSpacing: "-0.04em",
                       }}
                     >
-                      All remaining stays ranked by SmartStay
+                      All remaining budget-relevant stays
                     </h2>
 
                     <p
@@ -1335,7 +1406,7 @@ const rankedHotels =
                         color: "#64748b",
                       }}
                     >
-                      These are still ordered by SmartScore, but the strongest recommendations are already shown above.
+                      Within-budget stays come first, followed by up to three near-budget upgrades. Options are ordered by SmartScore inside each budget band.
                     </p>
                   </div>
 
