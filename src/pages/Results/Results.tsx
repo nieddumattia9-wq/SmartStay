@@ -753,10 +753,15 @@ const rankedHotels =
       engineView?.budgetPolicy ??
       null;
 
-    const hiddenBudgetOptionCount =
+    const hiddenNearBudgetNotUsefulCount =
+      budgetPolicy
+        ?.hiddenNearBudgetNotUsefulCount ??
+      0;
+
+    const hiddenAdditionalBudgetOptionCount =
       budgetPolicy
         ? budgetPolicy
-            .hiddenNearBudgetCount +
+            .hiddenNearBudgetOverflowCount +
           budgetPolicy
             .hiddenFarOverBudgetCount +
           budgetPolicy
@@ -812,12 +817,36 @@ const rankedHotels =
             ) +
             "." +
             (
-              hiddenBudgetOptionCount >
+              hiddenNearBudgetNotUsefulCount >
                 0
                 ? (
                     " " +
-                    hiddenBudgetOptionCount +
-                    " options outside your useful budget range were hidden."
+                    hiddenNearBudgetNotUsefulCount +
+                    " near-budget " +
+                    (
+                      hiddenNearBudgetNotUsefulCount ===
+                        1
+                        ? "option was"
+                        : "options were"
+                    ) +
+                    " hidden because " +
+                    (
+                      hiddenNearBudgetNotUsefulCount ===
+                        1
+                        ? "it did"
+                        : "they did"
+                    ) +
+                    " not offer a meaningful improvement."
+                  )
+                : ""
+            ) +
+            (
+              hiddenAdditionalBudgetOptionCount >
+                0
+                ? (
+                    " " +
+                    hiddenAdditionalBudgetOptionCount +
+                    " additional options were hidden to keep the results focused."
                   )
                 : ""
             ) +

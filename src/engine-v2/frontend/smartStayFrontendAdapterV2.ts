@@ -119,10 +119,19 @@ export interface SmartStayFrontendBudgetPolicyV2 {
   nearBudgetCandidateCount:
     number;
 
+  nearBudgetUsefulCandidateCount:
+    number;
+
   nearBudgetVisibleCount:
     number;
 
   hiddenNearBudgetCount:
+    number;
+
+  hiddenNearBudgetNotUsefulCount:
+    number;
+
+  hiddenNearBudgetOverflowCount:
     number;
 
   hiddenFarOverBudgetCount:
@@ -152,6 +161,12 @@ export interface SmartStayFrontendViewV2 {
     SmartStayFrontendBudgetPolicyV2;
 
   hiddenNearBudgetHotelIds:
+    string[];
+
+  hiddenNearBudgetNotUsefulHotelIds:
+    string[];
+
+  hiddenNearBudgetOverflowHotelIds:
     string[];
 
   hiddenFarOverBudgetHotelIds:
@@ -1567,6 +1582,276 @@ function compareBudgetVisibleEvaluations(
   );
 }
 
+const MINIMUM_NEAR_BUDGET_SMART_SCORE_GAIN =
+  3;
+
+const MAXIMUM_SMART_SCORE_DROP_FOR_DIMENSION_GAIN =
+  4;
+
+const MINIMUM_NEAR_BUDGET_DISTANCE_GAIN_KM =
+  1;
+
+const MINIMUM_NEAR_BUDGET_QUALITY_GAIN =
+  8;
+
+const MINIMUM_NEAR_BUDGET_COMFORT_GAIN =
+  10;
+
+const MINIMUM_NEAR_BUDGET_DIMENSION_CONFIDENCE =
+  0.6;
+
+const MAXIMUM_NEAR_BUDGET_SCORE_CONFIDENCE_DROP =
+  0.1;
+
+function getRiskOrder(
+  level:
+    SmartStayRiskLevelV2
+) {
+  if (
+    level ===
+    "low"
+  ) {
+    return 0;
+  }
+
+  if (
+    level ===
+    "medium"
+  ) {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getDataConfidenceOrder(
+  level:
+    SmartStayDataConfidenceLevelV2
+) {
+  if (
+    level ===
+    "high"
+  ) {
+    return 3;
+  }
+
+  if (
+    level ===
+    "medium"
+  ) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function resolveEvaluationDistanceKm(
+  evaluation:
+    SmartStayFrontendEvaluationV2
+) {
+  const distanceConstraint =
+    evaluation
+      .sourceEvaluation
+      .constraints
+      .find(
+        (constraint) =>
+          constraint.kind ===
+          "distance"
+      );
+
+  return normalizePositiveNumber(
+    distanceConstraint
+      ?.actualValue
+  );
+}
+
+function resolveDimensionGain(
+  candidate:
+    SmartStayFrontendEvaluationV2,
+  reference:
+    SmartStayFrontendEvaluationV2,
+  dimension:
+    "quality" |
+    "comfort"
+) {
+  const candidateDimension =
+    candidate
+      .sourceEvaluation
+      .scores[
+        dimension
+      ];
+
+  const referenceDimension =
+    reference
+      .sourceEvaluation
+      .scores[
+        dimension
+      ];
+
+  if (
+    candidateDimension.score ===
+      null ||
+    referenceDimension.score ===
+      null ||
+    candidateDimension.confidence <
+      MINIMUM_NEAR_BUDGET_DIMENSION_CONFIDENCE ||
+    referenceDimension.confidence <
+      MINIMUM_NEAR_BUDGET_DIMENSION_CONFIDENCE
+  ) {
+    return null;
+  }
+
+  return (
+    candidateDimension.score -
+    referenceDimension.score
+  );
+}
+
+function hasNearBudgetReliabilityParity(
+  candidate:
+    SmartStayFrontendEvaluationV2,
+  reference:
+    SmartStayFrontendEvaluationV2
+) {
+  const candidateRiskOrder =
+    getRiskOrder(
+      candidate.riskLevel
+    );
+
+  const referenceRiskOrder =
+    getRiskOrder(
+      reference.riskLevel
+    );
+
+  const candidateConfidenceOrder =
+    getDataConfidenceOrder(
+      candidate
+        .dataConfidenceLevel
+    );
+
+  const referenceConfidenceOrder =
+    getDataConfidenceOrder(
+      reference
+        .dataConfidenceLevel
+    );
+
+  return (
+    candidateRiskOrder <=
+      referenceRiskOrder &&
+    candidateConfidenceOrder >=
+      referenceConfidenceOrder &&
+    candidate
+      .sourceEvaluation
+      .final
+      .scoreConfidence +
+      MAXIMUM_NEAR_BUDGET_SCORE_CONFIDENCE_DROP >=
+      reference
+        .sourceEvaluation
+        .final
+        .scoreConfidence
+  );
+}
+
+function isUsefulNearBudgetCandidate(
+  candidate:
+    SmartStayFrontendEvaluationV2,
+  reference:
+    SmartStayFrontendEvaluationV2 | null
+) {
+  if (
+    reference ===
+    null
+  ) {
+    return true;
+  }
+
+  if (
+    !hasNearBudgetReliabilityParity(
+      candidate,
+      reference
+    )
+  ) {
+    return false;
+  }
+
+  const smartScoreGain =
+    candidate.smartScore -
+    reference.smartScore;
+
+  if (
+    smartScoreGain >=
+    MINIMUM_NEAR_BUDGET_SMART_SCORE_GAIN
+  ) {
+    return true;
+  }
+
+  const candidateDistanceKm =
+    resolveEvaluationDistanceKm(
+      candidate
+    );
+
+  const referenceDistanceKm =
+    resolveEvaluationDistanceKm(
+      reference
+    );
+
+  const distanceGainKm =
+    candidateDistanceKm !==
+      null &&
+    referenceDistanceKm !==
+      null
+      ? (
+          referenceDistanceKm -
+          candidateDistanceKm
+        )
+      : null;
+
+  if (
+    distanceGainKm !==
+      null &&
+    distanceGainKm >=
+      MINIMUM_NEAR_BUDGET_DISTANCE_GAIN_KM &&
+    smartScoreGain >=
+      -MAXIMUM_SMART_SCORE_DROP_FOR_DIMENSION_GAIN
+  ) {
+    return true;
+  }
+
+  const qualityGain =
+    resolveDimensionGain(
+      candidate,
+      reference,
+      "quality"
+    );
+
+  if (
+    qualityGain !==
+      null &&
+    qualityGain >=
+      MINIMUM_NEAR_BUDGET_QUALITY_GAIN &&
+    smartScoreGain >=
+      -MAXIMUM_SMART_SCORE_DROP_FOR_DIMENSION_GAIN
+  ) {
+    return true;
+  }
+
+  const comfortGain =
+    resolveDimensionGain(
+      candidate,
+      reference,
+      "comfort"
+    );
+
+  return (
+    comfortGain !==
+      null &&
+    comfortGain >=
+      MINIMUM_NEAR_BUDGET_COMFORT_GAIN &&
+    smartScoreGain >=
+      -MAXIMUM_SMART_SCORE_DROP_FOR_DIMENSION_GAIN
+  );
+}
+
 function applyBudgetVisibilityPolicy(
   evaluations:
     SmartStayFrontendEvaluationV2[],
@@ -1588,6 +1873,12 @@ function applyBudgetVisibilityPolicy(
           ),
 
       hiddenNearBudgetHotelIds:
+        [] as string[],
+
+      hiddenNearBudgetNotUsefulHotelIds:
+        [] as string[],
+
+      hiddenNearBudgetOverflowHotelIds:
         [] as string[],
 
       hiddenFarOverBudgetHotelIds:
@@ -1612,10 +1903,19 @@ function applyBudgetVisibilityPolicy(
         nearBudgetCandidateCount:
           0,
 
+        nearBudgetUsefulCandidateCount:
+          0,
+
         nearBudgetVisibleCount:
           0,
 
         hiddenNearBudgetCount:
+          0,
+
+        hiddenNearBudgetNotUsefulCount:
+          0,
+
+        hiddenNearBudgetOverflowCount:
           0,
 
         hiddenFarOverBudgetCount:
@@ -1651,16 +1951,54 @@ function applyBudgetVisibilityPolicy(
         compareBudgetVisibleEvaluations
       );
 
+  const nearBudgetReference =
+    withinBudget.find(
+      (evaluation) =>
+        evaluation
+          .sourceEvaluation
+          .recommendation
+          .role ===
+        "best-choice"
+    ) ??
+    withinBudget[0] ??
+    null;
+
+  const usefulNearBudgetCandidates =
+    nearBudgetCandidates.filter(
+      (evaluation) =>
+        isUsefulNearBudgetCandidate(
+          evaluation,
+          nearBudgetReference
+        )
+    );
+
+  const hiddenNearBudgetNotUseful =
+    nearBudgetCandidates.filter(
+      (evaluation) =>
+        !usefulNearBudgetCandidates.some(
+          (candidate) =>
+            candidate.hotel.id ===
+            evaluation.hotel.id
+        )
+    );
+
   const visibleNearBudget =
-    nearBudgetCandidates.slice(
+    usefulNearBudgetCandidates.slice(
       0,
       MAXIMUM_NEAR_BUDGET_RESULTS
     );
 
-  const hiddenNearBudget =
-    nearBudgetCandidates.slice(
+  const hiddenNearBudgetOverflow =
+    usefulNearBudgetCandidates.slice(
       MAXIMUM_NEAR_BUDGET_RESULTS
     );
+
+  const hiddenNearBudget = [
+    ...hiddenNearBudgetNotUseful,
+    ...hiddenNearBudgetOverflow,
+  ].sort(
+    compareBudgetVisibleEvaluations
+  );
 
   const hiddenFarOverBudget =
     evaluations
@@ -1698,6 +2036,18 @@ function applyBudgetVisibilityPolicy(
           evaluation.hotel.id
       ),
 
+    hiddenNearBudgetNotUsefulHotelIds:
+      hiddenNearBudgetNotUseful.map(
+        (evaluation) =>
+          evaluation.hotel.id
+      ),
+
+    hiddenNearBudgetOverflowHotelIds:
+      hiddenNearBudgetOverflow.map(
+        (evaluation) =>
+          evaluation.hotel.id
+      ),
+
     hiddenFarOverBudgetHotelIds:
       hiddenFarOverBudget.map(
         (evaluation) =>
@@ -1724,11 +2074,20 @@ function applyBudgetVisibilityPolicy(
       nearBudgetCandidateCount:
         nearBudgetCandidates.length,
 
+      nearBudgetUsefulCandidateCount:
+        usefulNearBudgetCandidates.length,
+
       nearBudgetVisibleCount:
         visibleNearBudget.length,
 
       hiddenNearBudgetCount:
         hiddenNearBudget.length,
+
+      hiddenNearBudgetNotUsefulCount:
+        hiddenNearBudgetNotUseful.length,
+
+      hiddenNearBudgetOverflowCount:
+        hiddenNearBudgetOverflow.length,
 
       hiddenFarOverBudgetCount:
         hiddenFarOverBudget.length,
@@ -1977,6 +2336,14 @@ export function buildSmartStayFrontendViewV2(
     hiddenNearBudgetHotelIds:
       budgetVisibility
         .hiddenNearBudgetHotelIds,
+
+    hiddenNearBudgetNotUsefulHotelIds:
+      budgetVisibility
+        .hiddenNearBudgetNotUsefulHotelIds,
+
+    hiddenNearBudgetOverflowHotelIds:
+      budgetVisibility
+        .hiddenNearBudgetOverflowHotelIds,
 
     hiddenFarOverBudgetHotelIds:
       budgetVisibility

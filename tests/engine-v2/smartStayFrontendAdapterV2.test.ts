@@ -546,6 +546,169 @@ const BUDGET_VISIBILITY_HOTELS:
     }),
   ];
 
+const NEAR_BUDGET_USEFULNESS_HOTELS:
+  Hotel[] = [
+    createHotel({
+      id:
+        "usefulness-reference",
+
+      offerIndex:
+        30,
+
+      name:
+        "Usefulness Reference Hotel",
+
+      totalCost:
+        420,
+
+      stars:
+        4,
+
+      reviewScore:
+        9,
+
+      reviewCount:
+        1400,
+
+      distance:
+        2.3,
+
+      latitude:
+        43.7903,
+
+      longitude:
+        11.2558,
+    }),
+
+    createHotel({
+      id:
+        "useful-near-budget-location",
+
+      offerIndex:
+        31,
+
+      name:
+        "Useful Near Budget Location",
+
+      totalCost:
+        508,
+
+      stars:
+        4,
+
+      reviewScore:
+        9,
+
+      reviewCount:
+        1400,
+
+      distance:
+        0.1,
+
+      latitude:
+        43.7701,
+
+      longitude:
+        11.2558,
+    }),
+
+    createHotel({
+      id:
+        "useful-near-budget-quality",
+
+      offerIndex:
+        32,
+
+      name:
+        "Useful Near Budget Quality",
+
+      totalCost:
+        540,
+
+      stars:
+        5,
+
+      reviewScore:
+        9.8,
+
+      reviewCount:
+        2500,
+
+      distance:
+        2.3,
+
+      latitude:
+        43.7903,
+
+      longitude:
+        11.2558,
+    }),
+
+    createHotel({
+      id:
+        "useless-near-budget-worse",
+
+      offerIndex:
+        33,
+
+      name:
+        "Useless Near Budget Worse",
+
+      totalCost:
+        575,
+
+      stars:
+        2,
+
+      reviewScore:
+        6.2,
+
+      reviewCount:
+        30,
+
+      distance:
+        4.5,
+
+      latitude:
+        43.8101,
+
+      longitude:
+        11.2558,
+    }),
+
+    createHotel({
+      id:
+        "useless-near-budget-much-worse",
+
+      offerIndex:
+        34,
+
+      name:
+        "Useless Near Budget Much Worse",
+
+      totalCost:
+        600,
+
+      stars:
+        1,
+
+      reviewScore:
+        5.2,
+
+      reviewCount:
+        5,
+
+      distance:
+        4.7,
+
+      latitude:
+        43.8118,
+
+      longitude:
+        11.2558,
+    }),
+  ];
+
 function buildView(
   hotels:
     Hotel[]
@@ -699,9 +862,9 @@ test(
             "near-budget"
         );
 
-    assert.equal(
-      visibleNearBudget.length,
-      3
+    assert.ok(
+      visibleNearBudget.length <=
+        3
     );
 
     assert.equal(
@@ -715,21 +878,40 @@ test(
       forward
         .budgetPolicy
         .nearBudgetVisibleCount,
-      3
+      visibleNearBudget.length
     );
 
     assert.equal(
       forward
         .budgetPolicy
         .hiddenNearBudgetCount,
-      1
+      forward
+        .hiddenNearBudgetHotelIds
+        .length
     );
 
     assert.equal(
       forward
-        .hiddenNearBudgetHotelIds
-        .length,
-      1
+        .budgetPolicy
+        .nearBudgetUsefulCandidateCount,
+      forward
+        .budgetPolicy
+        .nearBudgetVisibleCount +
+        forward
+          .budgetPolicy
+          .hiddenNearBudgetOverflowCount
+    );
+
+    assert.equal(
+      forward
+        .budgetPolicy
+        .hiddenNearBudgetCount,
+      forward
+        .budgetPolicy
+        .hiddenNearBudgetNotUsefulCount +
+        forward
+          .budgetPolicy
+          .hiddenNearBudgetOverflowCount
     );
 
     assert.deepEqual(
@@ -753,22 +935,124 @@ test(
         "near-budget"
       );
 
-    assert.ok(
-      firstNearBudgetIndex >
+    if (
+      firstNearBudgetIndex >=
         0
+    ) {
+      assert.ok(
+        firstNearBudgetIndex >
+          0
+      );
+
+      assert.ok(
+        visibilityOrder
+          .slice(
+            0,
+            firstNearBudgetIndex
+          )
+          .every(
+            (visibility) =>
+              visibility ===
+              "within-budget"
+          )
+      );
+    }
+    else {
+      assert.equal(
+        forward
+          .budgetPolicy
+          .nearBudgetVisibleCount,
+        0
+      );
+    }
+  }
+);
+
+test(
+  "Near-budget usefulness gate hides costlier options without a meaningful gain",
+  () => {
+    const forward =
+      buildView(
+        NEAR_BUDGET_USEFULNESS_HOTELS
+      );
+
+    const reversed =
+      buildView(
+        [
+          ...NEAR_BUDGET_USEFULNESS_HOTELS,
+        ].reverse()
+      );
+
+    const visibleNearBudgetIds =
+      forward
+        .rankedHotels
+        .filter(
+          (evaluation) =>
+            evaluation
+              .budgetVisibility ===
+            "near-budget"
+        )
+        .map(
+          (evaluation) =>
+            evaluation.hotel.id
+        );
+
+    assert.ok(
+      visibleNearBudgetIds.includes(
+        "useful-near-budget-location"
+      )
     );
 
     assert.ok(
-      visibilityOrder
-        .slice(
-          0,
-          firstNearBudgetIndex
+      !visibleNearBudgetIds.includes(
+        "useless-near-budget-worse"
+      )
+    );
+
+    assert.ok(
+      !visibleNearBudgetIds.includes(
+        "useless-near-budget-much-worse"
+      )
+    );
+
+    assert.deepEqual(
+      [
+        ...forward
+          .hiddenNearBudgetNotUsefulHotelIds,
+      ].sort(),
+      [
+        "useless-near-budget-much-worse",
+        "useless-near-budget-worse",
+      ]
+    );
+
+    assert.equal(
+      forward
+        .budgetPolicy
+        .hiddenNearBudgetNotUsefulCount,
+      2
+    );
+
+    assert.deepEqual(
+      reversed
+        .rankedHotels
+        .map(
+          (evaluation) =>
+            evaluation.hotel.id
+        ),
+      forward
+        .rankedHotels
+        .map(
+          (evaluation) =>
+            evaluation.hotel.id
         )
-        .every(
-          (visibility) =>
-            visibility ===
-            "within-budget"
-        )
+    );
+
+    assert.deepEqual(
+      reversed
+        .hiddenNearBudgetNotUsefulHotelIds,
+      forward
+        .hiddenNearBudgetNotUsefulHotelIds
     );
   }
 );
@@ -1160,6 +1444,18 @@ test(
     );
 
     assert.ok(
+      frontendAdapterSource.includes(
+        "MINIMUM_NEAR_BUDGET_SMART_SCORE_GAIN"
+      )
+    );
+
+    assert.ok(
+      frontendAdapterSource.includes(
+        "hiddenNearBudgetNotUsefulHotelIds"
+      )
+    );
+
+    assert.ok(
       resultsSource.includes(
         "const nearBudgetHotels ="
       )
@@ -1174,6 +1470,12 @@ test(
     assert.ok(
       resultsSource.includes(
         "did not pass SmartStay verification"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "not offer a meaningful improvement"
       )
     );
 
