@@ -21,6 +21,15 @@ import type {
   SmartStayComfortFlexibilityEvaluationV2,
 } from "../comfort/comfortFlexibilityEngine";
 
+import {
+  evaluateSmartUpgradeCurveV2,
+  type SmartStayUpgradeBenefitDimensionV2,
+  type SmartStayUpgradeCurveCandidateV2,
+  type SmartStayUpgradeCurveEvaluationV2,
+  type SmartStayUpgradeCurveOptionsV2,
+  type SmartStayUpgradeCurvePointV2,
+} from "../upgrade/smartUpgradeCurveEngine";
+
 export type SmartStayPrimaryRecommendationRoleV2 = Exclude<
   SmartStayRecommendationRoleV2,
   "unassigned" | "best-location"
@@ -47,10 +56,6 @@ export interface SmartStayRecommendationRolesOptionsV2 {
   minimumSavingAmount?: number;
   minimumSavingRatio?: number;
   maximumAlternativeLocationLoss?: number;
-  minimumComfortGain?: number;
-  minimumStrongestComfortGain?: number;
-  maximumComfortUtilityLoss?: number;
-  maximumBudgetOverageRatio?: number;
   minimumSpecializedConfidence?: number;
   maximumBestChoiceScoreDifference?: number;
   maximumBestChoiceConfidenceDifference?: number;
@@ -61,7 +66,9 @@ export interface SmartStayRecommendationRolesOptionsV2 {
   maximumSavingUtilityLossDifference?: number;
   maximumUpgradeAssignmentDifference?: number;
   maximumUpgradeOverageRatioDifference?: number;
-  maximumUpgradeComfortGainDifference?: number;
+  maximumUpgradeAdjustedBenefitDifference?: number;
+  maximumUpgradeEfficiencyDifference?: number;
+  upgradeCurveOptions?: SmartStayUpgradeCurveOptionsV2;
   maximumInitiallyVisiblePerGroup?: number;
 }
 
@@ -86,6 +93,12 @@ export interface SmartStayRecommendationMetricsV2 {
   distanceDifferenceKm: number | null;
   comfortScore: number | null;
   comfortDifference: number | null;
+  upgradeExperienceGain: number | null;
+  upgradeAdjustedBenefit: number | null;
+  upgradeEfficiencyPerBudgetPercent: number | null;
+  upgradeStrongestGainDimension: SmartStayUpgradeBenefitDimensionV2 | null;
+  upgradeStrongestGain: number | null;
+  upgradeDiminishingReturnsStart: boolean;
 }
 
 export interface SmartStayRecommendationEvaluationV2
@@ -124,6 +137,7 @@ export interface SmartStayRecommendationRoleGroupV2 {
 
 export interface SmartStayRecommendationRolesEvaluationV2 {
   bestChoiceHotelId: string | null;
+  upgradeCurve: SmartStayUpgradeCurveEvaluationV2 | null;
   groups: SmartStayRecommendationRoleGroupV2[];
   picks: SmartStayRecommendationPickV2[];
   evaluations: SmartStayRecommendationEvaluationV2[];
@@ -175,15 +189,16 @@ type SavingAlternative = {
 
 type UpgradeAlternative = {
   candidate: NormalizedCandidate;
-  comfortGain: number;
-  strongestGain: number;
-  utilityLoss: number;
-  pricePremiumRatio: number;
-  budgetOverageRatio: number;
+  point: SmartStayUpgradeCurvePointV2;
   assignmentScore: number;
 };
 
-type ResolvedOptions = Required<SmartStayRecommendationRolesOptionsV2>;
+type ResolvedOptions = Omit<
+  Required<SmartStayRecommendationRolesOptionsV2>,
+  "upgradeCurveOptions"
+> & {
+  upgradeCurveOptions: SmartStayUpgradeCurveOptionsV2;
+};
 
 const DEFAULTS: ResolvedOptions = {
   minimumScoreConfidence: 0.55,
@@ -193,10 +208,6 @@ const DEFAULTS: ResolvedOptions = {
   minimumSavingAmount: 10,
   minimumSavingRatio: 0.05,
   maximumAlternativeLocationLoss: 15,
-  minimumComfortGain: 8,
-  minimumStrongestComfortGain: 10,
-  maximumComfortUtilityLoss: 12,
-  maximumBudgetOverageRatio: 0.25,
   minimumSpecializedConfidence: 0.6,
   maximumBestChoiceScoreDifference: 0.75,
   maximumBestChoiceConfidenceDifference: 0.12,
@@ -207,7 +218,9 @@ const DEFAULTS: ResolvedOptions = {
   maximumSavingUtilityLossDifference: 2,
   maximumUpgradeAssignmentDifference: 3,
   maximumUpgradeOverageRatioDifference: 0.04,
-  maximumUpgradeComfortGainDifference: 3,
+  maximumUpgradeAdjustedBenefitDifference: 3,
+  maximumUpgradeEfficiencyDifference: 0.35,
+  upgradeCurveOptions: {},
   maximumInitiallyVisiblePerGroup: 3,
 };
 
@@ -290,22 +303,6 @@ function resolveOptions(
       options.maximumAlternativeLocationLoss,
       DEFAULTS.maximumAlternativeLocationLoss
     ),
-    minimumComfortGain: normalizeNonNegativeNumber(
-      options.minimumComfortGain,
-      DEFAULTS.minimumComfortGain
-    ),
-    minimumStrongestComfortGain: normalizeNonNegativeNumber(
-      options.minimumStrongestComfortGain,
-      DEFAULTS.minimumStrongestComfortGain
-    ),
-    maximumComfortUtilityLoss: normalizeNonNegativeNumber(
-      options.maximumComfortUtilityLoss,
-      DEFAULTS.maximumComfortUtilityLoss
-    ),
-    maximumBudgetOverageRatio: normalizeRatio(
-      options.maximumBudgetOverageRatio,
-      DEFAULTS.maximumBudgetOverageRatio
-    ),
     minimumSpecializedConfidence: normalizeRatio(
       options.minimumSpecializedConfidence,
       DEFAULTS.minimumSpecializedConfidence
@@ -346,10 +343,17 @@ function resolveOptions(
       options.maximumUpgradeOverageRatioDifference,
       DEFAULTS.maximumUpgradeOverageRatioDifference
     ),
-    maximumUpgradeComfortGainDifference: normalizeNonNegativeNumber(
-      options.maximumUpgradeComfortGainDifference,
-      DEFAULTS.maximumUpgradeComfortGainDifference
+    maximumUpgradeAdjustedBenefitDifference: normalizeNonNegativeNumber(
+      options.maximumUpgradeAdjustedBenefitDifference,
+      DEFAULTS.maximumUpgradeAdjustedBenefitDifference
     ),
+    maximumUpgradeEfficiencyDifference: normalizeNonNegativeNumber(
+      options.maximumUpgradeEfficiencyDifference,
+      DEFAULTS.maximumUpgradeEfficiencyDifference
+    ),
+    upgradeCurveOptions: {
+      ...(options.upgradeCurveOptions ?? DEFAULTS.upgradeCurveOptions),
+    },
     maximumInitiallyVisiblePerGroup: normalizePositiveInteger(
       options.maximumInitiallyVisiblePerGroup,
       DEFAULTS.maximumInitiallyVisiblePerGroup
@@ -694,6 +698,12 @@ function createBaseMetrics(
     distanceDifferenceKm: null,
     comfortScore: candidate.comfort ? round(candidate.comfort.score) : null,
     comfortDifference: null,
+    upgradeExperienceGain: null,
+    upgradeAdjustedBenefit: null,
+    upgradeEfficiencyPerBudgetPercent: null,
+    upgradeStrongestGainDimension: null,
+    upgradeStrongestGain: null,
+    upgradeDiminishingReturnsStart: false,
   };
 }
 
@@ -729,6 +739,29 @@ function createComparisonMetrics(
       candidate.comfort.score - bestChoice.comfort.score
     );
   }
+  return metrics;
+}
+
+function createUpgradeMetrics(
+  candidate: NormalizedCandidate,
+  bestChoice: NormalizedCandidate,
+  point: SmartStayUpgradeCurvePointV2,
+  curve: SmartStayUpgradeCurveEvaluationV2
+): SmartStayRecommendationMetricsV2 {
+  const metrics = createComparisonMetrics(candidate, bestChoice);
+  metrics.upgradeExperienceGain =
+    point.experienceGain === null ? null : round(point.experienceGain);
+  metrics.upgradeAdjustedBenefit =
+    point.adjustedBenefit === null ? null : round(point.adjustedBenefit);
+  metrics.upgradeEfficiencyPerBudgetPercent =
+    point.efficiencyPerBudgetPercent === null
+      ? null
+      : round(point.efficiencyPerBudgetPercent, 4);
+  metrics.upgradeStrongestGainDimension = point.strongestGainDimension;
+  metrics.upgradeStrongestGain =
+    point.strongestGain === null ? null : round(point.strongestGain);
+  metrics.upgradeDiminishingReturnsStart =
+    curve.diminishingReturnsStartHotelId === candidate.hotelId;
   return metrics;
 }
 
@@ -1021,80 +1054,115 @@ function selectSavingGroup(
   };
 }
 
-function buildUpgradeAlternatives(
-  candidates: NormalizedCandidate[],
-  bestChoice: NormalizedCandidate,
-  assignedHotelIds: Set<string>,
-  options: ResolvedOptions
-): UpgradeAlternative[] {
-  if (!bestChoice.comfort || !bestChoice.cost || bestChoice.utilityScore === null) {
-    return [];
-  }
-  const bestComfort = bestChoice.comfort;
-  const bestCost = bestChoice.cost;
-
+function createUpgradeCurveCandidates(
+  candidates: NormalizedCandidate[]
+): SmartStayUpgradeCurveCandidateV2[] {
   return candidates
     .filter(
-      (candidate) =>
-        canUseAsAlternative(candidate, assignedHotelIds, options) &&
-        hasVerifiedBudgetOverage(candidate)
+      (
+        candidate
+      ): candidate is NormalizedCandidate & {
+        source: SmartStayRecommendationCandidateV2 & {
+          priceValue: SmartStayPriceValueEvaluationV2;
+        };
+      } => candidate.source.priceValue !== undefined
     )
-    .map((candidate): UpgradeAlternative | null => {
+    .map((candidate) => ({
+      hotelId: candidate.hotelId,
+      eligibleForPrimaryRanking: candidate.source.eligibleForPrimaryRanking,
+      utility: candidate.source.utility,
+      priceValue: candidate.source.priceValue,
+      risk: candidate.source.risk,
+      pareto: candidate.source.pareto,
+      exclusionReasonCodes: candidate.source.exclusionReasonCodes,
+    }));
+}
+
+function evaluateUpgradeCurveSafely(
+  candidates: NormalizedCandidate[],
+  bestChoice: NormalizedCandidate,
+  upgradeCurveOptions: SmartStayUpgradeCurveOptionsV2
+): SmartStayUpgradeCurveEvaluationV2 | null {
+  const curveCandidates = createUpgradeCurveCandidates(candidates);
+
+  if (
+    !curveCandidates.some(
+      (candidate) => candidate.hotelId === bestChoice.hotelId
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    return evaluateSmartUpgradeCurveV2(
+      {
+        baselineHotelId: bestChoice.hotelId,
+        candidates: curveCandidates,
+      },
+      upgradeCurveOptions
+    );
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (
+      message ===
+      "Smart Upgrade Curve baseline must be an eligible, verified within-budget candidate with sufficient comparable dimensions."
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+function buildUpgradeAlternatives(
+  candidates: NormalizedCandidate[],
+  assignedHotelIds: Set<string>,
+  curve: SmartStayUpgradeCurveEvaluationV2,
+  options: ResolvedOptions
+): UpgradeAlternative[] {
+  const candidatesById = new Map(
+    candidates.map((candidate) => [candidate.hotelId, candidate] as const)
+  );
+  const pointsById = new Map(
+    curve.points.map((point) => [point.hotelId, point] as const)
+  );
+
+  return curve.worthwhileUpgradeHotelIds
+    .map((hotelId): UpgradeAlternative | null => {
+      const candidate = candidatesById.get(hotelId) ?? null;
+      const point = pointsById.get(hotelId) ?? null;
+
       if (
-        !candidate.comfort ||
-        !candidate.cost ||
-        candidate.cost.currency !== bestCost.currency ||
-        candidate.utilityScore === null
+        !candidate ||
+        !point ||
+        !canUseAsAlternative(candidate, assignedHotelIds, options) ||
+        point.status !== "worthwhile" ||
+        point.efficientFrontier !== true ||
+        point.adjustedBenefit === null ||
+        point.efficiencyPerBudgetPercent === null
       ) {
         return null;
       }
-      const comfortGain = candidate.comfort.score - bestComfort.score;
-      const strongestGain =
-        candidate.comfort.strongestDimensionScore -
-        bestComfort.strongestDimensionScore;
-      const utilityLoss = bestChoice.utilityScore! - candidate.utilityScore;
-      const pricePremiumRatio =
-        (candidate.cost.amount - bestCost.amount) / bestCost.amount;
-      const budgetOverageRatio = candidate.source.priceValue?.budget.overageRatio;
-      if (
-        typeof budgetOverageRatio !== "number" ||
-        !Number.isFinite(budgetOverageRatio) ||
-        budgetOverageRatio <= 0 ||
-        comfortGain < options.minimumComfortGain ||
-        strongestGain < options.minimumStrongestComfortGain ||
-        utilityLoss > options.maximumComfortUtilityLoss ||
-        pricePremiumRatio < 0 ||
-        budgetOverageRatio > options.maximumBudgetOverageRatio ||
-        !isLocationCompatible(
-          candidate,
-          bestChoice,
-          options.maximumAlternativeLocationLoss
-        )
-      ) {
-        return null;
-      }
-      const assignmentScore =
-        comfortGain * 2 +
-        strongestGain * 0.5 +
-        candidate.utilityScore -
-        budgetOverageRatio * 25 -
-        candidate.riskScore * 0.05;
+
       return {
         candidate,
-        comfortGain,
-        strongestGain,
-        utilityLoss,
-        pricePremiumRatio,
-        budgetOverageRatio,
-        assignmentScore,
+        point,
+        assignmentScore:
+          point.adjustedBenefit + point.efficiencyPerBudgetPercent,
       };
     })
     .filter((value): value is UpgradeAlternative => value !== null)
     .sort(
       (first, second) =>
         second.assignmentScore - first.assignmentScore ||
-        second.comfortGain - first.comfortGain ||
-        first.budgetOverageRatio - second.budgetOverageRatio ||
+        (second.point.adjustedBenefit ?? -1) -
+          (first.point.adjustedBenefit ?? -1) ||
+        (second.point.efficiencyPerBudgetPercent ?? -1) -
+          (first.point.efficiencyPerBudgetPercent ?? -1) ||
+        (first.point.budgetOverageRatio ?? Number.POSITIVE_INFINITY) -
+          (second.point.budgetOverageRatio ?? Number.POSITIVE_INFINITY) ||
         compareStrings(first.candidate.hotelId, second.candidate.hotelId)
     );
 }
@@ -1105,25 +1173,55 @@ function selectUpgradeGroup(
   assignedHotelIds: Set<string>,
   options: ResolvedOptions
 ) {
-  const alternatives = buildUpgradeAlternatives(
+  const curve = evaluateUpgradeCurveSafely(
     candidates,
     bestChoice,
+    options.upgradeCurveOptions
+  );
+
+  if (!curve) {
+    return {
+      curve: null,
+      members: [] as NormalizedCandidate[],
+      picks: [] as SmartStayRecommendationPickV2[],
+      group: null as SmartStayRecommendationRoleGroupV2 | null,
+    };
+  }
+
+  const alternatives = buildUpgradeAlternatives(
+    candidates,
     assignedHotelIds,
+    curve,
     options
   );
   const anchor = alternatives[0] ?? null;
+
   if (!anchor) {
-    return null;
+    return {
+      curve,
+      members: [] as NormalizedCandidate[],
+      picks: [] as SmartStayRecommendationPickV2[],
+      group: null as SmartStayRecommendationRoleGroupV2 | null,
+    };
   }
 
-  const members = alternatives.filter(
-    (alternative) =>
-      anchor.assignmentScore - alternative.assignmentScore <=
-        options.maximumUpgradeAssignmentDifference &&
-      Math.abs(anchor.budgetOverageRatio - alternative.budgetOverageRatio) <=
-        options.maximumUpgradeOverageRatioDifference &&
-      Math.abs(anchor.comfortGain - alternative.comfortGain) <=
-        options.maximumUpgradeComfortGainDifference
+  const anchorOverage = anchor.point.budgetOverageRatio ?? 0;
+  const anchorBenefit = anchor.point.adjustedBenefit ?? 0;
+  const anchorEfficiency = anchor.point.efficiencyPerBudgetPercent ?? 0;
+
+  const members = alternatives.filter((alternative) =>
+    anchor.assignmentScore - alternative.assignmentScore <=
+      options.maximumUpgradeAssignmentDifference &&
+    Math.abs(
+      anchorOverage - (alternative.point.budgetOverageRatio ?? 0)
+    ) <= options.maximumUpgradeOverageRatioDifference &&
+    Math.abs(
+      anchorBenefit - (alternative.point.adjustedBenefit ?? 0)
+    ) <= options.maximumUpgradeAdjustedBenefitDifference &&
+    Math.abs(
+      anchorEfficiency -
+        (alternative.point.efficiencyPerBudgetPercent ?? 0)
+    ) <= options.maximumUpgradeEfficiencyDifference
   );
   const tieGroupId = createTieGroupId(
     "worthwhile-comfort-upgrade",
@@ -1138,27 +1236,31 @@ function selectUpgradeGroup(
       tieGroupId,
       index + 1,
       [
-        "recommendation-worthwhile-comfort-upgrade",
-        "recommendation-meaningful-comfort-gain",
+        "recommendation-worthwhile-smart-upgrade",
+        "recommendation-upgrade-curve-verified",
+        "recommendation-multidimensional-benefit",
         "recommendation-above-budget-upgrade",
-        "recommendation-budget-overage-within-limit",
-        "recommendation-utility-loss-within-limit",
+        "recommendation-efficient-upgrade-frontier",
         "recommendation-equivalent-upgrade-value",
+        ...alternative.point.reasonCodes,
       ],
       [
-        ...alternative.candidate.source.utility.evidenceIds,
-        ...(alternative.candidate.comfort?.evidenceIds ?? []),
-        ...(alternative.candidate.cost?.evidenceIds ?? []),
+        ...alternative.point.evidenceIds,
         ...alternative.candidate.source.risk.evidenceIds,
         ...bestChoice.source.utility.evidenceIds,
-        ...(bestChoice.comfort?.evidenceIds ?? []),
         ...(bestChoice.cost?.evidenceIds ?? []),
       ],
-      createComparisonMetrics(alternative.candidate, bestChoice)
+      createUpgradeMetrics(
+        alternative.candidate,
+        bestChoice,
+        alternative.point,
+        curve
+      )
     )
   );
 
   return {
+    curve,
     members: members.map((member) => member.candidate),
     picks,
     group: createGroup(
@@ -1167,6 +1269,7 @@ function selectUpgradeGroup(
       bestChoice.hotelId,
       [
         "recommendation-smart-upgrade-group",
+        "recommendation-upgrade-curve-source-of-truth",
         members.length > 1
           ? "recommendation-multiple-equivalent-options"
           : "recommendation-single-upgrade-option",
@@ -1211,6 +1314,7 @@ export function evaluateRecommendationRolesV2(
   if (!bestChoiceSelection) {
     return {
       bestChoiceHotelId: null,
+      upgradeCurve: null,
       groups: [],
       picks: [],
       evaluations: normalizedCandidates.map((candidate) => ({
@@ -1266,7 +1370,7 @@ export function evaluateRecommendationRolesV2(
     assignedHotelIds,
     resolvedOptions
   );
-  if (upgradeSelection) {
+  if (upgradeSelection.group) {
     groups.push(upgradeSelection.group);
     picks.push(...upgradeSelection.picks);
     for (const member of upgradeSelection.members) {
@@ -1342,6 +1446,7 @@ export function evaluateRecommendationRolesV2(
 
   return {
     bestChoiceHotelId: bestChoice.hotelId,
+    upgradeCurve: upgradeSelection.curve,
     groups,
     picks,
     evaluations,
