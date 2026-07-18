@@ -270,6 +270,25 @@ async function getLiteApiHotels(
   });
 }
 
+async function getLiteApiFacilities(
+  params = {},
+  {
+    signal,
+  } = {}
+) {
+  return callLiteApiGet({
+    endpointPath:
+      "/data/facilities",
+
+    params,
+
+    title:
+      "GET HOTEL FACILITIES",
+
+    signal,
+  });
+}
+
 async function getLiteApiRates(
   payload = {},
   {
@@ -480,6 +499,7 @@ module.exports = {
     callLiteApiGet,
     callLiteApiPost,
     getLiteApiHotels,
+    getLiteApiFacilities,
     getLiteApiRates,
     createLiteApiSessionId,
     createLiteApiOccupancies,

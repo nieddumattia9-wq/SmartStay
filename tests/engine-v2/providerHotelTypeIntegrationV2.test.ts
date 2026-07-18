@@ -1097,3 +1097,324 @@ test(
     );
   }
 );
+
+test(
+  "LiteAPI search resolves facilityIds into public amenity names",
+  async () => {
+    let facilityRequestCount =
+      0;
+
+    const mapperMetadata:
+      Array<
+        Record<
+          string,
+          unknown
+        > |
+        null
+      > = [];
+
+    const adapter =
+      createLiteApiRuntimeAdapter({
+        searchLiteApiRates:
+          async (
+            _input:
+              unknown
+          ) => ({
+            noContent:
+              false,
+
+            data: {
+              rates:
+                true,
+            },
+          }),
+
+        getLiteApiHotels:
+          async (
+            _params:
+              unknown,
+            _options:
+              unknown
+          ) => ({
+            noContent:
+              false,
+
+            data: {
+              data: [
+                {
+                  id:
+                    "lp-facility",
+
+                  hotelTypeId:
+                    204,
+
+                  facilityIds: [
+                    10,
+                    20,
+                    30,
+                  ],
+                },
+              ],
+            },
+          }),
+
+        getLiteApiFacilities:
+          async (
+            params:
+              Record<
+                string,
+                unknown
+              >,
+            _options:
+              unknown
+          ) => {
+            facilityRequestCount +=
+              1;
+
+            assert.equal(
+              params.language,
+              "en"
+            );
+
+            return {
+              noContent:
+                false,
+
+              data: {
+                data: [
+                  {
+                    facility_id:
+                      10,
+
+                    facility:
+                      "WiFi",
+
+                    sort:
+                      1,
+
+                    translation: [
+                      {
+                        lang:
+                          "it",
+
+                        facility:
+                          "Wi-Fi gratuito",
+                      },
+
+                      {
+                        lang:
+                          "en",
+
+                        facility:
+                          "Free WiFi",
+                      },
+                    ],
+                  },
+
+                  {
+                    facility_id:
+                      20,
+
+                    facility:
+                      "Air conditioning",
+
+                    sort:
+                      2,
+
+                    translation:
+                      [],
+                  },
+
+                  {
+                    facility_id:
+                      30,
+
+                    facility:
+                      "Reception",
+
+                    sort:
+                      3,
+
+                    translation: [
+                      {
+                        lang:
+                          "en-GB",
+
+                        facility:
+                          "24-hour reception",
+                      },
+                    ],
+                  },
+                ],
+              },
+            };
+          },
+
+        isLiteApiNoResults:
+          (
+            _data:
+              unknown
+          ) =>
+            false,
+
+        getLiteApiCurrency:
+          (
+            _data:
+              unknown,
+            fallback:
+              string
+          ) =>
+            fallback,
+
+        mapLiteApiHotelResponse:
+          (
+            _data:
+              unknown,
+            _currency:
+              string,
+            _searchLocation:
+              unknown,
+            metadata?:
+              Record<
+                string,
+                unknown
+              > |
+              null
+          ) => {
+            mapperMetadata.push(
+              metadata ??
+                null
+            );
+
+            const hotelData =
+              Array.isArray(
+                metadata
+                  ?.hotelData
+              )
+                ? metadata
+                    ?.hotelData as Array<
+                      Record<
+                        string,
+                        unknown
+                      >
+                    >
+                : [];
+
+            const metadataHotel =
+              hotelData[0] ??
+              null;
+
+            const facilities =
+              Array.isArray(
+                metadataHotel
+                  ?.facilities
+              )
+                ? metadataHotel
+                    ?.facilities as string[]
+                : [];
+
+            return [
+              {
+                id:
+                  "liteapi:lp-facility",
+
+                sourceHotelId:
+                  "lp-facility",
+
+                ...(
+                  metadataHotel
+                    ? {
+                        providerHotelTypeId:
+                          204,
+
+                        providerHotelTypeName:
+                          "Hotels",
+
+                        accommodationCategory:
+                          "hotel",
+
+                        amenities:
+                          facilities,
+                      }
+                    : {}
+                ),
+              },
+            ];
+          },
+
+        mapLiteApiHotelDetailsResponse:
+          (
+            _data:
+              unknown,
+            _hotelId:
+              string
+          ) =>
+            null,
+
+        mergeProviderHotelResults:
+          (
+            hotels:
+              LiteApiRuntimeHotel[]
+          ) =>
+            hotels,
+      });
+
+    const result =
+      await adapter.searchHotels({
+        request:
+          createLiteApiRuntimeRequest(),
+      });
+
+    assert.equal(
+      facilityRequestCount,
+      1
+    );
+
+    assert.equal(
+      mapperMetadata.length,
+      2
+    );
+
+    assert.equal(
+      mapperMetadata[0],
+      null
+    );
+
+    const enrichedMetadata =
+      mapperMetadata[1] as {
+        hotelData?: Array<{
+          facilities?:
+            string[];
+        }>;
+      };
+
+    assert.deepEqual(
+      enrichedMetadata
+        .hotelData
+        ?.[0]
+        ?.facilities,
+      [
+        "Free WiFi",
+        "Air conditioning",
+        "24-hour reception",
+      ]
+    );
+
+    const hotel =
+      result
+        .hotels[0] as
+          LiteApiRuntimeHotel & {
+            amenities?:
+              string[];
+          };
+
+    assert.deepEqual(
+      hotel.amenities,
+      [
+        "Free WiFi",
+        "Air conditioning",
+        "24-hour reception",
+      ]
+    );
+  }
+);

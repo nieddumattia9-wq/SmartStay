@@ -194,6 +194,10 @@ function extractLiteApiHotelMetadataRecords(
   return [];
 }
 
+const {
+  enrichLiteApiHotelMetadataFacilities,
+} = require("./liteApiFacilityMapper");
+
 function isLiteApiMetadataAbort(
   error,
   signal
@@ -281,10 +285,14 @@ async function loadLiteApiHotelMetadata({
 async function tryLoadLiteApiHotelMetadata(
   options
 ) {
+  let hotelMetadata =
+    null;
+
   try {
-    return await loadLiteApiHotelMetadata(
-      options
-    );
+    hotelMetadata =
+      await loadLiteApiHotelMetadata(
+        options
+      );
   }
   catch (error) {
     if (
@@ -304,12 +312,67 @@ async function tryLoadLiteApiHotelMetadata(
 
     return null;
   }
+
+  if (
+    !hotelMetadata ||
+    typeof options
+      ?.getLiteApiFacilities !==
+      "function"
+  ) {
+    return hotelMetadata;
+  }
+
+  try {
+    const response =
+      await options
+        .getLiteApiFacilities(
+          {
+            language:
+              "en",
+          },
+          {
+            signal:
+              options.signal,
+          }
+        );
+
+    if (
+      response?.noContent
+    ) {
+      return hotelMetadata;
+    }
+
+    return enrichLiteApiHotelMetadataFacilities(
+      hotelMetadata,
+      response?.data ??
+        null
+    );
+  }
+  catch (error) {
+    if (
+      isLiteApiMetadataAbort(
+        error,
+        options?.signal
+      )
+    ) {
+      throw error;
+    }
+
+    console.warn(
+      "[PROVIDER:liteapi] Facility dictionary enrichment skipped:",
+      error?.message ??
+        error
+    );
+
+    return hotelMetadata;
+  }
 }
 
 function loadDefaultDependencies() {
   const {
     searchLiteApiRates,
     getLiteApiHotels,
+    getLiteApiFacilities,
   } = require("./liteApiClient");
 
   const {
@@ -325,6 +388,7 @@ function loadDefaultDependencies() {
   return {
     searchLiteApiRates,
     getLiteApiHotels,
+    getLiteApiFacilities,
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
@@ -343,6 +407,7 @@ function createLiteApiAdapter(
   const {
     searchLiteApiRates,
     getLiteApiHotels,
+    getLiteApiFacilities,
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
@@ -452,6 +517,8 @@ function createLiteApiAdapter(
             providerHotelIds,
 
           getLiteApiHotels,
+
+          getLiteApiFacilities,
 
           signal,
         });
