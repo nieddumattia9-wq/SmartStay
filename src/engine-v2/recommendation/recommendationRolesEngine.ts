@@ -204,9 +204,9 @@ const DEFAULTS: ResolvedOptions = {
   minimumScoreConfidence: 0.55,
   minimumEvidenceCoverage: 0.55,
   minimumAlternativeUtilityScore: 65,
-  maximumSavingUtilityLoss: 10,
+  maximumSavingUtilityLoss: 15,
   minimumSavingAmount: 10,
-  minimumSavingRatio: 0.05,
+  minimumSavingRatio: 0.15,
   maximumAlternativeLocationLoss: 15,
   minimumSpecializedConfidence: 0.6,
   maximumBestChoiceScoreDifference: 0.75,
@@ -827,19 +827,10 @@ function selectBestChoiceGroup(
   const eligibleWithinBudget = candidates.filter(
     (candidate) => candidate.roleEligible && hasVerifiedWithinBudget(candidate)
   );
-  const frontier = eligibleWithinBudget.filter(
-    (candidate) => candidate.source.pareto.status === "frontier"
-  );
-  const unknown = eligibleWithinBudget.filter(
-    (candidate) => candidate.source.pareto.status === "unknown"
-  );
-  const pool = frontier.length > 0
-    ? frontier
-    : unknown.length > 0
-      ? unknown
-      : eligibleWithinBudget;
-  const ordered = sortBestChoiceCandidates(pool);
-  const anchor = ordered[0] ?? null;
+  const ordered =
+    sortBestChoiceCandidates(
+      eligibleWithinBudget
+    );  const anchor = ordered[0] ?? null;
   if (!anchor || anchor.recommendationScore === null) {
     return null;
   }
@@ -874,7 +865,7 @@ function selectBestChoiceGroup(
       index + 1,
       [
         "recommendation-best-choice",
-        "recommendation-within-budget-required",
+        "recommendation-highest-within-budget-smart-score",        "recommendation-within-budget-required",
         "recommendation-equivalent-top-score",
         candidate.smartScore === null
           ? "recommendation-score-fallback-to-utility"
@@ -902,7 +893,7 @@ function selectBestChoiceGroup(
       null,
       [
         "recommendation-best-choice-group",
-        members.length > 1
+        "recommendation-ranking-coherent-best-choice",        members.length > 1
           ? "recommendation-multiple-equivalent-options"
           : "recommendation-single-best-option",
       ],
