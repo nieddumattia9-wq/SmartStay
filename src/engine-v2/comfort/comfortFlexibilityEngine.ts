@@ -1724,6 +1724,27 @@ function featureToScoreItem(
   feature:
     SmartStayFeatureComfortEvaluationV2
 ): DimensionScoreItem {
+  const explicitlyRequested =
+    feature.preferenceKind ===
+      "required" ||
+    feature.preferenceKind ===
+      "preferred" ||
+    feature.preferenceKind ===
+      "avoided";
+
+  const resolvedOrConflicting =
+    feature.evidenceState ===
+      "known-true" ||
+    feature.evidenceState ===
+      "known-false" ||
+    feature.evidenceState ===
+      "conflicting";
+
+  const contributesToEvidenceCoverage =
+    feature.includedInScore ||
+    explicitlyRequested ||
+    resolvedOrConflicting;
+
   return {
     score:
       feature.includedInScore
@@ -1732,7 +1753,8 @@ function featureToScoreItem(
 
     weight:
       feature.evidenceState ===
-      "not-applicable"
+        "not-applicable" ||
+      !contributesToEvidenceCoverage
         ? 0
         : feature.weight,
 
