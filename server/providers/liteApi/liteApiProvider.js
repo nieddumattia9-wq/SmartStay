@@ -11,6 +11,458 @@ const {
 const SOURCE_PROVIDER = ACCOMMODATION_PROVIDER_IDS.LITE_API;
   const PROVIDER_NAME = "LiteAPI";
 
+const LITEAPI_HOTEL_TYPES =
+  Object.freeze({
+    0: {
+      name:
+        "Not Available",
+
+      category:
+        null,
+    },
+
+    201: {
+      name:
+        "Apartments",
+
+      category:
+        "apartment",
+    },
+
+    203: {
+      name:
+        "Hostels",
+
+      category:
+        "hostel",
+    },
+
+    204: {
+      name:
+        "Hotels",
+
+      category:
+        "hotel",
+    },
+
+    205: {
+      name:
+        "Motels",
+
+      category:
+        "hotel",
+    },
+
+    206: {
+      name:
+        "Resorts",
+
+      category:
+        "resort",
+    },
+
+    207: {
+      name:
+        "Residences",
+
+      category:
+        "aparthotel",
+    },
+
+    208: {
+      name:
+        "Bed and breakfasts",
+
+      category:
+        "bed-and-breakfast",
+    },
+
+    209: {
+      name:
+        "Ryokans",
+
+      category:
+        "hotel",
+    },
+
+    210: {
+      name:
+        "Farm stays",
+
+      category:
+        "guesthouse",
+    },
+
+    212: {
+      name:
+        "Holiday parks",
+
+      category:
+        "camping",
+    },
+
+    213: {
+      name:
+        "Villas",
+
+      category:
+        "villa",
+    },
+
+    214: {
+      name:
+        "Campsites",
+
+      category:
+        "camping",
+    },
+
+    215: {
+      name:
+        "Boats",
+
+      category:
+        "other",
+    },
+
+    216: {
+      name:
+        "Guest houses",
+
+      category:
+        "guesthouse",
+    },
+
+    218: {
+      name:
+        "Inns",
+
+      category:
+        "hotel",
+    },
+
+    219: {
+      name:
+        "Aparthotels",
+
+      category:
+        "aparthotel",
+    },
+
+    220: {
+      name:
+        "Holiday homes",
+
+      category:
+        "vacation-rental",
+    },
+
+    221: {
+      name:
+        "Lodges",
+
+      category:
+        "vacation-rental",
+    },
+
+    222: {
+      name:
+        "Homestays",
+
+      category:
+        "guesthouse",
+    },
+
+    223: {
+      name:
+        "Country houses",
+
+      category:
+        "vacation-rental",
+    },
+
+    224: {
+      name:
+        "Luxury tents",
+
+      category:
+        "camping",
+    },
+
+    225: {
+      name:
+        "Capsule hotels",
+
+      category:
+        "hotel",
+    },
+
+    226: {
+      name:
+        "Love hotels",
+
+      category:
+        "hotel",
+    },
+
+    227: {
+      name:
+        "Riads",
+
+      category:
+        "guesthouse",
+    },
+
+    228: {
+      name:
+        "Chalets",
+
+      category:
+        "vacation-rental",
+    },
+
+    229: {
+      name:
+        "Condos",
+
+      category:
+        "apartment",
+    },
+
+    230: {
+      name:
+        "Cottages",
+
+      category:
+        "vacation-rental",
+    },
+
+    231: {
+      name:
+        "Economy hotels",
+
+      category:
+        "hotel",
+    },
+
+    232: {
+      name:
+        "Gites",
+
+      category:
+        "vacation-rental",
+    },
+
+    233: {
+      name:
+        "Health resorts",
+
+      category:
+        "resort",
+    },
+
+    234: {
+      name:
+        "Cruises",
+
+      category:
+        "other",
+    },
+
+    235: {
+      name:
+        "Student accommodation",
+
+      category:
+        "hostel",
+    },
+
+    243: {
+      name:
+        "Tree house property",
+
+      category:
+        "vacation-rental",
+    },
+
+    247: {
+      name:
+        "Pension",
+
+      category:
+        "guesthouse",
+    },
+
+    250: {
+      name:
+        "Private vacation home",
+
+      category:
+        "vacation-rental",
+    },
+
+    251: {
+      name:
+        "Pousada",
+
+      category:
+        "guesthouse",
+    },
+
+    252: {
+      name:
+        "Country house",
+
+      category:
+        "vacation-rental",
+    },
+
+    254: {
+      name:
+        "Campsite",
+
+      category:
+        "camping",
+    },
+
+    257: {
+      name:
+        "Cabin",
+
+      category:
+        "vacation-rental",
+    },
+
+    258: {
+      name:
+        "Holiday park",
+
+      category:
+        "camping",
+    },
+
+    262: {
+      name:
+        "Affittacamere",
+
+      category:
+        "guesthouse",
+    },
+
+    264: {
+      name:
+        "Hostel/Backpacker accommodation",
+
+      category:
+        "hostel",
+    },
+
+    265: {
+      name:
+        "Houseboat",
+
+      category:
+        "other",
+    },
+
+    268: {
+      name:
+        "Ranch",
+
+      category:
+        "vacation-rental",
+    },
+
+    271: {
+      name:
+        "Agritourism property",
+
+      category:
+        "guesthouse",
+    },
+
+    272: {
+      name:
+        "Mobile home",
+
+      category:
+        "camping",
+    },
+
+    273: {
+      name:
+        "Safari/Tentalow",
+
+      category:
+        "camping",
+    },
+
+    274: {
+      name:
+        "All-inclusive property",
+
+      category:
+        "resort",
+    },
+
+    276: {
+      name:
+        "Castle",
+
+      category:
+        "vacation-rental",
+    },
+
+    277: {
+      name:
+        "property",
+
+      category:
+        "other",
+    },
+
+    278: {
+      name:
+        "Palace",
+
+      category:
+        "other",
+    },
+  });
+
+function resolveLiteApiHotelType(
+  value
+) {
+  const hotelTypeId =
+    asNumber(
+      value
+    );
+
+  const descriptor =
+    hotelTypeId ===
+      null
+      ? null
+      : LITEAPI_HOTEL_TYPES[
+          hotelTypeId
+        ] ??
+        null;
+
+  return {
+    id:
+      hotelTypeId,
+
+    name:
+      descriptor
+        ?.name ??
+      null,
+
+    category:
+      descriptor
+        ?.category ??
+      null,
+  };
+}
+
 function createLiteApiOfferFromMapper(
   options
 ) {
@@ -1163,7 +1615,19 @@ function createLiteApiOfferFromMapper(
       const facilities = amenities;
       const saving = bestOffer.saving;
     
-      const availableData = createAvailableData({
+      const providerHotelType =
+      resolveLiteApiHotelType(
+        pickFirst(
+          hotel,
+          [
+            ["hotelTypeId"],
+            ["hotel_type_id"],
+            ["propertyTypeId"],
+          ]
+        )
+      );
+
+    const availableData = createAvailableData({
         price: bestOffer.price,
         basePrice: bestOffer.basePrice,
         saving,
@@ -1191,6 +1655,16 @@ function createLiteApiOfferFromMapper(
     
         name: getLiteApiHotelName(record, hotel),
         provider: PROVIDER_NAME,
+
+        providerHotelTypeId:
+          providerHotelType.id,
+
+        providerHotelTypeName:
+          providerHotelType.name,
+
+        accommodationCategory:
+          providerHotelType.category,
+
         stars,
         reviewScore: reviewScore ?? null,
         reviewCount: reviewCount ?? null,
@@ -1303,10 +1777,42 @@ function createLiteApiOfferFromMapper(
     function mapLiteApiHotelResponse(
       data,
       fallbackCurrency = "EUR",
-      searchLocation = null
+      searchLocation = null,
+      hotelMetadata = null
     ) {
       const records = extractRecords(data);
-      const hotelDataIndex = createHotelDataIndex(data);
+      const hotelDataIndex =
+        createHotelDataIndex(
+          data
+        );
+
+      const metadataHotelDataIndex =
+        createHotelDataIndex(
+          hotelMetadata
+        );
+
+      for (
+        const [
+          hotelId,
+          metadataHotel,
+        ]
+        of metadataHotelDataIndex
+      ) {
+        const existingHotel =
+          hotelDataIndex.get(
+            hotelId
+          );
+
+        hotelDataIndex.set(
+          hotelId,
+          existingHotel
+            ? {
+                ...existingHotel,
+                ...metadataHotel,
+              }
+            : metadataHotel
+        );
+      }
     
       return records
         .map((record) => {

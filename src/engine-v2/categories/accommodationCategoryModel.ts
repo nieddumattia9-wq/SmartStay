@@ -206,6 +206,25 @@ const CATEGORY_RULES:
     },
     {
       category:
+        "camping",
+
+      confidence:
+        0.94,
+
+      code:
+        "category-name-camping",
+
+      phrases: [
+        "camping",
+        "campsite",
+        "camp site",
+        "holiday park",
+        "luxury tent",
+        "tentalow",
+      ],
+    },
+    {
+      category:
         "hostel",
 
       confidence:
@@ -392,6 +411,42 @@ const EXPLICIT_CATEGORY_ALIASES:
 
     hotels:
       "hotel",
+
+    campsite:
+      "camping",
+
+    campsites:
+      "camping",
+
+    camping:
+      "camping",
+
+    "holiday park":
+      "camping",
+
+    "holiday parks":
+      "camping",
+
+    "luxury tent":
+      "camping",
+
+    "luxury tents":
+      "camping",
+
+    tentalow:
+      "camping",
+
+    "safari tentalow":
+      "camping",
+
+    "bed and breakfasts":
+      "bed-and-breakfast",
+
+    "guest houses":
+      "guesthouse",
+
+    "hostel backpacker accommodation":
+      "hostel",
 
     motel:
       "hotel",

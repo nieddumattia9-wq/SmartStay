@@ -412,6 +412,21 @@ function createPublicHotel(
         "Provider"
       ),
 
+    providerHotelTypeId:
+      getFiniteNumber(
+        hotel.providerHotelTypeId
+      ),
+
+    providerHotelTypeName:
+      getNullableText(
+        hotel.providerHotelTypeName
+      ),
+
+    accommodationCategory:
+      getNullableText(
+        hotel.accommodationCategory
+      ),
+
     stars:
       getFiniteNumber(
         hotel.stars,

@@ -1450,6 +1450,21 @@ function createFoundationCandidates(
         const accommodation =
           classifyAccommodationV2({
             hotel,
+
+            explicitCategory:
+              hotel
+                .accommodationCategory ??
+              hotel
+                .providerHotelTypeName,
+
+            categorySourceField:
+              hotel
+                .accommodationCategory
+                ? "accommodationCategory"
+                : hotel
+                    .providerHotelTypeName
+                  ? "providerHotelTypeName"
+                  : null,
           });
 
         const evidence =

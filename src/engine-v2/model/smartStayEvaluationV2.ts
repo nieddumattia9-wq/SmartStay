@@ -18,6 +18,7 @@ export type SmartStayAccommodationCategory =
   | "guesthouse"
   | "villa"
   | "resort"
+  | "camping"
   | "other"
   | "unknown";
 

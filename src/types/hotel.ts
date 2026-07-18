@@ -93,6 +93,18 @@ export interface Hotel {
 
   provider: string;
 
+  providerHotelTypeId?:
+    number |
+    null;
+
+  providerHotelTypeName?:
+    string |
+    null;
+
+  accommodationCategory?:
+    string |
+    null;
+
   stars: number;
 
   reviewScore: number | null;

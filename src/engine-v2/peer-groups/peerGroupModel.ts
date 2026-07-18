@@ -74,6 +74,10 @@ const CATEGORY_COMPATIBILITY:
       readonly SmartStayAccommodationCategory[]
     >
   > = {
+    camping: [
+      "camping",
+    ],
+
     hotel: [
       "hotel",
       "bed-and-breakfast",

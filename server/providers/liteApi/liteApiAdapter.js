@@ -80,6 +80,232 @@ function createLiteApiSearchInput(
   };
 }
 
+const LITEAPI_HOTEL_METADATA_BATCH_SIZE =
+  40;
+
+function normalizeLiteApiMetadataHotelId(
+  value
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  const normalized =
+    String(
+      value
+    ).trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.startsWith(
+    "liteapi:"
+  )
+    ? normalized.slice(
+        "liteapi:".length
+      )
+    : normalized;
+}
+
+function collectLiteApiMetadataHotelIds(
+  hotels
+) {
+  const hotelIds =
+    new Set();
+
+  for (
+    const hotel
+    of Array.isArray(hotels)
+      ? hotels
+      : []
+  ) {
+    if (
+      hotel?.providerHotelTypeId !==
+        null &&
+      hotel?.providerHotelTypeId !==
+        undefined
+    ) {
+      continue;
+    }
+
+    const candidates = [
+      hotel?.sourceHotelId,
+      hotel?.providerHotelId,
+      hotel?.hotelId,
+      hotel?.id,
+    ];
+
+    for (
+      const candidate
+      of candidates
+    ) {
+      const hotelId =
+        normalizeLiteApiMetadataHotelId(
+          candidate
+        );
+
+      if (!hotelId) {
+        continue;
+      }
+
+      hotelIds.add(
+        hotelId
+      );
+
+      break;
+    }
+  }
+
+  return [
+    ...hotelIds,
+  ];
+}
+
+function extractLiteApiHotelMetadataRecords(
+  data
+) {
+  const candidates = [
+    data?.data,
+    data?.hotels,
+    data?.items,
+    data?.results,
+    data?.result?.data,
+    data?.result?.hotels,
+    data?.data?.hotels,
+  ];
+
+  for (
+    const candidate
+    of candidates
+  ) {
+    if (
+      Array.isArray(
+        candidate
+      )
+    ) {
+      return candidate;
+    }
+  }
+
+  return [];
+}
+
+function isLiteApiMetadataAbort(
+  error,
+  signal
+) {
+  return (
+    signal?.aborted ===
+      true ||
+    error?.name ===
+      "AbortError" ||
+    error?.code ===
+      "ABORT_ERR" ||
+    error?.code ===
+      "ERR_CANCELED"
+  );
+}
+
+async function loadLiteApiHotelMetadata({
+  hotelIds,
+  getLiteApiHotels,
+  signal,
+}) {
+  if (
+    !Array.isArray(
+      hotelIds
+    ) ||
+    hotelIds.length === 0
+  ) {
+    return null;
+  }
+
+  const hotelData = [];
+
+  for (
+    let index = 0;
+    index < hotelIds.length;
+    index +=
+      LITEAPI_HOTEL_METADATA_BATCH_SIZE
+  ) {
+    const batch =
+      hotelIds.slice(
+        index,
+        index +
+          LITEAPI_HOTEL_METADATA_BATCH_SIZE
+      );
+
+    const response =
+      await getLiteApiHotels(
+        {
+          hotelIds:
+            batch.join(
+              ","
+            ),
+
+          limit:
+            batch.length,
+
+          language:
+            "en",
+        },
+        {
+          signal,
+        }
+      );
+
+    if (
+      response?.noContent
+    ) {
+      continue;
+    }
+
+    hotelData.push(
+      ...extractLiteApiHotelMetadataRecords(
+        response?.data ?? null
+      )
+    );
+  }
+
+  return hotelData.length > 0
+    ? {
+        hotelData,
+      }
+    : null;
+}
+
+async function tryLoadLiteApiHotelMetadata(
+  options
+) {
+  try {
+    return await loadLiteApiHotelMetadata(
+      options
+    );
+  }
+  catch (error) {
+    if (
+      isLiteApiMetadataAbort(
+        error,
+        options?.signal
+      )
+    ) {
+      throw error;
+    }
+
+    console.warn(
+      "[PROVIDER:liteapi] Static hotel metadata enrichment skipped:",
+      error?.message ??
+        error
+    );
+
+    return null;
+  }
+}
+
 function loadDefaultDependencies() {
   const {
     searchLiteApiRates,
@@ -200,18 +426,45 @@ function createLiteApiAdapter(
         });
       }
 
-      const mappedHotels =
+      const searchLocation = {
+        latitude:
+          providerInput.latitude,
+
+        longitude:
+          providerInput.longitude,
+      };
+
+      const preliminaryMappedHotels =
         mapLiteApiHotelResponse(
           rawData,
           currency,
-          {
-            latitude:
-              providerInput.latitude,
-
-            longitude:
-              providerInput.longitude,
-          }
+          searchLocation
         );
+
+      const providerHotelIds =
+        collectLiteApiMetadataHotelIds(
+          preliminaryMappedHotels
+        );
+
+      const hotelMetadata =
+        await tryLoadLiteApiHotelMetadata({
+          hotelIds:
+            providerHotelIds,
+
+          getLiteApiHotels,
+
+          signal,
+        });
+
+      const mappedHotels =
+        hotelMetadata
+          ? mapLiteApiHotelResponse(
+              rawData,
+              currency,
+              searchLocation,
+              hotelMetadata
+            )
+          : preliminaryMappedHotels;
 
       const hotels =
         mergeHotels(
