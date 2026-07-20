@@ -72,6 +72,12 @@ export interface SmartStayFrontendEvaluationV2 {
   badges:
     SmartStayFrontendBadgeV2[];
 
+  strengths:
+    string[];
+
+  tradeOffs:
+    string[];
+
   reasons:
     string[];
 
@@ -304,7 +310,7 @@ const DIMENSION_LABELS:
       "price and value",
 
     quality:
-      "guest quality",
+      "guest reviews",
 
     location:
       "location",
@@ -351,6 +357,69 @@ function uniqueStable<
       values
     ),
   ];
+}
+
+function getExplanationSemanticKey(
+  reason:
+    string
+) {
+  const normalized =
+    reason
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalized.startsWith(
+      "fits your total budget"
+    ) ||
+    normalized ===
+      "fits within your total budget."
+  ) {
+    return "budget-fit";
+  }
+
+  if (
+    normalized.startsWith(
+      "exceeds your total budget"
+    )
+  ) {
+    return "budget-overage";
+  }
+
+  return normalized;
+}
+
+function uniqueExplanationReasons(
+  reasons:
+    string[]
+) {
+  const seenKeys =
+    new Set<
+      string
+    >();
+
+  return reasons.filter(
+    (reason) => {
+      const semanticKey =
+        getExplanationSemanticKey(
+          reason
+        );
+
+      if (
+        seenKeys.has(
+          semanticKey
+        )
+      ) {
+        return false;
+      }
+
+      seenKeys.add(
+        semanticKey
+      );
+
+      return true;
+    }
+  );
 }
 
 function formatNumber(
@@ -543,6 +612,92 @@ function getDimensionFromKey(
   );
 }
 
+function formatReviewStrength(
+  evaluation:
+    SmartStayEvaluationV2
+) {
+  const reviewScore =
+    evaluation
+      .hotel
+      .reviewScore;
+
+  const reviewCount =
+    evaluation
+      .hotel
+      .reviewCount;
+
+  if (
+    typeof reviewScore ===
+      "number" &&
+    Number.isFinite(
+      reviewScore
+    )
+  ) {
+    const reviewSummary =
+      typeof reviewCount ===
+        "number" &&
+      Number.isFinite(
+        reviewCount
+      ) &&
+      reviewCount >
+        0
+        ? (
+            " across " +
+            formatNumber(
+              reviewCount,
+              0
+            ) +
+            (
+              reviewCount ===
+                1
+                ? " review"
+                : " reviews"
+            )
+          )
+        : "";
+
+    return (
+      "Guests rate this stay " +
+      formatNumber(
+        reviewScore
+      ) +
+      "/10" +
+      reviewSummary +
+      "."
+    );
+  }
+
+  return "Guest reviews are a strong signal for this stay.";
+}
+
+function formatReviewTradeOff(
+  evaluation:
+    SmartStayEvaluationV2
+) {
+  const reviewScore =
+    evaluation
+      .hotel
+      .reviewScore;
+
+  if (
+    typeof reviewScore ===
+      "number" &&
+    Number.isFinite(
+      reviewScore
+    )
+  ) {
+    return (
+      "Its " +
+      formatNumber(
+        reviewScore
+      ) +
+      "/10 guest rating is weaker than the strongest alternatives in this search."
+    );
+  }
+
+  return "Guest review evidence is weaker than the strongest alternatives in this search.";
+}
+
 function formatExplanationFact(
   fact:
     SmartStayComparisonFactV2,
@@ -550,7 +705,9 @@ function formatExplanationFact(
     Map<
       string,
       string
-    >
+    >,
+  evaluation:
+    SmartStayEvaluationV2
 ) {
   const key =
     fact.messageKey;
@@ -568,50 +725,76 @@ function formatExplanationFact(
 
   if (
     key.includes(
+      "below_peer_median"
+    ) ||
+    key.includes(
+      "above_peer_median"
+    )
+  ) {
+    return null;
+  }
+
+  if (
+    key.includes(
       "within_budget"
     )
   ) {
     return value
-      ? `Fits your total budget with ${value} of headroom.`
+      ? `Fits your total budget, leaving ${value}.`
       : "Fits within your total budget.";
   }
 
   if (
     key.includes(
-      "below_peer_median"
+      "above_budget"
     )
   ) {
     return value
-      ? `Costs ${value} less than the median of comparable stays.`
-      : "Costs less than the median of comparable stays.";
+      ? `Exceeds your total budget by ${value}.`
+      : "Exceeds your total budget.";
   }
 
   if (
     key.includes(
-      "above_peer_median"
+      "non_refundable"
     )
   ) {
-    return value
-      ? `Costs ${value} more than the median of comparable stays.`
-      : "Costs more than the median of comparable stays.";
+    return "The selected offer is non-refundable.";
+  }
+
+  if (
+    key.includes(
+      "limited_data"
+    )
+  ) {
+    return "Some important information is missing or uncertain.";
+  }
+
+  if (
+    key.includes(
+      "high_risk"
+    )
+  ) {
+    return "Available evidence indicates a higher level of booking uncertainty.";
+  }
+
+  if (
+    key.includes(
+      "medium_risk"
+    )
+  ) {
+    return "Available evidence indicates some booking uncertainty.";
   }
 
   if (
     key.includes(
       "solid_data"
-    )
-  ) {
-    return value
-      ? `Supported by strong data coverage (${value}).`
-      : "Supported by strong data coverage.";
-  }
-
-  if (
+    ) ||
     key.includes(
       "low_risk"
     )
   ) {
-    return "Carries a low level of booking and data uncertainty.";
+    return null;
   }
 
   if (
@@ -665,9 +848,7 @@ function formatExplanationFact(
       "utility_gain"
     )
   ) {
-    return value
-      ? `Improves the overall trip match by ${value}.`
-      : "Improves the overall trip match.";
+    return "Improves the overall trip match.";
   }
 
   if (
@@ -675,9 +856,70 @@ function formatExplanationFact(
       "utility_loss"
     )
   ) {
-    return value
-      ? `Trades away ${value} of overall trip fit.`
-      : "Trades away some overall trip fit.";
+    return "Gives up some overall trip fit.";
+  }
+
+  if (
+    key.includes(
+      "diminishing_returns"
+    )
+  ) {
+    return "The extra spend is entering diminishing returns.";
+  }
+
+  if (
+    key.includes(
+      ".comparison.upgrade_"
+    )
+  ) {
+    const dimensionKey =
+      key.split(
+        ".comparison.upgrade_"
+      )[1] ??
+      "";
+
+    const comparisonTarget =
+      targetName ??
+      "the reference choice";
+
+    if (
+      dimensionKey ===
+        "quality"
+    ) {
+      return `Offers stronger review-backed quality than ${comparisonTarget}.`;
+    }
+
+    if (
+      dimensionKey ===
+        "location"
+    ) {
+      return `Offers a more convenient location than ${comparisonTarget}.`;
+    }
+
+    if (
+      dimensionKey ===
+        "comfort"
+    ) {
+      return `Offers stronger amenities and room features than ${comparisonTarget}.`;
+    }
+
+    if (
+      dimensionKey ===
+        "flexibility"
+    ) {
+      return `Offers better booking flexibility than ${comparisonTarget}.`;
+    }
+
+    const dimensionLabel =
+      DIMENSION_LABELS[
+        dimensionKey
+      ] ??
+      dimensionKey.replace(
+        /_/g,
+        " "
+      );
+
+    return `Offers a meaningful ${dimensionLabel} improvement compared with ${comparisonTarget}.`;
   }
 
   if (
@@ -690,8 +932,47 @@ function formatExplanationFact(
         key
       );
 
+    if (
+      dimension ===
+        "guest reviews"
+    ) {
+      return formatReviewStrength(
+        evaluation
+      );
+    }
+
+    if (
+      dimension ===
+        "location"
+    ) {
+      return value
+        ? `Located ${value} from your selected point.`
+        : "Well located for this search.";
+    }
+
+    if (
+      dimension ===
+        "comfort"
+    ) {
+      return "Amenities and room features are a strong fit for this trip.";
+    }
+
+    if (
+      dimension ===
+        "booking flexibility"
+    ) {
+      return "Booking flexibility is a strong fit for this search.";
+    }
+
+    if (
+      dimension ===
+        "price and value"
+    ) {
+      return "Price and overall trip fit are well balanced.";
+    }
+
     return dimension
-      ? `${dimension[0].toUpperCase()}${dimension.slice(1)} is a clear strength for this search.`
+      ? `${dimension[0].toUpperCase()}${dimension.slice(1)} is a strong fit for this search.`
       : "This stay has a strong evidence-backed advantage.";
   }
 
@@ -705,9 +986,41 @@ function formatExplanationFact(
         key
       );
 
+    if (
+      dimension ===
+        "guest reviews"
+    ) {
+      return formatReviewTradeOff(
+        evaluation
+      );
+    }
+
+    if (
+      dimension ===
+        "location"
+    ) {
+      return value
+        ? `At ${value} from your selected point, its location is less convenient than the strongest alternatives.`
+        : "Its location is less convenient than the strongest alternatives.";
+    }
+
+    if (
+      dimension ===
+        "comfort"
+    ) {
+      return "Amenities and room features are less aligned with this trip than the strongest alternatives.";
+    }
+
+    if (
+      dimension ===
+        "booking flexibility"
+    ) {
+      return "Booking terms are less flexible than the strongest alternatives.";
+    }
+
     return dimension
       ? `${dimension[0].toUpperCase()}${dimension.slice(1)} is weaker than the strongest alternatives.`
-      : "This stay includes a meaningful trade-off.";
+      : null;
   }
 
   if (
@@ -915,11 +1228,11 @@ function createBadges(
   );
 }
 
-function createFallbackReasons(
+function createFallbackStrengths(
   evaluation:
     SmartStayEvaluationV2
 ) {
-  const reasons:
+  const strengths:
     string[] = [];
 
   const budget =
@@ -944,7 +1257,7 @@ function createFallbackReasons(
     budget?.status ===
       "satisfied"
   ) {
-    reasons.push(
+    strengths.push(
       "Fits within your total budget."
     );
   }
@@ -953,7 +1266,7 @@ function createFallbackReasons(
     distance?.status ===
       "satisfied"
   ) {
-    reasons.push(
+    strengths.push(
       "Stays within your selected distance limit."
     );
   }
@@ -968,8 +1281,8 @@ function createFallbackReasons(
     ) >=
       75
   ) {
-    reasons.push(
-      "Shows strong value against comparable properties."
+    strengths.push(
+      "Price and overall trip fit are well balanced."
     );
   }
 
@@ -983,8 +1296,10 @@ function createFallbackReasons(
     ) >=
       75
   ) {
-    reasons.push(
-      "Guest quality is one of its stronger signals."
+    strengths.push(
+      formatReviewStrength(
+        evaluation
+      )
     );
   }
 
@@ -998,32 +1313,38 @@ function createFallbackReasons(
     ) >=
       75
   ) {
-    reasons.push(
-      "Location is a strong fit for this search."
+    const distanceKm =
+      evaluation
+        .hotel
+        .distance;
+
+    strengths.push(
+      typeof distanceKm ===
+        "number" &&
+      Number.isFinite(
+        distanceKm
+      )
+        ? (
+            "Located " +
+            formatNumber(
+              distanceKm,
+              2
+            ) +
+            " km from your selected point."
+          )
+        : "Well located for this search."
     );
   }
 
-  if (
-    evaluation
-      .risk
-      .level ===
-      "low"
-  ) {
-    reasons.push(
-      "The available evidence indicates relatively low uncertainty."
-    );
-  }
+  return strengths;
+}
 
-  if (
-    evaluation
-      .dataConfidence
-      .level ===
-      "high"
-  ) {
-    reasons.push(
-      "The recommendation is supported by high data confidence."
-    );
-  }
+function createFallbackTradeOffs(
+  evaluation:
+    SmartStayEvaluationV2
+) {
+  const tradeOffs:
+    string[] = [];
 
   if (
     evaluation
@@ -1035,79 +1356,36 @@ function createFallbackReasons(
       .level ===
       "none"
   ) {
-    reasons.push(
-      "Some important evidence is limited, so the score remains conservative."
+    tradeOffs.push(
+      "Some important information is missing or uncertain."
     );
   }
-
-  return reasons;
-}
-
-function createReasons(
-  evaluation:
-    SmartStayEvaluationV2,
-  hotelNames:
-    Map<
-      string,
-      string
-    >
-) {
-  const explanationFacts = [
-    ...evaluation
-      .explanation
-      .strengthFacts,
-
-    ...evaluation
-      .explanation
-      .comparisonFacts,
-
-    ...evaluation
-      .explanation
-      .weaknessFacts,
-  ];
-
-  const explanationReasons =
-    explanationFacts
-      .map(
-        (fact) =>
-          formatExplanationFact(
-            fact,
-            hotelNames
-          )
-      )
-      .filter(
-        (
-          reason
-        ): reason is string =>
-          Boolean(
-            reason
-          )
-      );
-
-  const reasons =
-    uniqueStable([
-      ...explanationReasons,
-      ...createFallbackReasons(
-        evaluation
-      ),
-    ]);
 
   if (
-    reasons.length ===
-    0
+    evaluation
+      .risk
+      .level ===
+      "high"
   ) {
-    reasons.push(
-      "Balanced evidence-backed option for this search."
+    tradeOffs.push(
+      "Available evidence indicates a higher level of booking uncertainty."
+    );
+  }
+  else if (
+    evaluation
+      .risk
+      .level ===
+      "medium"
+  ) {
+    tradeOffs.push(
+      "Available evidence indicates some booking uncertainty."
     );
   }
 
-  return reasons.slice(
-    0,
-    4
-  );
+  return tradeOffs;
 }
 
-function createSelectedOfferReason(
+function createSelectedOfferExplanation(
   selectedOffer:
     SmartStaySelectedOfferV2 | null
 ) {
@@ -1117,12 +1395,162 @@ function createSelectedOfferReason(
     selectedOffer.refundable ===
       true
   ) {
-    return selectedOffer.freeCancellationUntil
-      ? "A refundable offer with verified free cancellation was selected for this search."
-      : "A refundable offer was selected for this search.";
+    return {
+      strength:
+        selectedOffer
+          .freeCancellationUntil
+          ? "A refundable offer with verified free cancellation was selected for this search."
+          : "A refundable offer was selected for this search.",
+
+      tradeOff:
+        null,
+    };
   }
 
-  return null;
+  if (
+    selectedOffer?.refundable ===
+      false
+  ) {
+    return {
+      strength:
+        null,
+
+      tradeOff:
+        "The selected offer is non-refundable.",
+    };
+  }
+
+  return {
+    strength:
+      null,
+
+    tradeOff:
+      null,
+  };
+}
+
+function createExplanationSections(
+  evaluation:
+    SmartStayEvaluationV2,
+  hotelNames:
+    Map<
+      string,
+      string
+    >,
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
+) {
+  const selectedOfferExplanation =
+    createSelectedOfferExplanation(
+      selectedOffer
+    );
+
+  const strengthFacts = [
+    ...evaluation
+      .explanation
+      .strengthFacts,
+
+    ...evaluation
+      .explanation
+      .comparisonFacts
+      .filter(
+        (fact) =>
+          fact.direction ===
+          "better"
+      ),
+  ];
+
+  const tradeOffFacts = [
+    ...evaluation
+      .explanation
+      .comparisonFacts
+      .filter(
+        (fact) =>
+          fact.direction ===
+            "worse" ||
+          fact.messageKey.includes(
+            "diminishing_returns"
+          )
+      ),
+
+    ...evaluation
+      .explanation
+      .weaknessFacts,
+  ];
+
+  const strengths =
+    uniqueExplanationReasons([
+      selectedOfferExplanation
+        .strength,
+
+      ...strengthFacts.map(
+        (fact) =>
+          formatExplanationFact(
+            fact,
+            hotelNames,
+            evaluation
+          )
+      ),
+
+      ...createFallbackStrengths(
+        evaluation
+      ),
+    ].filter(
+      (
+        reason
+      ): reason is string =>
+        Boolean(
+          reason
+        )
+    )).slice(
+      0,
+      3
+    );
+
+  const tradeOffs =
+    uniqueExplanationReasons([
+      selectedOfferExplanation
+        .tradeOff,
+
+      ...tradeOffFacts.map(
+        (fact) =>
+          formatExplanationFact(
+            fact,
+            hotelNames,
+            evaluation
+          )
+      ),
+
+      ...createFallbackTradeOffs(
+        evaluation
+      ),
+    ].filter(
+      (
+        reason
+      ): reason is string =>
+        Boolean(
+          reason
+        )
+    )).slice(
+      0,
+      2
+    );
+
+  if (
+    strengths.length ===
+      0 &&
+    tradeOffs.length ===
+      0
+  ) {
+    strengths.push(
+      "Balanced evidence-backed option for this search."
+    );
+  }
+
+  return {
+    strengths,
+    tradeOffs,
+  };
 }
 
 function createFrontendEvaluation(
@@ -1142,8 +1570,10 @@ function createFrontendEvaluation(
       .selectedOffer ??
     null;
 
-  const selectedOfferReason =
-    createSelectedOfferReason(
+  const explanationSections =
+    createExplanationSections(
+      evaluation,
+      hotelNames,
       selectedOffer
     );
 
@@ -1173,21 +1603,22 @@ function createFrontendEvaluation(
         evaluation
       ),
 
+    strengths:
+      explanationSections
+        .strengths,
+
+    tradeOffs:
+      explanationSections
+        .tradeOffs,
+
     reasons:
-      uniqueStable([
-        selectedOfferReason,
-        ...createReasons(
-          evaluation,
-          hotelNames
-        ),
-      ].filter(
-        (
-          reason
-        ): reason is string =>
-          Boolean(
-            reason
-          )
-      )).slice(
+      [
+        ...explanationSections
+          .strengths,
+
+        ...explanationSections
+          .tradeOffs,
+      ].slice(
         0,
         4
       ),
@@ -1250,7 +1681,40 @@ function createRecommendationLabel(
     pick.role ===
       "worthwhile-comfort-upgrade"
   ) {
-    return "Worthwhile comfort upgrade";
+    const dimension =
+      pick
+        .metrics
+        .upgradeStrongestGainDimension;
+
+    if (
+      dimension ===
+        "quality"
+    ) {
+      return "Worthwhile quality upgrade";
+    }
+
+    if (
+      dimension ===
+        "location"
+    ) {
+      return "Worthwhile location upgrade";
+    }
+
+    if (
+      dimension ===
+        "flexibility"
+    ) {
+      return "Worthwhile flexibility upgrade";
+    }
+
+    if (
+      dimension ===
+        "comfort"
+    ) {
+      return "Worthwhile comfort upgrade";
+    }
+
+    return "Worthwhile upgrade";
   }
 
   return "Best choice for you";
@@ -1258,7 +1722,12 @@ function createRecommendationLabel(
 
 function createRecommendationReason(
   pick:
-    SmartStayRecommendationPickV2
+    SmartStayRecommendationPickV2,
+  evaluationsById:
+    Map<
+      string,
+      SmartStayFrontendEvaluationV2
+    >
 ) {
   const metrics =
     pick.metrics;
@@ -1313,39 +1782,152 @@ function createRecommendationReason(
       metrics
         .upgradeStrongestGainDimension;
 
-    const dimensionLabel =
-      dimension
-        ? (
-            DIMENSION_LABELS[
-              dimension
-            ] ??
-            dimension
-          )
-        : "experience";
+    const candidateEvaluation =
+      evaluationsById.get(
+        pick.hotelId
+      );
 
-    const gain =
-      metrics
-        .upgradeStrongestGain;
+    const targetEvaluation =
+      pick.comparisonTargetHotelId
+        ? evaluationsById.get(
+            pick.comparisonTargetHotelId
+          )
+        : null;
 
     if (
-      typeof gain ===
-        "number" &&
-      Number.isFinite(
-        gain
-      )
+      dimension ===
+        "quality"
     ) {
-      return (
-        "Offers a worthwhile " +
-        dimensionLabel +
-        " improvement of " +
-        formatNumber(
-          gain
-        ) +
-        " points."
-      );
+      const candidateRating =
+        candidateEvaluation
+          ?.hotel
+          .reviewScore;
+
+      const targetRating =
+        targetEvaluation
+          ?.hotel
+          .reviewScore;
+
+      if (
+        typeof candidateRating ===
+          "number" &&
+        Number.isFinite(
+          candidateRating
+        ) &&
+        typeof targetRating ===
+          "number" &&
+        Number.isFinite(
+          targetRating
+        ) &&
+        candidateRating >
+          targetRating
+      ) {
+        return (
+          "Guest rating rises from " +
+          formatNumber(
+            targetRating
+          ) +
+          "/10 to " +
+          formatNumber(
+            candidateRating
+          ) +
+          "/10."
+        );
+      }
+
+      return "Offers a meaningful improvement in review-backed quality.";
     }
 
-    return "Provides a meaningful comfort improvement for the extra cost.";
+    if (
+      dimension ===
+        "location"
+    ) {
+      const candidateDistance =
+        candidateEvaluation
+          ?.hotel
+          .distance;
+
+      const targetDistance =
+        targetEvaluation
+          ?.hotel
+          .distance;
+
+      if (
+        typeof candidateDistance ===
+          "number" &&
+        Number.isFinite(
+          candidateDistance
+        ) &&
+        typeof targetDistance ===
+          "number" &&
+        Number.isFinite(
+          targetDistance
+        ) &&
+        candidateDistance <
+          targetDistance
+      ) {
+        return (
+          "Moves you from " +
+          formatNumber(
+            targetDistance,
+            2
+          ) +
+          " km to " +
+          formatNumber(
+            candidateDistance,
+            2
+          ) +
+          " km from your selected point."
+        );
+      }
+
+      return "Offers a meaningfully more convenient location.";
+    }
+
+    if (
+      dimension ===
+        "flexibility"
+    ) {
+      const selectedOffer =
+        candidateEvaluation
+          ?.selectedOffer;
+
+      const targetOffer =
+        targetEvaluation
+          ?.selectedOffer;
+
+      if (
+        selectedOffer
+          ?.freeCancellationUntil &&
+        targetOffer
+          ?.freeCancellationUntil ===
+          null
+      ) {
+        return "Adds a refundable offer with verified free cancellation.";
+      }
+
+      if (
+        selectedOffer
+          ?.refundable ===
+          true &&
+        targetOffer
+          ?.refundable ===
+          false
+      ) {
+        return "Adds a refundable booking option.";
+      }
+
+      return "Offers meaningfully better booking flexibility.";
+    }
+
+    if (
+      dimension ===
+        "comfort"
+    ) {
+      return "Offers a meaningful improvement in amenities and room features.";
+    }
+
+    return "Offers a meaningful overall upgrade for the extra cost.";
   }
 
   if (
@@ -1434,7 +2016,8 @@ function createRecommendationPicks(
 
           reason:
             createRecommendationReason(
-              pick
+              pick,
+              evaluationsById
             ),
 
           evaluation,

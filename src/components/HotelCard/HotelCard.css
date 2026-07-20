@@ -370,14 +370,33 @@
     line-height: 1.45;
   }
   
+  .hotel-card__explanation-groups {
+    display: grid;
+    gap: 14px;
+    margin: 16px 0 0 40px;
+  }
+
+  .hotel-card__explanation-group {
+    min-width: 0;
+  }
+
+  .hotel-card__explanation-label {
+    margin: 0;
+    color: #334155;
+    font-size: .78rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
   .hotel-card__reasons {
-    margin: 14px 0 0 40px;
+    margin: 7px 0 0 18px;
     padding: 0;
     color: #475569;
     font-size: .9rem;
     line-height: 1.55;
   }
-  
+
   .hotel-card__reasons li + li {
     margin-top: 5px;
   }
@@ -516,8 +535,8 @@
       width: 100%;
     }
   
-    .hotel-card__reasons {
-      margin-left: 20px;
+    .hotel-card__explanation-groups {
+      margin-left: 0;
     }
   }
   

@@ -24,9 +24,9 @@ type HotelCardProps = {
   riskLevel?: SmartStayRiskLevelV2;
   dataConfidenceLevel?: SmartStayDataConfidenceLevelV2;
   badges?: SmartStayFrontendBadgeV2[];
-  reasons?: string[];
+  strengths?: string[];
+  tradeOffs?: string[];
   selectedOffer?: SmartStaySelectedOfferV2 | null;
-  priceAdvantagePercent?: number | null;
   detailsLoading?: boolean;
   bookingUrl?: string | null;
   showRecommendationLabel?: boolean;
@@ -292,9 +292,9 @@ function HotelCard({
   riskLevel,
   dataConfidenceLevel = "none",
   badges = [],
-  reasons = [],
+  strengths = [],
+  tradeOffs = [],
   selectedOffer = null,
-  priceAdvantagePercent = null,
   detailsLoading = false,
   bookingUrl = null,
   showRecommendationLabel = false,
@@ -348,16 +348,12 @@ function HotelCard({
         "Low Risk"
     );
 
-  const hasReasons =
-    reasons.length > 0;
+  const hasExplanation =
+    strengths.length > 0 ||
+    tradeOffs.length > 0;
 
   const hasBadges =
     visibleBadges.length > 0;
-
-  const hasPriceAdvantage =
-    typeof priceAdvantagePercent === "number" &&
-    Number.isFinite(priceAdvantagePercent) &&
-    priceAdvantagePercent > 0;
 
   return (
     <article className="hotel-card">
@@ -461,7 +457,7 @@ function HotelCard({
             </span>
           </div>
 
-          {hasReasons && (
+          {hasExplanation && (
             <section className="hotel-card__engine">
               <div className="hotel-card__engine-heading">
                 <span className="hotel-card__engine-icon">
@@ -476,32 +472,50 @@ function HotelCard({
                   </p>
 
                   <p className="hotel-card__engine-subtitle">
-                    {showRecommendationLabel
-                      ? "Based on your preferences, verified offer and available data."
-                      : "Evidence-based strengths and trade-offs for this search."}
+                    Evidence-backed strengths and trade-offs for this search.
                   </p>
                 </div>
               </div>
 
-              <ul className="hotel-card__reasons">
-                {reasons.map((reason) => (
-                  <li key={reason}>
-                    {reason}
-                  </li>
-                ))}
-              </ul>
+              <div className="hotel-card__explanation-groups">
+                {strengths.length > 0 && (
+                  <div className="hotel-card__explanation-group">
+                    <p className="hotel-card__explanation-label">
+                      What stands out
+                    </p>
+
+                    <ul className="hotel-card__reasons">
+                      {strengths.map((strength) => (
+                        <li key={strength}>
+                          {strength}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {tradeOffs.length > 0 && (
+                  <div className="hotel-card__explanation-group">
+                    <p className="hotel-card__explanation-label">
+                      What to consider
+                    </p>
+
+                    <ul className="hotel-card__reasons">
+                      {tradeOffs.map((tradeOff) => (
+                        <li key={tradeOff}>
+                          {tradeOff}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </section>
           )}
         </div>
 
         <div className="hotel-card__bottom">
           <div className="hotel-card__price-block">
-            {hasPriceAdvantage && (
-              <div className="hotel-card__saving">
-                {priceAdvantagePercent}% below search average
-              </div>
-            )}
-
             <p className="hotel-card__price">
               {formatPrice(
                 displayPrice.price,

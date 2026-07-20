@@ -305,72 +305,6 @@ function writeStoredRankingV2(
     return "Balancing comfort, savings, location and reliability.";
   }
   
-  function calculateAverageSearchPrice(
-    evaluations:
-      SmartStayFrontendViewV2[
-        "rankedHotels"
-      ]
-  ) {
-    const validPrices =
-      evaluations
-        .map(
-          (evaluation) =>
-            evaluation.totalCost
-        )
-        .filter(
-          (
-            price
-          ): price is number => (
-            price !== null &&
-            Number.isFinite(price) &&
-            price > 0
-          )
-        );
-  
-    if (validPrices.length === 0) {
-      return null;
-    }
-  
-    const total = validPrices.reduce(
-      (sum, price) => sum + price,
-      0
-    );
-  
-    return total / validPrices.length;
-  }
-  
-  function calculatePriceAdvantagePercent(
-    totalCost:
-      number | null,
-    averageSearchPrice:
-      number | null
-  ) {
-    const hotelPrice =
-      totalCost;
-  
-    if (
-      hotelPrice === null ||
-      averageSearchPrice === null ||
-      averageSearchPrice <= 0 ||
-      hotelPrice >= averageSearchPrice
-    ) {
-      return null;
-    }
-  
-    const advantagePercent =
-      ((averageSearchPrice - hotelPrice) /
-        averageSearchPrice) *
-      100;
-  
-    if (
-      !Number.isFinite(advantagePercent) ||
-      advantagePercent < 5
-    ) {
-      return null;
-    }
-  
-    return Math.round(advantagePercent);
-  }
 
   type ResultsLoadFailure = {
     message: string;
@@ -676,14 +610,6 @@ function getHotelDetailsFailureMessage(
 const rankedHotels =
       engineView?.rankedHotels ?? [];
   
-    const averageSearchPrice =
-      useMemo(() => {
-        return calculateAverageSearchPrice(
-          rankedHotels
-        );
-      }, [
-        rankedHotels,
-      ]);
   
     const recommendationPicks =
       engineView?.recommendationPicks ?? [];
@@ -1420,11 +1346,8 @@ const rankedHotels =
                       riskLevel={evaluation.riskLevel}
                       dataConfidenceLevel={evaluation.dataConfidenceLevel}
                       badges={evaluation.badges}
-                      reasons={evaluation.reasons}
-                      priceAdvantagePercent={calculatePriceAdvantagePercent(
-                        evaluation.totalCost,
-                        averageSearchPrice
-                      )}
+                      strengths={evaluation.strengths}
+                      tradeOffs={evaluation.tradeOffs}
                       selectedOffer={
                         evaluation.selectedOffer
                       }
@@ -1625,11 +1548,8 @@ const rankedHotels =
                       riskLevel={evaluation.riskLevel}
                       dataConfidenceLevel={evaluation.dataConfidenceLevel}
                       badges={evaluation.badges}
-                      reasons={evaluation.reasons}
-                      priceAdvantagePercent={calculatePriceAdvantagePercent(
-                        evaluation.totalCost,
-                        averageSearchPrice
-                      )}
+                      strengths={evaluation.strengths}
+                      tradeOffs={evaluation.tradeOffs}
                       selectedOffer={
                         evaluation.selectedOffer
                       }
@@ -1766,11 +1686,8 @@ const rankedHotels =
                         riskLevel={evaluation.riskLevel}
                         dataConfidenceLevel={evaluation.dataConfidenceLevel}
                         badges={evaluation.badges}
-                        reasons={evaluation.reasons}
-                        priceAdvantagePercent={calculatePriceAdvantagePercent(
-                          evaluation.totalCost,
-                          averageSearchPrice
-                        )}
+                        strengths={evaluation.strengths}
+                        tradeOffs={evaluation.tradeOffs}
                         selectedOffer={
                           evaluation.selectedOffer
                         }
