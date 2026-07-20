@@ -1670,6 +1670,14 @@ function createRecommendationLabel(
     pick.role ===
       "best-sensible-saving"
   ) {
+    if (
+      pick.reasonCodes.includes(
+        "recommendation-saving-less-flexibility"
+      )
+    ) {
+      return "Best saving with less flexibility";
+    }
+
     return isMaximumComfortRecommendation(
       pick
     )
@@ -1745,6 +1753,101 @@ function createRecommendationReason(
               .priceDifferencePercent
           )
         : null;
+
+    const savingAmount =
+      typeof metrics
+        .priceDifferenceAmount ===
+        "number"
+        ? Math.abs(
+            metrics
+              .priceDifferenceAmount
+          )
+        : null;
+
+    if (
+      pick.reasonCodes.includes(
+        "recommendation-saving-less-flexibility"
+      )
+    ) {
+      const candidateEvaluation =
+        evaluationsById.get(
+          pick.hotelId
+        );
+
+      const targetEvaluation =
+        pick.comparisonTargetHotelId
+          ? evaluationsById.get(
+              pick.comparisonTargetHotelId
+            )
+          : null;
+
+      const candidateOffer =
+        candidateEvaluation
+          ?.selectedOffer ?? null;
+
+      const targetOffer =
+        targetEvaluation
+          ?.selectedOffer ?? null;
+
+      const currency =
+        candidateOffer?.currency ??
+        metrics.currency ??
+        "EUR";
+
+      const savingSummary =
+        savingAmount !== null &&
+        savingAmount > 0 &&
+        savingPercent !== null &&
+        savingPercent >= 1
+          ? (
+              "Save " +
+              formatMoney(
+                savingAmount,
+                currency
+              ) +
+              " (" +
+              formatNumber(
+                savingPercent
+              ) +
+              "%)"
+            )
+          : savingAmount !== null &&
+              savingAmount > 0
+            ? (
+                "Save " +
+                formatMoney(
+                  savingAmount,
+                  currency
+                )
+              )
+            : savingPercent !== null &&
+                savingPercent >= 1
+              ? (
+                  "Costs " +
+                  formatNumber(
+                    savingPercent
+                  ) +
+                  "% less"
+                )
+              : "Reduces the total cost";
+
+      if (
+        targetOffer?.refundable ===
+          true &&
+        candidateOffer?.refundable ===
+          false
+      ) {
+        return (
+          savingSummary +
+          ", but the selected offer is non-refundable."
+        );
+      }
+
+      return (
+        savingSummary +
+        ", but the cancellation conditions are less flexible."
+      );
+    }
 
     if (
       savingPercent !==

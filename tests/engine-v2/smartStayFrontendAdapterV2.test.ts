@@ -1492,3 +1492,164 @@ test(
     );
   }
 );
+
+test(
+  "Frontend labels a meaningful non-refundable discount as a saving with less flexibility",
+  () => {
+    const hotels =
+      HOTELS.map(
+        (hotel) => {
+          if (
+            hotel.id !==
+              "saving"
+          ) {
+            return hotel;
+          }
+
+          return {
+            ...hotel,
+            offers:
+              hotel.offers.map(
+                (offer) => ({
+                  ...offer,
+                  cancellationPolicy:
+                    "Non-refundable",
+                  refundableTag:
+                    "Non-refundable",
+                  refundable:
+                    false,
+                  freeCancellationUntil:
+                    null,
+                })
+              ),
+          };
+        }
+      );
+
+    const view =
+      buildView(
+        hotels
+      );
+
+    const saving =
+      view.recommendationPicks.find(
+        (pick) =>
+          pick.sourceRole ===
+            "best-sensible-saving"
+      );
+
+    assert.equal(
+      saving?.evaluation.hotel.id,
+      "saving"
+    );
+
+    assert.equal(
+      saving?.label,
+      "Best saving with less flexibility"
+    );
+
+    assert.equal(
+      saving?.reason,
+      "Save €80 (21.1%), but the selected offer is non-refundable."
+    );
+  }
+);
+
+test(
+  "Frontend keeps the normal Best sensible saving label for comparable conditions",
+  () => {
+    const hotels = [
+      createHotel({
+        id:
+          "comparable-best",
+
+        offerIndex:
+          40,
+
+        name:
+          "Comparable Best Hotel",
+
+        totalCost:
+          380,
+
+        stars:
+          4,
+
+        reviewScore:
+          8.9,
+
+        reviewCount:
+          900,
+
+        distance:
+          0.8,
+
+        latitude:
+          43.773,
+
+        longitude:
+          11.255,
+      }),
+
+      createHotel({
+        id:
+          "comparable-saving",
+
+        offerIndex:
+          41,
+
+        name:
+          "Comparable Saving Hotel",
+
+        totalCost:
+          300,
+
+        stars:
+          2,
+
+        reviewScore:
+          7.5,
+
+        reviewCount:
+          300,
+
+        distance:
+          1.5,
+
+        latitude:
+          43.777,
+
+        longitude:
+          11.246,
+      }),
+    ];
+
+    const view =
+      buildView(
+        hotels
+      );
+
+    const saving =
+      view.recommendationPicks.find(
+        (pick) =>
+          pick.sourceRole ===
+            "best-sensible-saving"
+      );
+
+    assert.equal(
+      saving?.evaluation.hotel.id,
+      "comparable-saving"
+    );
+
+    assert.equal(
+      saving?.label,
+      "Best sensible saving"
+    );
+
+    assert.ok(
+      saving?.reason.includes(
+        "while remaining a reliable overall match"
+      )
+    );
+  }
+);

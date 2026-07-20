@@ -231,12 +231,31 @@ type NormalizedCandidate = {
   exclusionReasonCodes: string[];
 };
 
+type SmartStaySavingOfferConditionModeV2 =
+  | "comparable"
+  | "less-flexibility";
+
+type SmartStaySavingFlexibilityPolicyV2 = {
+  allowLessFlexible: boolean;
+  minimumSavingAmount: number;
+  minimumSavingRatio: number;
+  assignmentPenalty: number;
+  requireVerifiedExperience: boolean;
+  maximumUtilityLoss: number;
+  maximumExperienceTierLoss: number;
+  maximumExperienceScoreLoss: number;
+  maximumComfortLoss: number;
+};
+
 type SavingAlternative = {
   candidate: NormalizedCandidate;
   savingAmount: number;
   savingRatio: number;
   utilityLoss: number;
   offerComparison: SmartStayOfferComparabilityEvaluationV2;
+  offerConditionMode: SmartStaySavingOfferConditionModeV2;
+  offerConditionReasonCodes: string[];
+  flexibilityPenalty: number;
   assignmentScore: number;
 };
 
@@ -291,6 +310,69 @@ const MAXIMUM_BEST_CHOICE_EXPERIENCE_DIFFERENCE =
 
 const MINIMUM_LUXURY_POSITIONING_PERCENTILE_GAP =
   15;
+
+const SAVING_FLEXIBILITY_POLICY: Readonly<
+  Record<
+    SmartStayUtilityPreferenceIdV2,
+    SmartStaySavingFlexibilityPolicyV2
+  >
+> = {
+  "maximum-comfort": {
+    allowLessFlexible: false,
+    minimumSavingAmount: Number.POSITIVE_INFINITY,
+    minimumSavingRatio: 1,
+    assignmentPenalty: 100,
+    requireVerifiedExperience: true,
+    maximumUtilityLoss: 0,
+    maximumExperienceTierLoss: 0,
+    maximumExperienceScoreLoss: 0,
+    maximumComfortLoss: 0,
+  },
+  comfort: {
+    allowLessFlexible: true,
+    minimumSavingAmount: 50,
+    minimumSavingRatio: 0.3,
+    assignmentPenalty: 10,
+    requireVerifiedExperience: true,
+    maximumUtilityLoss: 8,
+    maximumExperienceTierLoss: 1,
+    maximumExperienceScoreLoss: 12,
+    maximumComfortLoss: 15,
+  },
+  balanced: {
+    allowLessFlexible: true,
+    minimumSavingAmount: 35,
+    minimumSavingRatio: 0.2,
+    assignmentPenalty: 6,
+    requireVerifiedExperience: false,
+    maximumUtilityLoss: 10,
+    maximumExperienceTierLoss: 1,
+    maximumExperienceScoreLoss: 20,
+    maximumComfortLoss: 20,
+  },
+  savings: {
+    allowLessFlexible: true,
+    minimumSavingAmount: 10,
+    minimumSavingRatio: 0.15,
+    assignmentPenalty: 2.5,
+    requireVerifiedExperience: false,
+    maximumUtilityLoss: 15,
+    maximumExperienceTierLoss: 2,
+    maximumExperienceScoreLoss: 35,
+    maximumComfortLoss: 35,
+  },
+  "maximum-savings": {
+    allowLessFlexible: true,
+    minimumSavingAmount: 10,
+    minimumSavingRatio: 0.15,
+    assignmentPenalty: 1,
+    requireVerifiedExperience: false,
+    maximumUtilityLoss: 15,
+    maximumExperienceTierLoss: 3,
+    maximumExperienceScoreLoss: 100,
+    maximumComfortLoss: 50,
+  },
+};
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
@@ -1280,6 +1362,241 @@ function selectBestChoiceGroup(
   };
 }
 
+function resolveLessFlexibleSavingExperienceCondition(
+  candidate: NormalizedCandidate,
+  bestChoice: NormalizedCandidate,
+  policy: SmartStaySavingFlexibilityPolicyV2,
+  preferenceId: SmartStayUtilityPreferenceIdV2
+): {
+  reasonCodes: string[];
+} | null {
+  const utilityLoss =
+    candidate.utilityScore === null ||
+    bestChoice.utilityScore === null
+      ? null
+      : Math.max(
+          bestChoice.utilityScore -
+            candidate.utilityScore,
+          0
+        );
+
+  const candidateIntent =
+    candidate.budgetIntent;
+
+  const bestChoiceIntent =
+    bestChoice.budgetIntent;
+
+  const experienceTierLoss =
+    typeof candidateIntent?.experienceTierRank === "number" &&
+    Number.isFinite(
+      candidateIntent.experienceTierRank
+    ) &&
+    typeof bestChoiceIntent?.experienceTierRank === "number" &&
+    Number.isFinite(
+      bestChoiceIntent.experienceTierRank
+    )
+      ? Math.max(
+          bestChoiceIntent.experienceTierRank -
+            candidateIntent.experienceTierRank,
+          0
+        )
+      : null;
+
+  const experienceScoreLoss =
+    typeof candidateIntent?.experienceScore === "number" &&
+    Number.isFinite(
+      candidateIntent.experienceScore
+    ) &&
+    typeof bestChoiceIntent?.experienceScore === "number" &&
+    Number.isFinite(
+      bestChoiceIntent.experienceScore
+    )
+      ? Math.max(
+          bestChoiceIntent.experienceScore -
+            candidateIntent.experienceScore,
+          0
+        )
+      : null;
+
+  const comfortLoss =
+    candidate.comfort === null ||
+    bestChoice.comfort === null
+      ? null
+      : Math.max(
+          bestChoice.comfort.score -
+            candidate.comfort.score,
+          0
+        );
+
+  const experienceVerified =
+    utilityLoss !== null &&
+    experienceTierLoss !== null &&
+    experienceScoreLoss !== null &&
+    comfortLoss !== null;
+
+  if (
+    policy.requireVerifiedExperience &&
+    !experienceVerified
+  ) {
+    return null;
+  }
+
+  if (
+    utilityLoss !== null &&
+    utilityLoss >
+      policy.maximumUtilityLoss
+  ) {
+    return null;
+  }
+
+  if (
+    experienceTierLoss !== null &&
+    experienceTierLoss >
+      policy.maximumExperienceTierLoss
+  ) {
+    return null;
+  }
+
+  if (
+    experienceScoreLoss !== null &&
+    experienceScoreLoss >
+      policy.maximumExperienceScoreLoss
+  ) {
+    return null;
+  }
+
+  if (
+    comfortLoss !== null &&
+    comfortLoss >
+      policy.maximumComfortLoss
+  ) {
+    return null;
+  }
+
+  return {
+    reasonCodes: [
+      "recommendation-saving-experience-coherent",
+      `recommendation-saving-experience-policy:${preferenceId}`,
+    ],
+  };
+}
+
+function resolveSavingOfferCondition(
+  candidate: NormalizedCandidate,
+  bestChoice: NormalizedCandidate,
+  offerComparison: SmartStayOfferComparabilityEvaluationV2,
+  savingAmount: number,
+  savingRatio: number,
+  options: ResolvedOptions
+): {
+  mode: SmartStaySavingOfferConditionModeV2;
+  reasonCodes: string[];
+  assignmentPenalty: number;
+} | null {
+  const candidateOffer =
+    candidate.offerSelection?.selectedOffer ?? null;
+  const bestChoiceOffer =
+    bestChoice.offerSelection?.selectedOffer ?? null;
+
+  if (
+    !candidateOffer ||
+    !bestChoiceOffer ||
+    candidateOffer.bookable !== true ||
+    bestChoiceOffer.bookable !== true
+  ) {
+    return null;
+  }
+
+  const coreConditionsCompatible =
+    offerComparison.sameCurrency &&
+    offerComparison.costCompletenessCompatible &&
+    offerComparison.roomTierCompatible;
+
+  if (!coreConditionsCompatible) {
+    return null;
+  }
+
+  if (offerComparison.comparable) {
+    return {
+      mode: "comparable",
+      reasonCodes: [
+        "recommendation-saving-comparable-offer-conditions",
+      ],
+      assignmentPenalty: 0,
+    };
+  }
+
+  const nonRefundableDowngrade =
+    bestChoiceOffer.refundable === true &&
+    candidateOffer.refundable === false;
+
+  const cancellationWindowDowngrade =
+    bestChoiceOffer.refundable === true &&
+    bestChoiceOffer.freeCancellationUntil !== null &&
+    candidateOffer.refundable === true &&
+    candidateOffer.freeCancellationUntil === null;
+
+  if (
+    !nonRefundableDowngrade &&
+    !cancellationWindowDowngrade
+  ) {
+    return null;
+  }
+
+  const preferenceId =
+    bestChoice.source.utility.preference.id;
+
+  const policy =
+    SAVING_FLEXIBILITY_POLICY[preferenceId];
+
+  const minimumSavingAmount =
+    Math.max(
+      options.minimumSavingAmount,
+      policy.minimumSavingAmount
+    );
+
+  const minimumSavingRatio =
+    Math.max(
+      options.minimumSavingRatio,
+      policy.minimumSavingRatio
+    );
+
+  if (
+    !policy.allowLessFlexible ||
+    savingAmount < minimumSavingAmount ||
+    savingRatio < minimumSavingRatio
+  ) {
+    return null;
+  }
+
+  const experienceCondition =
+    resolveLessFlexibleSavingExperienceCondition(
+      candidate,
+      bestChoice,
+      policy,
+      preferenceId
+    );
+
+  if (experienceCondition === null) {
+    return null;
+  }
+
+  return {
+    mode: "less-flexibility",
+    reasonCodes: [
+      ...experienceCondition.reasonCodes,
+      "recommendation-saving-less-flexibility",
+      "recommendation-saving-flexibility-tradeoff-disclosed",
+      `recommendation-saving-flexibility-policy:${preferenceId}`,
+      nonRefundableDowngrade
+        ? "recommendation-saving-non-refundable-tradeoff"
+        : "recommendation-saving-cancellation-window-tradeoff",
+    ],
+    assignmentPenalty:
+      policy.assignmentPenalty,
+  };
+}
+
 function buildSavingAlternatives(
   candidates: NormalizedCandidate[],
   bestChoice: NormalizedCandidate,
@@ -1337,16 +1654,22 @@ function buildSavingAlternatives(
           candidate.offerSelection,
           bestChoice.offerSelection
         );
-      const offerComparisonCompatible =
-        !requiresExperienceParity ||
-        offerComparison.comparable;
+      const offerCondition =
+        resolveSavingOfferCondition(
+          candidate,
+          bestChoice,
+          offerComparison,
+          savingAmount,
+          savingRatio,
+          options
+        );
       if (
         savingAmount < minimumSavingAmount ||
         savingRatio < options.minimumSavingRatio ||
         utilityLoss > options.maximumSavingUtilityLoss ||
         !intentTierCompatible ||
         !intentExperienceCompatible ||
-        !offerComparisonCompatible ||
+        offerCondition === null ||
         !isLocationCompatible(
           candidate,
           bestChoice,
@@ -1359,13 +1682,20 @@ function buildSavingAlternatives(
         candidate.utilityScore +
         savingRatio * 30 -
         Math.max(utilityLoss, 0) * 0.5 -
-        candidate.riskScore * 0.05;
+        candidate.riskScore * 0.05 -
+        offerCondition.assignmentPenalty;
       return {
         candidate,
         savingAmount,
         savingRatio,
         utilityLoss,
         offerComparison,
+        offerConditionMode:
+          offerCondition.mode,
+        offerConditionReasonCodes:
+          offerCondition.reasonCodes,
+        flexibilityPenalty:
+          offerCondition.assignmentPenalty,
         assignmentScore,
       };
     })
@@ -1399,6 +1729,8 @@ function selectSavingGroup(
 
   const members = alternatives.filter(
     (alternative) =>
+      alternative.offerConditionMode ===
+        anchor.offerConditionMode &&
       anchor.assignmentScore - alternative.assignmentScore <=
         options.maximumSavingAssignmentDifference &&
       Math.abs(anchor.savingRatio - alternative.savingRatio) <=
@@ -1425,6 +1757,7 @@ function selectSavingGroup(
         "recommendation-utility-loss-within-limit",
         "recommendation-within-budget",
         "recommendation-equivalent-saving-value",
+        ...alternative.offerConditionReasonCodes,
         ...alternative.offerComparison.reasonCodes,
         ...(alternative.candidate.budgetIntent?.reasonCodes ?? []),
         ...(bestChoice.budgetIntent?.reasonCodes ?? []),

@@ -654,3 +654,50 @@ test(
   }
 );
 
+
+test(
+  "Remaining-list copy mentions near-budget alternatives only when they are visible",
+  () => {
+    const resultsSource =
+      readFileSync(
+        "src/pages/Results/Results.tsx",
+        "utf8"
+      );
+
+    assert.ok(
+      resultsSource.includes(
+        "nearBudgetHotels.length > 0"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "Near-budget alternatives are shown above."
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "These remaining verified options are ordered by SmartScore."
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "SmartStay already separated the Best Choice above."
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "Near-budget alternatives are already shown above."
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "any near-budget alternatives above."
+      )
+    );
+  }
+);

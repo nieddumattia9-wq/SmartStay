@@ -1609,8 +1609,9 @@ const rankedHotels =
                       lineHeight: 1.6,
                     }}
                   >
-                    SmartStay already separated the Best Choice and any near-budget alternatives above.
-                    Open the remaining verified list to compare the other budget-relevant stays.
+                    {nearBudgetHotels.length > 0
+                      ? "SmartStay already separated the Best Choice and near-budget alternatives above. Open the remaining verified list to compare the other budget-relevant stays."
+                      : "SmartStay already separated the Best Choice above. Open the remaining verified list to compare the other budget-relevant stays."}
                   </p>
 
                   <button
@@ -1667,7 +1668,9 @@ const rankedHotels =
                         color: "#64748b",
                       }}
                     >
-                      Near-budget alternatives are already shown above. These remaining options are ordered by SmartScore.
+                      {nearBudgetHotels.length > 0
+                        ? "Near-budget alternatives are shown above. These remaining options are ordered by SmartScore."
+                        : "These remaining verified options are ordered by SmartScore."}
                     </p>
                   </div>
 
