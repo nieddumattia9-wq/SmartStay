@@ -7,6 +7,7 @@ import type {
 
 import type {
   SmartStayUserUtilityEvaluationV2,
+  SmartStayUtilityPreferenceIdV2,
 } from "../utility/userUtilityEngine";
 
 import type {
@@ -20,6 +21,20 @@ import type {
 import type {
   SmartStayComfortFlexibilityEvaluationV2,
 } from "../comfort/comfortFlexibilityEngine";
+
+import type {
+  SmartStayBudgetIntentCandidateEvaluationV2,
+} from "../intent/budgetIntentEngine";
+
+import {
+  compareSelectedOffersV2,
+} from "../offers/intentAwareOfferSelectionV2";
+
+import type {
+  SmartStayOfferComparabilityEvaluationV2,
+  SmartStayOfferSelectionV2,
+  SmartStaySelectedOfferV2,
+} from "../offers/intentAwareOfferSelectionV2";
 
 import {
   evaluateSmartUpgradeCurveV2,
@@ -45,6 +60,8 @@ export interface SmartStayRecommendationCandidateV2 {
   priceValue?: SmartStayPriceValueEvaluationV2;
   location?: SmartStayLocationEvaluationV2;
   comfortFlexibility?: SmartStayComfortFlexibilityEvaluationV2;
+  offerSelection?: SmartStayOfferSelectionV2;
+  budgetIntent?: SmartStayBudgetIntentCandidateEvaluationV2;
   exclusionReasonCodes?: string[];
 }
 
@@ -99,6 +116,14 @@ export interface SmartStayRecommendationMetricsV2 {
   upgradeStrongestGainDimension: SmartStayUpgradeBenefitDimensionV2 | null;
   upgradeStrongestGain: number | null;
   upgradeDiminishingReturnsStart: boolean;
+
+  selectedOffer?:
+    SmartStaySelectedOfferV2 |
+    null;
+
+  offerComparisonToBestChoice?:
+    SmartStayOfferComparabilityEvaluationV2 |
+    null;
 }
 
 export interface SmartStayRecommendationEvaluationV2
@@ -135,8 +160,33 @@ export interface SmartStayRecommendationRoleGroupV2 {
   reasonCodes: string[];
 }
 
+export type SmartStayBestChoiceOrderingPolicyV2 =
+  | "maximum-comfort-price-descending"
+  | "comfort-experience-descending"
+  | "value-price-ascending";
+
+export interface SmartStayBestChoiceEquivalenceBandV2 {
+  maximumScoreDifference: number;
+  maximumConfidenceDifference: number;
+  maximumCoverageDifference: number;
+  maximumRiskDifference: number;
+  maximumExperienceDifference: number | null;
+  requiresSameExperienceTier: boolean;
+}
+
+export interface SmartStayBestChoiceGroupV2 {
+  primaryHotelId: string;
+  visibleHotelIds: string[];
+  additionalEquivalentHotelIds: string[];
+  allEquivalentHotelIds: string[];
+  orderingPolicy: SmartStayBestChoiceOrderingPolicyV2;
+  preferenceId: SmartStayUtilityPreferenceIdV2;
+  equivalenceBand: SmartStayBestChoiceEquivalenceBandV2;
+}
+
 export interface SmartStayRecommendationRolesEvaluationV2 {
   bestChoiceHotelId: string | null;
+  bestChoiceGroup: SmartStayBestChoiceGroupV2 | null;
   upgradeCurve: SmartStayUpgradeCurveEvaluationV2 | null;
   groups: SmartStayRecommendationRoleGroupV2[];
   picks: SmartStayRecommendationPickV2[];
@@ -176,6 +226,8 @@ type NormalizedCandidate = {
   cost: ComparableCost | null;
   location: LocationSignal | null;
   comfort: ComfortSignal | null;
+  offerSelection: SmartStayOfferSelectionV2 | null;
+  budgetIntent: SmartStayBudgetIntentCandidateEvaluationV2 | null;
   exclusionReasonCodes: string[];
 };
 
@@ -184,6 +236,7 @@ type SavingAlternative = {
   savingAmount: number;
   savingRatio: number;
   utilityLoss: number;
+  offerComparison: SmartStayOfferComparabilityEvaluationV2;
   assignmentScore: number;
 };
 
@@ -229,6 +282,15 @@ const ROLE_ORDER: readonly SmartStayPrimaryRecommendationRoleV2[] = [
   "best-sensible-saving",
   "worthwhile-comfort-upgrade",
 ];
+
+const MAXIMUM_COMFORT_LUXURY_EQUIVALENCE_BAND =
+  2.5;
+
+const MAXIMUM_BEST_CHOICE_EXPERIENCE_DIFFERENCE =
+  3;
+
+const MINIMUM_LUXURY_POSITIONING_PERCENTILE_GAP =
+  15;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
@@ -543,6 +605,8 @@ function normalizeCandidate(
     candidate.priceValue?.hotelId,
     candidate.location?.hotelId,
     candidate.comfortFlexibility?.hotelId,
+    candidate.offerSelection?.hotelId,
+    candidate.budgetIntent?.hotelId,
   ].filter((value): value is string => typeof value === "string");
 
   if (componentHotelIds.some((value) => value !== hotelId)) {
@@ -559,7 +623,13 @@ function normalizeCandidate(
     Number.isFinite(candidate.smartScore)
       ? clamp(candidate.smartScore, 0, 100)
       : null;
-  const recommendationScore = smartScore ?? utilityScore;
+  const intentAdjustedScore =
+    typeof candidate.budgetIntent?.intentAdjustedScore === "number" &&
+    Number.isFinite(candidate.budgetIntent.intentAdjustedScore)
+      ? clamp(candidate.budgetIntent.intentAdjustedScore, 0, 100)
+      : null;
+  const recommendationScore =
+    intentAdjustedScore ?? smartScore ?? utilityScore;
   const scoreConfidence = normalizeRatio(candidate.utility.scoreConfidence, 0);
   const evidenceCoverage = normalizeRatio(candidate.utility.evidenceCoverage, 0);
   const riskScore = clamp(
@@ -596,22 +666,281 @@ function normalizeCandidate(
       candidate.comfortFlexibility,
       options.minimumSpecializedConfidence
     ),
+    offerSelection: candidate.offerSelection ?? null,
+    budgetIntent: candidate.budgetIntent ?? null,
     exclusionReasonCodes: uniqueSorted(candidate.exclusionReasonCodes ?? []),
   };
 }
 
+function isMaximumComfortLuxuryCandidate(
+  candidate: NormalizedCandidate
+) {
+  return (
+    candidate.budgetIntent?.preferenceId === "maximum-comfort" &&
+    candidate.budgetIntent.intentLevel === "luxury" &&
+    candidate.budgetIntent.experienceTier === "luxury" &&
+    candidate.budgetIntent.meetsAspirationalMarketFloor === true &&
+    typeof candidate.budgetIntent.marketPositionPercentile === "number" &&
+    Number.isFinite(candidate.budgetIntent.marketPositionPercentile)
+  );
+}
+
+function compareBestChoiceCandidates(
+  first: NormalizedCandidate,
+  second: NormalizedCandidate
+) {
+  const firstRecommendationScore = first.recommendationScore ?? -1;
+  const secondRecommendationScore = second.recommendationScore ?? -1;
+  const recommendationScoreDifference =
+    secondRecommendationScore - firstRecommendationScore;
+  const firstExperienceScore =
+    first.budgetIntent?.experienceScore ?? null;
+  const secondExperienceScore =
+    second.budgetIntent?.experienceScore ?? null;
+  const equivalentTopExperience =
+    isMaximumComfortLuxuryCandidate(first) &&
+    isMaximumComfortLuxuryCandidate(second) &&
+    typeof firstExperienceScore === "number" &&
+    typeof secondExperienceScore === "number" &&
+    Math.abs(secondExperienceScore - firstExperienceScore) <=
+      MAXIMUM_COMFORT_LUXURY_EQUIVALENCE_BAND;
+
+  if (
+    isMaximumComfortLuxuryCandidate(first) &&
+    isMaximumComfortLuxuryCandidate(second) &&
+    typeof firstExperienceScore === "number" &&
+    typeof secondExperienceScore === "number"
+  ) {
+    const experienceScoreDifference =
+      secondExperienceScore - firstExperienceScore;
+
+    if (!equivalentTopExperience) {
+      return experienceScoreDifference;
+    }
+
+    const marketPositionDifference =
+      (second.budgetIntent?.marketPositionPercentile ?? 0) -
+      (first.budgetIntent?.marketPositionPercentile ?? 0);
+
+    if (
+      Math.abs(marketPositionDifference) >=
+      MINIMUM_LUXURY_POSITIONING_PERCENTILE_GAP
+    ) {
+      return marketPositionDifference;
+    }
+  }
+
+  return (
+    recommendationScoreDifference ||
+    (second.utilityScore ?? -1) - (first.utilityScore ?? -1) ||
+    second.scoreConfidence - first.scoreConfidence ||
+    second.evidenceCoverage - first.evidenceCoverage ||
+    first.riskScore - second.riskScore ||
+    (first.cost?.amount ?? Number.POSITIVE_INFINITY) -
+      (second.cost?.amount ?? Number.POSITIVE_INFINITY) ||
+    compareStrings(first.hotelId, second.hotelId)
+  );
+}
+
 function sortBestChoiceCandidates(candidates: NormalizedCandidate[]) {
-  return candidates.slice().sort(
-    (first, second) =>
-      (second.recommendationScore ?? -1) - (first.recommendationScore ?? -1) ||
-      (second.utilityScore ?? -1) - (first.utilityScore ?? -1) ||
+  return candidates
+    .slice()
+    .sort(compareBestChoiceCandidates);
+}
+
+function resolveBestChoiceOrderingPolicy(
+  preferenceId: SmartStayUtilityPreferenceIdV2
+): SmartStayBestChoiceOrderingPolicyV2 {
+  if (preferenceId === "maximum-comfort") {
+    return "maximum-comfort-price-descending";
+  }
+
+  if (preferenceId === "comfort") {
+    return "comfort-experience-descending";
+  }
+
+  return "value-price-ascending";
+}
+
+function requiresBestChoiceExperienceCoherence(
+  preferenceId: SmartStayUtilityPreferenceIdV2
+) {
+  return (
+    preferenceId === "maximum-comfort" ||
+    preferenceId === "comfort"
+  );
+}
+
+function isMaximumComfortLuxuryExperienceCandidate(
+  candidate: NormalizedCandidate
+) {
+  return (
+    candidate.budgetIntent?.preferenceId === "maximum-comfort" &&
+    candidate.budgetIntent.intentLevel === "luxury" &&
+    candidate.budgetIntent.experienceTier === "luxury" &&
+    typeof candidate.budgetIntent.experienceScore === "number" &&
+    Number.isFinite(candidate.budgetIntent.experienceScore)
+  );
+}
+
+function isAspirationalFloorOnlyEquivalentCandidate(
+  candidate: NormalizedCandidate,
+  anchor: NormalizedCandidate
+) {
+  const budgetIntent = candidate.budgetIntent;
+
+  return (
+    isMaximumComfortLuxuryExperienceCandidate(anchor) &&
+    isMaximumComfortLuxuryExperienceCandidate(candidate) &&
+    budgetIntent?.bestChoiceEligible === false &&
+    budgetIntent.meetsAspirationalMarketFloor === false &&
+    budgetIntent.reasonCodes.includes("experience-floor-satisfied") &&
+    budgetIntent.reasonCodes.includes("experience-tier-floor-satisfied")
+  );
+}
+
+function canJoinBestChoiceEquivalencePool(
+  candidate: NormalizedCandidate,
+  anchor: NormalizedCandidate
+) {
+  return (
+    candidate.roleEligible &&
+    hasVerifiedWithinBudget(candidate) &&
+    (
+      candidate.budgetIntent?.bestChoiceEligible !== false ||
+      isAspirationalFloorOnlyEquivalentCandidate(candidate, anchor)
+    )
+  );
+}
+
+function isBestChoiceEquivalent(
+  candidate: NormalizedCandidate,
+  anchor: NormalizedCandidate,
+  preferenceId: SmartStayUtilityPreferenceIdV2,
+  options: ResolvedOptions
+) {
+  if (candidate.hotelId === anchor.hotelId) {
+    return true;
+  }
+
+  if (
+    candidate.recommendationScore === null ||
+    anchor.recommendationScore === null ||
+    Math.round(candidate.recommendationScore) !==
+      Math.round(anchor.recommendationScore) ||
+    Math.abs(candidate.recommendationScore - anchor.recommendationScore) >
+      options.maximumBestChoiceScoreDifference ||
+    Math.abs(candidate.scoreConfidence - anchor.scoreConfidence) >
+      options.maximumBestChoiceConfidenceDifference ||
+    Math.abs(candidate.evidenceCoverage - anchor.evidenceCoverage) >
+      options.maximumBestChoiceCoverageDifference ||
+    Math.abs(candidate.riskScore - anchor.riskScore) >
+      options.maximumBestChoiceRiskDifference
+  ) {
+    return false;
+  }
+
+  if (!requiresBestChoiceExperienceCoherence(preferenceId)) {
+    return true;
+  }
+
+  const candidateIntent = candidate.budgetIntent;
+  const anchorIntent = anchor.budgetIntent;
+
+  return (
+    candidateIntent !== null &&
+    anchorIntent !== null &&
+    candidateIntent.experienceTier === anchorIntent.experienceTier &&
+    typeof candidateIntent.experienceScore === "number" &&
+    typeof anchorIntent.experienceScore === "number" &&
+    Math.abs(
+      candidateIntent.experienceScore - anchorIntent.experienceScore
+    ) <= MAXIMUM_BEST_CHOICE_EXPERIENCE_DIFFERENCE
+  );
+}
+
+function compareBestChoiceGroupMembers(
+  first: NormalizedCandidate,
+  second: NormalizedCandidate,
+  orderingPolicy: SmartStayBestChoiceOrderingPolicyV2
+) {
+  const firstCost = first.cost?.amount ?? Number.POSITIVE_INFINITY;
+  const secondCost = second.cost?.amount ?? Number.POSITIVE_INFINITY;
+  const firstExperience = first.budgetIntent?.experienceScore ?? -1;
+  const secondExperience = second.budgetIntent?.experienceScore ?? -1;
+  const firstRecommendationScore = first.recommendationScore ?? -1;
+  const secondRecommendationScore = second.recommendationScore ?? -1;
+
+  if (orderingPolicy === "maximum-comfort-price-descending") {
+    return (
+      secondCost - firstCost ||
+      secondExperience - firstExperience ||
+      secondRecommendationScore - firstRecommendationScore ||
       second.scoreConfidence - first.scoreConfidence ||
       second.evidenceCoverage - first.evidenceCoverage ||
       first.riskScore - second.riskScore ||
-      (first.cost?.amount ?? Number.POSITIVE_INFINITY) -
-        (second.cost?.amount ?? Number.POSITIVE_INFINITY) ||
       compareStrings(first.hotelId, second.hotelId)
+    );
+  }
+
+  if (orderingPolicy === "comfort-experience-descending") {
+    return (
+      secondExperience - firstExperience ||
+      secondRecommendationScore - firstRecommendationScore ||
+      firstCost - secondCost ||
+      second.scoreConfidence - first.scoreConfidence ||
+      second.evidenceCoverage - first.evidenceCoverage ||
+      first.riskScore - second.riskScore ||
+      compareStrings(first.hotelId, second.hotelId)
+    );
+  }
+
+  return (
+    firstCost - secondCost ||
+    secondRecommendationScore - firstRecommendationScore ||
+    (second.utilityScore ?? -1) - (first.utilityScore ?? -1) ||
+    second.scoreConfidence - first.scoreConfidence ||
+    second.evidenceCoverage - first.evidenceCoverage ||
+    first.riskScore - second.riskScore ||
+    compareStrings(first.hotelId, second.hotelId)
   );
+}
+
+function createBestChoiceGroupV2(
+  picks: SmartStayRecommendationPickV2[],
+  preferenceId: SmartStayUtilityPreferenceIdV2,
+  orderingPolicy: SmartStayBestChoiceOrderingPolicyV2,
+  options: ResolvedOptions
+): SmartStayBestChoiceGroupV2 {
+  const maximumVisibleCount = Math.min(
+    Math.max(options.maximumInitiallyVisiblePerGroup, 1),
+    3
+  );
+  const allEquivalentHotelIds = picks.map((pick) => pick.hotelId);
+
+  return {
+    primaryHotelId: allEquivalentHotelIds[0],
+    visibleHotelIds: allEquivalentHotelIds.slice(0, maximumVisibleCount),
+    additionalEquivalentHotelIds:
+      allEquivalentHotelIds.slice(maximumVisibleCount),
+    allEquivalentHotelIds,
+    orderingPolicy,
+    preferenceId,
+    equivalenceBand: {
+      maximumScoreDifference: options.maximumBestChoiceScoreDifference,
+      maximumConfidenceDifference:
+        options.maximumBestChoiceConfidenceDifference,
+      maximumCoverageDifference:
+        options.maximumBestChoiceCoverageDifference,
+      maximumRiskDifference: options.maximumBestChoiceRiskDifference,
+      maximumExperienceDifference:
+        requiresBestChoiceExperienceCoherence(preferenceId)
+          ? MAXIMUM_BEST_CHOICE_EXPERIENCE_DIFFERENCE
+          : null,
+      requiresSameExperienceTier:
+        requiresBestChoiceExperienceCoherence(preferenceId),
+    },
+  };
 }
 
 function canUseAsAlternative(
@@ -704,6 +1033,13 @@ function createBaseMetrics(
     upgradeStrongestGainDimension: null,
     upgradeStrongestGain: null,
     upgradeDiminishingReturnsStart: false,
+    selectedOffer:
+      candidate
+        .offerSelection
+        ?.selectedOffer ??
+      null,
+    offerComparisonToBestChoice:
+      null,
   };
 }
 
@@ -712,6 +1048,11 @@ function createComparisonMetrics(
   bestChoice: NormalizedCandidate
 ): SmartStayRecommendationMetricsV2 {
   const metrics = createBaseMetrics(candidate);
+  metrics.offerComparisonToBestChoice =
+    compareSelectedOffersV2(
+      candidate.offerSelection,
+      bestChoice.offerSelection
+    );
   if (candidate.utilityScore !== null && bestChoice.utilityScore !== null) {
     metrics.utilityDifference = round(
       candidate.utilityScore - bestChoice.utilityScore
@@ -824,36 +1165,35 @@ function selectBestChoiceGroup(
   candidates: NormalizedCandidate[],
   options: ResolvedOptions
 ) {
-  const eligibleWithinBudget = candidates.filter(
-    (candidate) => candidate.roleEligible && hasVerifiedWithinBudget(candidate)
+  const eligibleAnchors = candidates.filter(
+    (candidate) =>
+      candidate.roleEligible &&
+      hasVerifiedWithinBudget(candidate) &&
+      candidate.budgetIntent?.bestChoiceEligible !== false
   );
-  const ordered =
-    sortBestChoiceCandidates(
-      eligibleWithinBudget
-    );  const anchor = ordered[0] ?? null;
-  if (!anchor || anchor.recommendationScore === null) {
+  const anchorCandidates = sortBestChoiceCandidates(eligibleAnchors);
+  const initialAnchor = anchorCandidates[0] ?? null;
+
+  if (!initialAnchor || initialAnchor.recommendationScore === null) {
     return null;
   }
 
-  const anchorRecommendationScore = anchor.recommendationScore;
-  const anchorDisplayedScore = Math.round(anchorRecommendationScore);
-  const members = ordered.filter((candidate) => {
-    if (candidate.recommendationScore === null) {
-      return false;
-    }
-    return (
-      Math.round(candidate.recommendationScore) === anchorDisplayedScore &&
-      anchorRecommendationScore - candidate.recommendationScore <=
-        options.maximumBestChoiceScoreDifference &&
-      Math.abs(anchor.scoreConfidence - candidate.scoreConfidence) <=
-        options.maximumBestChoiceConfidenceDifference &&
-      Math.abs(anchor.evidenceCoverage - candidate.evidenceCoverage) <=
-        options.maximumBestChoiceCoverageDifference &&
-      candidate.riskScore - anchor.riskScore <=
-        options.maximumBestChoiceRiskDifference
+  const preferenceId = initialAnchor.source.utility.preference.id;
+  const orderingPolicy = resolveBestChoiceOrderingPolicy(preferenceId);
+  const members = candidates
+    .filter((candidate) =>
+      canJoinBestChoiceEquivalencePool(candidate, initialAnchor) &&
+      isBestChoiceEquivalent(
+        candidate,
+        initialAnchor,
+        preferenceId,
+        options
+      )
+    )
+    .sort((first, second) =>
+      compareBestChoiceGroupMembers(first, second, orderingPolicy)
     );
-  });
-
+  const anchor = members[0] ?? initialAnchor;
   const tieGroupId = createTieGroupId("best-choice", anchor.hotelId);
   const picks = members.map((candidate, index) =>
     createPick(
@@ -865,14 +1205,43 @@ function selectBestChoiceGroup(
       index + 1,
       [
         "recommendation-best-choice",
-        "recommendation-highest-within-budget-smart-score",        "recommendation-within-budget-required",
+        "recommendation-highest-within-budget-smart-score",
+        "recommendation-within-budget-required",
         "recommendation-equivalent-top-score",
-        candidate.smartScore === null
-          ? "recommendation-score-fallback-to-utility"
-          : "recommendation-smart-score-used",
+        `recommendation-best-choice-ordering:${orderingPolicy}`,
+        candidate.budgetIntent
+          ? "recommendation-intent-adjusted-score-used"
+          : candidate.smartScore === null
+            ? "recommendation-score-fallback-to-utility"
+            : "recommendation-smart-score-used",
         candidate.source.pareto.status === "frontier"
           ? "recommendation-pareto-frontier"
           : "recommendation-pareto-fallback",
+        ...(candidate.budgetIntent?.reasonCodes ?? []),
+        ...(candidate.budgetIntent?.bestChoiceEligible === false &&
+        isAspirationalFloorOnlyEquivalentCandidate(
+          candidate,
+          initialAnchor
+        )
+          ? [
+              "recommendation-luxury-equivalent-outside-aspirational-floor",
+            ]
+          : []),
+        ...(index === 0 &&
+        candidate.budgetIntent?.meetsAspirationalMarketFloor === true
+          ? ["recommendation-luxury-aspirational-cohort"]
+          : []),
+        ...(index === 0 &&
+        isMaximumComfortLuxuryCandidate(candidate) &&
+        members[1] &&
+        isMaximumComfortLuxuryCandidate(members[1]) &&
+        typeof candidate.budgetIntent?.marketPositionPercentile === "number" &&
+        typeof members[1].budgetIntent?.marketPositionPercentile === "number" &&
+        candidate.budgetIntent.marketPositionPercentile -
+          members[1].budgetIntent.marketPositionPercentile >=
+          MINIMUM_LUXURY_POSITIONING_PERCENTILE_GAP
+          ? ["recommendation-luxury-market-position-tiebreak"]
+          : []),
       ],
       [
         ...candidate.source.utility.evidenceIds,
@@ -882,22 +1251,31 @@ function selectBestChoiceGroup(
       createBaseMetrics(candidate)
     )
   );
+  const bestChoiceGroup = createBestChoiceGroupV2(
+    picks,
+    preferenceId,
+    orderingPolicy,
+    options
+  );
 
   return {
     anchor,
     members,
     picks,
+    bestChoiceGroup,
     group: createGroup(
       "best-choice",
       picks,
       null,
       [
         "recommendation-best-choice-group",
-        "recommendation-ranking-coherent-best-choice",        members.length > 1
+        "recommendation-ranking-coherent-best-choice",
+        `recommendation-best-choice-ordering:${orderingPolicy}`,
+        members.length > 1
           ? "recommendation-multiple-equivalent-options"
           : "recommendation-single-best-option",
       ],
-      options.maximumInitiallyVisiblePerGroup
+      Math.min(options.maximumInitiallyVisiblePerGroup, 3)
     ),
   };
 }
@@ -934,10 +1312,41 @@ function buildSavingAlternatives(
         options.minimumSavingAmount,
         bestCost.amount * options.minimumSavingRatio
       );
+      const bestChoiceIntent = bestChoice.budgetIntent;
+      const candidateIntent = candidate.budgetIntent;
+      const requiresExperienceParity =
+        bestChoiceIntent?.savingRequiresExperienceParity === true;
+      const experienceLoss =
+        typeof bestChoiceIntent?.experienceScore === "number" &&
+        typeof candidateIntent?.experienceScore === "number"
+          ? bestChoiceIntent.experienceScore - candidateIntent.experienceScore
+          : null;
+      const intentTierCompatible =
+        !requiresExperienceParity ||
+        (candidateIntent !== null &&
+          candidateIntent.savingEligible === true &&
+          candidateIntent.experienceTierRank >=
+            bestChoiceIntent.minimumSavingTierRank);
+      const intentExperienceCompatible =
+        !requiresExperienceParity ||
+        (experienceLoss !== null &&
+          experienceLoss <=
+            bestChoiceIntent.maximumSavingExperienceLoss);
+      const offerComparison =
+        compareSelectedOffersV2(
+          candidate.offerSelection,
+          bestChoice.offerSelection
+        );
+      const offerComparisonCompatible =
+        !requiresExperienceParity ||
+        offerComparison.comparable;
       if (
         savingAmount < minimumSavingAmount ||
         savingRatio < options.minimumSavingRatio ||
         utilityLoss > options.maximumSavingUtilityLoss ||
+        !intentTierCompatible ||
+        !intentExperienceCompatible ||
+        !offerComparisonCompatible ||
         !isLocationCompatible(
           candidate,
           bestChoice,
@@ -956,6 +1365,7 @@ function buildSavingAlternatives(
         savingAmount,
         savingRatio,
         utilityLoss,
+        offerComparison,
         assignmentScore,
       };
     })
@@ -1015,6 +1425,9 @@ function selectSavingGroup(
         "recommendation-utility-loss-within-limit",
         "recommendation-within-budget",
         "recommendation-equivalent-saving-value",
+        ...alternative.offerComparison.reasonCodes,
+        ...(alternative.candidate.budgetIntent?.reasonCodes ?? []),
+        ...(bestChoice.budgetIntent?.reasonCodes ?? []),
       ],
       [
         ...alternative.candidate.source.utility.evidenceIds,
@@ -1305,6 +1718,7 @@ export function evaluateRecommendationRolesV2(
   if (!bestChoiceSelection) {
     return {
       bestChoiceHotelId: null,
+      bestChoiceGroup: null,
       upgradeCurve: null,
       groups: [],
       picks: [],
@@ -1437,6 +1851,7 @@ export function evaluateRecommendationRolesV2(
 
   return {
     bestChoiceHotelId: bestChoice.hotelId,
+    bestChoiceGroup: bestChoiceSelection.bestChoiceGroup,
     upgradeCurve: upgradeSelection.curve,
     groups,
     picks,

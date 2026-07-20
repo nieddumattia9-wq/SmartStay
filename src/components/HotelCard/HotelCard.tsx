@@ -10,6 +10,10 @@ import type {
 } from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
 
 import type {
+  SmartStaySelectedOfferV2,
+} from "../../engine-v2/offers/intentAwareOfferSelectionV2";
+
+import type {
   SmartStayDataConfidenceLevelV2,
   SmartStayRiskLevelV2,
 } from "../../engine-v2/model/smartStayEvaluationV2";
@@ -21,6 +25,7 @@ type HotelCardProps = {
   dataConfidenceLevel?: SmartStayDataConfidenceLevelV2;
   badges?: SmartStayFrontendBadgeV2[];
   reasons?: string[];
+  selectedOffer?: SmartStaySelectedOfferV2 | null;
   priceAdvantagePercent?: number | null;
   detailsLoading?: boolean;
   bookingUrl?: string | null;
@@ -152,8 +157,23 @@ function getDataConfidenceModifier(
 }
 
 function getBestDisplayPrice(
-  hotel: Hotel
+  hotel: Hotel,
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
 ) {
+  if (selectedOffer) {
+    return {
+      price:
+        selectedOffer.amount,
+
+      currency:
+        selectedOffer.currency,
+
+      completeness:
+        selectedOffer.completeness,
+    };
+  }
+
   const primaryOffer =
     selectHotelOffers(
       hotel
@@ -185,6 +205,67 @@ function getBestDisplayPrice(
   };
 }
 
+function formatSelectedOfferSummary(
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
+) {
+  if (!selectedOffer) {
+    return null;
+  }
+
+  if (
+    selectedOffer.refundable ===
+      true
+  ) {
+    if (
+      selectedOffer
+        .freeCancellationUntil
+    ) {
+      const parsedDate =
+        new Date(
+          selectedOffer
+            .freeCancellationUntil
+        );
+
+      if (
+        Number.isFinite(
+          parsedDate.getTime()
+        )
+      ) {
+        return (
+          "Refundable offer selected · Free cancellation until " +
+          new Intl.DateTimeFormat(
+            "en-GB",
+            {
+              day:
+                "numeric",
+
+              month:
+                "short",
+
+              year:
+                "numeric",
+            }
+          ).format(
+            parsedDate
+          )
+        );
+      }
+    }
+
+    return "Refundable offer selected for this search";
+  }
+
+  if (
+    selectedOffer.refundable ===
+      false
+  ) {
+    return "Non-refundable offer selected for this search";
+  }
+
+  return "Offer selected by SmartStay for this search";
+}
+
 function getBadgeModifier(badge: SmartStayFrontendBadgeV2) {
   if (
     badge === "Limited Data" ||
@@ -212,6 +293,7 @@ function HotelCard({
   dataConfidenceLevel = "none",
   badges = [],
   reasons = [],
+  selectedOffer = null,
   priceAdvantagePercent = null,
   detailsLoading = false,
   bookingUrl = null,
@@ -244,13 +326,33 @@ function HotelCard({
     selectHotelOffers(hotel);
 
   const displayPrice =
-    getBestDisplayPrice(hotel);
+    getBestDisplayPrice(
+      hotel,
+      selectedOffer
+    );
+
+  const selectedOfferSummary =
+    showRecommendationLabel ||
+    selectedOffer
+      ?.selectionMode ===
+      "intent-aware-flexibility"
+      ? formatSelectedOfferSummary(
+          selectedOffer
+        )
+      : null;
+
+  const visibleBadges =
+    badges.filter(
+      (badge) =>
+        badge !==
+        "Low Risk"
+    );
 
   const hasReasons =
     reasons.length > 0;
 
   const hasBadges =
-    badges.length > 0;
+    visibleBadges.length > 0;
 
   const hasPriceAdvantage =
     typeof priceAdvantagePercent === "number" &&
@@ -338,7 +440,7 @@ function HotelCard({
 
           {hasBadges && (
             <div className="hotel-card__badges">
-              {badges.map((badge) => (
+              {visibleBadges.map((badge) => (
                 <span
                   key={badge}
                   className={`hotel-card__badge hotel-card__badge--${getBadgeModifier(badge)}`}
@@ -368,11 +470,15 @@ function HotelCard({
 
                 <div>
                   <p className="hotel-card__engine-title">
-                    Why SmartStay recommends this
+                    {showRecommendationLabel
+                      ? "Why SmartStay recommends this"
+                      : "How this stay compares"}
                   </p>
 
                   <p className="hotel-card__engine-subtitle">
-                    Based on price, location, reliability and available data.
+                    {showRecommendationLabel
+                      ? "Based on your preferences, verified offer and available data."
+                      : "Evidence-based strengths and trade-offs for this search."}
                   </p>
                 </div>
               </div>
@@ -412,6 +518,12 @@ function HotelCard({
                   ? "Total known stay cost; some mandatory charges may still be uncertain"
                   : "Price from available offer data; final mandatory charges may vary"}
             </p>
+
+            {selectedOfferSummary && (
+              <p className="hotel-card__price-note">
+                {selectedOfferSummary}
+              </p>
+            )}
           </div>
 
           {offerSelection.offers.length > 1 && (

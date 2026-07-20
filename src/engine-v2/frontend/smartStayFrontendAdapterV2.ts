@@ -19,8 +19,18 @@ import type {
 } from "../model/smartStayEvaluationV2";
 
 import type {
+  SmartStayBestChoiceGroupV2,
+  SmartStayRecommendationEvaluationV2,
   SmartStayRecommendationPickV2,
 } from "../recommendation/recommendationRolesEngine";
+
+import type {
+  SmartStaySelectedOfferV2,
+} from "../offers/intentAwareOfferSelectionV2";
+
+import type {
+  SmartStayMarketContextSnapshotV2,
+} from "../market-context/marketContextModel";
 
 export type SmartStayFrontendBadgeV2 =
   | "Smart Pick"
@@ -68,6 +78,9 @@ export interface SmartStayFrontendEvaluationV2 {
   totalCost:
     number | null;
 
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null;
+
   budgetVisibility:
     SmartStayFrontendBudgetVisibilityV2;
 
@@ -83,6 +96,9 @@ type SmartStayFrontendBaseEvaluationV2 =
   >;
 
 export interface SmartStayFrontendRecommendationPickV2 {
+  sourcePick:
+    SmartStayRecommendationPickV2;
+
   role:
     SmartStayFrontendRecommendationRoleV2;
 
@@ -151,11 +167,17 @@ export interface SmartStayFrontendViewV2 {
   analyzedHotelCount:
     number;
 
+  marketContext:
+    SmartStayMarketContextSnapshotV2;
+
   rankedHotels:
     SmartStayFrontendEvaluationV2[];
 
   recommendationPicks:
     SmartStayFrontendRecommendationPickV2[];
+
+  bestChoiceGroup:
+    SmartStayBestChoiceGroupV2 | null;
 
   budgetPolicy:
     SmartStayFrontendBudgetPolicyV2;
@@ -234,6 +256,36 @@ export interface SmartStayFrontendInputV2 {
   rooms?:
     SmartStayEngineV2SearchInput[
       "rooms"
+    ];
+
+  destinationKey?:
+    SmartStayEngineV2SearchInput[
+      "destinationKey"
+    ];
+
+  currency?:
+    SmartStayEngineV2SearchInput[
+      "currency"
+    ];
+
+  checkIn?:
+    SmartStayEngineV2SearchInput[
+      "checkIn"
+    ];
+
+  checkOut?:
+    SmartStayEngineV2SearchInput[
+      "checkOut"
+    ];
+
+  marketContextMode?:
+    SmartStayEngineV2SearchInput[
+      "marketContextMode"
+    ];
+
+  marketContextObservations?:
+    SmartStayEngineV2SearchInput[
+      "marketContextObservations"
     ];
 
   previousRankingHotelIds?:
@@ -1055,15 +1107,46 @@ function createReasons(
   );
 }
 
+function createSelectedOfferReason(
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
+) {
+  if (
+    selectedOffer?.selectionMode ===
+      "intent-aware-flexibility" &&
+    selectedOffer.refundable ===
+      true
+  ) {
+    return selectedOffer.freeCancellationUntil
+      ? "A refundable offer with verified free cancellation was selected for this search."
+      : "A refundable offer was selected for this search.";
+  }
+
+  return null;
+}
+
 function createFrontendEvaluation(
   evaluation:
     SmartStayEvaluationV2,
+  recommendationEvaluation:
+    SmartStayRecommendationEvaluationV2 | null,
   hotelNames:
     Map<
       string,
       string
     >
 ): SmartStayFrontendBaseEvaluationV2 {
+  const selectedOffer =
+    recommendationEvaluation
+      ?.metrics
+      .selectedOffer ??
+    null;
+
+  const selectedOfferReason =
+    createSelectedOfferReason(
+      selectedOffer
+    );
+
   return {
     hotel:
       evaluation.hotel,
@@ -1091,10 +1174,25 @@ function createFrontendEvaluation(
       ),
 
     reasons:
-      createReasons(
-        evaluation,
-        hotelNames
+      uniqueStable([
+        selectedOfferReason,
+        ...createReasons(
+          evaluation,
+          hotelNames
+        ),
+      ].filter(
+        (
+          reason
+        ): reason is string =>
+          Boolean(
+            reason
+          )
+      )).slice(
+        0,
+        4
       ),
+
+    selectedOffer,
 
     sourceEvaluation:
       evaluation,
@@ -1124,21 +1222,32 @@ function mapFrontendRole(
   return "best-choice";
 }
 
+function isMaximumComfortRecommendation(
+  pick:
+    SmartStayRecommendationPickV2
+) {
+  return pick.reasonCodes.includes(
+    "budget-intent-preference:maximum-comfort"
+  );
+}
+
 function createRecommendationLabel(
-  role:
-    SmartStayRecommendationPickV2[
-      "role"
-    ]
+  pick:
+    SmartStayRecommendationPickV2
 ) {
   if (
-    role ===
+    pick.role ===
       "best-sensible-saving"
   ) {
-    return "Best sensible saving";
+    return isMaximumComfortRecommendation(
+      pick
+    )
+      ? "Premium value alternative"
+      : "Best sensible saving";
   }
 
   if (
-    role ===
+    pick.role ===
       "worthwhile-comfort-upgrade"
   ) {
     return "Worthwhile comfort upgrade";
@@ -1179,11 +1288,21 @@ function createRecommendationReason(
         formatNumber(
           savingPercent
         ) +
-        "% less while remaining a reliable overall match."
+        (
+          isMaximumComfortRecommendation(
+            pick
+          )
+            ? "% less while preserving a comparable premium experience and offer conditions."
+            : "% less while remaining a reliable overall match."
+        )
       );
     }
 
-    return "Reduces the total cost without giving up too much overall trip fit.";
+    return isMaximumComfortRecommendation(
+      pick
+    )
+      ? "Preserves a comparable premium experience at a lower total cost."
+      : "Reduces the total cost without giving up too much overall trip fit.";
   }
 
   if (
@@ -1229,6 +1348,14 @@ function createRecommendationReason(
     return "Provides a meaningful comfort improvement for the extra cost.";
   }
 
+  if (
+    pick.reasonCodes.includes(
+      "budget-intent-preference:maximum-comfort"
+    )
+  ) {
+    return "Strongest coherent premium experience for your Maximum Comfort search.";
+  }
+
   return "Strongest evidence-backed match for your budget, distance and selected SmartStay balance.";
 }
 
@@ -1239,19 +1366,32 @@ function createRecommendationPicks(
     Map<
       string,
       SmartStayFrontendEvaluationV2
-    >
+    >,
+  bestChoiceGroup:
+    SmartStayBestChoiceGroupV2 | null
 ) {
   const usedHotelIds =
     new Set<
       string
     >();
+  const visibleBestChoiceHotelIds =
+    new Set(
+      bestChoiceGroup
+        ?.visibleHotelIds ??
+      []
+    );
 
   return sourcePicks
     .filter(
       (pick) =>
-        pick.primaryInGroup ||
-        pick.groupPosition ===
-          0
+        pick.role ===
+          "best-choice"
+          ? visibleBestChoiceHotelIds.has(
+              pick.hotelId
+            )
+          : pick.primaryInGroup ||
+            pick.groupPosition ===
+              0
     )
     .map(
       (pick) => {
@@ -1279,6 +1419,9 @@ function createRecommendationPicks(
           );
 
         return {
+          sourcePick:
+            pick,
+
           role,
 
           sourceRole:
@@ -1286,7 +1429,7 @@ function createRecommendationPicks(
 
           label:
             createRecommendationLabel(
-              pick.role
+              pick
             ),
 
           reason:
@@ -1315,7 +1458,59 @@ function createRecommendationPicks(
         ] -
         RECOMMENDATION_ORDER[
           second.role
-        ]
+        ] ||
+        first.sourcePick.groupPosition -
+          second.sourcePick.groupPosition ||
+        first.evaluation.hotel.id.localeCompare(
+          second.evaluation.hotel.id
+        )
+    );
+}
+
+function prioritizeBestChoiceGroup(
+  evaluations:
+    SmartStayFrontendEvaluationV2[],
+  bestChoiceGroup:
+    SmartStayBestChoiceGroupV2 | null
+) {
+  if (!bestChoiceGroup) {
+    return evaluations;
+  }
+
+  const priorityByHotelId =
+    new Map(
+      bestChoiceGroup
+        .allEquivalentHotelIds
+        .map(
+          (hotelId, index) => [
+            hotelId,
+            index,
+          ] as const
+        )
+    );
+
+  return evaluations
+    .map(
+      (evaluation, index) => ({
+        evaluation,
+        index,
+        priority:
+          priorityByHotelId.get(
+            evaluation.hotel.id
+          ) ??
+          Number.POSITIVE_INFINITY,
+      })
+    )
+    .sort(
+      (first, second) =>
+        first.priority -
+          second.priority ||
+        first.index -
+          second.index
+    )
+    .map(
+      (entry) =>
+        entry.evaluation
     );
 }
 
@@ -1377,8 +1572,23 @@ function resolveNearBudgetLimit(
 
 function resolveEvaluationTotalCost(
   evaluation:
-    SmartStayEvaluationV2
+    SmartStayEvaluationV2,
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
 ) {
+  const selectedOfferCost =
+    normalizePositiveNumber(
+      selectedOffer
+        ?.amount
+    );
+
+  if (
+    selectedOfferCost !==
+    null
+  ) {
+    return selectedOfferCost;
+  }
+
   const budgetConstraint =
     evaluation
       .constraints
@@ -2137,6 +2347,24 @@ export function buildSmartStayFrontendViewV2(
       rooms:
         input.rooms,
 
+      destinationKey:
+        input.destinationKey,
+
+      currency:
+        input.currency,
+
+      checkIn:
+        input.checkIn,
+
+      checkOut:
+        input.checkOut,
+
+      marketContextMode:
+        input.marketContextMode,
+
+      marketContextObservations:
+        input.marketContextObservations,
+
       previousRankingHotelIds:
         input
           .previousRankingHotelIds,
@@ -2163,6 +2391,19 @@ export function buildSmartStayFrontendViewV2(
       )
     );
 
+  const recommendationEvaluationsById =
+    new Map(
+      result
+        .recommendationRoles
+        .evaluations
+        .map(
+          (evaluation) => [
+            evaluation.hotelId,
+            evaluation,
+          ] as const
+        )
+    );
+
   const totalBudget =
     resolveTotalBudget(
       input.totalBudget
@@ -2179,12 +2420,18 @@ export function buildSmartStayFrontendViewV2(
         const frontendEvaluation =
           createFrontendEvaluation(
             evaluation,
+            recommendationEvaluationsById.get(
+              evaluation.hotel.id
+            ) ??
+            null,
             hotelNames
           );
 
         const totalCost =
           resolveEvaluationTotalCost(
-            evaluation
+            evaluation,
+            frontendEvaluation
+              .selectedOffer
           );
 
         return {
@@ -2288,8 +2535,13 @@ export function buildSmartStayFrontendViewV2(
     );
 
   const rankedHotels =
-    budgetVisibility
-      .visibleEvaluations;
+    prioritizeBestChoiceGroup(
+      budgetVisibility
+        .visibleEvaluations,
+      result
+        .recommendationRoles
+        .bestChoiceGroup
+    );
 
   const visibleHotelIds =
     new Set(
@@ -2304,7 +2556,10 @@ export function buildSmartStayFrontendViewV2(
       result
         .recommendationRoles
         .picks,
-      evaluationsById
+      evaluationsById,
+      result
+        .recommendationRoles
+        .bestChoiceGroup
     ).filter(
       (pick) =>
         visibleHotelIds.has(
@@ -2325,9 +2580,17 @@ export function buildSmartStayFrontendViewV2(
     analyzedHotelCount:
       input.hotels.length,
 
+    marketContext:
+      result.marketContext,
+
     rankedHotels,
 
     recommendationPicks,
+
+    bestChoiceGroup:
+      result
+        .recommendationRoles
+        .bestChoiceGroup,
 
     budgetPolicy:
       budgetVisibility

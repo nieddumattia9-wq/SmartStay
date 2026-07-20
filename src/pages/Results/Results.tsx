@@ -4,9 +4,6 @@ import {
   getEffectiveSmartStayPreference,
 } from "../../utils/smartStaySearchProfile";
 import {
-  getBestComparableStayCost,
-} from "../../utils/stayCost";
-import {
   useCallback,
   useEffect,
   useMemo,
@@ -308,25 +305,27 @@ function writeStoredRankingV2(
     return "Balancing comfort, savings, location and reliability.";
   }
   
-  function getBestHotelPrice(hotel: Hotel) {
-    return (
-      getBestComparableStayCost(
-        hotel
-      )?.amount ??
-      null
-    );
-  }
-
   function calculateAverageSearchPrice(
-    hotels: Hotel[]
+    evaluations:
+      SmartStayFrontendViewV2[
+        "rankedHotels"
+      ]
   ) {
-    const validPrices = hotels
-      .map(getBestHotelPrice)
-      .filter((price): price is number => (
-        price !== null &&
-        Number.isFinite(price) &&
-        price > 0
-      ));
+    const validPrices =
+      evaluations
+        .map(
+          (evaluation) =>
+            evaluation.totalCost
+        )
+        .filter(
+          (
+            price
+          ): price is number => (
+            price !== null &&
+            Number.isFinite(price) &&
+            price > 0
+          )
+        );
   
     if (validPrices.length === 0) {
       return null;
@@ -341,11 +340,13 @@ function writeStoredRankingV2(
   }
   
   function calculatePriceAdvantagePercent(
-    hotel: Hotel,
-    averageSearchPrice: number | null
+    totalCost:
+      number | null,
+    averageSearchPrice:
+      number | null
   ) {
     const hotelPrice =
-      getBestHotelPrice(hotel);
+      totalCost;
   
     if (
       hotelPrice === null ||
@@ -678,10 +679,7 @@ const rankedHotels =
     const averageSearchPrice =
       useMemo(() => {
         return calculateAverageSearchPrice(
-          rankedHotels.map(
-            (evaluation) =>
-              evaluation.hotel
-          )
+          rankedHotels
         );
       }, [
         rankedHotels,
@@ -1031,6 +1029,29 @@ const rankedHotels =
                   searchMeta
                     ?.nightCount ??
                   null,
+
+                destinationKey:
+                  searchMeta
+                    ?.destinationLabel ??
+                  null,
+
+                currency:
+                  searchMeta
+                    ?.currency ??
+                  null,
+
+                checkIn:
+                  searchMeta
+                    ?.checkIn ??
+                  null,
+
+                checkOut:
+                  searchMeta
+                    ?.checkOut ??
+                  null,
+
+                marketContextMode:
+                  "hybrid",
 
                 previousRankingHotelIds,
 
@@ -1401,9 +1422,12 @@ const rankedHotels =
                       badges={evaluation.badges}
                       reasons={evaluation.reasons}
                       priceAdvantagePercent={calculatePriceAdvantagePercent(
-                        evaluation.hotel,
+                        evaluation.totalCost,
                         averageSearchPrice
                       )}
+                      selectedOffer={
+                        evaluation.selectedOffer
+                      }
                       detailsLoading={
                         hotelDetailsLoading &&
                         activeDetailsHotelId ===
@@ -1603,9 +1627,12 @@ const rankedHotels =
                       badges={evaluation.badges}
                       reasons={evaluation.reasons}
                       priceAdvantagePercent={calculatePriceAdvantagePercent(
-                        evaluation.hotel,
+                        evaluation.totalCost,
                         averageSearchPrice
                       )}
+                      selectedOffer={
+                        evaluation.selectedOffer
+                      }
                       detailsLoading={
                         hotelDetailsLoading &&
                         activeDetailsHotelId ===
@@ -1741,9 +1768,12 @@ const rankedHotels =
                         badges={evaluation.badges}
                         reasons={evaluation.reasons}
                         priceAdvantagePercent={calculatePriceAdvantagePercent(
-                          evaluation.hotel,
+                          evaluation.totalCost,
                           averageSearchPrice
                         )}
+                        selectedOffer={
+                          evaluation.selectedOffer
+                        }
                         detailsLoading={
                           hotelDetailsLoading &&
                           activeDetailsHotelId ===

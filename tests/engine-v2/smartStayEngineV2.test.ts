@@ -451,6 +451,21 @@ function runPipeline(
     rooms:
       1,
 
+    destinationKey:
+      "Florence, Italy",
+
+    currency:
+      "EUR",
+
+    checkIn:
+      "2026-05-15",
+
+    checkOut:
+      "2026-05-18",
+
+    marketContextMode:
+      "hybrid",
+
     tripProfile:
       "leisure",
 
@@ -493,6 +508,50 @@ test(
     assert.equal(
       result.recommendationRoles.evaluations.length,
       HOTELS.length
+    );
+
+    assert.equal(
+      result.marketContext.destinationKey,
+      "florence-italy"
+    );
+
+    assert.equal(
+      result.marketContext.currentSearchSampleSize,
+      3
+    );
+
+    assert.equal(
+      result.marketContext.currentSearchSampleSize,
+      HOTELS.filter(
+        (hotel) =>
+          typeof hotel.distance === "number" &&
+          hotel.distance <= 5
+      ).length
+    );
+
+    assert.equal(
+      result.marketContext.source,
+      "current-search"
+    );
+
+    assert.equal(
+      result.budgetIntent.market.basis,
+      "per-room-night"
+    );
+
+    assert.equal(
+      result.budgetIntent.market.source,
+      "current-search"
+    );
+
+    assert.equal(
+      result.budgetIntent.candidateEvaluations.length,
+      HOTELS.length
+    );
+
+    assert.equal(
+      result.budgetIntent.preferenceId,
+      "balanced"
     );
 
     assert.equal(

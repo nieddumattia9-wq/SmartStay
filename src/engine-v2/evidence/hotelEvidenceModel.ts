@@ -7,8 +7,12 @@ import {
 } from "../../utils/stayCost";
 
 import {
-  selectHotelOffers,
-} from "../../utils/hotelOfferSelection";
+  selectIntentAwareHotelOfferV2,
+} from "../offers/intentAwareOfferSelectionV2";
+
+import type {
+  SmartStayOfferSelectionV2,
+} from "../offers/intentAwareOfferSelectionV2";
 
 import {
   getAccommodationCategoryFeaturePolicyV2,
@@ -44,9 +48,16 @@ export interface SmartStayHotelEvidenceInputV2 {
 
   capturedAt?:
     string | null;
+
+  offerSelectionPreferenceId?:
+    string |
+    null;
 }
 
 export interface SmartStayHotelEvidenceResultV2 {
+  offerSelection:
+    SmartStayOfferSelectionV2;
+
   facts:
     SmartStayEvidenceFactV2[];
 
@@ -474,7 +485,9 @@ function createCurrencyFact(
   provider:
     string | null,
   capturedAt:
-    string | null
+    string | null,
+  offerSelection:
+    SmartStayOfferSelectionV2
 ) {
   const hotelCurrency =
     normalizeCurrency(
@@ -483,9 +496,9 @@ function createCurrencyFact(
 
   const primaryCurrency =
     normalizeCurrency(
-      selectHotelOffers(
-        hotel
-      ).primary?.currency
+      offerSelection
+        .primary
+        ?.currency
     );
 
   const currencies =
@@ -614,12 +627,12 @@ function createCostFacts(
   provider:
     string | null,
   capturedAt:
-    string | null
+    string | null,
+  offerSelection:
+    SmartStayOfferSelectionV2
 ) {
   const primaryOffer =
-    selectHotelOffers(
-      hotel
-    ).primary;
+    offerSelection.primary;
 
   const cost =
     primaryOffer
@@ -1381,15 +1394,17 @@ function createOfferFacts(
   provider:
     string | null,
   capturedAt:
-    string | null
+    string | null,
+  offerSelection:
+    SmartStayOfferSelectionV2
 ) {
   const offers =
     hotel.offers ?? [];
 
   const primaryOffer =
-    selectHotelOffers(
-      hotel
-    ).primary?.offer ??
+    offerSelection
+      .primary
+      ?.offer ??
     null;
 
   if (
@@ -2216,6 +2231,16 @@ export function buildHotelEvidenceModelV2(
       ? input.capturedAt.trim()
       : null;
 
+  const offerSelection =
+    selectIntentAwareHotelOfferV2(
+      hotel,
+      {
+        preferenceId:
+          input
+            .offerSelectionPreferenceId,
+      }
+    );
+
   const facts:
     SmartStayEvidenceFactV2[] = [
       ...(
@@ -2226,13 +2251,15 @@ export function buildHotelEvidenceModelV2(
       createCurrencyFact(
         hotel,
         provider,
-        capturedAt
+        capturedAt,
+        offerSelection
       ),
 
       ...createCostFacts(
         hotel,
         provider,
-        capturedAt
+        capturedAt,
+        offerSelection
       ),
 
       createReviewScoreFact(
@@ -2316,7 +2343,8 @@ export function buildHotelEvidenceModelV2(
       ...createOfferFacts(
         hotel,
         provider,
-        capturedAt
+        capturedAt,
+        offerSelection
       ),
     ];
 
@@ -2357,6 +2385,8 @@ export function buildHotelEvidenceModelV2(
     );
 
   return {
+    offerSelection,
+
     facts:
       deduplicatedFacts,
 

@@ -1817,7 +1817,22 @@ function collectComparisonFacts(
       ?.evidenceIds ??
     [];
 
+  const offerPriceComparisonCompatible =
+    metrics
+      .offerComparisonToBestChoice
+      ?.comparable !==
+    false;
+
   if (
+    !offerPriceComparisonCompatible
+  ) {
+    reasonCodes.push(
+      "explanation-price-comparison-suppressed-offer-incompatible"
+    );
+  }
+
+  if (
+    offerPriceComparisonCompatible &&
     typeof metrics
       .priceDifferenceAmount ===
       "number" &&

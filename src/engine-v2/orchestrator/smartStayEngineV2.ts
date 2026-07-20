@@ -100,6 +100,28 @@ import {
   evaluateRecommendationRolesV2,
 } from "../recommendation/recommendationRolesEngine";
 
+import {
+  evaluateBudgetIntentV2,
+} from "../intent/budgetIntentEngine";
+
+import type {
+  SmartStayBudgetIntentEvaluationV2,
+} from "../intent/budgetIntentEngine";
+
+import {
+  evaluateMarketContextV2,
+} from "../market-context/marketContextEngine";
+
+import type {
+  SmartStayMarketContextModeV2,
+  SmartStayMarketContextObservationV2,
+  SmartStayMarketContextSnapshotV2,
+} from "../market-context/marketContextModel";
+
+import {
+  SMARTSTAY_LOCAL_MARKET_CONTEXT_SEED_V2,
+} from "../market-context/localMarketContextSeedV2";
+
 import type {
   SmartStayRecommendationEvaluationV2,
   SmartStayRecommendationRolesEvaluationV2,
@@ -143,7 +165,7 @@ import type {
 } from "../model/smartStayEvaluationV2";
 
 export const SMARTSTAY_ENGINE_V2_PIPELINE_VERSION =
-  "2.0.0-pipeline.2" as const;
+  "2.0.0-pipeline.9" as const;
 
 export interface SmartStayEngineV2SearchInput {
   hotels:
@@ -204,6 +226,28 @@ export interface SmartStayEngineV2SearchInput {
   capturedAt?:
     string |
     null;
+
+  destinationKey?:
+    string |
+    null;
+
+  currency?:
+    string |
+    null;
+
+  checkIn?:
+    string |
+    null;
+
+  checkOut?:
+    string |
+    null;
+
+  marketContextMode?:
+    SmartStayMarketContextModeV2;
+
+  marketContextObservations?:
+    readonly SmartStayMarketContextObservationV2[];
 }
 
 export interface SmartStayEngineV2SearchResult {
@@ -215,6 +259,12 @@ export interface SmartStayEngineV2SearchResult {
 
   evaluations:
     SmartStayEvaluationV2[];
+
+  marketContext:
+    SmartStayMarketContextSnapshotV2;
+
+  budgetIntent:
+    SmartStayBudgetIntentEvaluationV2;
 
   paretoFrontier:
     SmartStayParetoFrontierEvaluationV2;
@@ -365,6 +415,54 @@ function normalizeOptionalPositiveInteger(
   )
     ? value
     : null;
+}
+
+function resolveOfferSelectionPreferenceId(
+  input:
+    SmartStayEngineV2SearchInput
+) {
+  const supportedPreferenceIds =
+    new Set([
+      "maximum-comfort",
+      "comfort",
+      "balanced",
+      "savings",
+      "maximum-savings",
+    ]);
+
+  if (
+    typeof input.preferenceId ===
+      "string" &&
+    supportedPreferenceIds.has(
+      input.preferenceId
+    )
+  ) {
+    return input.preferenceId;
+  }
+
+  const selectedIndexMap = [
+    "maximum-comfort",
+    "comfort",
+    "balanced",
+    "savings",
+    "maximum-savings",
+  ] as const;
+
+  return (
+    typeof input.selectedIndex ===
+      "number" &&
+    Number.isInteger(
+      input.selectedIndex
+    ) &&
+    input.selectedIndex >=
+      0 &&
+    input.selectedIndex <
+      selectedIndexMap.length
+  )
+    ? selectedIndexMap[
+        input.selectedIndex
+      ]
+    : "balanced";
 }
 
 function normalizeOptionalNonNegativeInteger(
@@ -1378,7 +1476,10 @@ function createPropertyIdentityKey(
 
 function createOfferIdentityKey(
   hotel:
-    Hotel
+    Hotel,
+  selectedOfferId:
+    string |
+    null
 ) {
   const provider =
     normalizeIdentityText(
@@ -1400,6 +1501,8 @@ function createOfferIdentityKey(
     );
 
   const offerId =
+    selectedOfferId
+      ?.trim() ||
     bookableOffer
       ?.id
       .trim() ||
@@ -1442,7 +1545,9 @@ function createFoundationCandidates(
     Hotel[],
   capturedAt:
     string |
-    null
+    null,
+  offerSelectionPreferenceId:
+    string
 ): FoundationCandidate[] {
   return hotels
     .map(
@@ -1478,6 +1583,8 @@ function createFoundationCandidates(
               accommodation.evidence,
 
             capturedAt,
+
+            offerSelectionPreferenceId,
           });
 
         const reliabilityGate =
@@ -1761,6 +1868,69 @@ export function evaluateSmartStaySearchV2(
     input.hotels.length ===
     0
   ) {
+    const marketContext =
+      evaluateMarketContextV2({
+        candidates:
+          [],
+
+        totalBudget:
+          input.totalBudget,
+
+        nights:
+          input.nights,
+
+        rooms:
+          input.rooms,
+
+        destinationKey:
+          input.destinationKey ??
+          input.selectedLocation?.label ??
+          null,
+
+        currency:
+          input.currency,
+
+        checkIn:
+          input.checkIn,
+
+        checkOut:
+          input.checkOut,
+
+        capturedAt:
+          input.capturedAt,
+
+        mode:
+          input.marketContextMode,
+
+        observations: [
+          ...SMARTSTAY_LOCAL_MARKET_CONTEXT_SEED_V2.records,
+          ...(
+            input.marketContextObservations ??
+            []
+          ),
+        ],
+      });
+
+    const budgetIntent =
+      evaluateBudgetIntentV2({
+        candidates:
+          [],
+
+        totalBudget:
+          input.totalBudget,
+
+        nights:
+          input.nights,
+
+        rooms:
+          input.rooms,
+
+        preferenceId:
+          input.preferenceId,
+
+        marketContext,
+      });
+
     const paretoFrontier =
       evaluateParetoFrontierV2(
         []
@@ -1811,6 +1981,8 @@ export function evaluateSmartStaySearchV2(
       evaluations:
         [],
 
+      marketContext,
+      budgetIntent,
       paretoFrontier,
       recommendationRoles,
       explanations,
@@ -1829,7 +2001,10 @@ export function evaluateSmartStaySearchV2(
   const foundations =
     createFoundationCandidates(
       input.hotels,
-      capturedAt
+      capturedAt,
+      resolveOfferSelectionPreferenceId(
+        input
+      )
     );
 
   const peerGroups =
@@ -1862,6 +2037,147 @@ export function evaluateSmartStaySearchV2(
       peerGroups,
       input
     );
+
+  const marketContext =
+    evaluateMarketContextV2({
+      candidates:
+        candidates.map(
+          (candidate) => ({
+            hotelId:
+              candidate.hotel.id,
+
+            eligibleForPrimaryRanking:
+              candidate
+                .eligibleForPrimaryRanking,
+
+            totalCost:
+              candidate
+                .evidence
+                .offerSelection
+                .selectedOffer
+                ?.amount ??
+              candidate
+                .priceValue
+                .totalCost,
+
+            currency:
+              candidate
+                .evidence
+                .offerSelection
+                .selectedOffer
+                ?.currency ??
+              candidate
+                .priceValue
+                .currency,
+
+            accommodationCategory:
+              candidate
+                .accommodation
+                .profile
+                .category,
+
+            stars:
+              candidate
+                .quality
+                .starQuality
+                .stars,
+          })
+        ),
+
+      totalBudget:
+        input.totalBudget,
+
+      nights:
+        input.nights,
+
+      rooms:
+        input.rooms,
+
+      destinationKey:
+        input.destinationKey ??
+        input.selectedLocation?.label ??
+        null,
+
+      currency:
+        input.currency,
+
+      checkIn:
+        input.checkIn,
+
+      checkOut:
+        input.checkOut,
+
+      capturedAt,
+
+      mode:
+        input.marketContextMode,
+
+      observations: [
+        ...SMARTSTAY_LOCAL_MARKET_CONTEXT_SEED_V2.records,
+        ...(
+          input.marketContextObservations ??
+          []
+        ),
+      ],
+    });
+
+  const budgetIntent =
+    evaluateBudgetIntentV2({
+      candidates:
+        candidates.map(
+          (candidate) => ({
+            hotelId:
+              candidate.hotel.id,
+
+            eligibleForPrimaryRanking:
+              candidate
+                .eligibleForPrimaryRanking,
+
+            accommodationCategory:
+              candidate
+                .accommodation
+                .profile
+                .category,
+
+            utility:
+              candidate.utility,
+
+            priceValue:
+              candidate.priceValue,
+
+            quality:
+              candidate.quality,
+
+            location:
+              candidate.location,
+
+            comfortFlexibility:
+              candidate
+                .comfortFlexibility,
+
+            scores:
+              candidate.scores,
+          })
+        ),
+
+      totalBudget:
+        input.totalBudget,
+
+      nights:
+        input.nights,
+
+      rooms:
+        input.rooms,
+
+      preferenceId:
+        candidates[0]
+          ?.utility
+          .preference
+          .id ??
+        input.preferenceId,
+
+      marketContext,
+    });
 
   const paretoFrontier =
     evaluateParetoFrontierV2(
@@ -1929,6 +2245,19 @@ export function evaluateSmartStaySearchV2(
           comfortFlexibility:
             candidate
               .comfortFlexibility,
+
+          offerSelection:
+            candidate
+              .evidence
+              .offerSelection,
+
+          budgetIntent:
+            requireByHotelId(
+              budgetIntent
+                .candidateEvaluations,
+              candidate.hotel.id,
+              "Budget Intent V2"
+            ),
 
           exclusionReasonCodes:
             candidate
@@ -2084,7 +2413,13 @@ export function evaluateSmartStaySearchV2(
 
               offerIdentityKey:
                 createOfferIdentityKey(
-                  candidate.hotel
+                  candidate.hotel,
+                  candidate
+                    .evidence
+                    .offerSelection
+                    .selectedOffer
+                    ?.offerId ??
+                  null
                 ),
 
               exclusionReasonCodes:
@@ -2307,6 +2642,8 @@ export function evaluateSmartStaySearchV2(
       SMARTSTAY_ENGINE_V2_PIPELINE_VERSION,
 
     evaluations,
+    marketContext,
+    budgetIntent,
     paretoFrontier,
     recommendationRoles,
     explanations,
