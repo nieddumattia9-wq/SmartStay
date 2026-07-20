@@ -986,6 +986,21 @@ const rankedHotels =
                     ?.nightCount ??
                   null,
 
+                adults:
+                  searchMeta
+                    ?.adults ??
+                  null,
+
+                children:
+                  searchMeta
+                    ?.children ??
+                  null,
+
+                rooms:
+                  searchMeta
+                    ?.rooms ??
+                  null,
+
                 destinationKey:
                   searchMeta
                     ?.destinationLabel ??
@@ -1081,6 +1096,12 @@ const rankedHotels =
         ?.destinationLabel,
       searchMeta
         ?.nightCount,
+      searchMeta
+        ?.adults,
+      searchMeta
+        ?.children,
+      searchMeta
+        ?.rooms,
     ]);
 
     const handleCloseHotelDetails =
@@ -1299,6 +1320,32 @@ const rankedHotels =
                     {searchMeta.nightCount === 1
                       ? "night"
                       : "nights"}
+                  </span>
+                )}
+
+                {searchMeta.adults !== null && (
+                  <span>
+                    {searchMeta.adults}{" "}
+                    {searchMeta.adults === 1
+                      ? "adult"
+                      : "adults"}
+                    {searchMeta.children !== null &&
+                    searchMeta.children > 0
+                      ? `, ${searchMeta.children} ${
+                          searchMeta.children === 1
+                            ? "child"
+                            : "children"
+                        }`
+                      : ""}
+                  </span>
+                )}
+
+                {searchMeta.rooms !== null && (
+                  <span>
+                    {searchMeta.rooms}{" "}
+                    {searchMeta.rooms === 1
+                      ? "room"
+                      : "rooms"}
                   </span>
                 )}
 

@@ -371,6 +371,15 @@ function TripOptimizer() {
                 searchPayload.checkOut,
 
               maxDistanceKm,
+
+              adults:
+                guests.adults,
+
+              children:
+                guests.children,
+
+              rooms:
+                guests.rooms,
             }),
         };
 

@@ -26,6 +26,9 @@ export type StoredSearchMeta = {
   checkOut: string;
   nightCount: number | null;
   maxDistanceKm: number | null;
+  adults: number | null;
+  children: number | null;
+  rooms: number | null;
 };
 
 type CreateStoredSearchMetaInput = {
@@ -44,6 +47,9 @@ type CreateStoredSearchMetaInput = {
   checkIn: string;
   checkOut: string;
   maxDistanceKm: unknown;
+  adults?: unknown;
+  children?: unknown;
+  rooms?: unknown;
 };
 
 function normalizeCoordinate(
@@ -125,6 +131,92 @@ function normalizeText(
   return typeof value === "string"
     ? value.trim()
     : "";
+}
+
+function normalizePositiveInteger(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    Number(value);
+
+  if (
+    !Number.isInteger(
+      numericValue
+    ) ||
+    numericValue <= 0
+  ) {
+    return null;
+  }
+
+  return numericValue;
+}
+
+function normalizeNonNegativeInteger(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    Number(value);
+
+  if (
+    !Number.isInteger(
+      numericValue
+    ) ||
+    numericValue < 0
+  ) {
+    return null;
+  }
+
+  return numericValue;
+}
+
+function normalizeGuestComposition(
+  adultsValue: unknown,
+  childrenValue: unknown,
+  roomsValue: unknown
+) {
+  const adults =
+    normalizePositiveInteger(
+      adultsValue
+    );
+
+  const children =
+    normalizeNonNegativeInteger(
+      childrenValue
+    );
+
+  const normalizedRooms =
+    normalizePositiveInteger(
+      roomsValue
+    );
+
+  const rooms =
+    adults !== null &&
+    normalizedRooms !== null &&
+    normalizedRooms > adults
+      ? null
+      : normalizedRooms;
+
+  return {
+    adults,
+    children,
+    rooms,
+  };
 }
 
 export function normalizeTotalBudget(
@@ -295,6 +387,13 @@ export function createStoredSearchMeta(
       ?.effectivePreference ??
     legacySmartPreference;
 
+  const guestComposition =
+    normalizeGuestComposition(
+      input.adults,
+      input.children,
+      input.rooms
+    );
+
   return {
     destinationLabel:
       normalizeText(
@@ -346,6 +445,15 @@ export function createStoredSearchMeta(
       normalizeMaxDistanceKm(
         input.maxDistanceKm
       ),
+
+    adults:
+      guestComposition.adults,
+
+    children:
+      guestComposition.children,
+
+    rooms:
+      guestComposition.rooms,
   };
 }
 
@@ -391,6 +499,13 @@ export function normalizeStoredSearchMeta(
     smartStayProfile
       ?.effectivePreference ??
     legacySmartPreference;
+
+  const guestComposition =
+    normalizeGuestComposition(
+      source.adults,
+      source.children,
+      source.rooms
+    );
 
   return {
     destinationLabel:
@@ -445,5 +560,14 @@ export function normalizeStoredSearchMeta(
         source.distanceKm ??
         source.maxDistance
       ),
+
+    adults:
+      guestComposition.adults,
+
+    children:
+      guestComposition.children,
+
+    rooms:
+      guestComposition.rooms,
   };
 }
