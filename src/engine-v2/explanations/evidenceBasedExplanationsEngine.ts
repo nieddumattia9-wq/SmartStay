@@ -735,6 +735,8 @@ function collectStrengthFacts(
 
   if (
     priceValue &&
+    priceValue.costCompleteness ===
+      "reported-complete" &&
     priceValue.budget.provided ===
       true &&
     priceValue.budget.withinBudget ===

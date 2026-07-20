@@ -1117,14 +1117,18 @@ function createConstraintEvaluations(
             .priceValue
             .budget
             .withinBudget ===
-            true
-          ? "satisfied"
+            false
+          ? "exceeded"
           : candidate
               .priceValue
               .budget
               .withinBudget ===
-              false
-            ? "exceeded"
+              true &&
+            candidate
+              .priceValue
+              .costCompleteness ===
+              "reported-complete"
+            ? "satisfied"
             : "unknown";
 
   const distanceStatus:

@@ -512,17 +512,39 @@ function evaluateCostCompleteness(
   }
 
   if (
-    knownFact.value !==
+    knownFact.value ===
     "reported-complete"
   ) {
+    return true;
+  }
+
+  if (
+    knownFact.value ===
+    "reported-tax-status-unknown"
+  ) {
     accumulator.supportingWarningCodes.push(
-      "cost-not-reported-complete"
+      "cost-tax-status-unknown"
     );
 
     return false;
   }
 
-  return true;
+  if (
+    knownFact.value ===
+    "partial"
+  ) {
+    accumulator.supportingWarningCodes.push(
+      "cost-partially-known"
+    );
+
+    return false;
+  }
+
+  accumulator.supportingWarningCodes.push(
+    "cost-not-reported-complete"
+  );
+
+  return false;
 }
 
 function evaluateLocationEvidence(

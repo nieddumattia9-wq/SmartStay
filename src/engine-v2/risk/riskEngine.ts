@@ -511,6 +511,17 @@ export function evaluateRiskV2(
   }
   else if (
     completeness.value ===
+    "reported-tax-status-unknown"
+  ) {
+    addContribution(
+      contributions,
+      "tax-inclusion-status-unknown",
+      14,
+      [completeness.id]
+    );
+  }
+  else if (
+    completeness.value ===
     "partial"
   ) {
     addContribution(

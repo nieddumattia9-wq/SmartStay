@@ -7,6 +7,10 @@ import {
   selectHotelOffers,
 } from "../../utils/hotelOfferSelection";
 
+import {
+  getStayCostCompletenessPriority,
+} from "../../utils/stayCost";
+
 import type {
   ComparableHotelOffer,
   HotelOfferCompleteness,
@@ -172,14 +176,13 @@ function resolvePolicy(
   };
 }
 
-function getCompletenessPriority(completeness: HotelOfferCompleteness) {
-  if (completeness === "reported-complete") {
-    return 0;
-  }
-  if (completeness === "partial") {
-    return 1;
-  }
-  return 2;
+function getCompletenessPriority(
+  completeness:
+    HotelOfferCompleteness
+) {
+  return getStayCostCompletenessPriority(
+    completeness
+  );
 }
 
 function classifyRoomTier(roomName: unknown): SmartStayRoomTierV2 {

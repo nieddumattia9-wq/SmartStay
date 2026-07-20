@@ -3,10 +3,17 @@
   HotelOffer,
 } from "../types/hotel";
 
+import {
+  classifyStayCostCompleteness,
+  getStayCostCompletenessPriority,
+} from "./stayCost";
+
+import type {
+  StayCostCompleteness,
+} from "./stayCost";
+
 export type HotelOfferCompleteness =
-  | "reported-complete"
-  | "partial"
-  | "unknown";
+  StayCostCompleteness;
 
 export type ComparableHotelOffer = {
   offer: HotelOffer;
@@ -30,18 +37,6 @@ function isPositiveNumber(
     Number.isFinite(value) &&
     value > 0
   );
-}
-
-function getNonNegativeNumber(
-  value: unknown
-) {
-  return (
-    typeof value === "number" &&
-    Number.isFinite(value) &&
-    value >= 0
-  )
-    ? value
-    : 0;
 }
 
 function normalizeCurrency(
@@ -105,41 +100,11 @@ function getOfferAmount(
 function getOfferCompleteness(
   offer: HotelOffer
 ): HotelOfferCompleteness {
-  const excludedTaxes =
-    getNonNegativeNumber(
-      offer.excludedTaxes
-    );
-
-  const unknownTaxes =
-    getNonNegativeNumber(
-      offer.unknownTaxes
-    );
-
-  if (unknownTaxes > 0) {
-    return "partial";
-  }
-
-  if (
-    offer.taxesIncluded === true
-  ) {
-    return "reported-complete";
-  }
-
-  if (
-    offer.taxesIncluded === false &&
-    excludedTaxes > 0
-  ) {
-    return "reported-complete";
-  }
-
-  if (
-    offer.taxesIncluded === false ||
-    excludedTaxes > 0
-  ) {
-    return "partial";
-  }
-
-  return "unknown";
+  return classifyStayCostCompleteness(
+    offer.taxesIncluded,
+    offer.excludedTaxes,
+    offer.unknownTaxes
+  );
 }
 
 function createCandidate(
@@ -185,20 +150,9 @@ function getCompletenessPriority(
   completeness:
     HotelOfferCompleteness
 ) {
-  if (
-    completeness ===
-    "reported-complete"
-  ) {
-    return 0;
-  }
-
-  if (
-    completeness === "partial"
-  ) {
-    return 1;
-  }
-
-  return 2;
+  return getStayCostCompletenessPriority(
+    completeness
+  );
 }
 
 function createFingerprint(

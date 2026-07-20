@@ -528,9 +528,12 @@ function HotelCard({
               "reported-complete"
                 ? "Total stay cost based on mandatory charges reported by the provider"
                 : displayPrice.completeness ===
-                    "partial"
-                  ? "Total known stay cost; some mandatory charges may still be uncertain"
-                  : "Price from available offer data; final mandatory charges may vary"}
+                    "reported-tax-status-unknown"
+                  ? "Provider-reported stay amount; tax inclusion was not confirmed, so the final total may be higher"
+                  : displayPrice.completeness ===
+                      "partial"
+                    ? "Total known stay cost; some mandatory charges may still be uncertain"
+                    : "Price from available offer data; final mandatory charges may vary"}
             </p>
 
             {selectedOfferSummary && (

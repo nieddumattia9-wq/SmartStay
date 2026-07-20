@@ -1396,6 +1396,12 @@ function calculateTargetEvidenceConfidence(
 
   if (
     priceFacts.completeness ===
+    "reported-tax-status-unknown"
+  ) {
+    confidence *= 0.9;
+  }
+  else if (
+    priceFacts.completeness ===
     "partial"
   ) {
     confidence *= 0.85;
@@ -1739,9 +1745,12 @@ export function evaluatePriceValueV2(
   ) {
     warningCodes.push(
       priceFacts.completeness ===
-        "partial"
-        ? "target-cost-partial"
-        : "target-cost-completeness-unavailable"
+        "reported-tax-status-unknown"
+        ? "target-tax-status-unknown"
+        : priceFacts.completeness ===
+            "partial"
+          ? "target-cost-partial"
+          : "target-cost-completeness-unavailable"
     );
   }
 

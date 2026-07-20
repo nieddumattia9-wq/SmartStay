@@ -734,6 +734,13 @@ function calculateBudgetFitScore(
       );
   }
 
+  if (
+    cost.completeness ===
+    "reported-tax-status-unknown"
+  ) {
+    score -= 3;
+  }
+
   if (cost.completeness === "partial") {
     score -= 6;
   }

@@ -5,6 +5,7 @@ import type {
 
 export type StayCostCompleteness =
   | "reported-complete"
+  | "reported-tax-status-unknown"
   | "partial"
   | "unknown";
 
@@ -55,7 +56,7 @@ function normalizeCurrency(
     .toUpperCase();
 }
 
-function getCompleteness(
+export function classifyStayCostCompleteness(
   taxesIncluded:
     boolean |
     null |
@@ -95,7 +96,42 @@ function getCompleteness(
     return "partial";
   }
 
+  if (
+    taxesIncluded === null ||
+    taxesIncluded === undefined
+  ) {
+    return "reported-tax-status-unknown";
+  }
+
   return "unknown";
+}
+
+export function getStayCostCompletenessPriority(
+  completeness:
+    StayCostCompleteness
+) {
+  if (
+    completeness ===
+    "reported-complete"
+  ) {
+    return 0;
+  }
+
+  if (
+    completeness ===
+    "reported-tax-status-unknown"
+  ) {
+    return 1;
+  }
+
+  if (
+    completeness ===
+    "partial"
+  ) {
+    return 2;
+  }
+
+  return 3;
 }
 
 export function getComparableOfferAmount(
@@ -143,7 +179,7 @@ function createOfferCandidate(
       ),
 
     completeness:
-      getCompleteness(
+      classifyStayCostCompleteness(
         offer.taxesIncluded,
         offer.excludedTaxes,
         offer.unknownTaxes
@@ -191,7 +227,7 @@ function createHotelFallback(
       ),
 
     completeness:
-      getCompleteness(
+      classifyStayCostCompleteness(
         hotel.taxesIncluded,
         hotel.excludedTaxes,
         hotel.unknownTaxes

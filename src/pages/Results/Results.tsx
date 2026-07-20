@@ -677,6 +677,19 @@ const rankedHotels =
       engineView?.budgetPolicy ??
       null;
 
+    const visibleTaxStatusUnknownCount =
+      useMemo(() => {
+        return rankedHotels.filter(
+          (evaluation) =>
+            evaluation
+              .selectedOffer
+              ?.completeness ===
+            "reported-tax-status-unknown"
+        ).length;
+      }, [
+        rankedHotels,
+      ]);
+
     const hiddenNearBudgetNotUsefulCount =
       budgetPolicy
         ?.hiddenNearBudgetNotUsefulCount ??
@@ -740,6 +753,23 @@ const rankedHotels =
                 : ""
             ) +
             "." +
+            (
+              visibleTaxStatusUnknownCount >
+                0
+                ? (
+                    " " +
+                    visibleTaxStatusUnknownCount +
+                    " visible " +
+                    (
+                      visibleTaxStatusUnknownCount ===
+                        1
+                        ? "price uses"
+                        : "prices use"
+                    ) +
+                    " a provider-reported amount with tax inclusion not confirmed, so the final total may be higher."
+                  )
+                : ""
+            ) +
             (
               hiddenNearBudgetNotUsefulCount >
                 0

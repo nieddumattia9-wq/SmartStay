@@ -1230,7 +1230,9 @@ function createBadges(
 
 function createFallbackStrengths(
   evaluation:
-    SmartStayEvaluationV2
+    SmartStayEvaluationV2,
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
 ) {
   const strengths:
     string[] = [];
@@ -1255,7 +1257,9 @@ function createFallbackStrengths(
 
   if (
     budget?.status ===
-      "satisfied"
+      "satisfied" &&
+    selectedOffer?.completeness ===
+      "reported-complete"
   ) {
     strengths.push(
       "Fits within your total budget."
@@ -1429,6 +1433,31 @@ function createSelectedOfferExplanation(
   };
 }
 
+function createSelectedOfferTaxTradeOff(
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
+) {
+  if (
+    selectedOffer?.completeness ===
+    "reported-tax-status-unknown"
+  ) {
+    return (
+      "The provider reported this amount, but tax inclusion was not confirmed and the final total may be higher."
+    );
+  }
+
+  if (
+    selectedOffer?.completeness ===
+    "partial"
+  ) {
+    return (
+      "Some mandatory charges remain uncertain, so the final total may be higher."
+    );
+  }
+
+  return null;
+}
+
 function createExplanationSections(
   evaluation:
     SmartStayEvaluationV2,
@@ -1442,6 +1471,11 @@ function createExplanationSections(
 ) {
   const selectedOfferExplanation =
     createSelectedOfferExplanation(
+      selectedOffer
+    );
+
+  const selectedOfferTaxTradeOff =
+    createSelectedOfferTaxTradeOff(
       selectedOffer
     );
 
@@ -1493,7 +1527,8 @@ function createExplanationSections(
       ),
 
       ...createFallbackStrengths(
-        evaluation
+        evaluation,
+        selectedOffer
       ),
     ].filter(
       (
@@ -1509,6 +1544,8 @@ function createExplanationSections(
 
   const tradeOffs =
     uniqueExplanationReasons([
+      selectedOfferTaxTradeOff,
+
       selectedOfferExplanation
         .tradeOff,
 

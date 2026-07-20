@@ -714,9 +714,12 @@ function createCostFacts(
       "reported-complete"
       ? 0.98
       : cost.completeness ===
-          "partial"
-        ? 0.72
-        : 0.5;
+          "reported-tax-status-unknown"
+        ? 0.82
+        : cost.completeness ===
+            "partial"
+          ? 0.72
+          : 0.5;
 
   const severity:
     "information" | "warning" =

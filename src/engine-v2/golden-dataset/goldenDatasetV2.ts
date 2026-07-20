@@ -38,6 +38,7 @@ export type SmartStayGoldenScenarioKindV2 =
 
 export type SmartStayGoldenCostCompletenessV2 =
   | "reported-complete"
+  | "reported-tax-status-unknown"
   | "partial"
   | "unknown";
 
