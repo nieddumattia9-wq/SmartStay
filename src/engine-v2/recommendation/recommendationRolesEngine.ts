@@ -231,6 +231,27 @@ type NormalizedCandidate = {
   exclusionReasonCodes: string[];
 };
 
+type SmartStayBestChoiceBudgetCertaintyV2 =
+  | "verified-within-budget"
+  | "provisionally-under-budget";
+
+type SmartStayProvisionalBestChoicePolicyV2 = {
+  minimumHeadroomAmount: number;
+  minimumHeadroomRatio: number;
+  minimumRecommendationScoreAdvantage: number;
+  minimumExperienceTierAdvantage: number;
+  minimumExperienceScoreAdvantage: number;
+};
+
+type SmartStayBestChoiceAnchorSelectionV2 = {
+  anchor: NormalizedCandidate;
+  budgetCertainty: SmartStayBestChoiceBudgetCertaintyV2;
+  provisionalSelectionMode:
+    | "not-applicable"
+    | "fallback"
+    | "material-advantage";
+};
+
 type SmartStaySavingOfferConditionModeV2 =
   | "comparable"
   | "less-flexibility";
@@ -371,6 +392,49 @@ const SAVING_FLEXIBILITY_POLICY: Readonly<
     maximumExperienceTierLoss: 3,
     maximumExperienceScoreLoss: 100,
     maximumComfortLoss: 50,
+  },
+};
+
+const PROVISIONAL_BEST_CHOICE_POLICY: Readonly<
+  Record<
+    SmartStayUtilityPreferenceIdV2,
+    SmartStayProvisionalBestChoicePolicyV2
+  >
+> = {
+  "maximum-comfort": {
+    minimumHeadroomAmount: 50,
+    minimumHeadroomRatio: 0.1,
+    minimumRecommendationScoreAdvantage: 4,
+    minimumExperienceTierAdvantage: 1,
+    minimumExperienceScoreAdvantage: 4,
+  },
+  comfort: {
+    minimumHeadroomAmount: 40,
+    minimumHeadroomRatio: 0.1,
+    minimumRecommendationScoreAdvantage: 4,
+    minimumExperienceTierAdvantage: 1,
+    minimumExperienceScoreAdvantage: 4,
+  },
+  balanced: {
+    minimumHeadroomAmount: 35,
+    minimumHeadroomRatio: 0.12,
+    minimumRecommendationScoreAdvantage: 5,
+    minimumExperienceTierAdvantage: 1,
+    minimumExperienceScoreAdvantage: 5,
+  },
+  savings: {
+    minimumHeadroomAmount: 25,
+    minimumHeadroomRatio: 0.15,
+    minimumRecommendationScoreAdvantage: 5,
+    minimumExperienceTierAdvantage: 1,
+    minimumExperienceScoreAdvantage: 5,
+  },
+  "maximum-savings": {
+    minimumHeadroomAmount: 20,
+    minimumHeadroomRatio: 0.15,
+    minimumRecommendationScoreAdvantage: 5,
+    minimumExperienceTierAdvantage: 1,
+    minimumExperienceScoreAdvantage: 5,
   },
 };
 
@@ -544,6 +608,8 @@ function hasVerifiedWithinBudget(candidate: NormalizedCandidate) {
   const budget = candidate.source.priceValue?.budget;
   return (
     candidate.cost !== null &&
+    candidate.source.priceValue?.costCompleteness ===
+      "reported-complete" &&
     budget?.provided === true &&
     typeof budget.total === "number" &&
     Number.isFinite(budget.total) &&
@@ -551,6 +617,261 @@ function hasVerifiedWithinBudget(candidate: NormalizedCandidate) {
     budget.withinBudget === true &&
     candidate.cost.amount <= budget.total
   );
+}
+
+function getProvidedBudgetTotal(
+  candidate: NormalizedCandidate
+) {
+  const budget =
+    candidate.source.priceValue?.budget;
+
+  return (
+    budget?.provided === true &&
+    typeof budget.total === "number" &&
+    Number.isFinite(budget.total) &&
+    budget.total > 0
+  )
+    ? budget.total
+    : null;
+}
+
+function hasProvisionallyUnderBudget(
+  candidate: NormalizedCandidate
+) {
+  const budgetTotal =
+    getProvidedBudgetTotal(candidate);
+
+  return (
+    candidate.cost !== null &&
+    budgetTotal !== null &&
+    candidate.source.priceValue?.costCompleteness ===
+      "reported-tax-status-unknown" &&
+    candidate.source.priceValue?.budget.withinBudget ===
+      null &&
+    candidate.cost.amount <= budgetTotal
+  );
+}
+
+function getProvisionalBudgetHeadroom(
+  candidate: NormalizedCandidate
+) {
+  if (
+    !hasProvisionallyUnderBudget(candidate) ||
+    candidate.cost === null
+  ) {
+    return null;
+  }
+
+  const budgetTotal =
+    getProvidedBudgetTotal(candidate);
+
+  if (budgetTotal === null) {
+    return null;
+  }
+
+  const amount =
+    budgetTotal -
+    candidate.cost.amount;
+
+  return {
+    amount,
+    ratio:
+      amount /
+      budgetTotal,
+  };
+}
+
+function hasSafeProvisionalBudgetHeadroom(
+  candidate: NormalizedCandidate
+) {
+  const headroom =
+    getProvisionalBudgetHeadroom(candidate);
+
+  if (headroom === null) {
+    return false;
+  }
+
+  const preferenceId =
+    candidate.source.utility.preference.id;
+
+  const policy =
+    PROVISIONAL_BEST_CHOICE_POLICY[
+      preferenceId
+    ];
+
+  return (
+    headroom.amount >=
+      policy.minimumHeadroomAmount &&
+    headroom.ratio >=
+      policy.minimumHeadroomRatio
+  );
+}
+
+function getBestChoiceBudgetCertainty(
+  candidate: NormalizedCandidate
+): SmartStayBestChoiceBudgetCertaintyV2 | null {
+  if (hasVerifiedWithinBudget(candidate)) {
+    return "verified-within-budget";
+  }
+
+  if (
+    hasSafeProvisionalBudgetHeadroom(candidate)
+  ) {
+    return "provisionally-under-budget";
+  }
+
+  return null;
+}
+
+function shouldPreferProvisionalBestChoice(
+  provisional: NormalizedCandidate,
+  verified: NormalizedCandidate
+) {
+  const preferenceId =
+    provisional.source.utility.preference.id;
+
+  const policy =
+    PROVISIONAL_BEST_CHOICE_POLICY[
+      preferenceId
+    ];
+
+  const recommendationScoreAdvantage =
+    (
+      provisional.recommendationScore ??
+      Number.NEGATIVE_INFINITY
+    ) -
+    (
+      verified.recommendationScore ??
+      Number.NEGATIVE_INFINITY
+    );
+
+  if (
+    recommendationScoreAdvantage >=
+      policy.minimumRecommendationScoreAdvantage
+  ) {
+    return true;
+  }
+
+  const provisionalIntent =
+    provisional.budgetIntent;
+
+  const verifiedIntent =
+    verified.budgetIntent;
+
+  if (
+    !provisionalIntent ||
+    !verifiedIntent ||
+    typeof provisionalIntent.experienceTierRank !==
+      "number" ||
+    !Number.isFinite(
+      provisionalIntent.experienceTierRank
+    ) ||
+    typeof verifiedIntent.experienceTierRank !==
+      "number" ||
+    !Number.isFinite(
+      verifiedIntent.experienceTierRank
+    ) ||
+    typeof provisionalIntent.experienceScore !==
+      "number" ||
+    !Number.isFinite(
+      provisionalIntent.experienceScore
+    ) ||
+    typeof verifiedIntent.experienceScore !==
+      "number" ||
+    !Number.isFinite(
+      verifiedIntent.experienceScore
+    )
+  ) {
+    return false;
+  }
+
+  const tierAdvantage =
+    provisionalIntent.experienceTierRank -
+    verifiedIntent.experienceTierRank;
+
+  const experienceScoreAdvantage =
+    provisionalIntent.experienceScore -
+    verifiedIntent.experienceScore;
+
+  return (
+    tierAdvantage >=
+      policy.minimumExperienceTierAdvantage &&
+    experienceScoreAdvantage >=
+      policy.minimumExperienceScoreAdvantage &&
+    recommendationScoreAdvantage >= -1
+  );
+}
+
+function selectBestChoiceAnchor(
+  candidates: NormalizedCandidate[]
+): SmartStayBestChoiceAnchorSelectionV2 | null {
+  const eligibleCandidates =
+    candidates.filter(
+      (candidate) =>
+        candidate.roleEligible &&
+        candidate.budgetIntent
+          ?.bestChoiceEligible !== false
+    );
+
+  const verifiedAnchor =
+    sortBestChoiceCandidates(
+      eligibleCandidates.filter(
+        hasVerifiedWithinBudget
+      )
+    )[0] ??
+    null;
+
+  const provisionalAnchor =
+    sortBestChoiceCandidates(
+      eligibleCandidates.filter(
+        hasSafeProvisionalBudgetHeadroom
+      )
+    )[0] ??
+    null;
+
+  if (
+    verifiedAnchor === null &&
+    provisionalAnchor === null
+  ) {
+    return null;
+  }
+
+  if (verifiedAnchor === null) {
+    return {
+      anchor:
+        provisionalAnchor as NormalizedCandidate,
+      budgetCertainty:
+        "provisionally-under-budget",
+      provisionalSelectionMode:
+        "fallback",
+    };
+  }
+
+  if (
+    provisionalAnchor !== null &&
+    shouldPreferProvisionalBestChoice(
+      provisionalAnchor,
+      verifiedAnchor
+    )
+  ) {
+    return {
+      anchor:
+        provisionalAnchor,
+      budgetCertainty:
+        "provisionally-under-budget",
+      provisionalSelectionMode:
+        "material-advantage",
+    };
+  }
+
+  return {
+    anchor:
+      verifiedAnchor,
+    budgetCertainty:
+      "verified-within-budget",
+    provisionalSelectionMode:
+      "not-applicable",
+  };
 }
 
 function hasVerifiedBudgetOverage(candidate: NormalizedCandidate) {
@@ -883,11 +1204,14 @@ function isAspirationalFloorOnlyEquivalentCandidate(
 
 function canJoinBestChoiceEquivalencePool(
   candidate: NormalizedCandidate,
-  anchor: NormalizedCandidate
+  anchor: NormalizedCandidate,
+  budgetCertainty:
+    SmartStayBestChoiceBudgetCertaintyV2
 ) {
   return (
     candidate.roleEligible &&
-    hasVerifiedWithinBudget(candidate) &&
+    getBestChoiceBudgetCertainty(candidate) ===
+      budgetCertainty &&
     (
       candidate.budgetIntent?.bestChoiceEligible !== false ||
       isAspirationalFloorOnlyEquivalentCandidate(candidate, anchor)
@@ -1247,24 +1571,40 @@ function selectBestChoiceGroup(
   candidates: NormalizedCandidate[],
   options: ResolvedOptions
 ) {
-  const eligibleAnchors = candidates.filter(
-    (candidate) =>
-      candidate.roleEligible &&
-      hasVerifiedWithinBudget(candidate) &&
-      candidate.budgetIntent?.bestChoiceEligible !== false
-  );
-  const anchorCandidates = sortBestChoiceCandidates(eligibleAnchors);
-  const initialAnchor = anchorCandidates[0] ?? null;
+  const anchorSelection =
+    selectBestChoiceAnchor(
+      candidates
+    );
 
-  if (!initialAnchor || initialAnchor.recommendationScore === null) {
+  const initialAnchor =
+    anchorSelection?.anchor ??
+    null;
+
+  if (
+    !anchorSelection ||
+    !initialAnchor ||
+    initialAnchor.recommendationScore === null
+  ) {
     return null;
   }
+
+  const budgetCertainty =
+    anchorSelection
+      .budgetCertainty;
+
+  const provisionalSelectionMode =
+    anchorSelection
+      .provisionalSelectionMode;
 
   const preferenceId = initialAnchor.source.utility.preference.id;
   const orderingPolicy = resolveBestChoiceOrderingPolicy(preferenceId);
   const members = candidates
     .filter((candidate) =>
-      canJoinBestChoiceEquivalencePool(candidate, initialAnchor) &&
+      canJoinBestChoiceEquivalencePool(
+        candidate,
+        initialAnchor,
+        budgetCertainty
+      ) &&
       isBestChoiceEquivalent(
         candidate,
         initialAnchor,
@@ -1277,6 +1617,22 @@ function selectBestChoiceGroup(
     );
   const anchor = members[0] ?? initialAnchor;
   const tieGroupId = createTieGroupId("best-choice", anchor.hotelId);
+  const budgetReasonCodes =
+    budgetCertainty ===
+      "verified-within-budget"
+      ? [
+          "recommendation-highest-within-budget-smart-score",
+          "recommendation-within-budget-required",
+        ]
+      : [
+          "recommendation-provisionally-under-budget",
+          "recommendation-budget-not-verified",
+          "recommendation-provisional-headroom-satisfied",
+          provisionalSelectionMode ===
+            "material-advantage"
+            ? "recommendation-provisional-material-advantage"
+            : "recommendation-provisional-budget-fallback",
+        ];
   const picks = members.map((candidate, index) =>
     createPick(
       candidate,
@@ -1287,8 +1643,7 @@ function selectBestChoiceGroup(
       index + 1,
       [
         "recommendation-best-choice",
-        "recommendation-highest-within-budget-smart-score",
-        "recommendation-within-budget-required",
+        ...budgetReasonCodes,
         "recommendation-equivalent-top-score",
         `recommendation-best-choice-ordering:${orderingPolicy}`,
         candidate.budgetIntent
@@ -1352,6 +1707,10 @@ function selectBestChoiceGroup(
       [
         "recommendation-best-choice-group",
         "recommendation-ranking-coherent-best-choice",
+        budgetCertainty ===
+          "verified-within-budget"
+          ? "recommendation-verified-budget-best-choice-group"
+          : "recommendation-provisional-budget-best-choice-group",
         `recommendation-best-choice-ordering:${orderingPolicy}`,
         members.length > 1
           ? "recommendation-multiple-equivalent-options"
@@ -2062,6 +2421,7 @@ export function evaluateRecommendationRolesV2(
         reasonCodes: uniqueSorted([
           ...candidate.exclusionReasonCodes,
           "recommendation-no-eligible-within-budget-best-choice",
+          "recommendation-no-budget-safe-best-choice",
         ]),
         comparisonTargetHotelId: null,
         evidenceIds: uniqueSorted([
@@ -2157,6 +2517,19 @@ export function evaluateRecommendationRolesV2(
         reasonCodes.push("recommendation-pareto-dominated");
       } else if (candidate.source.pareto.status === "unknown") {
         reasonCodes.push("recommendation-pareto-not-frontier");
+      } else if (
+        hasProvisionallyUnderBudget(candidate) &&
+        !hasSafeProvisionalBudgetHeadroom(candidate)
+      ) {
+        reasonCodes.push(
+          "recommendation-provisional-headroom-insufficient"
+        );
+      } else if (
+        hasSafeProvisionalBudgetHeadroom(candidate)
+      ) {
+        reasonCodes.push(
+          "recommendation-provisional-budget-not-selected"
+        );
       } else if (!hasVerifiedWithinBudget(candidate) && !hasVerifiedBudgetOverage(candidate)) {
         reasonCodes.push("recommendation-budget-status-unverified");
       } else {

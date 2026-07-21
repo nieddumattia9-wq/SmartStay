@@ -551,7 +551,10 @@ function createBudgetEvaluation(
   totalCost:
     number | null,
   budgetTotal:
-    number | null
+    number | null,
+  costCompleteness:
+    string | null =
+      null
 ): SmartStayBudgetEvaluationV2 {
   if (
     budgetTotal === null ||
@@ -599,6 +602,15 @@ function createBudgetEvaluation(
     totalCost /
     budgetTotal;
 
+  const withinBudget =
+    totalCost >
+      budgetTotal
+      ? false
+      : costCompleteness ===
+          "reported-complete"
+        ? true
+        : null;
+
   return {
     provided:
       true,
@@ -608,9 +620,7 @@ function createBudgetEvaluation(
         budgetTotal
       ),
 
-    withinBudget:
-      totalCost <=
-      budgetTotal,
+    withinBudget,
 
     differenceAmount:
       round(
@@ -1709,7 +1719,8 @@ export function evaluatePriceValueV2(
   const budget =
     createBudgetEvaluation(
       priceFacts.totalCost,
-      budgetTotal
+      budgetTotal,
+      priceFacts.completeness
     );
 
   const relativePrice =

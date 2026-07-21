@@ -52,6 +52,7 @@ export type SmartStayFrontendRecommendationRoleV2 =
 export type SmartStayFrontendBudgetVisibilityV2 =
   | "not-set"
   | "within-budget"
+  | "provisionally-under-budget"
   | "near-budget"
   | "far-over-budget"
   | "unverified";
@@ -136,6 +137,9 @@ export interface SmartStayFrontendBudgetPolicyV2 {
     number;
 
   withinBudgetVisibleCount:
+    number;
+
+  provisionalUnderBudgetVisibleCount:
     number;
 
   nearBudgetCandidateCount:
@@ -2072,6 +2076,18 @@ function createRecommendationReason(
 
   if (
     pick.reasonCodes.includes(
+      "recommendation-provisionally-under-budget"
+    )
+  ) {
+    return isMaximumComfortRecommendation(
+      pick
+    )
+      ? "Strongest coherent premium experience among stays whose provider-reported amount is below your budget; tax inclusion was not confirmed."
+      : "Strongest overall match among stays whose provider-reported amount is below your budget; tax inclusion was not confirmed.";
+  }
+
+  if (
+    pick.reasonCodes.includes(
       "budget-intent-preference:maximum-comfort"
     )
   ) {
@@ -2405,7 +2421,13 @@ function classifyBudgetVisibility(
   totalBudget:
     number | null,
   nearBudgetLimit:
-    number | null
+    number | null,
+  budgetConstraintStatus:
+    | "not-set"
+    | "not-applicable"
+    | "satisfied"
+    | "exceeded"
+    | "unknown"
 ): SmartStayFrontendBudgetVisibilityV2 {
   if (
     totalBudget ===
@@ -2422,10 +2444,28 @@ function classifyBudgetVisibility(
   }
 
   if (
+    budgetConstraintStatus ===
+      "satisfied" &&
+    totalCost <=
+      totalBudget
+  ) {
+    return "within-budget";
+  }
+
+  if (
+    budgetConstraintStatus ===
+      "unknown" &&
+    totalCost <=
+      totalBudget
+  ) {
+    return "provisionally-under-budget";
+  }
+
+  if (
     totalCost <=
     totalBudget
   ) {
-    return "within-budget";
+    return "unverified";
   }
 
   if (
@@ -2455,19 +2495,26 @@ function getBudgetVisibilityOrder(
 
   if (
     visibility ===
-    "near-budget"
+    "provisionally-under-budget"
   ) {
     return 1;
   }
 
   if (
     visibility ===
-    "unverified"
+    "near-budget"
   ) {
     return 2;
   }
 
-  return 3;
+  if (
+    visibility ===
+    "unverified"
+  ) {
+    return 3;
+  }
+
+  return 4;
 }
 
 function compareBudgetVisibleEvaluations(
@@ -2833,6 +2880,9 @@ function applyBudgetVisibilityPolicy(
         withinBudgetVisibleCount:
           evaluations.length,
 
+        provisionalUnderBudgetVisibleCount:
+          0,
+
         nearBudgetCandidateCount:
           0,
 
@@ -2872,6 +2922,18 @@ function applyBudgetVisibilityPolicy(
         compareBudgetVisibleEvaluations
       );
 
+  const provisionallyUnderBudget =
+    evaluations
+      .filter(
+        (evaluation) =>
+          evaluation
+            .budgetVisibility ===
+          "provisionally-under-budget"
+      )
+      .sort(
+        compareBudgetVisibleEvaluations
+      );
+
   const nearBudgetCandidates =
     evaluations
       .filter(
@@ -2885,7 +2947,10 @@ function applyBudgetVisibilityPolicy(
       );
 
   const nearBudgetReference =
-    withinBudget.find(
+    [
+      ...withinBudget,
+      ...provisionallyUnderBudget,
+    ].find(
       (evaluation) =>
         evaluation
           .sourceEvaluation
@@ -2894,6 +2959,7 @@ function applyBudgetVisibilityPolicy(
         "best-choice"
     ) ??
     withinBudget[0] ??
+    provisionallyUnderBudget[0] ??
     null;
 
   const usefulNearBudgetCandidates =
@@ -2960,6 +3026,7 @@ function applyBudgetVisibilityPolicy(
   return {
     visibleEvaluations: [
       ...withinBudget,
+      ...provisionallyUnderBudget,
       ...visibleNearBudget,
     ],
 
@@ -3003,6 +3070,9 @@ function applyBudgetVisibilityPolicy(
 
       withinBudgetVisibleCount:
         withinBudget.length,
+
+      provisionalUnderBudgetVisibleCount:
+        provisionallyUnderBudget.length,
 
       nearBudgetCandidateCount:
         nearBudgetCandidates.length,
@@ -3157,6 +3227,17 @@ export function buildSmartStayFrontendViewV2(
               .selectedOffer
           );
 
+        const budgetConstraintStatus =
+          evaluation
+            .constraints
+            .find(
+              (constraint) =>
+                constraint.kind ===
+                "budget"
+            )
+            ?.status ??
+          "unknown";
+
         return {
           ...frontendEvaluation,
 
@@ -3166,7 +3247,8 @@ export function buildSmartStayFrontendViewV2(
             classifyBudgetVisibility(
               totalCost,
               totalBudget,
-              nearBudgetLimit
+              nearBudgetLimit,
+              budgetConstraintStatus
             ),
         };
       }

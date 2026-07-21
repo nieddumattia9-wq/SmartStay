@@ -717,28 +717,65 @@ const rankedHotels =
         .length ??
       0;
 
+    const provisionalUnderBudgetVisibleCount =
+      budgetPolicy
+        ?.provisionalUnderBudgetVisibleCount ??
+      0;
+
+    const otherVisibleTaxStatusUnknownCount =
+      Math.max(
+        visibleTaxStatusUnknownCount -
+          provisionalUnderBudgetVisibleCount,
+        0
+      );
+
     const budgetVisibilitySummary =
       budgetPolicy &&
       budgetPolicy.totalBudget !==
         null
         ? (
-            budgetPolicy
-              .withinBudgetVisibleCount +
-            " " +
             (
               budgetPolicy
-                .withinBudgetVisibleCount ===
-                1
-                ? "stay fits"
-                : "stays fit"
+                .withinBudgetVisibleCount >
+                0
+                ? (
+                    budgetPolicy
+                      .withinBudgetVisibleCount +
+                    " " +
+                    (
+                      budgetPolicy
+                        .withinBudgetVisibleCount ===
+                        1
+                        ? "stay fits"
+                        : "stays fit"
+                    ) +
+                    " your budget."
+                  )
+                : "No stay has a fully verified total within your budget."
             ) +
-            " your budget" +
+            (
+              provisionalUnderBudgetVisibleCount >
+                0
+                ? (
+                    " " +
+                    provisionalUnderBudgetVisibleCount +
+                    " additional " +
+                    (
+                      provisionalUnderBudgetVisibleCount ===
+                        1
+                        ? "stay has a provider-reported amount"
+                        : "stays have provider-reported amounts"
+                    ) +
+                    " below your budget with tax inclusion not confirmed, so the final total may be higher."
+                  )
+                : ""
+            ) +
             (
               budgetPolicy
                 .nearBudgetVisibleCount >
                 0
                 ? (
-                    ", plus " +
+                    " " +
                     budgetPolicy
                       .nearBudgetVisibleCount +
                     " near-budget " +
@@ -746,22 +783,21 @@ const rankedHotels =
                       budgetPolicy
                         .nearBudgetVisibleCount ===
                         1
-                        ? "alternative"
-                        : "alternatives"
+                        ? "alternative remains visible."
+                        : "alternatives remain visible."
                     )
                   )
                 : ""
             ) +
-            "." +
             (
-              visibleTaxStatusUnknownCount >
+              otherVisibleTaxStatusUnknownCount >
                 0
                 ? (
                     " " +
-                    visibleTaxStatusUnknownCount +
-                    " visible " +
+                    otherVisibleTaxStatusUnknownCount +
+                    " other visible " +
                     (
-                      visibleTaxStatusUnknownCount ===
+                      otherVisibleTaxStatusUnknownCount ===
                         1
                         ? "price uses"
                         : "prices use"
