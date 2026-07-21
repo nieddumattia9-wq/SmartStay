@@ -268,6 +268,12 @@ type SmartStaySavingFlexibilityPolicyV2 = {
   maximumComfortLoss: number;
 };
 
+type SmartStayResolvedSavingFlexibilityPolicyV2 =
+  SmartStaySavingFlexibilityPolicyV2 & {
+    contextReasonCodes:
+      string[];
+  };
+
 type SavingAlternative = {
   candidate: NormalizedCandidate;
   savingAmount: number;
@@ -437,6 +443,129 @@ const PROVISIONAL_BEST_CHOICE_POLICY: Readonly<
     minimumExperienceScoreAdvantage: 5,
   },
 };
+
+
+function resolveSavingFlexibilityPolicy(
+  candidate:
+    NormalizedCandidate,
+  bestChoice:
+    NormalizedCandidate,
+  preferenceId:
+    SmartStayUtilityPreferenceIdV2
+): SmartStayResolvedSavingFlexibilityPolicyV2 {
+  const base =
+    SAVING_FLEXIBILITY_POLICY[
+      preferenceId
+    ];
+
+  const context =
+    candidate
+      .source
+      .comfortFlexibility
+      ?.flexibilityContext ??
+    bestChoice
+      .source
+      .comfortFlexibility
+      ?.flexibilityContext ??
+    null;
+
+  const multiplier =
+    context
+      ?.nonRefundablePenaltyMultiplier ??
+    1;
+
+  if (
+    preferenceId ===
+    "maximum-comfort"
+  ) {
+    if (
+      multiplier >
+      0.35
+    ) {
+      return {
+        ...base,
+
+        contextReasonCodes:
+          [],
+      };
+    }
+
+    return {
+      allowLessFlexible:
+        true,
+
+      minimumSavingAmount:
+        75,
+
+      minimumSavingRatio:
+        0.25,
+
+      assignmentPenalty:
+        8,
+
+      requireVerifiedExperience:
+        true,
+
+      maximumUtilityLoss:
+        3,
+
+      maximumExperienceTierLoss:
+        0,
+
+      maximumExperienceScoreLoss:
+        6,
+
+      maximumComfortLoss:
+        15,
+
+      contextReasonCodes: [
+        "recommendation-saving-flexibility-contextualized",
+        `recommendation-saving-cohort:${context?.cohortMode ?? "search-market"}`,
+        `recommendation-saving-lead-time:${context?.leadTimeBand ?? "unknown"}`,
+        `recommendation-saving-market-refundability:${context?.marketAvailability ?? "unknown"}`,
+      ],
+    };
+  }
+
+  if (
+    multiplier >=
+    1
+  ) {
+    return {
+      ...base,
+
+      contextReasonCodes:
+        [],
+    };
+  }
+
+  const thresholdMultiplier =
+    0.7 +
+    multiplier *
+      0.3;
+
+  return {
+    ...base,
+
+    minimumSavingAmount:
+      base.minimumSavingAmount *
+      thresholdMultiplier,
+
+    minimumSavingRatio:
+      base.minimumSavingRatio *
+      thresholdMultiplier,
+
+    assignmentPenalty:
+      base.assignmentPenalty *
+      multiplier,
+
+    contextReasonCodes: [
+      "recommendation-saving-flexibility-contextualized",
+      `recommendation-saving-lead-time:${context?.leadTimeBand ?? "unknown"}`,
+      `recommendation-saving-market-refundability:${context?.marketAvailability ?? "unknown"}`,
+    ],
+  };
+}
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
@@ -1906,7 +2035,11 @@ function resolveSavingOfferCondition(
     bestChoice.source.utility.preference.id;
 
   const policy =
-    SAVING_FLEXIBILITY_POLICY[preferenceId];
+    resolveSavingFlexibilityPolicy(
+      candidate,
+      bestChoice,
+      preferenceId
+    );
 
   const minimumSavingAmount =
     Math.max(
@@ -1944,6 +2077,7 @@ function resolveSavingOfferCondition(
     mode: "less-flexibility",
     reasonCodes: [
       ...experienceCondition.reasonCodes,
+      ...policy.contextReasonCodes,
       "recommendation-saving-less-flexibility",
       "recommendation-saving-flexibility-tradeoff-disclosed",
       `recommendation-saving-flexibility-policy:${preferenceId}`,

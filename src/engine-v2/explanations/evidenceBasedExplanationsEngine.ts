@@ -1623,6 +1623,41 @@ function collectWeaknessFacts(
     refundableFacts.length >
     0
   ) {
+    const flexibilityContext =
+      candidate
+        .comfortFlexibility
+        ?.flexibilityContext ??
+      null;
+
+    const closeIn =
+      flexibilityContext
+        ?.leadTimeBand ===
+        "same-day" ||
+      flexibilityContext
+        ?.leadTimeBand ===
+        "last-minute" ||
+      flexibilityContext
+        ?.leadTimeBand ===
+        "short-notice";
+
+    const limitedMarket =
+      flexibilityContext
+        ?.marketAvailability ===
+        "scarce" ||
+      flexibilityContext
+        ?.marketAvailability ===
+        "limited";
+
+    const messageKey =
+      closeIn &&
+      limitedMarket
+        ? "smartstay.explanation.weakness.non_refundable_close_in_limited"
+        : closeIn
+          ? "smartstay.explanation.weakness.non_refundable_close_in"
+          : limitedMarket
+            ? "smartstay.explanation.weakness.non_refundable_limited_market"
+            : "smartstay.explanation.weakness.non_refundable";
+
     addIfPresent(
       facts,
       createFactCandidate(
@@ -1633,8 +1668,7 @@ function collectWeaknessFacts(
           code:
             "explanation-weakness-non-refundable",
 
-          messageKey:
-            "smartstay.explanation.weakness.non_refundable",
+          messageKey,
 
           value:
             false,
@@ -1655,7 +1689,14 @@ function collectWeaknessFacts(
             ),
 
           priority:
-            78,
+            flexibilityContext
+              ?.nonRefundablePenaltyMultiplier !==
+              undefined &&
+            flexibilityContext
+              .nonRefundablePenaltyMultiplier <
+              1
+              ? 68
+              : 78,
 
           confidence:
             Math.max(

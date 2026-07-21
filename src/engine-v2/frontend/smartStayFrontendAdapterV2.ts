@@ -283,6 +283,11 @@ export interface SmartStayFrontendInputV2 {
       "checkIn"
     ];
 
+  bookingReferenceAt?:
+    SmartStayEngineV2SearchInput[
+      "bookingReferenceAt"
+    ];
+
   checkOut?:
     SmartStayEngineV2SearchInput[
       "checkOut"
@@ -756,6 +761,30 @@ function formatExplanationFact(
     return value
       ? `Exceeds your total budget by ${value}.`
       : "Exceeds your total budget.";
+  }
+
+  if (
+    key.includes(
+      "non_refundable_close_in_limited"
+    )
+  ) {
+    return "The selected offer is non-refundable, but flexible alternatives are limited for these close-in dates.";
+  }
+
+  if (
+    key.includes(
+      "non_refundable_close_in"
+    )
+  ) {
+    return "The selected offer is non-refundable. The short booking window reduces the practical value of cancellation flexibility.";
+  }
+
+  if (
+    key.includes(
+      "non_refundable_limited_market"
+    )
+  ) {
+    return "The selected offer is non-refundable, but comparable flexible alternatives are limited for these dates.";
   }
 
   if (
@@ -1437,6 +1466,72 @@ function createSelectedOfferExplanation(
   };
 }
 
+function createContextualSelectedOfferTradeOff(
+  evaluation:
+    SmartStayEvaluationV2,
+  selectedOffer:
+    SmartStaySelectedOfferV2 | null
+) {
+  if (
+    selectedOffer?.refundable !==
+    false
+  ) {
+    return null;
+  }
+
+  const flexibilityContext =
+    evaluation
+      .flexibilityContext;
+
+  const closeIn =
+    flexibilityContext
+      ?.leadTimeBand ===
+      "same-day" ||
+    flexibilityContext
+      ?.leadTimeBand ===
+      "last-minute" ||
+    flexibilityContext
+      ?.leadTimeBand ===
+      "short-notice";
+
+  const limitedMarket =
+    flexibilityContext
+      ?.marketAvailability ===
+      "scarce" ||
+    flexibilityContext
+      ?.marketAvailability ===
+      "limited";
+
+  if (
+    closeIn &&
+    limitedMarket
+  ) {
+    return (
+      "The selected offer is non-refundable, but flexible alternatives are limited for these close-in dates."
+    );
+  }
+
+  if (
+    closeIn
+  ) {
+    return (
+      "The selected offer is non-refundable. The short booking window reduces the practical value of cancellation flexibility."
+    );
+  }
+
+  if (
+    limitedMarket
+  ) {
+    return (
+      "The selected offer is non-refundable, but comparable flexible alternatives are limited for these dates."
+    );
+  }
+
+  return (
+    "The selected offer is non-refundable."
+  );
+}
+
 function createSelectedOfferTaxTradeOff(
   selectedOffer:
     SmartStaySelectedOfferV2 | null
@@ -1546,21 +1641,58 @@ function createExplanationSections(
       3
     );
 
+  const formattedTradeOffFacts =
+    tradeOffFacts.map(
+      (fact) =>
+        formatExplanationFact(
+          fact,
+          hotelNames,
+          evaluation
+        )
+    );
+
+  const nonRefundableFactIndex =
+    tradeOffFacts.findIndex(
+      (fact) =>
+        fact.code ===
+        "explanation-weakness-non-refundable"
+    );
+
+  const contextualSelectedOfferTradeOff =
+    createContextualSelectedOfferTradeOff(
+      evaluation,
+      selectedOffer
+    );
+
+  const selectedOfferTradeOff =
+    selectedOffer?.refundable ===
+      false
+      ? contextualSelectedOfferTradeOff
+      : nonRefundableFactIndex >=
+          0
+        ? formattedTradeOffFacts[
+            nonRefundableFactIndex
+          ]
+        : selectedOfferExplanation
+            .tradeOff;
+
+  const remainingTradeOffFacts =
+    formattedTradeOffFacts.filter(
+      (
+        _reason,
+        index
+      ) =>
+        index !==
+        nonRefundableFactIndex
+    );
+
   const tradeOffs =
     uniqueExplanationReasons([
       selectedOfferTaxTradeOff,
 
-      selectedOfferExplanation
-        .tradeOff,
+      selectedOfferTradeOff,
 
-      ...tradeOffFacts.map(
-        (fact) =>
-          formatExplanationFact(
-            fact,
-            hotelNames,
-            evaluation
-          )
-      ),
+      ...remainingTradeOffFacts,
 
       ...createFallbackTradeOffs(
         evaluation
@@ -3148,6 +3280,9 @@ export function buildSmartStayFrontendViewV2(
 
       checkIn:
         input.checkIn,
+
+      bookingReferenceAt:
+        input.bookingReferenceAt,
 
       checkOut:
         input.checkOut,

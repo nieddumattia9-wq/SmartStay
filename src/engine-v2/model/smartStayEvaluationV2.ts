@@ -387,6 +387,32 @@ export interface SmartStayFinalScoreV2 {
     string;
 }
 
+export interface SmartStayEvaluationFlexibilityContextV2 {
+  leadTimeDays:
+    number | null;
+
+  leadTimeBand:
+    | "same-day"
+    | "last-minute"
+    | "short-notice"
+    | "standard"
+    | "advance"
+    | "unknown";
+
+  marketAvailability:
+    | "scarce"
+    | "limited"
+    | "mixed"
+    | "common"
+    | "unknown";
+
+  nonRefundablePenaltyMultiplier:
+    number;
+
+  reasonCodes:
+    string[];
+}
+
 export interface SmartStayEvaluationV2 {
   engineVersion:
     SmartStayEngineV2Version;
@@ -417,6 +443,9 @@ export interface SmartStayEvaluationV2 {
 
   risk:
     SmartStayRiskAssessmentV2;
+
+  flexibilityContext:
+    SmartStayEvaluationFlexibilityContextV2 | null;
 
   pareto:
     SmartStayParetoEvaluationV2;

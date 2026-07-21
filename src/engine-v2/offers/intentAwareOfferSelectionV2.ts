@@ -16,6 +16,10 @@ import type {
   HotelOfferCompleteness,
 } from "../../utils/hotelOfferSelection";
 
+import type {
+  SmartStayBookingFlexibilityContextV2,
+} from "../flexibility/bookingFlexibilityContextEngine";
+
 export type SmartStayOfferSelectionPreferenceIdV2 =
   | "maximum-comfort"
   | "comfort"
@@ -38,6 +42,10 @@ export type SmartStayRoomTierV2 =
 
 export interface SmartStayOfferSelectionOptionsV2 {
   preferenceId?: string | null;
+
+  flexibilityContext?:
+    SmartStayBookingFlexibilityContextV2 |
+    null;
 }
 
 export interface SmartStaySelectedOfferV2 {
@@ -140,13 +148,16 @@ function resolvePolicy(
   options: SmartStayOfferSelectionOptionsV2
 ): ResolvedPolicy {
   const preferenceId = normalizePreferenceId(options.preferenceId);
+  const premiumMultiplier =
+    options.flexibilityContext?.flexibilityPremiumMultiplier ??
+    1;
 
   if (preferenceId === "maximum-comfort") {
     return {
       preferenceId,
       preferFlexibleMarginalUpgrade: true,
-      maximumPremiumRatio: 0.08,
-      maximumPremiumAmount: 75,
+      maximumPremiumRatio: 0.08 * premiumMultiplier,
+      maximumPremiumAmount: 75 * premiumMultiplier,
     };
   }
 
@@ -154,8 +165,8 @@ function resolvePolicy(
     return {
       preferenceId,
       preferFlexibleMarginalUpgrade: true,
-      maximumPremiumRatio: 0.05,
-      maximumPremiumAmount: 50,
+      maximumPremiumRatio: 0.05 * premiumMultiplier,
+      maximumPremiumAmount: 50 * premiumMultiplier,
     };
   }
 
@@ -163,8 +174,8 @@ function resolvePolicy(
     return {
       preferenceId,
       preferFlexibleMarginalUpgrade: true,
-      maximumPremiumRatio: 0.025,
-      maximumPremiumAmount: 25,
+      maximumPremiumRatio: 0.025 * premiumMultiplier,
+      maximumPremiumAmount: 25 * premiumMultiplier,
     };
   }
 
@@ -203,10 +214,33 @@ function getRoomTierRank(roomName: unknown) {
   return ROOM_TIER_RANK[classifyRoomTier(roomName)];
 }
 
-function hasValidCancellationDeadline(offer: HotelOffer) {
-  return typeof offer.freeCancellationUntil === "string" &&
-    offer.freeCancellationUntil.trim().length > 0 &&
-    Number.isFinite(Date.parse(offer.freeCancellationUntil.trim()));
+function hasValidCancellationDeadline(
+  offer: HotelOffer,
+  referenceAt: string | null
+) {
+  if (
+    typeof offer.freeCancellationUntil !== "string" ||
+    offer.freeCancellationUntil.trim().length === 0
+  ) {
+    return false;
+  }
+
+  const deadlineTimestamp =
+    Date.parse(offer.freeCancellationUntil.trim());
+
+  if (!Number.isFinite(deadlineTimestamp)) {
+    return false;
+  }
+
+  if (referenceAt === null) {
+    return true;
+  }
+
+  const referenceTimestamp =
+    Date.parse(referenceAt);
+
+  return !Number.isFinite(referenceTimestamp) ||
+    deadlineTimestamp > referenceTimestamp;
 }
 
 function isRoomTierCompatibleForUpgrade(
@@ -238,7 +272,10 @@ function isMarginalPremium(
 
 function choosePrimary(
   offers: ComparableHotelOffer[],
-  policy: ResolvedPolicy
+  policy: ResolvedPolicy,
+  flexibilityContext:
+    SmartStayBookingFlexibilityContextV2 |
+    null
 ) {
   const baseline = offers[0] ?? null;
 
@@ -270,8 +307,18 @@ function choosePrimary(
     )
     .sort(
       (first, second) =>
-        Number(hasValidCancellationDeadline(second.offer)) -
-          Number(hasValidCancellationDeadline(first.offer)) ||
+        Number(
+          hasValidCancellationDeadline(
+            second.offer,
+            flexibilityContext?.referenceAt ?? null
+          )
+        ) -
+          Number(
+            hasValidCancellationDeadline(
+              first.offer,
+              flexibilityContext?.referenceAt ?? null
+            )
+          ) ||
         getCompletenessPriority(first.completeness) -
           getCompletenessPriority(second.completeness) ||
         getRoomTierRank(second.offer.roomName) -
@@ -301,7 +348,10 @@ function choosePrimary(
       "offer-selection-refundable-upgrade",
       "offer-selection-marginal-premium",
       "offer-selection-room-tier-preserved",
-      hasValidCancellationDeadline(selected.offer)
+      hasValidCancellationDeadline(
+        selected.offer,
+        flexibilityContext?.referenceAt ?? null
+      )
         ? "offer-selection-free-cancellation-verified"
         : "offer-selection-refundability-verified",
       `offer-selection-preference:${policy.preferenceId}`,
@@ -352,7 +402,16 @@ export function selectIntentAwareHotelOfferV2(
   options: SmartStayOfferSelectionOptionsV2 = {}
 ): SmartStayOfferSelectionV2 {
   const baseSelection = selectHotelOffers(hotel);
-  const selected = choosePrimary(baseSelection.offers, resolvePolicy(options));
+  const flexibilityContext =
+    options.flexibilityContext ??
+    null;
+  const selected = choosePrimary(
+    baseSelection.offers,
+    resolvePolicy(options),
+    flexibilityContext
+  );
+  const contextReasonCodes =
+    flexibilityContext?.reasonCodes ?? [];
 
   return {
     hotelId: hotel.id,
@@ -364,9 +423,15 @@ export function selectIntentAwareHotelOfferV2(
       hotel,
       selected.primary,
       selected.selectionMode,
-      selected.reasonCodes
+      [
+        ...selected.reasonCodes,
+        ...contextReasonCodes,
+      ]
     ),
-    reasonCodes: uniqueSorted(selected.reasonCodes),
+    reasonCodes: uniqueSorted([
+      ...selected.reasonCodes,
+      ...contextReasonCodes,
+    ]),
   };
 }
 

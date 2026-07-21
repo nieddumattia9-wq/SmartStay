@@ -9,6 +9,10 @@ import type {
   SmartStayUnitType,
 } from "../model/smartStayEvaluationV2";
 
+import type {
+  SmartStayBookingFlexibilityContextV2,
+} from "../flexibility/bookingFlexibilityContextEngine";
+
 export type SmartStayComfortStatusV2 =
   | "invalid"
   | "unavailable"
@@ -63,6 +67,10 @@ export interface SmartStayComfortStayContextV2 {
 
   tripProfile?:
     SmartStayTripProfileV2;
+
+  flexibilityContext?:
+    SmartStayBookingFlexibilityContextV2 |
+    null;
 }
 
 export interface SmartStayComfortPreferencesV2 {
@@ -245,6 +253,10 @@ export interface SmartStayComfortFlexibilityEvaluationV2 {
 
   warningCodes:
     string[];
+
+  flexibilityContext:
+    SmartStayBookingFlexibilityContextV2 |
+    null;
 
   evidenceIds:
     string[];
@@ -1901,7 +1913,10 @@ function resolveGeneralFact(
 
 function isValidCancellationDeadline(
   value:
-    unknown
+    unknown,
+  referenceAt:
+    string |
+    null
 ) {
   if (
     typeof value !== "string" ||
@@ -1910,18 +1925,46 @@ function isValidCancellationDeadline(
     return false;
   }
 
-  return Number.isFinite(
+  const deadlineTimestamp =
     Date.parse(
       value.trim()
+    );
+
+  if (
+    !Number.isFinite(
+      deadlineTimestamp
     )
-  );
+  ) {
+    return false;
+  }
+
+  if (
+    referenceAt ===
+    null
+  ) {
+    return true;
+  }
+
+  const referenceTimestamp =
+    Date.parse(
+      referenceAt
+    );
+
+  return !Number.isFinite(
+    referenceTimestamp
+  ) ||
+    deadlineTimestamp >
+      referenceTimestamp;
 }
 
 function createCancellationScoreItem(
   evidence:
     SmartStayEvidenceFactV2[],
   minimumEvidenceConfidence:
-    number
+    number,
+  flexibilityContext:
+    SmartStayBookingFlexibilityContextV2 |
+    null
 ): DimensionScoreItem {
   const refundable =
     resolveGeneralFact(
@@ -1975,9 +2018,20 @@ function createCancellationScoreItem(
       refundable.fact.value ===
       false
     ) {
+      const penaltyMultiplier =
+        flexibilityContext?.nonRefundablePenaltyMultiplier ??
+        1;
+
       return {
         score:
-          0,
+          round(
+            100 *
+              (
+                1 -
+                penaltyMultiplier
+              ),
+            2
+          ),
 
         weight:
           0.8,
@@ -1997,7 +2051,9 @@ function createCancellationScoreItem(
         "known" &&
       deadline.fact &&
       isValidCancellationDeadline(
-        deadline.fact.value
+        deadline.fact.value,
+        flexibilityContext?.referenceAt ??
+          null
       );
 
     return {
@@ -2367,6 +2423,10 @@ function createInvalidEvaluation(
       "target-reliability-invalid",
     ],
 
+    flexibilityContext:
+      input.stayContext?.flexibilityContext ??
+      null,
+
     evidenceIds:
       uniqueSorted([
         ...input
@@ -2522,7 +2582,9 @@ export function evaluateComfortFlexibilityV2(
   flexibilityItems.push(
     createCancellationScoreItem(
       input.evidence,
-      minimumEvidenceConfidence
+      minimumEvidenceConfidence,
+      stayContext.flexibilityContext ??
+        null
     )
   );
 
@@ -2768,7 +2830,10 @@ export function evaluateComfortFlexibilityV2(
         "known" &&
       deadlineEvidence.fact &&
       !isValidCancellationDeadline(
-        deadlineEvidence.fact.value
+        deadlineEvidence.fact.value,
+        stayContext.flexibilityContext
+          ?.referenceAt ??
+          null
       )
     ) {
       warningCodes.push(
@@ -2875,6 +2940,10 @@ export function evaluateComfortFlexibilityV2(
 
     warningCodes:
       normalizedWarnings,
+
+    flexibilityContext:
+      stayContext.flexibilityContext ??
+      null,
 
     evidenceIds:
       uniqueSorted([

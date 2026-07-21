@@ -14,6 +14,10 @@ import type {
   SmartStayOfferSelectionV2,
 } from "../offers/intentAwareOfferSelectionV2";
 
+import type {
+  SmartStayBookingFlexibilityContextV2,
+} from "../flexibility/bookingFlexibilityContextEngine";
+
 import {
   getAccommodationCategoryFeaturePolicyV2,
 } from "../categories/accommodationCategoryModel";
@@ -52,11 +56,19 @@ export interface SmartStayHotelEvidenceInputV2 {
   offerSelectionPreferenceId?:
     string |
     null;
+
+  flexibilityContext?:
+    SmartStayBookingFlexibilityContextV2 |
+    null;
 }
 
 export interface SmartStayHotelEvidenceResultV2 {
   offerSelection:
     SmartStayOfferSelectionV2;
+
+  flexibilityContext:
+    SmartStayBookingFlexibilityContextV2 |
+    null;
 
   facts:
     SmartStayEvidenceFactV2[];
@@ -2241,6 +2253,10 @@ export function buildHotelEvidenceModelV2(
         preferenceId:
           input
             .offerSelectionPreferenceId,
+
+        flexibilityContext:
+          input
+            .flexibilityContext,
       }
     );
 
@@ -2389,6 +2405,10 @@ export function buildHotelEvidenceModelV2(
 
   return {
     offerSelection,
+
+    flexibilityContext:
+      input.flexibilityContext ??
+      null,
 
     facts:
       deduplicatedFacts,

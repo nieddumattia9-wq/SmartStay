@@ -154,6 +154,11 @@ import type {
 } from "../ranking/rankingStabilityDiversityEngine";
 
 import {
+  evaluateBookingFlexibilityContextV2,
+} from "../flexibility/bookingFlexibilityContextEngine";
+
+
+import {
   SMARTSTAY_ENGINE_V2_VERSION,
 } from "../model/smartStayEvaluationV2";
 
@@ -165,7 +170,7 @@ import type {
 } from "../model/smartStayEvaluationV2";
 
 export const SMARTSTAY_ENGINE_V2_PIPELINE_VERSION =
-  "2.0.0-pipeline.9" as const;
+  "2.0.0-pipeline.10" as const;
 
 export interface SmartStayEngineV2SearchInput {
   hotels:
@@ -224,6 +229,10 @@ export interface SmartStayEngineV2SearchInput {
     number;
 
   capturedAt?:
+    string |
+    null;
+
+  bookingReferenceAt?:
     string |
     null;
 
@@ -1551,7 +1560,17 @@ function createFoundationCandidates(
     string |
     null,
   offerSelectionPreferenceId:
-    string
+    string,
+  checkIn:
+    string |
+    null |
+    undefined,
+  bookingReferenceAt:
+    string,
+  maximumDistanceKm:
+    number |
+    null |
+    undefined
 ): FoundationCandidate[] {
   return hotels
     .map(
@@ -1576,6 +1595,21 @@ function createFoundationCandidates(
                   : null,
           });
 
+        const flexibilityContext =
+          evaluateBookingFlexibilityContextV2({
+            hotels,
+
+            targetHotelId:
+              hotel.id,
+
+            checkIn,
+
+            referenceAt:
+              bookingReferenceAt,
+
+            maximumDistanceKm,
+          });
+
         const evidence =
           buildHotelEvidenceModelV2({
             hotel,
@@ -1589,6 +1623,8 @@ function createFoundationCandidates(
             capturedAt,
 
             offerSelectionPreferenceId,
+
+            flexibilityContext,
           });
 
         const reliabilityGate =
@@ -1761,6 +1797,11 @@ function createDimensionCandidates(
 
             tripProfile:
               input.tripProfile,
+
+            flexibilityContext:
+              foundation
+                .evidence
+                .flexibilityContext,
           },
 
           preferences:
@@ -1867,6 +1908,22 @@ export function evaluateSmartStaySearchV2(
   validateHotels(
     input.hotels
   );
+
+  const capturedAt =
+    typeof input.capturedAt ===
+      "string" &&
+    input.capturedAt.trim()
+      ? input.capturedAt.trim()
+      : null;
+
+  const bookingReferenceAt =
+    typeof input.bookingReferenceAt ===
+      "string" &&
+    input.bookingReferenceAt.trim()
+      ? input.bookingReferenceAt.trim()
+      : capturedAt ??
+        new Date().toISOString();
+
 
   if (
     input.hotels.length ===
@@ -1995,20 +2052,16 @@ export function evaluateSmartStaySearchV2(
     };
   }
 
-  const capturedAt =
-    typeof input.capturedAt ===
-      "string" &&
-    input.capturedAt.trim()
-      ? input.capturedAt.trim()
-      : null;
-
   const foundations =
     createFoundationCandidates(
       input.hotels,
       capturedAt,
       resolveOfferSelectionPreferenceId(
         input
-      )
+      ),
+      input.checkIn,
+      bookingReferenceAt,
+      input.maximumDistanceKm
     );
 
   const peerGroups =
@@ -2587,6 +2640,44 @@ export function evaluateSmartStaySearchV2(
 
           risk:
             candidate.risk,
+
+          flexibilityContext:
+            candidate
+              .comfortFlexibility
+              .flexibilityContext
+              ? {
+                  leadTimeDays:
+                    candidate
+                      .comfortFlexibility
+                      .flexibilityContext
+                      .leadTimeDays,
+
+                  leadTimeBand:
+                    candidate
+                      .comfortFlexibility
+                      .flexibilityContext
+                      .leadTimeBand,
+
+                  marketAvailability:
+                    candidate
+                      .comfortFlexibility
+                      .flexibilityContext
+                      .marketAvailability,
+
+                  nonRefundablePenaltyMultiplier:
+                    candidate
+                      .comfortFlexibility
+                      .flexibilityContext
+                      .nonRefundablePenaltyMultiplier,
+
+                  reasonCodes: [
+                    ...candidate
+                      .comfortFlexibility
+                      .flexibilityContext
+                      .reasonCodes,
+                  ],
+                }
+              : null,
 
           pareto,
           recommendation,
