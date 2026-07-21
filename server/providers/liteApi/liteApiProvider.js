@@ -8,6 +8,12 @@ const {
 
   getLiteApiOfferRecords,
 } = require("./liteApiOfferMapper");
+
+const {
+  inferReviewCountRelation,
+} = require("../../utils/reviewCountRelation");
+
+
 const SOURCE_PROVIDER = ACCOMMODATION_PROVIDER_IDS.LITE_API;
   const PROVIDER_NAME = "LiteAPI";
 
@@ -1668,6 +1674,18 @@ function createLiteApiOfferFromMapper(
         stars,
         reviewScore: reviewScore ?? null,
         reviewCount: reviewCount ?? null,
+
+        reviewCountRelation:
+          inferReviewCountRelation({
+            reviewCount,
+
+            sourceProvider:
+              SOURCE_PROVIDER,
+
+            provider:
+              PROVIDER_NAME,
+          }),
+
         reviewText: createReviewText(reviewScore ?? null),
     
         price: bestOffer.price,

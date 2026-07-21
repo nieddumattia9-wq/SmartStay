@@ -1,4 +1,8 @@
-﻿const AVAILABLE_DATA_KEYS = [
+﻿const {
+  inferReviewCountRelation,
+} = require("../utils/reviewCountRelation");
+
+const AVAILABLE_DATA_KEYS = [
   "hasPrice",
   "hasBasePrice",
   "hasSaving",
@@ -443,6 +447,24 @@ function createPublicHotel(
         hotel.reviewCount
       ),
 
+    reviewCountRelation:
+      inferReviewCountRelation({
+        reviewCount:
+          getFiniteNumber(
+            hotel.reviewCount
+          ),
+
+        reviewCountRelation:
+          hotel.reviewCountRelation,
+
+        sourceProvider:
+          hotel.reviewSourceProvider ??
+          hotel.sourceProvider,
+
+        provider:
+          hotel.provider,
+      }),
+
     reviewText:
       getText(
         hotel.reviewText
@@ -642,6 +664,24 @@ function createPublicHotelDetails(
       getFiniteNumber(
         hotel.reviewCount
       ),
+
+    reviewCountRelation:
+      inferReviewCountRelation({
+        reviewCount:
+          getFiniteNumber(
+            hotel.reviewCount
+          ),
+
+        reviewCountRelation:
+          hotel.reviewCountRelation,
+
+        sourceProvider:
+          hotel.reviewSourceProvider ??
+          hotel.sourceProvider,
+
+        provider:
+          hotel.provider,
+      }),
 
     address:
       getText(

@@ -1,5 +1,6 @@
 import type {
   Hotel,
+  HotelReviewCountRelation,
 } from "../../types/hotel";
 
 import {
@@ -907,6 +908,35 @@ function createReviewScoreFact(
   });
 }
 
+function getReviewCountRelation(
+  hotel:
+    Hotel
+): HotelReviewCountRelation {
+  return (
+    hotel.reviewCountRelation ??
+    "equal"
+  );
+}
+
+function getReviewCountUnit(
+  relation:
+    HotelReviewCountRelation
+) {
+  if (relation === "at-least") {
+    return "reviews-minimum";
+  }
+
+  if (relation === "estimated") {
+    return "reviews-estimate";
+  }
+
+  if (relation === "unknown") {
+    return "reviews-reported";
+  }
+
+  return "reviews";
+}
+
 function createReviewCountFact(
   hotel:
     Hotel,
@@ -919,6 +949,11 @@ function createReviewCountFact(
     createEvidenceId(
       hotel,
       "review-count"
+    );
+
+  const relation =
+    getReviewCountRelation(
+      hotel
     );
 
   if (
@@ -988,7 +1023,9 @@ function createReviewCountFact(
       hotel.reviewCount,
 
     unit:
-      "reviews",
+      getReviewCountUnit(
+        relation
+      ),
 
     source:
       "provider",
@@ -997,7 +1034,9 @@ function createReviewCountFact(
       provider,
 
     sourceField:
-      "reviewCount",
+      relation === "equal"
+        ? "reviewCount"
+        : "reviewCount|reviewCountRelation",
 
     confidence:
       0.95,

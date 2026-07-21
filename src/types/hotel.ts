@@ -3,6 +3,12 @@ export type HotelDataConfidence =
   | "partial"
   | "limited";
 
+export type HotelReviewCountRelation =
+  | "equal"
+  | "at-least"
+  | "estimated"
+  | "unknown";
+
 export interface AvailableHotelData {
 
   hasPrice: boolean;
@@ -111,6 +117,13 @@ export interface Hotel {
 
   reviewCount: number | null;
 
+  /**
+   * Optional only for legacy in-memory fixtures. Provider and public
+   * runtime contracts always normalize this field.
+   */
+  reviewCountRelation?:
+    HotelReviewCountRelation;
+
   reviewText: string;
 
   price: number;
@@ -166,6 +179,13 @@ export interface HotelDetails {
   reviewScore: number | null;
 
   reviewCount: number | null;
+
+  /**
+   * Optional only for legacy in-memory fixtures. Provider and public
+   * runtime contracts always normalize this field.
+   */
+  reviewCountRelation?:
+    HotelReviewCountRelation;
 
   address: string;
 

@@ -7,6 +7,10 @@ import type {
   HotelDetails,
 } from "../../types/hotel";
 
+import {
+  formatReviewCountLabel,
+} from "../../utils/reviewCountDisplay";
+
 import type {
   ComparableHotelOffer,
 } from "../../utils/hotelOfferSelection";
@@ -333,7 +337,10 @@ function HotelDetailsPanel({
 
                 {details.reviewCount !== null && (
                   <span>
-                    {details.reviewCount.toLocaleString("en-US")} reviews
+                    {formatReviewCountLabel(
+                      details.reviewCount,
+                      details.reviewCountRelation
+                    )}
                   </span>
                 )}
               </div>

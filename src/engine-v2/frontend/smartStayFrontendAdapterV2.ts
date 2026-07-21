@@ -3,6 +3,10 @@ import type {
 } from "../../types/hotel";
 
 import {
+  formatReviewCountEvidencePhrase,
+} from "../../utils/reviewCountDisplay";
+
+import {
   evaluateSmartStaySearchV2,
 } from "../orchestrator/smartStayEngineV2";
 
@@ -650,18 +654,11 @@ function formatReviewStrength(
       ) &&
       reviewCount >
         0
-        ? (
-            " across " +
-            formatNumber(
-              reviewCount,
-              0
-            ) +
-            (
-              reviewCount ===
-                1
-                ? " review"
-                : " reviews"
-            )
+        ? formatReviewCountEvidencePhrase(
+            reviewCount,
+            evaluation
+              .hotel
+              .reviewCountRelation
           )
         : "";
 

@@ -5,6 +5,10 @@ const {
   } = require("../providers/accommodationProviderOrchestrator");
 
   const {
+    inferReviewCountRelation,
+  } = require("../utils/reviewCountRelation");
+
+  const {
     saveSearchSession,
     requireSearchSession,
     tryAcquireSearchContinuation,
@@ -364,6 +368,37 @@ const {
         hotel?.image
       );
 
+    const providerReviewCount =
+      getDetailNumber(
+        details.reviewCount
+      );
+
+    const sessionReviewCount =
+      getDetailNumber(
+        hotel.reviewCount
+      );
+
+    const reviewCount =
+      providerReviewCount ??
+      sessionReviewCount;
+
+    const reviewCountRelation =
+      inferReviewCountRelation({
+        reviewCount,
+
+        reviewCountRelation:
+          providerReviewCount !== null
+            ? details.reviewCountRelation
+            : hotel.reviewCountRelation,
+
+        sourceProvider:
+          hotel.sourceProvider ??
+          hotel.provider,
+
+        provider:
+          hotel.provider,
+      });
+
     return {
       success:
         true,
@@ -410,13 +445,9 @@ const {
             hotel.reviewScore
           ),
 
-        reviewCount:
-          getDetailNumber(
-            details.reviewCount
-          ) ??
-          getDetailNumber(
-            hotel.reviewCount
-          ),
+        reviewCount,
+
+        reviewCountRelation,
 
         address:
           getDetailText(

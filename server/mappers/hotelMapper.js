@@ -1,3 +1,7 @@
+const {
+  inferReviewCountRelation,
+} = require("../utils/reviewCountRelation");
+
 function toNumber(value, fallback = null) {
 
     const number =
@@ -145,6 +149,15 @@ function toNumber(value, fallback = null) {
     "hotelReviewsCount",
   ];
   
+  const reviewCountRelationPaths = [
+    "reviews.countRelation",
+    "reviews.countPrecision",
+    "review.countRelation",
+    "review.countPrecision",
+    "reviewCountRelation",
+    "reviewCountPrecision",
+  ];
+
   const reviewTextPaths = [
     "reviewText",
     "reviews.text",
@@ -293,6 +306,18 @@ function toNumber(value, fallback = null) {
         reviewCountPaths
       );
   
+    const reviewCountRelation =
+      getFirstDefinedValue(
+        hotel,
+        reviewCountRelationPaths
+      );
+
+    const normalizedReviewCount =
+      toNumber(
+        reviewCount,
+        null
+      );
+
     const reviewText =
       getFirstDefinedValue(
         hotel,
@@ -331,11 +356,26 @@ function toNumber(value, fallback = null) {
         null
       ),
   
-      reviewCount: toNumber(
-        reviewCount,
-        null
-      ),
-  
+      reviewCount:
+        normalizedReviewCount,
+
+      reviewCountRelation:
+        inferReviewCountRelation({
+          reviewCount:
+            normalizedReviewCount,
+
+          reviewCountRelation,
+
+          sourceProvider:
+            hotel.reviewSourceProvider ??
+            hotel.sourceProvider ??
+            sourceProvider,
+
+          provider:
+            hotel.providerName ??
+            hotel.provider,
+        }),
+
       reviewText: toString(
         reviewText,
         ""

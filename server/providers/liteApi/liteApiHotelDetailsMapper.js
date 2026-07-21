@@ -1,4 +1,8 @@
-﻿function isPlainObject(
+﻿const {
+  inferReviewCountRelation,
+} = require("../../utils/reviewCountRelation");
+
+function isPlainObject(
   value
 ) {
 
@@ -941,6 +945,17 @@ function mapLiteApiHotelDetailsResponse(
     reviewScore,
 
     reviewCount,
+
+    reviewCountRelation:
+      inferReviewCountRelation({
+        reviewCount,
+
+        sourceProvider:
+          "liteapi",
+
+        provider:
+          "LiteAPI",
+      }),
 
     address:
       buildAddress(

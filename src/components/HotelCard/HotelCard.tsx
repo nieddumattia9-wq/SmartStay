@@ -3,7 +3,13 @@ import {
 } from "../../utils/hotelOfferSelection";
 import "./HotelCard.css";
 
-import type { Hotel } from "../../types/hotel";
+import type {
+  Hotel,
+} from "../../types/hotel";
+
+import {
+  formatReviewCountLabel,
+} from "../../utils/reviewCountDisplay";
 
 import type {
   SmartStayFrontendBadgeV2,
@@ -75,23 +81,6 @@ function formatStars(stars: number) {
   );
 
   return "★".repeat(safeStars);
-}
-
-function formatReviewCount(
-  reviewCount: number | null
-) {
-  if (
-    reviewCount === null ||
-    reviewCount <= 0
-  ) {
-    return "Review count unavailable";
-  }
-
-  if (reviewCount === 1) {
-    return "1 review";
-  }
-
-  return `${reviewCount.toLocaleString("en-US")} reviews`;
 }
 
 function formatReviewScore(
@@ -429,7 +418,10 @@ function HotelCard({
               </span>
 
               <span className="hotel-card__review-count">
-                {formatReviewCount(hotel.reviewCount)}
+                {formatReviewCountLabel(
+                  hotel.reviewCount,
+                  hotel.reviewCountRelation
+                )}
               </span>
             </div>
           </div>

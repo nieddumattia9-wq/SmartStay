@@ -1,3 +1,8 @@
+const {
+  combineReviewCountRelations,
+  inferReviewCountRelation,
+} = require("../../utils/reviewCountRelation");
+
 function normalizeText(value = "") {
     if (
       value === null ||
@@ -640,6 +645,27 @@ function normalizeText(value = "") {
     const reviewCount =
       Number(hotel.reviewCount);
 
+    const sourceProvider =
+      hotel.reviewSourceProvider ??
+      hotel.sourceProvider ??
+      null;
+
+    const reviewCountRelation =
+      inferReviewCountRelation({
+        reviewCount:
+          Number.isFinite(reviewCount)
+            ? reviewCount
+            : null,
+
+        reviewCountRelation:
+          hotel.reviewCountRelation,
+
+        sourceProvider,
+
+        provider:
+          hotel.provider,
+      });
+
     return {
       reviewScore:
         Number.isFinite(
@@ -656,14 +682,13 @@ function normalizeText(value = "") {
           ? reviewCount
           : null,
 
+      reviewCountRelation,
+
       reviewText:
         hotel.reviewText ??
         null,
 
-      sourceProvider:
-        hotel.reviewSourceProvider ??
-        hotel.sourceProvider ??
-        null,
+      sourceProvider,
 
       sourceHotelId:
         hotel.reviewSourceHotelId ??
@@ -757,14 +782,37 @@ function normalizeText(value = "") {
         : firstBundle;
     }
 
+    const combinedReviewCountRelation =
+      (
+        firstHasCount &&
+        secondHasCount &&
+        firstBundle.reviewCount ===
+          secondBundle.reviewCount
+      )
+        ? combineReviewCountRelations(
+            firstBundle.reviewCountRelation,
+            secondBundle.reviewCountRelation
+          )
+        : firstBundle.reviewCountRelation;
+
     if (
       !firstBundle.reviewText &&
       secondBundle.reviewText
     ) {
-      return secondBundle;
+      return {
+        ...secondBundle,
+
+        reviewCountRelation:
+          combinedReviewCountRelation,
+      };
     }
 
-    return firstBundle;
+    return {
+      ...firstBundle,
+
+      reviewCountRelation:
+        combinedReviewCountRelation,
+    };
   }
 
   function createCommercialData(
@@ -1528,6 +1576,9 @@ function normalizeText(value = "") {
 
       reviewCount:
         reviewBundle.reviewCount,
+
+      reviewCountRelation:
+        reviewBundle.reviewCountRelation,
 
       reviewText:
         reviewBundle.reviewText,
