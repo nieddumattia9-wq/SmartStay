@@ -5,6 +5,10 @@ import {
 } from "../../utils/searchMeta";
 
 import {
+  createSearchIdempotencyKey,
+} from "../../utils/searchIdempotency";
+
+import {
   calculateAutomaticPreferenceBalance,
 } from "../../utils/preferenceBalance";
 
@@ -76,6 +80,8 @@ type PendingSearch = {
   searchPayload: HotelSearchPayload;
 
   searchMeta: StoredSearchMeta;
+
+  idempotencyKey: string;
 };
 
 const PENDING_SEARCH_STORAGE_KEY =
@@ -340,6 +346,9 @@ function TripOptimizer() {
       const pendingSearch:
         PendingSearch = {
           searchPayload,
+
+          idempotencyKey:
+            createSearchIdempotencyKey(),
 
           searchMeta:
             createStoredSearchMeta({

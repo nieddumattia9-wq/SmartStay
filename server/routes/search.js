@@ -7,6 +7,11 @@ const {
 } = require("../storage/searchSession");
 
 const {
+  executeInitialSearchIdempotently,
+  isSearchIdempotencyError,
+} = require("../storage/searchIdempotency");
+
+const {
   createPublicHotelDetails,
 } = require("../presenters/publicHotelPresenter");
 
@@ -49,6 +54,11 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "SEARCH_ID_REQUIRED",
     "SEARCH_SESSION_NOT_FOUND",
     "SEARCH_SESSION_EXPIRED",
+    "IDEMPOTENCY_KEY_REQUIRED",
+    "IDEMPOTENCY_KEY_INVALID",
+    "IDEMPOTENCY_PAYLOAD_INVALID",
+    "IDEMPOTENCY_KEY_CONFLICT",
+    "IDEMPOTENCY_CAPACITY_REACHED",
     "HOTEL_ID_REQUIRED",
     "HOTEL_NOT_IN_SEARCH",
     "OFFER_ID_REQUIRED",
@@ -244,13 +254,50 @@ router.post("/search-hotels", async (req, res) => {
 
     }
 
-    const results =
-      await searchHotels(req.body);
+    const idempotencyResult =
+      await executeInitialSearchIdempotently({
+        idempotencyKey:
+          req.get(
+            "Idempotency-Key"
+          ),
+
+        payload:
+          req.body,
+
+        execute:
+          async () => {
+            const results =
+              await searchHotels(
+                req.body
+              );
+
+            return createPublicSearchPayload(
+              results
+            );
+          },
+      });
+
+    res.set(
+      "Idempotency-Replayed",
+      idempotencyResult.replayed
+        ? "true"
+        : "false"
+    );
+
+    res.set(
+      "Idempotency-Coalesced",
+      idempotencyResult.coalesced
+        ? "true"
+        : "false"
+    );
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
 
     return res.json(
-      createPublicSearchPayload(
-        results
-      )
+      idempotencyResult.response
     );
 
   } catch (error) {
@@ -261,7 +308,9 @@ router.post("/search-hotels", async (req, res) => {
       "Unable to search hotels.",
       {
         includeSearchLifecycle:
-          true,
+          !isSearchIdempotencyError(
+            error
+          ),
       }
     );
 

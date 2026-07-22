@@ -1,5 +1,8 @@
 import { normalizeStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
 import {
+  normalizeSearchIdempotencyKey,
+} from "../../utils/searchIdempotency";
+import {
     useEffect,
     useMemo,
     useRef,
@@ -116,6 +119,8 @@ import {
     searchPayload: unknown;
 
     searchMeta?: StoredSearchMeta;
+
+    idempotencyKey: string;
   };
 
   function shuffleArray(array: string[]) {
@@ -286,9 +291,20 @@ import {
           source.searchMeta
         );
 
+      const idempotencyKey =
+        normalizeSearchIdempotencyKey(
+          source.idempotencyKey
+        );
+
+      if (!idempotencyKey) {
+        return null;
+      }
+
       return {
         searchPayload:
           source.searchPayload,
+
+        idempotencyKey,
 
         ...(normalizedSearchMeta
           ? {
@@ -558,7 +574,8 @@ import {
 
         const initialResponse =
           await searchHotels(
-            pendingSearch.searchPayload
+            pendingSearch.searchPayload,
+            pendingSearch.idempotencyKey
           ) as SearchHotelsResponse;
 
         if (!initialResponse.success) {

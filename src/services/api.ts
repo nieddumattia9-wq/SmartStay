@@ -2,6 +2,10 @@ import type {
   HotelDetailsResponse,
 } from "../types/hotel";
 
+import {
+  normalizeSearchIdempotencyKey,
+} from "../utils/searchIdempotency";
+
 const API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:3001/api";
@@ -215,8 +219,23 @@ export async function searchDestinations(
 }
 
 export async function searchHotels(
-  payload: unknown
+  payload: unknown,
+  idempotencyKey: string
 ) {
+  const normalizedIdempotencyKey =
+    normalizeSearchIdempotencyKey(
+      idempotencyKey
+    );
+
+  if (!normalizedIdempotencyKey) {
+    throw new ApiRequestError({
+      message:
+        "Unable to start hotel search safely.",
+
+      code:
+        "IDEMPOTENCY_KEY_INVALID",
+    });
+  }
 
   return requestJson(
     `${API_URL}/search-hotels`,
@@ -224,6 +243,8 @@ export async function searchHotels(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Idempotency-Key":
+          normalizedIdempotencyKey,
       },
       body: JSON.stringify(payload),
     },
