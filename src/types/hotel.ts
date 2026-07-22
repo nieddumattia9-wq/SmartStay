@@ -217,6 +217,32 @@ export interface HotelDetailsResponse {
 
 }
 
+
+export type SearchLifecyclePhase =
+  | "starting"
+  | "running"
+  | "complete";
+
+export type SearchLifecycleOutcome =
+  | "pending"
+  | "results"
+  | "no-results"
+  | "partial-results"
+  | "provider-error"
+  | "timeout"
+  | "rate-limited"
+  | "session-expired"
+  | "session-missing"
+  | "cancelled";
+
+export interface SearchLifecycle {
+  phase: SearchLifecyclePhase;
+  outcome: SearchLifecycleOutcome;
+  retryable: boolean;
+  publicCode: string;
+  retryAfterMs: number | null;
+}
+
 export interface SearchHotelsResponse {
 
   success: boolean;
@@ -240,6 +266,10 @@ export interface SearchHotelsResponse {
   totalHotels: number;
 
   hotels: Hotel[];
+
+  retryAfterMs?: number | null;
+
+  lifecycle?: SearchLifecycle | null;
 
 }
 
@@ -266,6 +296,10 @@ export interface SearchSession {
   createdAt: number | null;
 
   updatedAt: number | null;
+
+  retryAfterMs?: number | null;
+
+  lifecycle?: SearchLifecycle | null;
 
 }
 

@@ -10,15 +10,15 @@ import {
   useRef,
   useState,
 } from "react";
-  
+
   import {
     useNavigate,
     useSearchParams,
   } from "react-router-dom";
-  
+
 import HotelCard from "../../components/HotelCard/HotelCard";
 import HotelDetailsPanel from "../../components/HotelDetailsPanel/HotelDetailsPanel";
-  
+
   import {
     sliderOptions,
   } from "../../components/SmartOptimizer/sliderData";
@@ -31,8 +31,13 @@ import {
 import type {
   Hotel,
   HotelDetails,
+  SearchLifecycle,
   SearchSessionResponse,
 } from "../../types/hotel";
+
+import {
+  getSearchLifecycleLabel,
+} from "../../utils/searchLifecycle";
 import type {
   SmartStayFrontendViewV2,
 } from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
@@ -49,15 +54,15 @@ import type {
 import {
   selectHotelOffers,
 } from "../../utils/hotelOfferSelection";
-  
+
 import "./Results.css";
 
   const SEARCH_META_STORAGE_PREFIX =
     "smartstay_search_meta_";
-  
+
   const DEFAULT_PREFERENCE_INDEX =
     2;
-  
+
   type SearchMeta =
     StoredSearchMeta;
 
@@ -66,7 +71,7 @@ import "./Results.css";
   ) {
     return `${SEARCH_META_STORAGE_PREFIX}${searchId}`;
   }
-  
+
   function readSearchMeta(
     searchId: string | null
   ): SearchMeta | null {
@@ -449,29 +454,29 @@ function writeStoredRankingV2(
     );
   }
 
-  
+
   function getPreferenceSummary(
     preferenceId: string
   ) {
     if (preferenceId === "maximum-comfort") {
       return "Prioritizing premium comfort, stronger reliability signals and fewer compromises.";
     }
-  
+
     if (preferenceId === "comfort") {
       return "Prioritizing comfort, quality and location while still keeping value in mind.";
     }
-  
+
     if (preferenceId === "savings") {
       return "Prioritizing stronger price advantages while keeping reliability under control.";
     }
-  
+
     if (preferenceId === "maximum-savings") {
       return "Prioritizing the lowest reliable total prices while respecting your budget and distance limits.";
     }
-  
+
     return "Balancing comfort, savings, location and reliability.";
   }
-  
+
 
   type ResultsLoadFailure = {
     message: string;
@@ -665,25 +670,28 @@ function getHotelDetailsFailureMessage(
   function Results() {
     const navigate =
       useNavigate();
-  
+
     const [searchParams] =
       useSearchParams();
-  
+
     const searchId =
       searchParams.get("searchId");
-  
+
     const [hotels, setHotels] =
       useState<Hotel[]>([]);
-  
+
     const [loading, setLoading] =
       useState(true);
-  
+
     const [error, setError] =
       useState("");
-  
+
     const [status, setStatus] =
       useState<string | null>(null);
-  
+
+    const [lifecycle, setLifecycle] =
+      useState<SearchLifecycle | null>(null);
+
     const [searchMeta, setSearchMeta] =
       useState<SearchMeta | null>(null);
 
@@ -746,14 +754,14 @@ function getHotelDetailsFailureMessage(
         activeDetailsHotel,
         searchId
       );
-  
+
     const selectedPreferenceIndex =
       useMemo(() => {
         return getSelectedPreferenceIndex(
           searchMeta
         );
       }, [searchMeta]);
-  
+
     const selectedPreference =
       sliderOptions[selectedPreferenceIndex] ??
       sliderOptions[DEFAULT_PREFERENCE_INDEX];
@@ -800,8 +808,8 @@ function getHotelDetailsFailureMessage(
 
 const rankedHotels =
       engineView?.rankedHotels ?? [];
-  
-  
+
+
     const recommendationPicks =
       engineView?.recommendationPicks ?? [];
 
@@ -1085,25 +1093,29 @@ const rankedHotels =
             setError(
               "Missing searchId. Please start a new search."
             );
-  
+
             return;
           }
-  
+
           setSearchMeta(
             readSearchMeta(searchId)
           );
-  
+
           const response =
             await getSearchSession(
               searchId
             ) as SearchSessionResponse;
-  
+
           setHotels(
             response.session.hotels ?? []
           );
-  
+
           setStatus(
             response.session.status ?? null
+          );
+
+          setLifecycle(
+            response.session.lifecycle ?? null
           );
         } catch (err) {
           console.error(err);
@@ -1133,7 +1145,7 @@ const rankedHotels =
           setLoading(false);
         }
       }
-  
+
       loadResults();
     }, [searchId]);
 
@@ -1702,12 +1714,36 @@ const rankedHotels =
             </div>
           )}
 
-          {status && (
+          {
+            lifecycle?.outcome ===
+              "partial-results" && (
+              <div
+                className="results-lifecycle-notice"
+                role="status"
+              >
+                <strong>
+                  Partial results
+                </strong>
+
+                <p>
+                  SmartStay kept the reliable stays already found even though the provider search could not finish.
+                </p>
+              </div>
+            )
+          }
+
+          {(status || lifecycle) && (
             <p
               className="results-page__status"
               role="status"
             >
-              Search status: {status}
+              Search status:{" "}
+              {
+                getSearchLifecycleLabel(
+                  lifecycle
+                ) ??
+                status
+              }
             </p>
           )}
         </section>

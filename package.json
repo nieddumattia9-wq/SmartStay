@@ -11,11 +11,12 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "npm run test:engine-v2",
+    "test": "npm run test:engine-v2 && npm run test:lifecycle",
     "test:engine-v2": "node scripts/run-engine-v2-tests.mjs",
     "test:golden": "node scripts/run-engine-v2-tests.mjs --golden",
     "test:calibration": "node scripts/run-engine-v2-tests.mjs --calibration",
-    "test:ranking": "node scripts/run-engine-v2-tests.mjs --ranking"
+    "test:ranking": "node scripts/run-engine-v2-tests.mjs --ranking",
+    "test:lifecycle": "node --test tests/lifecycle/*.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

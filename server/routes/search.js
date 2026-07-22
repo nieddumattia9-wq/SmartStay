@@ -8,8 +8,18 @@ const {
 
 const {
   createPublicHotelDetails,
-  createPublicHotels,
 } = require("../presenters/publicHotelPresenter");
+
+const {
+  createPublicSearchPayload,
+  createPublicSearchSession,
+  createPublicSearchStatus,
+} = require("../presenters/publicSearchPresenter");
+
+const {
+  deriveSearchLifecycle,
+  getPublicLifecycleMessage,
+} = require("../utils/searchLifecycle");
 
 const {
   searchDestinations,
@@ -64,7 +74,10 @@ function isValidHttpStatus(
 function sendRouteError(
   res,
   error,
-  fallbackMessage
+  fallbackMessage,
+  {
+    includeSearchLifecycle = false,
+  } = {}
 ) {
 
   const directStatus =
@@ -91,10 +104,33 @@ function sendRouteError(
       ? error.code
       : null;
 
+  const lifecycle =
+    includeSearchLifecycle
+      ? deriveSearchLifecycle({
+          success: false,
+          status: "Failed",
+          code:
+            publicCode,
+          httpStatus:
+            status,
+        })
+      : null;
+
+  const responseCode =
+    lifecycle?.publicCode ??
+    publicCode;
+
   const publicMessage =
-    publicCode
-      ? error.message
-      : fallbackMessage;
+    lifecycle
+      ? (
+          getPublicLifecycleMessage(
+            lifecycle
+          ) ??
+          fallbackMessage
+        )
+      : publicCode
+        ? error.message
+        : fallbackMessage;
 
   console.error(
     fallbackMessage
@@ -129,77 +165,17 @@ function sendRouteError(
         false,
 
       code:
-        publicCode,
+        responseCode,
 
       message:
         publicMessage,
+
+      ...(lifecycle
+        ? {
+            lifecycle,
+          }
+        : {}),
     });
-
-}
-
-function createPublicHotelResponse(
-  payload
-) {
-
-  if (
-    !payload ||
-    typeof payload !== "object" ||
-    Array.isArray(payload)
-  ) {
-
-    return payload;
-
-  }
-
-  const hotels =
-    createPublicHotels(
-      payload.hotels
-    );
-
-  return {
-    ...payload,
-
-    totalHotels:
-      hotels.length,
-
-    hotels,
-  };
-
-}
-
-function createPublicSearchSession(session) {
-
-  return createPublicHotelResponse({
-    searchId:
-      session.searchId,
-
-    status:
-      session.status ?? null,
-
-    searchIncomplete:
-      session.searchIncomplete ?? false,
-
-    isContinuing:
-      session.isContinuing ?? false,
-
-    currency:
-      session.currency ?? null,
-
-    nextResultsKey:
-      session.nextResultsKey ?? null,
-
-    hotels:
-      session.hotels ?? [],
-
-    lastError:
-      session.lastError ?? null,
-
-    createdAt:
-      session.createdAt ?? null,
-
-    updatedAt:
-      session.updatedAt ?? null,
-  });
 
 }
 
@@ -272,7 +248,7 @@ router.post("/search-hotels", async (req, res) => {
       await searchHotels(req.body);
 
     return res.json(
-      createPublicHotelResponse(
+      createPublicSearchPayload(
         results
       )
     );
@@ -282,7 +258,11 @@ router.post("/search-hotels", async (req, res) => {
     return sendRouteError(
       res,
       error,
-      "Unable to search hotels."
+      "Unable to search hotels.",
+      {
+        includeSearchLifecycle:
+          true,
+      }
     );
 
   }
@@ -316,7 +296,7 @@ router.post("/search-hotels/continue", async (req, res) => {
       await continueHotelSearch(searchId);
 
     return res.json(
-      createPublicHotelResponse(
+      createPublicSearchPayload(
         result
       )
     );
@@ -326,7 +306,11 @@ router.post("/search-hotels/continue", async (req, res) => {
     return sendRouteError(
       res,
       error,
-      "Unable to continue hotel search."
+      "Unable to continue hotel search.",
+      {
+        includeSearchLifecycle:
+          true,
+      }
     );
 
   }
@@ -496,14 +480,22 @@ router.get("/search-status", async (req, res) => {
     const result =
       await getSearchStatus(searchId);
 
-    return res.json(result);
+    return res.json(
+      createPublicSearchStatus(
+        result
+      )
+    );
 
   } catch (error) {
 
     return sendRouteError(
       res,
       error,
-      "Unable to retrieve search status."
+      "Unable to retrieve search status.",
+      {
+        includeSearchLifecycle:
+          true,
+      }
     );
 
   }
@@ -543,7 +535,11 @@ router.get("/search-session", (req, res) => {
     return sendRouteError(
       res,
       error,
-      "Unable to retrieve search session."
+      "Unable to retrieve search session.",
+      {
+        includeSearchLifecycle:
+          true,
+      }
     );
 
   }
