@@ -1,4 +1,5 @@
 import type {
+  BookingOfferRecheckResponse,
   HotelDetailsResponse,
 } from "../types/hotel";
 
@@ -412,6 +413,32 @@ export function createBookingRedirectUrl(
     });
 
   return `${API_URL}/booking-redirect?${searchParams.toString()}`;
+}
+
+export async function recheckBookingOffer(
+  searchId: string,
+  hotelId: string,
+  offerId: string
+): Promise<BookingOfferRecheckResponse> {
+  return requestJson<BookingOfferRecheckResponse>(
+    `${API_URL}/booking-offer-recheck`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        searchId,
+        hotelId,
+        offerId,
+      }),
+      cache:
+        "no-store",
+    },
+    "Unable to verify this booking offer.",
+    HOTEL_REQUEST_TIMEOUT_MS,
+    "The booking provider took too long to verify this offer."
+  );
 }
 
 export async function getHotelDetails(

@@ -63,6 +63,12 @@ const {
   "./common/providerOperationTimeoutService"
 );
 
+const {
+  validateProviderOfferRecheckResult,
+} = require(
+  "./common/providerOfferRecheckResult"
+);
+
 function getEnabledProvidersForCapability(
   capabilityName
 ) {
@@ -1204,6 +1210,138 @@ async function getHotelDetailsFromProvider({
   }
 }
 
+async function recheckOfferWithProvider({
+  sourceProvider,
+  hotelId,
+  offer,
+  providerContext = null,
+} = {}) {
+  const providerId =
+    typeof sourceProvider === "string"
+      ? sourceProvider.trim()
+      : "";
+
+  if (!providerId) {
+    const error =
+      new Error(
+        "The offer source provider is required."
+      );
+
+    error.code =
+      "OFFER_SOURCE_UNAVAILABLE";
+
+    error.status =
+      409;
+
+    throw error;
+  }
+
+  const provider =
+    getAccommodationProviderById(
+      providerId
+    );
+
+  if (
+    !provider?.enabled ||
+    !provider.capabilities
+      ?.offerRecheck
+  ) {
+    const error =
+      new Error(
+        "Live offer recheck is not supported for this provider."
+      );
+
+    error.code =
+      "OFFER_RECHECK_UNSUPPORTED";
+
+    error.status =
+      409;
+
+    throw error;
+  }
+
+  const permission =
+    beginProviderAttempt(
+      provider.id
+    );
+
+  if (!permission.allowed) {
+    const error =
+      new Error(
+        "Live offer recheck is temporarily unavailable."
+      );
+
+    error.code =
+      permission.reason ===
+        "rate_limited"
+        ? "PROVIDER_RATE_LIMITED"
+        : "PROVIDER_CIRCUIT_OPEN";
+
+    error.status =
+      error.code ===
+        "PROVIDER_RATE_LIMITED"
+        ? 429
+        : 503;
+
+    error.retryable =
+      true;
+
+    error.retryAfterMs =
+      permission.health
+        .retryAfterMs;
+
+    throw error;
+  }
+
+  try {
+    const adapter =
+      await loadConfiguredProviderAdapter(
+        provider.id
+      );
+
+    const recheckOffer =
+      requireProviderAdapterMethod(
+        adapter,
+        "recheckOffer"
+      );
+
+    const result =
+      validateProviderOfferRecheckResult(
+        await executeProviderOperationWithTimeout({
+          providerId:
+            provider.id,
+          methodName:
+            "recheckOffer",
+          operation:
+            recheckOffer,
+          timeoutMs:
+            provider.operationTimeouts
+              ?.recheckOffer,
+          operationArguments: {
+            offer,
+            hotelId,
+            providerContext,
+          },
+        })
+      );
+
+    recordProviderHealthyResponse(
+      provider.id
+    );
+
+    return result;
+  } catch (error) {
+    recordProviderFailure(
+      provider.id,
+      createProviderFailureDetails(
+        error
+      )
+    );
+
+    throw error;
+  }
+}
+
 module.exports = {
   searchDestinationsAcrossProviders,
   searchHotelsAcrossProviders,
@@ -1218,4 +1356,5 @@ module.exports = {
 
   continueHotelSearchForProvider,
   getHotelDetailsFromProvider,
+  recheckOfferWithProvider,
 };

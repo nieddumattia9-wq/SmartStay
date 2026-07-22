@@ -1,4 +1,4 @@
-﻿const {
+const {
   ACCOMMODATION_PROVIDER_IDS,
 } = require("../providerRegistry");
 
@@ -10,6 +10,13 @@ const {
   createProviderSuccessResult,
   createProviderNoResultsResult,
 } = require("../common/providerSearchResult");
+
+const {
+  createProviderOfferRecheckConfirmed,
+  createProviderOfferRecheckSoldOut,
+} = require(
+  "../common/providerOfferRecheckResult"
+);
 
 const PROVIDER_ID =
   ACCOMMODATION_PROVIDER_IDS.LITE_API;
@@ -373,6 +380,7 @@ function loadDefaultDependencies() {
     searchLiteApiRates,
     getLiteApiHotels,
     getLiteApiFacilities,
+    prebookLiteApiOffer,
   } = require("./liteApiClient");
 
   const {
@@ -385,14 +393,20 @@ function loadDefaultDependencies() {
     mapLiteApiHotelDetailsResponse,
   } = require("./liteApiHotelDetailsMapper");
 
+  const {
+    createLiteApiPrebookOffer,
+  } = require("./liteApiOfferMapper");
+
   return {
     searchLiteApiRates,
     getLiteApiHotels,
     getLiteApiFacilities,
+    prebookLiteApiOffer,
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
+    createLiteApiPrebookOffer,
     mergeProviderHotelResults,
   };
 }
@@ -408,10 +422,12 @@ function createLiteApiAdapter(
     searchLiteApiRates,
     getLiteApiHotels,
     getLiteApiFacilities,
+    prebookLiteApiOffer,
     isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
+    createLiteApiPrebookOffer,
     mergeProviderHotelResults:
       mergeHotels,
   } = resolvedDependencies;
@@ -424,6 +440,11 @@ function createLiteApiAdapter(
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
     mergeHotels,
+  };
+
+  const optionalFunctions = {
+    prebookLiteApiOffer,
+    createLiteApiPrebookOffer,
   };
 
   for (
@@ -440,6 +461,28 @@ function createLiteApiAdapter(
     ) {
       throw new Error(
         `LiteAPI adapter dependency "${dependencyName}" must be a function.`
+      );
+    }
+  }
+
+  for (
+    const [
+      dependencyName,
+      dependencyValue,
+    ] of Object.entries(
+      optionalFunctions
+    )
+  ) {
+    if (
+      dependencyValue !==
+        undefined &&
+      dependencyValue !==
+        null &&
+      typeof dependencyValue !==
+        "function"
+    ) {
+      throw new Error(
+        `LiteAPI adapter dependency "${dependencyName}" must be a function when provided.`
       );
     }
   }
@@ -572,6 +615,168 @@ function createLiteApiAdapter(
 
         rawData,
       });
+    },
+
+    async recheckOffer({
+      offer,
+      hotelId,
+      signal,
+    } = {}) {
+      if (
+        typeof prebookLiteApiOffer !==
+          "function" ||
+        typeof createLiteApiPrebookOffer !==
+          "function"
+      ) {
+        const error =
+          new Error(
+            "LiteAPI offer recheck dependencies are unavailable."
+          );
+
+        error.code =
+          "PROVIDER_OFFER_RECHECK_UNAVAILABLE";
+
+        error.status =
+          501;
+
+        throw error;
+      }
+
+      const providerOfferReference =
+        typeof offer
+          ?.providerOfferReference ===
+          "string"
+          ? offer
+              .providerOfferReference
+              .trim()
+          : "";
+
+      if (!providerOfferReference) {
+        const error =
+          new Error(
+            "The provider offer reference is unavailable."
+          );
+
+        error.code =
+          "PROVIDER_OFFER_REFERENCE_REQUIRED";
+
+        error.status =
+          409;
+
+        throw error;
+      }
+
+      try {
+        const response =
+          await prebookLiteApiOffer(
+            providerOfferReference,
+            {
+              usePaymentSdk:
+                false,
+              signal,
+            }
+          );
+
+        if (
+          response?.noContent
+        ) {
+          return createProviderOfferRecheckSoldOut({
+            providerId:
+              PROVIDER_ID,
+            rawData:
+              response?.data ??
+              null,
+          });
+        }
+
+        const mapped =
+          createLiteApiPrebookOffer({
+            data:
+              response?.data ??
+              null,
+            originalOffer:
+              offer,
+            hotelId,
+            sourceProvider:
+              PROVIDER_ID,
+            providerName:
+              offer?.provider ??
+              "LiteAPI",
+            fallbackCurrency:
+              offer?.currency ??
+              "EUR",
+          });
+
+        if (!mapped?.offer) {
+          const error =
+            new Error(
+              "The provider returned an invalid prebook response."
+            );
+
+          error.code =
+            "PROVIDER_RECHECK_INVALID_RESPONSE";
+
+          error.status =
+            502;
+
+          throw error;
+        }
+
+        return createProviderOfferRecheckConfirmed({
+          providerId:
+            PROVIDER_ID,
+          offer:
+            mapped.offer,
+          providerBookingReference:
+            mapped.providerBookingReference,
+          rawData:
+            response?.data ??
+            null,
+        });
+      } catch (error) {
+        const status =
+          Number(
+            error?.status ??
+            error?.response?.status
+          );
+
+        const message =
+          String(
+            error?.message ??
+            error?.response?.data
+              ?.message ??
+            ""
+          ).toLowerCase();
+
+        const unavailable =
+          status === 404 ||
+          status === 410 ||
+          message.includes(
+            "sold out"
+          ) ||
+          message.includes(
+            "no longer available"
+          ) ||
+          message.includes(
+            "offer expired"
+          ) ||
+          message.includes(
+            "outdated offer"
+          );
+
+        if (unavailable) {
+          return createProviderOfferRecheckSoldOut({
+            providerId:
+              PROVIDER_ID,
+            rawData:
+              error?.response?.data ??
+              error?.data ??
+              null,
+          });
+        }
+
+        throw error;
+      }
     },
 
     async getHotelDetails({

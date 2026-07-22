@@ -324,9 +324,128 @@ function getOfferHandoffState({
   };
 }
 
+function getProviderOfferReference(
+  offer
+) {
+  const reference =
+    normalizeText(
+      offer?.providerOfferReference
+    );
+
+  return reference || null;
+}
+
+function createBookingOfferSnapshot(
+  offer
+) {
+  const source =
+    offer &&
+    typeof offer === "object" &&
+    !Array.isArray(offer)
+      ? offer
+      : {};
+
+  return {
+    price:
+      normalizeNumber(
+        source.price
+      ),
+
+    totalKnownCost:
+      normalizeNumber(
+        source.totalKnownCost
+      ),
+
+    currency:
+      normalizeIdentityText(
+        source.currency
+      ),
+
+    taxesIncluded:
+      normalizeBoolean(
+        source.taxesIncluded
+      ),
+
+    includedTaxes:
+      normalizeNumber(
+        source.includedTaxes
+      ),
+
+    excludedTaxes:
+      normalizeNumber(
+        source.excludedTaxes
+      ),
+
+    unknownTaxes:
+      normalizeNumber(
+        source.unknownTaxes
+      ),
+
+    roomName:
+      normalizeIdentityText(
+        source.roomName
+      ),
+
+    refundable:
+      normalizeBoolean(
+        source.refundable
+      ),
+
+    freeCancellationUntil:
+      normalizeIdentityText(
+        source.freeCancellationUntil
+      ),
+
+    cancellationPolicy:
+      normalizeIdentityText(
+        source.cancellationPolicy
+      ),
+
+    bookable:
+      source.bookable !== false,
+  };
+}
+
+function compareBookingOfferSnapshots(
+  originalOffer,
+  confirmedOffer
+) {
+  const original =
+    createBookingOfferSnapshot(
+      originalOffer
+    );
+
+  const confirmed =
+    createBookingOfferSnapshot(
+      confirmedOffer
+    );
+
+  const changedFields =
+    Object.keys(original)
+      .filter(
+        (field) =>
+          original[field] !==
+          confirmed[field]
+      );
+
+  return {
+    changed:
+      changedFields.length > 0,
+
+    changedFields,
+
+    original,
+
+    confirmed,
+  };
+}
+
 module.exports = {
   PUBLIC_OFFER_ID_PATTERN,
   createPublicOfferId,
+  createBookingOfferSnapshot,
+  compareBookingOfferSnapshots,
+  getProviderOfferReference,
   getOfferHandoffState,
   getOfferSourceProvider,
   getSafeBookingUrl,

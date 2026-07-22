@@ -220,6 +220,32 @@ export interface HotelDetailsResponse {
 }
 
 
+export type BookingOfferRecheckState =
+  | "confirmed"
+  | "changed"
+  | "sold-out"
+  | "recheck-required";
+
+export interface BookingOfferVerification {
+  id: string;
+  verifiedAt: number;
+  expiresAt: number;
+}
+
+export interface BookingOfferRecheckResponse {
+  success: boolean;
+  state: BookingOfferRecheckState;
+  code: string;
+  message: string;
+  retryable: boolean;
+  retryAfterMs: number | null;
+  requiresUserConfirmation: boolean;
+  changedFields: string[];
+  verification: BookingOfferVerification | null;
+  confirmedOfferId: string | null;
+  offer: HotelOffer | null;
+}
+
 export type SearchLifecyclePhase =
   | "starting"
   | "running"

@@ -45,6 +45,12 @@ const {
   resolveBookingRedirect,
 } = require("../services/bookingRedirectService");
 
+const {
+  recheckBookingOffer,
+} = require(
+  "../services/bookingOfferRecheckService"
+);
+
 function getSearchIdFromRequest(req) {
 
   const searchId =
@@ -99,6 +105,7 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "OFFER_NOT_IN_HOTEL",
     "OFFER_NOT_BOOKABLE",
     "OFFER_HANDOFF_UNSUPPORTED",
+    "BOOKING_VERIFICATION_CAPACITY_REACHED",
     "HOTEL_SOURCE_UNAVAILABLE",
   ]);
 
@@ -433,6 +440,92 @@ router.post("/search-hotels/continue", async (req, res) => {
 
   }
 
+});
+
+// =========================
+// Booking Offer Recheck
+// =========================
+
+router.post("/booking-offer-recheck", async (req, res) => {
+  try {
+    const payload =
+      req.body &&
+      typeof req.body === "object" &&
+      !Array.isArray(req.body)
+        ? req.body
+        : {};
+
+    const result =
+      await recheckBookingOffer({
+        searchId:
+          payload.searchId,
+        hotelId:
+          payload.hotelId,
+        offerId:
+          payload.offerId,
+      });
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
+
+    if (
+      result.retryAfterMs != null &&
+      result.retryAfterMs > 0
+    ) {
+      res.set(
+        "Retry-After",
+        String(
+          Math.max(
+            1,
+            Math.ceil(
+              result.retryAfterMs /
+              1000
+            )
+          )
+        )
+      );
+    }
+
+    return res.json({
+      success:
+        true,
+      state:
+        result.state,
+      code:
+        result.code,
+      message:
+        result.message,
+      retryable:
+        result.retryable,
+      retryAfterMs:
+        result.retryAfterMs,
+      requiresUserConfirmation:
+        result
+          .requiresUserConfirmation,
+      changedFields:
+        result.changedFields,
+      verification:
+        result.verification,
+      confirmedOfferId:
+        result.confirmedOfferId ??
+        null,
+      offer:
+        result.offer
+          ? createPublicHotelOffer(
+              result.offer,
+              0
+            )
+          : null,
+    });
+  } catch (error) {
+    return sendRouteError(
+      res,
+      error,
+      "Unable to verify this booking offer."
+    );
+  }
 });
 
 // =========================

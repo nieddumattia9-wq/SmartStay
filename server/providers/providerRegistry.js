@@ -51,6 +51,7 @@ const ACCOMMODATION_PROVIDER_IDS = {
         searchHotels: true,
         continueHotelSearch: false,
         hotelDetails: true,
+        offerRecheck: true,
   
         synchronousSearch: true,
         asynchronousSearch: false,
@@ -97,6 +98,7 @@ const ACCOMMODATION_PROVIDER_IDS = {
         searchHotels: true,
         continueHotelSearch: true,
         hotelDetails: true,
+        offerRecheck: false,
   
         synchronousSearch: false,
         asynchronousSearch: true,
@@ -143,6 +145,7 @@ const ACCOMMODATION_PROVIDER_IDS = {
         searchHotels: true,
         continueHotelSearch: false,
         hotelDetails: true,
+        offerRecheck: false,
   
         synchronousSearch: true,
         asynchronousSearch: false,

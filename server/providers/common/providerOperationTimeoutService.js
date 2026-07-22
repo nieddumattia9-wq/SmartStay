@@ -1,4 +1,4 @@
-﻿function parsePositiveInteger(
+function parsePositiveInteger(
   value,
   fallbackValue = null
 ) {
@@ -53,6 +53,13 @@ const DEFAULT_PROVIDER_OPERATION_TIMEOUTS_MS =
         process.env
           .PROVIDER_HOTEL_DETAILS_TIMEOUT_MS,
         15_000
+      ),
+
+    recheckOffer:
+      parsePositiveInteger(
+        process.env
+          .PROVIDER_OFFER_RECHECK_TIMEOUT_MS,
+        20_000
       ),
 
     default:

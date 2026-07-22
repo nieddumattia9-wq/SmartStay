@@ -53,9 +53,18 @@ function sanitizePayloadForLog(payload) {
     return payload;
   }
 
-  return JSON.parse(
+  const clone = JSON.parse(
     JSON.stringify(payload)
   );
+
+  if (
+    typeof clone.offerId === "string"
+  ) {
+    clone.offerId =
+      maskValue(clone.offerId);
+  }
+
+  return clone;
 }
 
 function logLiteApiRequest({
@@ -312,6 +321,49 @@ async function getLiteApiRates(
   });
 }
 
+async function prebookLiteApiOffer(
+  offerId,
+  {
+    usePaymentSdk = false,
+    signal,
+  } = {}
+) {
+  const normalizedOfferId =
+    typeof offerId === "string"
+      ? offerId.trim()
+      : "";
+
+  if (!normalizedOfferId) {
+    const error =
+      new Error(
+        "A LiteAPI offerId is required for prebook."
+      );
+
+    error.code =
+      "PROVIDER_OFFER_REFERENCE_REQUIRED";
+
+    throw error;
+  }
+
+  return callLiteApiPost({
+    endpointPath:
+      "/rates/prebook",
+
+    payload: {
+      offerId:
+        normalizedOfferId,
+
+      usePaymentSdk:
+        usePaymentSdk === true,
+    },
+
+    title:
+      "PREBOOK HOTEL OFFER",
+
+    signal,
+  });
+}
+
 function normalizeLiteApiChildren(
   children
 ) {
@@ -510,6 +562,7 @@ module.exports = {
     getLiteApiHotels,
     getLiteApiFacilities,
     getLiteApiRates,
+    prebookLiteApiOffer,
     createLiteApiSessionId,
     createLiteApiOccupancies,
     createLiteApiRatesPayload,

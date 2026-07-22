@@ -1,9 +1,10 @@
-﻿const PROVIDER_ADAPTER_METHODS =
+const PROVIDER_ADAPTER_METHODS =
   Object.freeze([
     "searchHotels",
     "searchDestinations",
     "continueHotelSearch",
     "getHotelDetails",
+    "recheckOffer",
   ]);
 
 function normalizeProviderId(

@@ -1086,6 +1086,14 @@ function createLiteApiOffer({
 
     sourceProvider,
 
+    providerOfferReference:
+      pickString(rate, [
+        ["offerId"],
+        ["rateId"],
+        ["rateToken"],
+      ]) ||
+      null,
+
     price,
 
 
@@ -1117,9 +1125,105 @@ function createLiteApiOffer({
   };
 }
 
+function getLiteApiPrebookPayload(
+  data
+) {
+  if (!isPlainObject(data)) {
+    return null;
+  }
+
+  const nested =
+    pickFirst(data, [
+      ["data"],
+      ["result"],
+      ["prebook"],
+    ]);
+
+  return isPlainObject(nested)
+    ? nested
+    : data;
+}
+
+function createLiteApiPrebookOffer({
+  data,
+  originalOffer,
+  hotelId,
+  sourceProvider,
+  providerName,
+  fallbackCurrency = "EUR",
+} = {}) {
+  const payload =
+    getLiteApiPrebookPayload(
+      data
+    );
+
+  if (!payload) {
+    return null;
+  }
+
+  const offerRecord =
+    getLiteApiOfferRecords(
+      payload
+    )[0] ??
+    payload;
+
+  const mappedOffer =
+    createLiteApiOffer({
+      rate:
+        offerRecord,
+      hotelId,
+      index:
+        0,
+      fallbackCurrency:
+        pickString(payload, [
+          ["currency"],
+          ["price", "currency"],
+        ]) ||
+        originalOffer?.currency ||
+        fallbackCurrency,
+      sourceProvider,
+      providerName,
+    });
+
+  if (!mappedOffer) {
+    return null;
+  }
+
+  return {
+    offer: {
+      ...originalOffer,
+      ...mappedOffer,
+
+      id:
+        originalOffer?.id ??
+        mappedOffer.id,
+
+      providerOfferReference:
+        originalOffer
+          ?.providerOfferReference ??
+        mappedOffer
+          .providerOfferReference,
+
+      deepLink:
+        originalOffer?.deepLink ??
+        mappedOffer.deepLink ??
+        null,
+    },
+
+    providerBookingReference:
+      pickString(payload, [
+        ["prebookId"],
+        ["prebook", "id"],
+        ["booking", "prebookId"],
+      ]) ||
+      null,
+  };
+}
+
 module.exports = {
   createCancellationSummary,
   createLiteApiOffer,
+  createLiteApiPrebookOffer,
   createTaxSummary,
   getLiteApiOfferRecords,
 };
