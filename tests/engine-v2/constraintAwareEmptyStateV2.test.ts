@@ -439,3 +439,124 @@ test(
     );
   }
 );
+
+test(
+  "Budget diagnosis ignores stays already excluded by non-budget constraints",
+  () => {
+    const hotels = [
+      createHotel(
+        "over-budget-one",
+        1,
+        450,
+        1
+      ),
+      createHotel(
+        "over-budget-two",
+        2,
+        520,
+        2
+      ),
+      createHotel(
+        "cheap-but-too-far",
+        8,
+        80,
+        3
+      ),
+    ];
+
+    const view =
+      buildSmartStayFrontendViewV2({
+        hotels,
+        preferenceId:
+          "maximum-savings",
+        selectedIndex:
+          4,
+        preferenceSource:
+          "manual",
+        totalBudget:
+          100,
+        maximumDistanceKm:
+          5,
+        selectedLocation: {
+          latitude:
+            48.8588897,
+          longitude:
+            2.320041,
+          confidence:
+            1,
+          label:
+            "Test destination",
+        },
+        nights:
+          3,
+        adults:
+          4,
+        children:
+          0,
+        rooms:
+          2,
+        destinationKey:
+          "Barcelona, Spain",
+        currency:
+          "EUR",
+        checkIn:
+          "2026-09-04",
+        checkOut:
+          "2026-09-07",
+        marketContextMode:
+          "current-search",
+        maximumVisibleResults:
+          hotels.length,
+      });
+
+    assert.equal(
+      view.rankedHotels.length,
+      0
+    );
+
+    assert.equal(
+      view.emptyState?.reason,
+      "budget-constraint"
+    );
+
+    assert.equal(
+      view
+        .emptyState
+        ?.budgetEligibleCandidateCount,
+      2
+    );
+
+    assert.equal(
+      view
+        .emptyState
+        ?.budgetBlockedCandidateCount,
+      2
+    );
+  }
+);
+
+test(
+  "Loading lifecycle replaces the transient route and redirects stale loading entries safely",
+  () => {
+    const loadingSource =
+      readFileSync(
+        "src/components/LoadingScreen/LoadingScreen.tsx",
+        "utf8"
+      );
+
+    assert.match(
+      loadingSource,
+      /`\/results\?searchId=\$\{encodeURIComponent\(finalSearchId\)\}`[\s\S]{0,180}replace:\s*true/
+    );
+
+    assert.match(
+      loadingSource,
+      /isMissingSearchData[\s\S]{0,500}navigate\([\s\S]{0,120}"\/"[\s\S]{0,180}replace:\s*true/
+    );
+
+    assert.match(
+      loadingSource,
+      /isMissingSearchData[\s\S]{0,700}return;/
+    );
+  }
+);

@@ -78,6 +78,9 @@ import {
 
   const SEARCH_TIMEOUT_MESSAGE =
     "The search took too long to complete. Please try again with different dates or another destination.";
+
+  const MISSING_SEARCH_DATA_MESSAGE =
+    "Missing search data. Please start a new search.";
   
   type SearchProgressResponse = {
     success: boolean;
@@ -514,7 +517,7 @@ import {
           }
   
           throw new Error(
-            "Missing search data. Please start a new search."
+            MISSING_SEARCH_DATA_MESSAGE
           );
         }
   
@@ -639,7 +642,11 @@ import {
           clearActiveSearchIdFromStorage();
   
           navigate(
-            `/results?searchId=${encodeURIComponent(finalSearchId)}`
+            `/results?searchId=${encodeURIComponent(finalSearchId)}`,
+            {
+              replace:
+                true,
+            }
           );
         }
       }
@@ -780,6 +787,29 @@ import {
             await delay(POLLING_DELAY_MS);
           }
         } catch (err) {
+          const isMissingSearchData =
+            err instanceof Error &&
+            err.message ===
+              MISSING_SEARCH_DATA_MESSAGE;
+
+          if (isMissingSearchData) {
+            clearPendingSearch();
+            clearActiveSearchIdFromStorage();
+            clearSearchLock();
+
+            if (isMounted.current) {
+              navigate(
+                "/",
+                {
+                  replace:
+                    true,
+                }
+              );
+            }
+
+            return;
+          }
+
           console.error(err);
   
           const isSearchTimeout =

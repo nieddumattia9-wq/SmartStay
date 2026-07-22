@@ -22,6 +22,12 @@ export interface SmartStayEmptyStateV2 {
   budgetHiddenCount:
     number;
 
+  budgetEligibleCandidateCount:
+    number;
+
+  budgetBlockedCandidateCount:
+    number;
+
   reliabilityBlockedCount:
     number;
 
@@ -52,6 +58,12 @@ export interface SmartStayEmptyStateDiagnosticInputV2 {
     number;
 
   budgetHiddenCount?:
+    number;
+
+  budgetEligibleCandidateCount?:
+    number;
+
+  budgetBlockedCandidateCount?:
     number;
 
   reliabilityBlockedCount?:
@@ -190,6 +202,17 @@ export function diagnoseSmartStayEmptyStateV2(
       input.budgetHiddenCount
     );
 
+  const budgetEligibleCandidateCount =
+    normalizeCount(
+      input.budgetEligibleCandidateCount
+    );
+
+  const budgetBlockedCandidateCount =
+    normalizeCount(
+      input.budgetBlockedCandidateCount ??
+      input.budgetHiddenCount
+    );
+
   const reliabilityBlockedCount =
     normalizeCount(
       input.reliabilityBlockedCount
@@ -253,8 +276,18 @@ export function diagnoseSmartStayEmptyStateV2(
   }
   else if (
     totalBudget !== null &&
-    budgetHiddenCount ===
-      providerHotelCount
+    (
+      budgetEligibleCandidateCount >
+        0
+        ? (
+            budgetBlockedCandidateCount >=
+            budgetEligibleCandidateCount
+          )
+        : (
+            budgetHiddenCount ===
+            providerHotelCount
+          )
+    )
   ) {
     reason =
       "budget-constraint";
@@ -283,6 +316,8 @@ export function diagnoseSmartStayEmptyStateV2(
     visibleHotelCount,
     distanceExceededCount,
     budgetHiddenCount,
+    budgetEligibleCandidateCount,
+    budgetBlockedCandidateCount,
     reliabilityBlockedCount,
     mandatoryConstraintExceededCount,
     productPolicyExcludedCount,

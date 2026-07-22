@@ -3558,6 +3558,47 @@ export function buildSmartStayFrontendViewV2(
           )
     ).length;
 
+  const budgetEligibleCandidates =
+    frontendEvaluations.filter(
+      (evaluation) => {
+        const sourceEvaluation =
+          evaluation
+            .sourceEvaluation;
+
+        if (
+          !sourceEvaluation
+            .reliabilityGate
+            .eligible
+        ) {
+          return false;
+        }
+
+        return !sourceEvaluation
+          .constraints
+          .some(
+            (constraint) =>
+              constraint.kind !==
+                "budget" &&
+              constraint.status ===
+                "exceeded"
+          );
+      }
+    );
+
+  const budgetBlockedCandidateCount =
+    budgetEligibleCandidates.filter(
+      (evaluation) =>
+        evaluation
+          .budgetVisibility ===
+          "near-budget" ||
+        evaluation
+          .budgetVisibility ===
+          "far-over-budget" ||
+        evaluation
+          .budgetVisibility ===
+          "unverified"
+    ).length;
+
   const budgetHiddenHotelIds =
     new Set([
       ...budgetVisibility
@@ -3637,6 +3678,11 @@ export function buildSmartStayFrontendViewV2(
 
       budgetHiddenCount:
         budgetHiddenHotelIds.size,
+
+      budgetEligibleCandidateCount:
+        budgetEligibleCandidates.length,
+
+      budgetBlockedCandidateCount,
 
       reliabilityBlockedCount,
 
