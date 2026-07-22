@@ -416,7 +416,8 @@ export function createBookingRedirectUrl(
 
 export async function getHotelDetails(
   hotelId: string,
-  searchId?: string | null
+  searchId?: string | null,
+  offerId?: string | null
 ): Promise<HotelDetailsResponse> {
 
   return requestJson<HotelDetailsResponse>(
@@ -429,6 +430,7 @@ export async function getHotelDetails(
       body: JSON.stringify({
         hotelId,
         searchId,
+        offerId,
       }),
     },
     "Unable to retrieve hotel details.",

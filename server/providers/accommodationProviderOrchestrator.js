@@ -1092,13 +1092,23 @@ async function getHotelDetailsFromProvider({
     throw error;
   }
 
-  const fallbackProvider =
-    getPrimaryEnabledAccommodationProvider();
-
   const providerId =
-    sourceProvider ??
-    fallbackProvider?.id ??
-    null;
+    typeof sourceProvider ===
+      "string"
+      ? sourceProvider.trim()
+      : "";
+
+  if (!providerId) {
+    const error =
+      new Error(
+        "The source provider is required to retrieve hotel details."
+      );
+
+    error.code =
+      "HOTEL_SOURCE_UNAVAILABLE";
+
+    throw error;
+  }
 
   const provider =
     providerId

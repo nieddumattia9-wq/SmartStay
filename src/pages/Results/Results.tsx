@@ -31,6 +31,7 @@ import {
 import type {
   Hotel,
   HotelDetails,
+  HotelOffer,
   SearchLifecycle,
   SearchSessionResponse,
 } from "../../types/hotel";
@@ -511,30 +512,45 @@ function writeStoredRankingV2(
 
 function getHotelBookingUrl(
   hotel: Hotel | null,
-  searchId: string | null
+  searchId: string | null,
+  selectedOfferId:
+    string |
+    null = null
 ) {
   if (!hotel) {
     return null;
   }
 
-  const redirectableOffer =
+  const offerSelection =
     selectHotelOffers(
       hotel
-    ).offers.find(
-      (candidate) =>
-        candidate.offer
-          .redirectable ===
-        true
     );
 
-  if (!redirectableOffer) {
+  const selectedOffer =
+    selectedOfferId
+      ? offerSelection.offers.find(
+          (candidate) =>
+            candidate.offer.id ===
+            selectedOfferId
+        ) ?? null
+      : offerSelection.primary;
+
+  const selectedOfferIsRedirectable =
+    selectedOffer?.offer
+      .redirectable ===
+    true;
+
+  if (
+    !selectedOffer ||
+    !selectedOfferIsRedirectable
+  ) {
     return null;
   }
 
   return createBookingRedirectUrl(
     searchId,
     hotel.id,
-    redirectableOffer.offer.id
+    selectedOffer.offer.id
   );
 }
 
@@ -649,6 +665,9 @@ function getHotelDetailsFailureMessage(
     const [hotelDetails, setHotelDetails] =
       useState<HotelDetails | null>(null);
 
+    const [hotelDetailsOffer, setHotelDetailsOffer] =
+      useState<HotelOffer | null>(null);
+
     const [hotelDetailsLoading, setHotelDetailsLoading] =
       useState(false);
 
@@ -656,6 +675,9 @@ function getHotelDetailsFailureMessage(
       useState("");
 
     const [activeDetailsHotelId, setActiveDetailsHotelId] =
+      useState<string | null>(null);
+
+    const [activeDetailsOfferId, setActiveDetailsOfferId] =
       useState<string | null>(null);
 
     const detailsRequestIdRef =
@@ -669,17 +691,12 @@ function getHotelDetailsFailureMessage(
       ) ??
       null;
 
-    const activeDetailsOfferSelection =
-      activeDetailsHotel
-        ? selectHotelOffers(
-            activeDetailsHotel
-          )
-        : null;
-
     const activeDetailsBookingUrl =
       getHotelBookingUrl(
         activeDetailsHotel,
-        searchId
+        searchId,
+        hotelDetailsOffer?.id ??
+        activeDetailsOfferId
       );
 
     const selectedPreferenceIndex =
@@ -1301,13 +1318,20 @@ const rankedHotels =
 
         setDetailsOpen(false);
         setHotelDetailsLoading(false);
+        setHotelDetailsOffer(null);
         setActiveDetailsHotelId(null);
+        setActiveDetailsOfferId(null);
       }, []);
 
     const handleViewHotelDetails =
       useCallback(
         async (
-          hotel: Hotel
+          hotel: Hotel,
+          selectedOffer:
+            {
+              offerId: string;
+            } |
+            null
         ) => {
           const requestId =
             detailsRequestIdRef.current + 1;
@@ -1315,12 +1339,26 @@ const rankedHotels =
           detailsRequestIdRef.current =
             requestId;
 
+          const fallbackOfferId =
+            selectHotelOffers(
+              hotel
+            ).primary?.offer.id ??
+            null;
+
+          const selectedOfferId =
+            selectedOffer?.offerId ??
+            fallbackOfferId;
+
           setDetailsOpen(true);
           setHotelDetails(null);
+          setHotelDetailsOffer(null);
           setHotelDetailsError("");
           setHotelDetailsLoading(true);
           setActiveDetailsHotelId(
             hotel.id
+          );
+          setActiveDetailsOfferId(
+            selectedOfferId
           );
 
           if (!searchId) {
@@ -1337,7 +1375,8 @@ const rankedHotels =
             const response =
               await getHotelDetails(
                 hotel.id,
-                searchId
+                searchId,
+                selectedOfferId
               );
 
             if (
@@ -1357,6 +1396,10 @@ const rankedHotels =
 
             setHotelDetails(
               response.hotel
+            );
+
+            setHotelDetailsOffer(
+              response.offer
             );
           } catch (error) {
             console.error(
@@ -1854,7 +1897,10 @@ const rankedHotels =
                       bookingUrl={
                         getHotelBookingUrl(
                           evaluation.hotel,
-                          searchId
+                          searchId,
+                          evaluation.selectedOffer
+                            ?.offerId ??
+                            null
                         )
                       }
                       onViewDetails={
@@ -2056,7 +2102,10 @@ const rankedHotels =
                       bookingUrl={
                         getHotelBookingUrl(
                           evaluation.hotel,
-                          searchId
+                          searchId,
+                          evaluation.selectedOffer
+                            ?.offerId ??
+                            null
                         )
                       }
                       onViewDetails={
@@ -2197,7 +2246,10 @@ const rankedHotels =
                         bookingUrl={
                           getHotelBookingUrl(
                             evaluation.hotel,
-                            searchId
+                            searchId,
+                            evaluation.selectedOffer
+                              ?.offerId ??
+                              null
                           )
                         }
                         onViewDetails={
@@ -2217,10 +2269,7 @@ const rankedHotels =
           details={hotelDetails}
           loading={hotelDetailsLoading}
           error={hotelDetailsError}
-          offers={
-            activeDetailsOfferSelection
-              ?.offers ?? []
-          }
+          offer={hotelDetailsOffer}
           bookingUrl={activeDetailsBookingUrl}
           onClose={handleCloseHotelDetails}
         />

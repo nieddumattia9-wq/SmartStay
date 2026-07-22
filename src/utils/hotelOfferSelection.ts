@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   Hotel,
   HotelOffer,
 } from "../types/hotel";
@@ -70,7 +70,7 @@ function normalizeText(
 function hasPublicOfferId(
   offer: HotelOffer
 ) {
-  return /^offer-[1-9][0-9]*$/.test(
+  return /^(?:offer-[1-9][0-9]*|offer-[a-f0-9]{24})$/i.test(
     offer.id.trim()
   );
 }

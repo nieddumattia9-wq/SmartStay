@@ -13,6 +13,7 @@ const {
 
 const {
   createPublicHotelDetails,
+  createPublicHotelOffer,
 } = require("../presenters/publicHotelPresenter");
 
 const {
@@ -97,6 +98,8 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "OFFER_ID_INVALID",
     "OFFER_NOT_IN_HOTEL",
     "OFFER_NOT_BOOKABLE",
+    "OFFER_HANDOFF_UNSUPPORTED",
+    "HOTEL_SOURCE_UNAVAILABLE",
   ]);
 
 function isValidHttpStatus(
@@ -523,6 +526,11 @@ router.post("/hotel-details", async (req, res) => {
         ? req.body.searchId.trim()
         : "";
 
+    const offerId =
+      typeof req.body.offerId === "string"
+        ? req.body.offerId.trim()
+        : "";
+
     if (!hotelId) {
 
       return res.status(400).json({
@@ -546,7 +554,8 @@ router.post("/hotel-details", async (req, res) => {
     const result =
       await getHotelDetails(
         hotelId,
-        searchId
+        searchId,
+        offerId || null
       );
 
     return res.json({
@@ -557,6 +566,15 @@ router.post("/hotel-details", async (req, res) => {
         createPublicHotelDetails(
           result.hotel
         ),
+
+      offer:
+        result.offer
+          ? createPublicHotelOffer(
+              result.offer,
+              0,
+              result.hotel
+            )
+          : null,
     });
 
   } catch (error) {

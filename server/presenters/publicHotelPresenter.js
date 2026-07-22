@@ -1,6 +1,13 @@
-﻿const {
+const {
   inferReviewCountRelation,
 } = require("../utils/reviewCountRelation");
+
+const {
+  createPublicOfferId,
+  getOfferHandoffState,
+} = require(
+  "../services/bookingOfferIntegrityService"
+);
 
 const AVAILABLE_DATA_KEYS = [
   "hasPrice",
@@ -186,7 +193,8 @@ function createPublicAvailableData(
 
 function createPublicHotelOffer(
   offer,
-  index
+  _index,
+  hotel = null
 ) {
 
   const source =
@@ -201,7 +209,9 @@ function createPublicHotelOffer(
 
   return {
     id:
-      `offer-${index + 1}`,
+      createPublicOfferId(
+        source
+      ),
 
     provider:
       getText(
@@ -334,11 +344,12 @@ function createPublicHotelOffer(
       ),
 
     redirectable:
-      Boolean(
-        getSafeHttpUrl(
-          source.deepLink
-        )
-      ),
+      getOfferHandoffState({
+        offer:
+          source,
+        hotel,
+      }).state ===
+      "redirect-ready",
   };
 
 }
@@ -383,7 +394,15 @@ function createPublicHotel(
       hotel.offers
     )
       ? hotel.offers.map(
-          createPublicHotelOffer
+          (
+            offer,
+            index
+          ) =>
+            createPublicHotelOffer(
+              offer,
+              index,
+              hotel
+            )
         )
       : [];
 

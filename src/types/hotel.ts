@@ -215,6 +215,8 @@ export interface HotelDetailsResponse {
 
   hotel: HotelDetails | null;
 
+  offer: HotelOffer | null;
+
 }
 
 

@@ -10,6 +10,13 @@ const {
   } = require("../utils/reviewCountRelation");
 
   const {
+    isPublicOfferId,
+    resolveOfferByPublicId,
+  } = require(
+    "./bookingOfferIntegrityService"
+  );
+
+  const {
     saveSearchSession,
     requireSearchSession,
     tryAcquireSearchContinuation,
@@ -661,6 +668,7 @@ const {
   function createHotelDetailsResponse({
     hotel,
     providerDetails,
+    offer = null,
   }) {
 
     const details =
@@ -712,6 +720,8 @@ const {
     return {
       success:
         true,
+
+      offer,
 
       hotel: {
         id:
@@ -1947,9 +1957,9 @@ const {
 
     async function getHotelDetails(
       hotelId,
-      searchId
+      searchId,
+      offerId = null
     ) {
-
       const session =
         requireSearchSession(
           searchId
@@ -1961,34 +1971,88 @@ const {
           hotelId
         );
 
+      const normalizedOfferId =
+        typeof offerId ===
+          "string"
+          ? offerId.trim()
+          : "";
+
+      if (
+        normalizedOfferId &&
+        !isPublicOfferId(
+          normalizedOfferId
+        )
+      ) {
+        throw createStayServiceError({
+          code:
+            "OFFER_ID_INVALID",
+          message:
+            "offerId is invalid.",
+          status:
+            400,
+        });
+      }
+
+      const offer =
+        normalizedOfferId
+          ? resolveOfferByPublicId(
+              hotel.offers,
+              normalizedOfferId
+            )
+          : null;
+
+      if (
+        normalizedOfferId &&
+        !offer
+      ) {
+        throw createStayServiceError({
+          code:
+            "OFFER_NOT_IN_HOTEL",
+          message:
+            "The requested offer does not belong to this hotel.",
+          status:
+            404,
+        });
+      }
+
       const providerHotelId =
         getProviderHotelId(
           hotel
         );
 
       const sourceProvider =
-        hotel?.sourceProvider ??
-        session.providerId ??
-        null;
+        typeof hotel
+          ?.sourceProvider ===
+          "string"
+          ? hotel.sourceProvider.trim()
+          : "";
+
+      if (!sourceProvider) {
+        throw createStayServiceError({
+          code:
+            "HOTEL_SOURCE_UNAVAILABLE",
+          message:
+            "The accommodation source is unavailable for this search result.",
+          status:
+            409,
+        });
+      }
 
       const providerDetails =
         await getHotelDetailsFromProvider({
           sourceProvider,
-
           hotelId:
             providerHotelId,
-
           providerContext:
             hotel?.providerContext ??
-            session.providerContext ??
             null,
         });
 
       return createHotelDetailsResponse({
         hotel,
         providerDetails,
+        offer,
       });
-
     }
 
     // =========================

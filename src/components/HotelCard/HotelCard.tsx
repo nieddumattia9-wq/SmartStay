@@ -36,7 +36,12 @@ type HotelCardProps = {
   detailsLoading?: boolean;
   bookingUrl?: string | null;
   showRecommendationLabel?: boolean;
-  onViewDetails: (hotel: Hotel) => void;
+  onViewDetails: (
+    hotel: Hotel,
+    selectedOffer:
+      SmartStaySelectedOfferV2 |
+      null
+  ) => void;
 };
 
 function formatPrice(
@@ -547,7 +552,8 @@ function HotelCard({
               className="hotel-card__button"
               onClick={() => {
                 onViewDetails(
-                  hotel
+                  hotel,
+                  selectedOffer
                 );
               }}
               disabled={detailsLoading}

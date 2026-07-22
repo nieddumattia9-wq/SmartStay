@@ -5,15 +5,12 @@ import {
 
 import type {
   HotelDetails,
+  HotelOffer,
 } from "../../types/hotel";
 
 import {
   formatReviewCountLabel,
 } from "../../utils/reviewCountDisplay";
-
-import type {
-  ComparableHotelOffer,
-} from "../../utils/hotelOfferSelection";
 
 import "./HotelDetailsPanel.css";
 
@@ -22,7 +19,7 @@ type HotelDetailsPanelProps = {
   loading: boolean;
   error: string;
   bookingUrl?: string | null;
-  offers?: ComparableHotelOffer[];
+  offer?: HotelOffer | null;
   onClose: () => void;
 };
 
@@ -36,6 +33,63 @@ function formatLocation(
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+function formatOfferMoney(
+  amount: number,
+  currency: string
+) {
+  try {
+    return new Intl.NumberFormat(
+      "en-US",
+      {
+        style:
+          "currency",
+        currency:
+          currency ||
+          "EUR",
+        maximumFractionDigits:
+          2,
+      }
+    ).format(amount);
+  } catch {
+    return `${currency || "EUR"} ${amount.toFixed(2)}`;
+  }
+}
+
+function getOfferDisplayAmount(
+  offer: HotelOffer
+) {
+  return (
+    typeof offer.totalKnownCost ===
+      "number" &&
+    Number.isFinite(
+      offer.totalKnownCost
+    ) &&
+    offer.totalKnownCost > 0
+      ? offer.totalKnownCost
+      : offer.price
+  );
+}
+
+function getOfferTaxLabel(
+  offer: HotelOffer
+) {
+  if (
+    offer.taxesIncluded ===
+      true
+  ) {
+    return "Known taxes are included in the displayed total.";
+  }
+
+  if (
+    offer.taxesIncluded ===
+      false
+  ) {
+    return "Some known taxes or fees are payable in addition to the base price.";
+  }
+
+  return "Some tax or fee information is still unknown.";
 }
 
 function DetailList({
@@ -71,7 +125,7 @@ function HotelDetailsPanel({
   loading,
   error,
   bookingUrl = null,
-  offers = [],
+  offer = null,
   onClose,
 }: HotelDetailsPanelProps) {
   const panelRef =
@@ -395,15 +449,31 @@ function HotelDetailsPanel({
                 items={details.facilities}
               />
 
-              {offers.length > 1 && (
+              {offer && (
                 <section className="hotel-details-panel__offer-summary">
                   <strong>
-                    {offers.length} available offers
+                    Selected offer · {formatOfferMoney(
+                      getOfferDisplayAmount(
+                        offer
+                      ),
+                      offer.currency
+                    )}
                   </strong>
 
                   <p>
-                    SmartStay selected the best comparable offer based on
-                    the available price data.
+                    {offer.roomName ||
+                      "Room details are not available for this offer."}
+                  </p>
+
+                  <p>
+                    {offer.cancellationPolicy ||
+                      "Cancellation conditions are not available."}
+                  </p>
+
+                  <p>
+                    {getOfferTaxLabel(
+                      offer
+                    )}
                   </p>
                 </section>
               )}
