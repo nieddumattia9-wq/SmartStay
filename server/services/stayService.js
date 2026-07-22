@@ -1,6 +1,7 @@
 const {
     searchDestinationsAcrossProviders,
-    searchHotelsWithPrimaryProvider,
+    searchHotelsAcrossProviders,
+    continueHotelSearchForProvider,
     getHotelDetailsFromProvider,
   } = require("../providers/accommodationProviderOrchestrator");
 
@@ -12,9 +13,23 @@ const {
     saveSearchSession,
     requireSearchSession,
     tryAcquireSearchContinuation,
+    releaseSearchContinuation,
     updateSearchSession,
     appendHotelsToSearchSession,
   } = require("../storage/searchSession");
+
+  const {
+    createProviderExecutionStates,
+    normalizeProviderExecutionStates,
+    getRunnableProviderExecutions,
+    beginProviderExecutionAttempt,
+    applyProviderExecutionSuccess,
+    applyProviderExecutionFailure,
+    summarizeProviderExecutions,
+    getPrimaryRunnableProviderExecution,
+  } = require(
+    "../providers/common/providerContinuationState"
+  );
 
   function isCompletedStatus(status) {
 
@@ -82,16 +97,288 @@ const {
 
   }
 
-  function getPublicNextResultsKey(
-    continuation
+  function getPublicNextResultsKey() {
+
+    /*
+     * Continuation is driven by the
+     * SmartStay searchId. Provider cursors
+     * remain private even when more than
+     * one provider is still running.
+     */
+    return null;
+
+  }
+
+  function createProviderExecutionStateList(
+    providerResult,
+    {
+      fallbackProviderId = null,
+      fallbackContinuation = null,
+      fallbackProviderContext = null,
+    } = {}
+  ) {
+
+    const descriptors =
+      Array.isArray(
+        providerResult?.providerExecutions
+      )
+        ? providerResult
+            .providerExecutions
+        : [];
+
+    if (descriptors.length > 0) {
+
+      return createProviderExecutionStates(
+        descriptors
+      );
+
+    }
+
+    if (!fallbackProviderId) {
+
+      return [];
+
+    }
+
+    return createProviderExecutionStates([
+      {
+        providerId:
+          fallbackProviderId,
+
+        supportsContinuation:
+          Boolean(
+            fallbackContinuation
+          ),
+
+        continuation:
+          fallbackContinuation,
+
+        providerContext:
+          fallbackProviderContext,
+
+        outcome:
+          providerResult?.outcome ??
+          null,
+
+        code:
+          providerResult?.failedResponse
+            ?.code ??
+          null,
+
+        retryable:
+          providerResult?.failedResponse
+            ?.retryable === true,
+
+        retryAfterMs:
+          providerResult?.failedResponse
+            ?.retryAfterMs ??
+          null,
+      },
+    ]);
+
+  }
+
+  function normalizeSessionProviderExecutions(
+    session
+  ) {
+
+    if (
+      Array.isArray(
+        session?.providerExecutions
+      ) &&
+      session.providerExecutions.length > 0
+    ) {
+
+      return normalizeProviderExecutionStates(
+        session.providerExecutions
+      );
+
+    }
+
+    if (!session?.providerId) {
+
+      return [];
+
+    }
+
+    return createProviderExecutionStates([
+      {
+        providerId:
+          session.providerId,
+
+        supportsContinuation:
+          Boolean(
+            normalizeContinuation(
+              session.continuation
+            )
+          ),
+
+        continuation:
+          normalizeContinuation(
+            session.continuation
+          ),
+
+        providerContext:
+          session.providerContext ??
+          null,
+
+        outcome:
+          isCompletedStatus(
+            session.status
+          )
+            ? "success"
+            : null,
+      },
+    ]);
+
+  }
+
+  function hasRunnableProviderExecutions(
+    executions
   ) {
 
     return (
-      normalizeContinuation(
-        continuation
-      )?.cursor ??
-      null
+      getRunnableProviderExecutions(
+        executions
+      ).length > 0
     );
+
+  }
+
+  function getLegacyProviderSnapshot(
+    executions,
+    session = {}
+  ) {
+
+    const runnableExecution =
+      getPrimaryRunnableProviderExecution(
+        executions
+      );
+
+    return {
+      providerId:
+        runnableExecution?.providerId ??
+        session.providerId ??
+        null,
+
+      continuation:
+        runnableExecution?.continuation ??
+        null,
+
+      providerContext:
+        runnableExecution?.providerContext ??
+        session.providerContext ??
+        null,
+    };
+
+  }
+
+  function createSearchSessionResponse(
+    session,
+    {
+      success,
+      message = null,
+      code = null,
+    } = {}
+  ) {
+
+    const normalizedSuccess =
+      typeof success === "boolean"
+        ? success
+        : session?.status !== "Failed";
+
+    return {
+      success:
+        normalizedSuccess,
+
+      message,
+
+      code,
+
+      searchId:
+        session?.searchId ??
+        null,
+
+      status:
+        session?.status ??
+        "InProgress",
+
+      searchIncomplete:
+        session?.searchIncomplete ??
+        false,
+
+      isContinuing:
+        session?.isContinuing ??
+        false,
+
+      totalHotels:
+        session?.hotels?.length ??
+        0,
+
+      nextResultsKey:
+        null,
+
+      currency:
+        session?.currency ??
+        null,
+
+      hotels:
+        session?.hotels ??
+        [],
+    };
+
+  }
+
+  function getProviderContinuationFailure(
+    providerResult
+  ) {
+
+    const attempt =
+      Array.isArray(
+        providerResult?.attempts
+      )
+        ? providerResult.attempts[0]
+        : (
+            Array.isArray(
+              providerResult
+                ?.failedResponse
+                ?.attempts
+            )
+              ? providerResult
+                  .failedResponse
+                  .attempts[0]
+              : null
+          );
+
+    const failedResponse =
+      providerResult?.failedResponse ??
+      null;
+
+    return {
+      outcome:
+        attempt?.outcome ??
+        providerResult?.outcome ??
+        "error",
+
+      code:
+        attempt?.code ??
+        failedResponse?.code ??
+        "PROVIDER_CONTINUATION_FAILED",
+
+      message:
+        attempt?.message ??
+        failedResponse?.message ??
+        "Provider continuation failed.",
+
+      retryable:
+        attempt?.retryable === true ||
+        failedResponse?.retryable === true,
+
+      retryAfterMs:
+        attempt?.retryAfterMs ??
+        failedResponse?.retryAfterMs ??
+        null,
+    };
 
   }
 
@@ -544,7 +831,7 @@ const {
   async function searchHotels(searchData) {
 
     const providerResult =
-      await searchHotelsWithPrimaryProvider({
+      await searchHotelsAcrossProviders({
         searchData,
 
         title:
@@ -556,6 +843,7 @@ const {
 
     function saveEmptySearchSession({
       providerId = null,
+      providerExecutions = [],
       currency = searchData.currency ?? "USD",
       message = "No stays found for this search.",
       code = 204,
@@ -567,6 +855,8 @@ const {
             searchData,
 
           providerId,
+
+          providerExecutions,
 
           status:
             "Completed",
@@ -643,6 +933,16 @@ const {
           providerId:
             providerResult.providerId ?? null,
 
+          providerExecutions:
+            createProviderExecutionStateList(
+              providerResult,
+              {
+                fallbackProviderId:
+                  providerResult.providerId ??
+                  null,
+              }
+            ),
+
           currency:
             failedResponse.currency ??
             searchData.currency ??
@@ -678,6 +978,21 @@ const {
       providerResult?.providerContext ??
       null;
 
+    const providerExecutions =
+      createProviderExecutionStateList(
+        providerResult,
+        {
+          fallbackProviderId:
+            providerId,
+
+          fallbackContinuation:
+            continuation,
+
+          fallbackProviderContext:
+            providerContext,
+        }
+      );
+
     const isNoResultsResponse =
       data?.code === 204 ||
       (
@@ -689,6 +1004,8 @@ const {
 
       return saveEmptySearchSession({
         providerId,
+
+        providerExecutions,
 
         currency,
 
@@ -709,18 +1026,21 @@ const {
 
         providerId,
 
+        providerExecutions,
+
         status:
-          data?.result?.status ??
-          (
-            continuation
-              ? "InProgress"
-              : "Completed"
-          ),
+          hasRunnableProviderExecutions(
+            providerExecutions
+          )
+            ? "InProgress"
+            : (
+                data?.result?.status ??
+                "Completed"
+              ),
 
         searchIncomplete:
-          data?.searchIncomplete ??
-          Boolean(
-            continuation
+          hasRunnableProviderExecutions(
+            providerExecutions
           ),
 
         continuation,
@@ -770,43 +1090,109 @@ const {
     session
   ) {
 
-    return {
-      success:
-        true,
+    return createSearchSessionResponse(
+      session,
+      {
+        success:
+          true,
+      }
+    );
 
-      searchId:
-        session.searchId,
+  }
+
+  function getContinuationSessionOutcome(
+    providerExecutions
+  ) {
+
+    const summary =
+      summarizeProviderExecutions(
+        providerExecutions
+      );
+
+    const searchIncomplete =
+      summary.runnable > 0 ||
+      summary.running > 0;
+
+    const hasTerminalFailure =
+      summary.terminalFailures > 0;
+
+    return {
+      summary,
+
+      searchIncomplete,
 
       status:
-        session.status ??
-        "InProgress",
+        searchIncomplete
+          ? "InProgress"
+          : (
+              hasTerminalFailure
+                ? "Failed"
+                : "Completed"
+            ),
 
-      searchIncomplete:
-        session.searchIncomplete ??
-        true,
+      success:
+        !hasTerminalFailure ||
+        searchIncomplete,
 
-      isContinuing:
-        true,
+      code:
+        !searchIncomplete &&
+        hasTerminalFailure
+          ? "PROVIDER_CONTINUATION_FAILED"
+          : null,
 
-      totalHotels:
-        session.hotels?.length ??
-        0,
-
-      nextResultsKey:
-        getPublicNextResultsKey(
-          session.continuation
-        ),
-
-      hotels:
-        session.hotels ?? [],
+      message:
+        !searchIncomplete &&
+        hasTerminalFailure
+          ? "One or more providers could not complete the search."
+          : null,
     };
 
   }
 
   async function continueHotelSearch(searchId) {
-const session =
-      requireSearchSession(searchId);
-if (session.isContinuing) {
+
+    let session =
+      requireSearchSession(
+        searchId
+      );
+
+    let providerExecutions =
+      normalizeSessionProviderExecutions(
+        session
+      );
+
+    if (
+      !Array.isArray(
+        session.providerExecutions
+      )
+    ) {
+
+      const legacySnapshot =
+        getLegacyProviderSnapshot(
+          providerExecutions,
+          session
+        );
+
+      session =
+        updateSearchSession(
+          searchId,
+          {
+            providerExecutions,
+
+            providerId:
+              legacySnapshot.providerId,
+
+            continuation:
+              legacySnapshot.continuation,
+
+            providerContext:
+              legacySnapshot.providerContext,
+          }
+        );
+
+    }
+
+    if (session.isContinuing) {
 
       return createContinuingSearchResponse(
         session
@@ -814,86 +1200,58 @@ if (session.isContinuing) {
 
     }
 
-    if (isCompletedStatus(session.status)) {
-
-      return {
-        success:
-          true,
-
-        searchId:
-          session.searchId,
-
-        status:
-          "Completed",
-
-        searchIncomplete:
-          false,
-
-        isContinuing:
-          false,
-
-        totalHotels:
-          session.hotels?.length ?? 0,
-
-        nextResultsKey:
-          null,
-
-        hotels:
-          session.hotels ?? [],
-      };
-
-    }
+    const preLockOutcome =
+      getContinuationSessionOutcome(
+        providerExecutions
+      );
 
     if (
-      !normalizeContinuation(
-        session.continuation
-      )
+      !preLockOutcome
+        .searchIncomplete
     ) {
 
-      const updatedSession =
-        updateSearchSession(searchId, {
-          status:
-            "Completed",
+      const legacySnapshot =
+        getLegacyProviderSnapshot(
+          providerExecutions,
+          session
+        );
 
-          searchIncomplete:
-            false,
+      const completedSession =
+        updateSearchSession(
+          searchId,
+          {
+            providerExecutions,
 
-          isContinuing:
-            false,
+            providerId:
+              legacySnapshot.providerId,
 
-          continuation:
-            null,
-        });
+            continuation:
+              null,
 
-      return {
-        success:
-          true,
+            providerContext:
+              legacySnapshot.providerContext,
 
-        searchId:
-          updatedSession.searchId,
+            status:
+              preLockOutcome.status,
 
-        status:
-          updatedSession.status,
+            searchIncomplete:
+              false,
 
-        searchIncomplete:
-          updatedSession.searchIncomplete,
+            isContinuing:
+              false,
 
-        isContinuing:
-          false,
+            lastError:
+              preLockOutcome.message,
+          }
+        );
 
-        totalHotels:
-          updatedSession.hotels?.length ?? 0,
-
-        nextResultsKey:
-          getPublicNextResultsKey(
-            updatedSession.continuation
-          ),
-
-        hotels:
-          updatedSession.hotels ?? [],
-      };
+      return createSearchSessionResponse(
+        completedSession,
+        preLockOutcome
+      );
 
     }
+
     const continuationLock =
       tryAcquireSearchContinuation(
         searchId
@@ -909,231 +1267,414 @@ if (session.isContinuing) {
 
     }
 
+    const lockToken =
+      continuationLock.lockToken;
+
+    session =
+      continuationLock.session;
+
+    providerExecutions =
+      normalizeSessionProviderExecutions(
+        session
+      );
+
     try {
 
-        const payload = {
-          ...session.originalSearchData,
-
-          continuation:
-            normalizeContinuation(
-              session.continuation
-            ),
-        };
-
-        const providerResult =
-          await searchHotelsWithPrimaryProvider({
-            searchData:
-              payload,
-
-            title:
-              "SEARCH HOTELS - CONTINUE",
-
-            fallbackCurrency:
-              session.currency ??
-              session.originalSearchData?.currency ??
-              "USD",
-
-            providerContext:
-              session.providerContext ??
-              null,
-          });
-
-        if (providerResult.failedResponse) {
-          const failedResponse =
-            providerResult.failedResponse;
-
-          const isTerminalNoResults =
-            failedResponse.code === 204 ||
-            failedResponse.code === "204" ||
-            failedResponse.code === "NO_RESULTS";
-
-          if (isTerminalNoResults) {
-            const completedSession =
-              updateSearchSession(searchId, {
-                status:
-                  "Completed",
-
-                searchIncomplete:
-                  false,
-
-                isContinuing:
-                  false,
-
-                continuation:
-                  null,
-
-                lastError:
-                  null,
-              });
-
-            return {
-              success:
-                true,
-
-              message:
-                null,
-
-              code:
-                null,
-
-              searchId:
-                completedSession.searchId,
-
-              status:
-                completedSession.status,
-
-              searchIncomplete:
-                false,
-
-              isContinuing:
-                false,
-
-              totalHotels:
-                completedSession.hotels?.length ?? 0,
-
-              nextResultsKey:
-                null,
-
-              hotels:
-                completedSession.hotels ?? [],
-            };
-          }
-
-          const failedSession =
-            updateSearchSession(searchId, {
-              status:
-                "Failed",
-
-              searchIncomplete:
-                false,
-
-              isContinuing:
-                false,
-
-              lastError:
-                failedResponse.message,
-            });
-
-          return {
-            ...failedResponse,
-
-            searchId,
-
-            status:
-              failedSession.status,
-
-            totalHotels:
-              failedSession.hotels?.length ?? 0,
-
-            hotels:
-              failedSession.hotels ?? [],
-          };
-        }
-        const {
-          data,
-          currency,
-          hotels,
-          providerId,
-        } = providerResult;
-
-        const continuation =
-          getProviderContinuation(
-            providerResult
-          );
-
-        const providerContext =
-          providerResult?.providerContext ??
-          session.providerContext ??
-          null;
-
-        appendHotelsToSearchSession(
-          searchId,
-          hotels
+      /*
+       * Runnable providers are snapshotted once.
+       * Each HTTP request advances at most one
+       * cursor per provider. A newly returned
+       * cursor waits for the next poll.
+       */
+      const runnableExecutions =
+        getRunnableProviderExecutions(
+          providerExecutions
         );
 
-        const updatedSession =
-          updateSearchSession(searchId, {
+      for (
+        const runnableExecution of
+          runnableExecutions
+      ) {
+
+        providerExecutions =
+          beginProviderExecutionAttempt(
+            providerExecutions,
+            runnableExecution.providerId
+          );
+
+      }
+
+      const runningSnapshot =
+        getLegacyProviderSnapshot(
+          providerExecutions,
+          session
+        );
+
+      session =
+        updateSearchSession(
+          searchId,
+          {
+            providerExecutions,
+
             providerId:
-              providerId ??
-              session.providerId ??
-              null,
+              runningSnapshot.providerId,
+
+            continuation:
+              runningSnapshot.continuation,
+
+            providerContext:
+              runningSnapshot.providerContext,
 
             status:
-              data?.result?.status ??
-              (
-                continuation
-                  ? "InProgress"
-                  : "Completed"
-              ),
+              "InProgress",
 
             searchIncomplete:
-              data?.searchIncomplete ??
-              Boolean(
-                continuation
-              ),
-
-            continuation,
-
-            providerContext,
-
-            currency,
+              true,
 
             isContinuing:
-              false,
+              true,
 
             lastError:
               null,
-          });
+          }
+        );
 
-        return {
-          success:
-            Boolean(data?.success),
+      /*
+       * Providers advance independently.
+       * Promise.all is safe here because
+       * each result is applied only after
+       * every provider call has settled,
+       * under the same session lock.
+       */
+      const continuationResults =
+        await Promise.all(
+          runnableExecutions.map(
+            async (
+              runnableExecution
+            ) => {
 
-          message:
-            data?.message ?? null,
+              const activeExecution =
+                providerExecutions.find(
+                  (execution) =>
+                    execution.providerId ===
+                    runnableExecution.providerId
+                );
 
-          code:
-            data?.code ?? null,
+              try {
 
-          searchId:
-            updatedSession.searchId,
+                const providerResult =
+                  await continueHotelSearchForProvider({
+                    providerId:
+                      activeExecution.providerId,
 
-          status:
-            updatedSession.status,
+                    searchData:
+                      session.originalSearchData,
 
-          searchIncomplete:
-            updatedSession.searchIncomplete,
+                    continuation:
+                      activeExecution.continuation,
 
-          isContinuing:
-            updatedSession.isContinuing,
+                    providerContext:
+                      activeExecution.providerContext,
 
-          totalHotels:
-            updatedSession.hotels?.length ?? 0,
+                    title:
+                      "SEARCH HOTELS - CONTINUE",
 
-        nextResultsKey:
-          getPublicNextResultsKey(
-            updatedSession.continuation
-          ),
+                    fallbackCurrency:
+                      session.currency ??
+                      session.originalSearchData
+                        ?.currency ??
+                      "USD",
+                  });
 
-          hotels:
-            updatedSession.hotels ?? [],
-        };
+                return {
+                  providerId:
+                    activeExecution.providerId,
 
-      } catch (error) {
+                  providerResult,
 
-        updateSearchSession(searchId, {
-          isContinuing:
-            false,
+                  error:
+                    null,
+                };
 
-          lastError:
-            error.message,
-        });
+              } catch (error) {
+
+                return {
+                  providerId:
+                    activeExecution.providerId,
+
+                  providerResult:
+                    null,
+
+                  error,
+                };
+
+              }
+
+            }
+          )
+        );
+
+      for (
+        const continuationResult of
+          continuationResults
+      ) {
+
+        const activeExecution =
+          providerExecutions.find(
+            (execution) =>
+              execution.providerId ===
+              continuationResult.providerId
+          );
+
+        if (continuationResult.error) {
+
+          const error =
+            continuationResult.error;
+
+          providerExecutions =
+            applyProviderExecutionFailure(
+              providerExecutions,
+              activeExecution.providerId,
+              {
+                outcome:
+                  "error",
+
+                code:
+                  error?.code ??
+                  "PROVIDER_CONTINUATION_EXCEPTION",
+
+                message:
+                  error?.message ??
+                  "Provider continuation failed.",
+
+                retryable:
+                  error?.retryable === true,
+
+                retryAfterMs:
+                  error?.retryAfterMs ??
+                  null,
+              }
+            );
+
+        } else {
+
+          const providerResult =
+            continuationResult
+              .providerResult;
+
+          if (providerResult.failedResponse) {
+
+            const failedResponse =
+              providerResult.failedResponse;
+
+            const isTerminalNoResults =
+              failedResponse.code === 204 ||
+              failedResponse.code === "204" ||
+              failedResponse.code ===
+                "NO_RESULTS";
+
+            if (isTerminalNoResults) {
+
+              providerExecutions =
+                applyProviderExecutionSuccess(
+                  providerExecutions,
+                  activeExecution.providerId,
+                  {
+                    continuation:
+                      null,
+
+                    providerContext:
+                      activeExecution
+                        .providerContext,
+
+                    outcome:
+                      "no_results",
+
+                    code:
+                      failedResponse.code,
+                  }
+                );
+
+            } else {
+
+              const failure =
+                getProviderContinuationFailure(
+                  providerResult
+                );
+
+              providerExecutions =
+                applyProviderExecutionFailure(
+                  providerExecutions,
+                  activeExecution.providerId,
+                  failure
+                );
+
+            }
+
+          } else {
+
+            const continuation =
+              getProviderContinuation(
+                providerResult
+              );
+
+            const providerContext =
+              providerResult
+                ?.providerContext ??
+              activeExecution
+                .providerContext ??
+              null;
+
+            appendHotelsToSearchSession(
+              searchId,
+              providerResult.hotels
+            );
+
+            providerExecutions =
+              applyProviderExecutionSuccess(
+                providerExecutions,
+                activeExecution.providerId,
+                {
+                  continuation,
+
+                  providerContext,
+
+                  outcome:
+                    providerResult.outcome ??
+                    "success",
+
+                  code:
+                    providerResult.data
+                      ?.code ??
+                    null,
+                }
+              );
+
+            session =
+              requireSearchSession(
+                searchId
+              );
+
+            if (
+              providerResult.currency
+            ) {
+
+              session =
+                updateSearchSession(
+                  searchId,
+                  {
+                    currency:
+                      providerResult.currency,
+                  }
+                );
+
+            }
+
+          }
+
+        }
+
+        const providerSnapshot =
+          getLegacyProviderSnapshot(
+            providerExecutions,
+            session
+          );
+
+        session =
+          updateSearchSession(
+            searchId,
+            {
+              providerExecutions,
+
+              providerId:
+                providerSnapshot.providerId,
+
+              continuation:
+                providerSnapshot.continuation,
+
+              providerContext:
+                providerSnapshot.providerContext,
+
+              isContinuing:
+                true,
+            }
+          );
+
+      }
+
+      const outcome =
+        getContinuationSessionOutcome(
+          providerExecutions
+        );
+
+      const legacySnapshot =
+        getLegacyProviderSnapshot(
+          providerExecutions,
+          session
+        );
+
+      const releaseResult =
+        releaseSearchContinuation(
+          searchId,
+          lockToken,
+          {
+            providerExecutions,
+
+            providerId:
+              legacySnapshot.providerId,
+
+            continuation:
+              legacySnapshot.continuation,
+
+            providerContext:
+              legacySnapshot.providerContext,
+
+            status:
+              outcome.status,
+
+            searchIncomplete:
+              outcome.searchIncomplete,
+
+            lastError:
+              outcome.message,
+          }
+        );
+
+      if (!releaseResult.released) {
+
+        const error =
+          new Error(
+            "Continuation lock ownership was lost before release."
+          );
+
+        error.code =
+          "SEARCH_CONTINUATION_LOCK_LOST";
 
         throw error;
 
       }
 
+      return createSearchSessionResponse(
+        releaseResult.session,
+        outcome
+      );
+
+    } catch (error) {
+
+      releaseSearchContinuation(
+        searchId,
+        lockToken,
+        {
+          lastError:
+            error.message,
+        }
+      );
+
+      throw error;
+
     }
+
+  }
 
     // =========================
     // Hotel Details

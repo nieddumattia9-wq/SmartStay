@@ -1,4 +1,4 @@
-﻿const {
+const {
   getEnabledAccommodationProviders,
   getAccommodationProviderById,
   getPrimaryEnabledAccommodationProvider,
@@ -85,6 +85,27 @@ function createAggregateFailureResult({
       ? "No stays were found for this destination, dates and guest configuration."
       : "No accommodation provider returned usable hotel results for this search.";
 
+  const retryable =
+    attempts.some(
+      (attempt) =>
+        attempt?.retryable === true
+    );
+
+  const retryAfterMs =
+    attempts
+      .map(
+        (attempt) =>
+          Number(
+            attempt?.retryAfterMs
+          )
+      )
+      .find(
+        (value) =>
+          Number.isFinite(value) &&
+          value >= 0
+      ) ??
+    null;
+
   return {
     providerId:
       null,
@@ -112,6 +133,11 @@ function createAggregateFailureResult({
 
     continuation:
       null,
+
+    attempts,
+
+    providerExecutions:
+      [],
 
     failedResponse: {
       success:
@@ -142,6 +168,10 @@ function createAggregateFailureResult({
 
       hotels:
         [],
+
+      retryable,
+
+      retryAfterMs,
 
       attempts,
     },
@@ -274,6 +304,9 @@ function createCircuitOpenAttempt(
 
     message:
       "Provider temporarily unavailable because its circuit is open.",
+
+    retryable:
+      true,
 
     retryAfterMs:
       permission.health
@@ -414,6 +447,23 @@ async function executeProviderOperation({
           result.failedResponse
             ?.message ??
           null,
+
+        retryable:
+          result.failedResponse
+            ?.retryable === true,
+
+        retryAfterMs:
+          Number.isFinite(
+            Number(
+              result.failedResponse
+                ?.retryAfterMs
+            )
+          )
+            ? Number(
+                result.failedResponse
+                  ?.retryAfterMs
+              )
+            : null,
       },
     };
   } catch (error) {
@@ -464,6 +514,23 @@ async function executeProviderOperation({
         message:
           failureDetails.message,
 
+        retryable:
+          error?.retryable === true ||
+          failureDetails.errorType !==
+            PROVIDER_SEARCH_OUTCOMES
+              .ERROR,
+
+        retryAfterMs:
+          Number.isFinite(
+            Number(
+              error?.retryAfterMs
+            )
+          )
+            ? Number(
+                error.retryAfterMs
+              )
+            : null,
+
         circuitState:
           health.circuitState,
 
@@ -474,7 +541,229 @@ async function executeProviderOperation({
   }
 }
 
-async function searchHotelsWithPrimaryProvider({
+function createProviderExecutionDescriptor({
+  provider,
+  result,
+  attempt,
+} = {}) {
+  if (!provider?.id) {
+    return null;
+  }
+
+  return {
+    providerId:
+      provider.id,
+
+    supportsContinuation:
+      Boolean(
+        provider.capabilities
+          ?.continueHotelSearch
+      ),
+
+    continuation:
+      result?.continuation ??
+      null,
+
+    providerContext:
+      result?.providerContext ??
+      null,
+
+    outcome:
+      result?.outcome ??
+      attempt?.outcome ??
+      null,
+
+    code:
+      attempt?.code ??
+      result?.failedResponse
+        ?.code ??
+      null,
+
+    retryable:
+      attempt?.retryable === true ||
+      result?.failedResponse
+        ?.retryable === true,
+
+    retryAfterMs:
+      Number.isFinite(
+        Number(
+          attempt?.retryAfterMs ??
+          result?.failedResponse
+            ?.retryAfterMs
+        )
+      )
+        ? Number(
+            attempt?.retryAfterMs ??
+            result?.failedResponse
+              ?.retryAfterMs
+          )
+        : null,
+  };
+}
+
+async function continueHotelSearchForProvider({
+  providerId,
+  searchData,
+  continuation,
+  providerContext = null,
+  title =
+    "SEARCH HOTELS - CONTINUE",
+  fallbackCurrency = "EUR",
+} = {}) {
+  const provider =
+    getAccommodationProviderById(
+      providerId
+    );
+
+  const normalizedRequest =
+    normalizeAccommodationSearchRequest(
+      {
+        ...searchData,
+        continuation,
+      },
+      {
+        fallbackCurrency,
+        fallbackRadiusMeters:
+          8000,
+      }
+    );
+
+  const request = {
+    ...normalizedRequest,
+
+    providerContext,
+  };
+
+  if (
+    !provider?.enabled ||
+    !provider.capabilities
+      ?.continueHotelSearch
+  ) {
+    return createAggregateFailureResult({
+      currency:
+        request.currency,
+
+      attempts: [
+        {
+          providerId:
+            providerId ?? null,
+
+          success:
+            false,
+
+          totalHotels:
+            0,
+
+          failed:
+            true,
+
+          outcome:
+            PROVIDER_SEARCH_OUTCOMES
+              .UNAVAILABLE,
+
+          code:
+            "PROVIDER_CONTINUATION_UNAVAILABLE",
+
+          message:
+            "The provider required to continue this search is unavailable.",
+
+          retryable:
+            false,
+
+          retryAfterMs:
+            null,
+        },
+      ],
+    });
+  }
+
+  if (
+    request.continuation
+      ?.providerId !==
+    provider.id
+  ) {
+    return createAggregateFailureResult({
+      currency:
+        request.currency,
+
+      attempts: [
+        {
+          providerId:
+            provider.id,
+
+          success:
+            false,
+
+          totalHotels:
+            0,
+
+          failed:
+            true,
+
+          outcome:
+            PROVIDER_SEARCH_OUTCOMES
+              .ERROR,
+
+          code:
+            "PROVIDER_CONTINUATION_MISMATCH",
+
+          message:
+            "The continuation does not belong to the selected provider.",
+
+          retryable:
+            false,
+
+          retryAfterMs:
+            null,
+        },
+      ],
+    });
+  }
+
+  const execution =
+    await executeProviderOperation({
+      provider,
+      methodName:
+        "continueHotelSearch",
+      request,
+      title,
+    });
+
+  if (!execution.result) {
+    return createAggregateFailureResult({
+      currency:
+        request.currency,
+
+      attempts: [
+        execution.attempt,
+      ],
+    });
+  }
+
+  const providerExecution =
+    createProviderExecutionDescriptor({
+      provider,
+      result:
+        execution.result,
+      attempt:
+        execution.attempt,
+    });
+
+  return {
+    ...execution.result,
+
+    attempts: [
+      execution.attempt,
+    ],
+
+    providerExecutions:
+      providerExecution
+        ? [providerExecution]
+        : [],
+  };
+}
+
+async function searchHotelsAcrossProviders({
   searchData,
   title,
   fallbackCurrency = "EUR",
@@ -496,70 +785,25 @@ async function searchHotelsWithPrimaryProvider({
   };
 
   if (request.continuation) {
-    const provider =
-      getAccommodationProviderById(
+    return continueHotelSearchForProvider({
+      providerId:
         request.continuation
-          .providerId
-      );
+          .providerId,
 
-    if (
-      !provider?.enabled ||
-      !provider.capabilities
-        ?.continueHotelSearch
-    ) {
-      return createAggregateFailureResult({
-        currency:
-          request.currency,
-
-        attempts: [
-          {
-            providerId:
-              request.continuation
-                .providerId,
-
-            success:
-              false,
-
-            totalHotels:
-              0,
-
-            failed:
-              true,
-
-            outcome:
-              PROVIDER_SEARCH_OUTCOMES
-                .UNAVAILABLE,
-
-            code:
-              "PROVIDER_CONTINUATION_UNAVAILABLE",
-
-            message:
-              "The provider required to continue this search is unavailable.",
-          },
-        ],
-      });
-    }
-
-    const execution =
-      await executeProviderOperation({
-        provider,
-        methodName:
-          "continueHotelSearch",
+      searchData:
         request,
-        title,
-      });
 
-    return (
-      execution.result ??
-      createAggregateFailureResult({
-        currency:
-          request.currency,
+      continuation:
+        request.continuation,
 
-        attempts: [
-          execution.attempt,
-        ],
-      })
-    );
+      providerContext:
+        request.providerContext,
+
+      title,
+
+      fallbackCurrency:
+        request.currency,
+    });
   }
 
   const providers =
@@ -619,7 +863,25 @@ async function searchHotelsWithPrimaryProvider({
         }
       );
 
-      return execution.result;
+      const providerExecution =
+        createProviderExecutionDescriptor({
+          provider,
+          result:
+            execution.result,
+          attempt:
+            execution.attempt,
+        });
+
+      return {
+        ...execution.result,
+
+        attempts,
+
+        providerExecutions:
+          providerExecution
+            ? [providerExecution]
+            : [],
+      };
     }
   }
 
@@ -764,6 +1026,16 @@ async function getHotelDetailsFromProvider({
 
 module.exports = {
   searchDestinationsAcrossProviders,
-  searchHotelsWithPrimaryProvider,
+  searchHotelsAcrossProviders,
+
+  /*
+   * Temporary compatibility alias.
+   * Core services use the provider-agnostic
+   * orchestration name.
+   */
+  searchHotelsWithPrimaryProvider:
+    searchHotelsAcrossProviders,
+
+  continueHotelSearchForProvider,
   getHotelDetailsFromProvider,
 };

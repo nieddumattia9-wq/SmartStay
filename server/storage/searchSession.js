@@ -6,6 +6,9 @@ const SEARCH_SESSION_TTL_MS =
 const EXPIRED_SEARCH_ID_RETENTION_MS =
   SEARCH_SESSION_TTL_MS;
 
+const CONTINUATION_LOCK_TTL_MS =
+  5 * 60 * 1000;
+
 const SEARCH_SESSION_STATES =
   Object.freeze({
     MISSING:
@@ -167,6 +170,23 @@ function saveSearchSession(session) {
     isContinuing:
       sessionSnapshot.isContinuing ??
       false,
+
+    continuationLock:
+      sessionSnapshot.continuationLock ??
+      null,
+
+    continuationLockExpiresAt:
+      Number.isFinite(
+        Number(
+          sessionSnapshot
+            .continuationLockExpiresAt
+        )
+      )
+        ? Number(
+            sessionSnapshot
+              .continuationLockExpiresAt
+          )
+        : null,
 
     lastError:
       sessionSnapshot.lastError ??
@@ -370,7 +390,6 @@ function requireSearchSession(
 function tryAcquireSearchContinuation(
   searchId
 ) {
-
   const normalizedSearchId =
     normalizeSearchId(
       searchId
@@ -381,22 +400,43 @@ function tryAcquireSearchContinuation(
       normalizedSearchId
     );
 
-  if (
-    currentSession.isContinuing
-  ) {
+  const now =
+    Date.now();
 
+  const hasActiveLock =
+    currentSession.isContinuing ===
+      true &&
+    typeof currentSession
+      .continuationLock ===
+      "string" &&
+    currentSession
+      .continuationLock.length > 0 &&
+    Number.isFinite(
+      Number(
+        currentSession
+          .continuationLockExpiresAt
+      )
+    ) &&
+    Number(
+      currentSession
+        .continuationLockExpiresAt
+    ) > now;
+
+  if (hasActiveLock) {
     return {
       acquired:
         false,
 
+      lockToken:
+        null,
+
       session:
         currentSession,
     };
-
   }
 
-  const now =
-    Date.now();
+  const lockToken =
+    crypto.randomUUID();
 
   const internalSession =
     sessions.get(
@@ -408,6 +448,13 @@ function tryAcquireSearchContinuation(
 
     isContinuing:
       true,
+
+    continuationLock:
+      lockToken,
+
+    continuationLockExpiresAt:
+      now +
+      CONTINUATION_LOCK_TTL_MS,
 
     lastError:
       null,
@@ -429,12 +476,123 @@ function tryAcquireSearchContinuation(
     acquired:
       true,
 
+    lockToken,
+
     session:
       cloneSearchSessionData(
         lockedSession
       ),
   };
+}
 
+function releaseSearchContinuation(
+  searchId,
+  lockToken,
+  updates = {}
+) {
+  const normalizedSearchId =
+    normalizeSearchId(
+      searchId
+    );
+
+  if (
+    !normalizedSearchId ||
+    typeof lockToken !== "string" ||
+    lockToken.length === 0
+  ) {
+    return {
+      released:
+        false,
+
+      session:
+        getSearchSession(
+          normalizedSearchId
+        ),
+    };
+  }
+
+  removeExpiredSessions();
+
+  const currentSession =
+    sessions.get(
+      normalizedSearchId
+    );
+
+  if (!currentSession) {
+    return {
+      released:
+        false,
+
+      session:
+        null,
+    };
+  }
+
+  if (
+    currentSession
+      .continuationLock !==
+    lockToken
+  ) {
+    return {
+      released:
+        false,
+
+      session:
+        cloneSearchSessionData(
+          currentSession
+        ),
+    };
+  }
+
+  const now =
+    Date.now();
+
+  const updatesSnapshot =
+    cloneSearchSessionData(
+      updates
+    );
+
+  const releasedSession = {
+    ...currentSession,
+    ...updatesSnapshot,
+
+    searchId:
+      currentSession.searchId,
+
+    createdAt:
+      currentSession.createdAt,
+
+    isContinuing:
+      false,
+
+    continuationLock:
+      null,
+
+    continuationLockExpiresAt:
+      null,
+
+    updatedAt:
+      now,
+
+    expiresAt:
+      now +
+      SEARCH_SESSION_TTL_MS,
+  };
+
+  sessions.set(
+    normalizedSearchId,
+    releasedSession
+  );
+
+  return {
+    released:
+      true,
+
+    session:
+      cloneSearchSessionData(
+        releasedSession
+      ),
+  };
 }
 
 function updateSearchSession(searchId, updates = {}) {
@@ -579,12 +737,14 @@ function getSearchSessionCount() {
 module.exports = {
   SEARCH_SESSION_TTL_MS,
   EXPIRED_SEARCH_ID_RETENTION_MS,
+  CONTINUATION_LOCK_TTL_MS,
   SEARCH_SESSION_STATES,
   saveSearchSession,
   getSearchSession,
   getSearchSessionState,
   requireSearchSession,
   tryAcquireSearchContinuation,
+  releaseSearchContinuation,
   updateSearchSession,
   appendHotelsToSearchSession,
   clearSearchSession,
