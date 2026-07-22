@@ -1,4 +1,5 @@
 import type {
+  BookingHandoffPreparationResponse,
   BookingOfferRecheckResponse,
   HotelDetailsResponse,
 } from "../types/hotel";
@@ -439,6 +440,72 @@ export async function recheckBookingOffer(
     HOTEL_REQUEST_TIMEOUT_MS,
     "The booking provider took too long to verify this offer."
   );
+}
+
+export async function prepareBookingHandoff(
+  verificationId: string,
+  acceptChanges: boolean
+): Promise<BookingHandoffPreparationResponse> {
+  return requestJson<BookingHandoffPreparationResponse>(
+    `${API_URL}/booking-handoff`,
+    {
+      method:
+        "POST",
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+      body:
+        JSON.stringify({
+          verificationId,
+          acceptChanges,
+        }),
+      cache:
+        "no-store",
+    },
+    "Unable to prepare secure checkout.",
+    STANDARD_REQUEST_TIMEOUT_MS,
+    "Preparing secure checkout took too long."
+  );
+}
+
+export function resolveBookingHandoffOpenUrl(
+  openUrl: string
+) {
+  const normalized =
+    typeof openUrl ===
+      "string"
+      ? openUrl.trim()
+      : "";
+
+  if (
+    !normalized.startsWith(
+      "/api/booking-handoff/open?"
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    const browserOrigin =
+      typeof window !==
+        "undefined"
+        ? window.location.origin
+        : "http://localhost";
+
+    const apiUrl =
+      new URL(
+        API_URL,
+        browserOrigin
+      );
+
+    return new URL(
+      normalized,
+      apiUrl.origin
+    ).toString();
+  } catch {
+    return null;
+  }
 }
 
 export async function getHotelDetails(

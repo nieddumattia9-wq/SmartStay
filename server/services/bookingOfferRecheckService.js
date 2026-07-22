@@ -257,6 +257,10 @@ function createBookingOfferRecheckService({
             providerResult
               .providerBookingReference ??
             null,
+          requiresUserConfirmation:
+            comparison.changed,
+          changedFields:
+            comparison.changedFields,
         });
 
       return {

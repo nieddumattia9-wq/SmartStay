@@ -246,6 +246,20 @@ export interface BookingOfferRecheckResponse {
   offer: HotelOffer | null;
 }
 
+export interface BookingHandoff {
+  id: string;
+  expiresAt: number;
+  openUrl: string;
+}
+
+export interface BookingHandoffPreparationResponse {
+  success: boolean;
+  state: "ready";
+  code: string;
+  message: string;
+  handoff: BookingHandoff;
+}
+
 export type SearchLifecyclePhase =
   | "starting"
   | "running"

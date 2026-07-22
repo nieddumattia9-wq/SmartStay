@@ -54,7 +54,8 @@ function formatPrice(
       {
         style: "currency",
         currency,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       }
     ).format(price);
   } catch {

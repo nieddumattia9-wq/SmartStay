@@ -69,6 +69,12 @@ const {
   "./common/providerOfferRecheckResult"
 );
 
+const {
+  validateProviderBookingHandoffResult,
+} = require(
+  "./common/providerBookingHandoffResult"
+);
+
 function getEnabledProvidersForCapability(
   capabilityName
 ) {
@@ -1342,6 +1348,76 @@ async function recheckOfferWithProvider({
   }
 }
 
+
+async function createBookingHandoffWithProvider({
+  sourceProvider,
+  providerBookingReference,
+  verificationId = null,
+} = {}) {
+  const providerId =
+    typeof sourceProvider ===
+      "string"
+      ? sourceProvider.trim()
+      : "";
+
+  if (!providerId) {
+    const error =
+      new Error(
+        "The booking provider is required."
+      );
+
+    error.code =
+      "BOOKING_PROVIDER_UNAVAILABLE";
+
+    error.status =
+      409;
+
+    throw error;
+  }
+
+  const provider =
+    getAccommodationProviderById(
+      providerId
+    );
+
+  if (
+    !provider?.enabled ||
+    !provider.capabilities
+      ?.bookingHandoff
+  ) {
+    const error =
+      new Error(
+        "A secure booking handoff is not available for this provider."
+      );
+
+    error.code =
+      "BOOKING_HANDOFF_UNSUPPORTED";
+
+    error.status =
+      409;
+
+    throw error;
+  }
+
+  const adapter =
+    await loadConfiguredProviderAdapter(
+      provider.id
+    );
+
+  const createBookingHandoff =
+    requireProviderAdapterMethod(
+      adapter,
+      "createBookingHandoff"
+    );
+
+  return validateProviderBookingHandoffResult(
+    await createBookingHandoff({
+      providerBookingReference,
+      verificationId,
+    })
+  );
+}
+
 module.exports = {
   searchDestinationsAcrossProviders,
   searchHotelsAcrossProviders,
@@ -1357,4 +1433,5 @@ module.exports = {
   continueHotelSearchForProvider,
   getHotelDetailsFromProvider,
   recheckOfferWithProvider,
+  createBookingHandoffWithProvider,
 };

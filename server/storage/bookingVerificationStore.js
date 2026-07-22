@@ -6,6 +6,9 @@ const BOOKING_VERIFICATION_TTL_MS =
 const MAX_BOOKING_VERIFICATIONS =
   2000;
 
+const BOOKING_VERIFICATION_ID_PATTERN =
+  /^verify-[a-f0-9]{36}$/i;
+
 const verifications =
   new Map();
 
@@ -27,6 +30,32 @@ function cleanupBookingVerifications() {
   }
 }
 
+function createBookingVerificationError({
+  code,
+  message,
+  status,
+} = {}) {
+  const error =
+    new Error(message);
+
+  error.code =
+    code;
+
+  error.status =
+    status;
+
+  return error;
+}
+
+function normalizeVerificationId(
+  value
+) {
+  return typeof value ===
+    "string"
+    ? value.trim()
+    : "";
+}
+
 function saveBookingVerification({
   searchId,
   hotelId,
@@ -34,6 +63,8 @@ function saveBookingVerification({
   confirmedOffer,
   sourceProvider,
   providerBookingReference = null,
+  requiresUserConfirmation = false,
+  changedFields = [],
 } = {}) {
   cleanupBookingVerifications();
 
@@ -41,18 +72,14 @@ function saveBookingVerification({
     verifications.size >=
     MAX_BOOKING_VERIFICATIONS
   ) {
-    const error =
-      new Error(
-        "Booking verification capacity has been reached."
-      );
-
-    error.code =
-      "BOOKING_VERIFICATION_CAPACITY_REACHED";
-
-    error.status =
-      503;
-
-    throw error;
+    throw createBookingVerificationError({
+      code:
+        "BOOKING_VERIFICATION_CAPACITY_REACHED",
+      message:
+        "Booking verification capacity has been reached.",
+      status:
+        503,
+    });
   }
 
   const now = Date.now();
@@ -71,6 +98,28 @@ function saveBookingVerification({
       ),
     sourceProvider,
     providerBookingReference,
+    requiresUserConfirmation:
+      requiresUserConfirmation ===
+      true,
+    changedFields: [
+      ...new Set(
+        Array.isArray(
+          changedFields
+        )
+          ? changedFields
+              .filter(
+                (field) =>
+                  typeof field ===
+                    "string" &&
+                  field.trim()
+              )
+              .map(
+                (field) =>
+                  field.trim()
+              )
+          : []
+      ),
+    ],
     createdAt:
       now,
     expiresAt:
@@ -94,10 +143,9 @@ function getBookingVerification(
   cleanupBookingVerifications();
 
   const normalized =
-    typeof verificationId ===
-      "string"
-      ? verificationId.trim()
-      : "";
+    normalizeVerificationId(
+      verificationId
+    );
 
   const verification =
     verifications.get(
@@ -111,9 +159,53 @@ function getBookingVerification(
     : null;
 }
 
+function requireBookingVerification(
+  verificationId
+) {
+  const normalized =
+    normalizeVerificationId(
+      verificationId
+    );
+
+  if (
+    !BOOKING_VERIFICATION_ID_PATTERN.test(
+      normalized
+    )
+  ) {
+    throw createBookingVerificationError({
+      code:
+        "BOOKING_VERIFICATION_ID_INVALID",
+      message:
+        "The booking verification id is invalid.",
+      status:
+        400,
+    });
+  }
+
+  const verification =
+    getBookingVerification(
+      normalized
+    );
+
+  if (!verification) {
+    throw createBookingVerificationError({
+      code:
+        "BOOKING_VERIFICATION_EXPIRED",
+      message:
+        "This booking verification has expired. Check the offer again.",
+      status:
+        410,
+    });
+  }
+
+  return verification;
+}
+
 module.exports = {
   BOOKING_VERIFICATION_TTL_MS,
   MAX_BOOKING_VERIFICATIONS,
+  BOOKING_VERIFICATION_ID_PATTERN,
   saveBookingVerification,
   getBookingVerification,
+  requireBookingVerification,
 };

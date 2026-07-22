@@ -2271,6 +2271,12 @@ const rankedHotels =
           error={hotelDetailsError}
           offer={hotelDetailsOffer}
           bookingUrl={activeDetailsBookingUrl}
+          searchId={searchId}
+          hotelId={activeDetailsHotelId}
+          offerId={
+            hotelDetailsOffer?.id ??
+            activeDetailsOfferId
+          }
           onClose={handleCloseHotelDetails}
         />
       )}

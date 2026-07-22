@@ -1,12 +1,21 @@
 import {
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import type {
+  BookingOfferRecheckResponse,
   HotelDetails,
   HotelOffer,
 } from "../../types/hotel";
+
+import {
+  ApiRequestError,
+  prepareBookingHandoff,
+  recheckBookingOffer,
+  resolveBookingHandoffOpenUrl,
+} from "../../services/api";
 
 import {
   formatReviewCountLabel,
@@ -20,6 +29,9 @@ type HotelDetailsPanelProps = {
   error: string;
   bookingUrl?: string | null;
   offer?: HotelOffer | null;
+  searchId: string | null;
+  hotelId: string | null;
+  offerId: string | null;
   onClose: () => void;
 };
 
@@ -79,17 +91,95 @@ function getOfferTaxLabel(
     offer.taxesIncluded ===
       true
   ) {
-    return "Known taxes are included in the displayed total.";
+    return "Known mandatory taxes are included in this stay total.";
   }
 
   if (
     offer.taxesIncluded ===
       false
   ) {
-    return "Some known taxes or fees are payable in addition to the base price.";
+    return "Known taxes payable separately are already included in the displayed stay total.";
   }
 
-  return "Some tax or fee information is still unknown.";
+  return "This is the total currently known; some mandatory taxes or fees may still be added.";
+}
+
+function getChangedFieldLabel(
+  field: string
+) {
+  const labels: Record<
+    string,
+    string
+  > = {
+    price:
+      "base price",
+    totalKnownCost:
+      "total stay cost",
+    currency:
+      "currency",
+    taxesIncluded:
+      "tax inclusion",
+    includedTaxes:
+      "included taxes",
+    excludedTaxes:
+      "taxes payable separately",
+    unknownTaxes:
+      "unconfirmed taxes",
+    roomName:
+      "room",
+    refundable:
+      "refundability",
+    freeCancellationUntil:
+      "free-cancellation deadline",
+    cancellationPolicy:
+      "cancellation conditions",
+    bookable:
+      "availability",
+  };
+
+  return (
+    labels[field] ??
+    field
+  );
+}
+
+function getBookingFailureMessage(
+  error: unknown
+) {
+  if (
+    !(error instanceof
+      ApiRequestError)
+  ) {
+    return "SmartStay could not prepare secure checkout.";
+  }
+
+  if (
+    error.code ===
+      "BOOKING_VERIFICATION_EXPIRED" ||
+    error.code ===
+      "BOOKING_HANDOFF_EXPIRED"
+  ) {
+    return "The price verification expired. Check the final total again.";
+  }
+
+  if (
+    error.code ===
+      "BOOKING_HANDOFF_NOT_CONFIGURED"
+  ) {
+    return "Secure checkout is not configured yet for this provider.";
+  }
+
+  if (
+    error.code ===
+      "BOOKING_CHANGES_CONFIRMATION_REQUIRED"
+  ) {
+    return "Accept the updated total and conditions before continuing.";
+  }
+
+  return (
+    error.message ||
+    "SmartStay could not prepare secure checkout."
+  );
 }
 
 function DetailList({
@@ -126,6 +216,9 @@ function HotelDetailsPanel({
   error,
   bookingUrl = null,
   offer = null,
+  searchId,
+  hotelId,
+  offerId,
   onClose,
 }: HotelDetailsPanelProps) {
   const panelRef =
@@ -133,6 +226,151 @@ function HotelDetailsPanel({
 
   const closeButtonRef =
     useRef<HTMLButtonElement>(null);
+
+  const [
+    bookingRecheck,
+    setBookingRecheck,
+  ] =
+    useState<
+      BookingOfferRecheckResponse |
+      null
+    >(null);
+
+  const [
+    bookingBusy,
+    setBookingBusy,
+  ] =
+    useState(false);
+
+  const [
+    bookingError,
+    setBookingError,
+  ] =
+    useState("");
+
+  useEffect(() => {
+    setBookingRecheck(
+      null
+    );
+
+    setBookingBusy(
+      false
+    );
+
+    setBookingError(
+      ""
+    );
+  }, [
+    searchId,
+    hotelId,
+    offerId,
+  ]);
+
+  async function handleCheckFinalTotal() {
+    if (
+      !searchId ||
+      !hotelId ||
+      !offerId
+    ) {
+      setBookingError(
+        "The selected offer is no longer available in this search."
+      );
+
+      return;
+    }
+
+    setBookingBusy(
+      true
+    );
+
+    setBookingError(
+      ""
+    );
+
+    try {
+      const response =
+        await recheckBookingOffer(
+          searchId,
+          hotelId,
+          offerId
+        );
+
+      setBookingRecheck(
+        response
+      );
+    } catch (recheckError) {
+      setBookingError(
+        getBookingFailureMessage(
+          recheckError
+        )
+      );
+    } finally {
+      setBookingBusy(
+        false
+      );
+    }
+  }
+
+  async function handleContinueToCheckout(
+    acceptChanges: boolean
+  ) {
+    const verificationId =
+      bookingRecheck
+        ?.verification
+        ?.id ??
+      null;
+
+    if (!verificationId) {
+      setBookingError(
+        "Check the final total before continuing."
+      );
+
+      return;
+    }
+
+    setBookingBusy(
+      true
+    );
+
+    setBookingError(
+      ""
+    );
+
+    try {
+      const response =
+        await prepareBookingHandoff(
+          verificationId,
+          acceptChanges
+        );
+
+      const openUrl =
+        resolveBookingHandoffOpenUrl(
+          response
+            .handoff
+            .openUrl
+        );
+
+      if (!openUrl) {
+        throw new Error(
+          "The secure checkout link is invalid."
+        );
+      }
+
+      window.location.assign(
+        openUrl
+      );
+    } catch (handoffError) {
+      setBookingError(
+        getBookingFailureMessage(
+          handoffError
+        )
+      );
+
+      setBookingBusy(
+        false
+      );
+    }
+  }
 
   useEffect(() => {
     const previousOverflow =
@@ -478,15 +716,261 @@ function HotelDetailsPanel({
                 </section>
               )}
 
-              {bookingUrl && (
-                <a
-                  className="hotel-details-panel__booking"
-                  href={bookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {offer && (
+                <section
+                  className="hotel-details-panel__offer-summary"
+                  aria-live="polite"
                 >
-                  Continue to booking
-                </a>
+                  {!bookingRecheck && (
+                    <>
+                      <strong>
+                        Confirm the final stay total
+                      </strong>
+
+                      <p>
+                        SmartStay will check availability, the complete known total, taxes and cancellation conditions before checkout.
+                      </p>
+
+                      <button
+                        type="button"
+                        className="hotel-details-panel__booking"
+                        onClick={
+                          handleCheckFinalTotal
+                        }
+                        disabled={
+                          bookingBusy ||
+                          offer.bookable ===
+                            false
+                        }
+                        style={{
+                          border:
+                            0,
+                          cursor:
+                            bookingBusy
+                              ? "wait"
+                              : "pointer",
+                          width:
+                            "100%",
+                        }}
+                      >
+                        {bookingBusy
+                          ? "Checking final total..."
+                          : "Check final total"}
+                      </button>
+                    </>
+                  )}
+
+                  {bookingRecheck
+                    ?.state ===
+                    "confirmed" &&
+                    bookingRecheck
+                      .offer && (
+                      <>
+                        <strong>
+                          Final total confirmed ·{" "}
+                          {formatOfferMoney(
+                            getOfferDisplayAmount(
+                              bookingRecheck.offer
+                            ),
+                            bookingRecheck
+                              .offer
+                              .currency
+                          )}
+                        </strong>
+
+                        <p>
+                          {getOfferTaxLabel(
+                            bookingRecheck.offer
+                          )}
+                        </p>
+
+                        <button
+                          type="button"
+                          className="hotel-details-panel__booking"
+                          onClick={() =>
+                            void handleContinueToCheckout(
+                              false
+                            )
+                          }
+                          disabled={
+                            bookingBusy
+                          }
+                          style={{
+                            border:
+                              0,
+                            cursor:
+                              bookingBusy
+                                ? "wait"
+                                : "pointer",
+                            width:
+                              "100%",
+                          }}
+                        >
+                          {bookingBusy
+                            ? "Preparing secure checkout..."
+                            : "Continue to secure checkout"}
+                        </button>
+                      </>
+                    )}
+
+                  {bookingRecheck
+                    ?.state ===
+                    "changed" &&
+                    bookingRecheck
+                      .offer && (
+                      <>
+                        <strong>
+                          Updated stay total ·{" "}
+                          {formatOfferMoney(
+                            getOfferDisplayAmount(
+                              bookingRecheck.offer
+                            ),
+                            bookingRecheck
+                              .offer
+                              .currency
+                          )}
+                        </strong>
+
+                        {offer && (
+                          <p>
+                            Previously shown:{" "}
+                            {formatOfferMoney(
+                              getOfferDisplayAmount(
+                                offer
+                              ),
+                              offer.currency
+                            )}
+                          </p>
+                        )}
+
+                        <p>
+                          The provider changed:{" "}
+                          {bookingRecheck
+                            .changedFields
+                            .map(
+                              getChangedFieldLabel
+                            )
+                            .join(", ")}
+                          .
+                        </p>
+
+                        <p>
+                          {getOfferTaxLabel(
+                            bookingRecheck.offer
+                          )}
+                        </p>
+
+                        <button
+                          type="button"
+                          className="hotel-details-panel__booking"
+                          onClick={() =>
+                            void handleContinueToCheckout(
+                              true
+                            )
+                          }
+                          disabled={
+                            bookingBusy
+                          }
+                          style={{
+                            border:
+                              0,
+                            cursor:
+                              bookingBusy
+                                ? "wait"
+                                : "pointer",
+                            width:
+                              "100%",
+                          }}
+                        >
+                          {bookingBusy
+                            ? "Preparing secure checkout..."
+                            : "Accept updated total and continue"}
+                        </button>
+                      </>
+                    )}
+
+                  {bookingRecheck
+                    ?.state ===
+                    "sold-out" && (
+                    <>
+                      <strong>
+                        This offer is no longer available
+                      </strong>
+
+                      <p>
+                        Choose another stay or run a new search for current availability.
+                      </p>
+                    </>
+                  )}
+
+                  {bookingRecheck
+                    ?.state ===
+                    "recheck-required" && (
+                    <>
+                      <strong>
+                        Final confirmation is still required
+                      </strong>
+
+                      <p>
+                        {bookingRecheck
+                          .message}
+                      </p>
+
+                      {bookingRecheck
+                        .retryable && (
+                        <button
+                          type="button"
+                          className="hotel-details-panel__booking"
+                          onClick={
+                            handleCheckFinalTotal
+                          }
+                          disabled={
+                            bookingBusy
+                          }
+                          style={{
+                            border:
+                              0,
+                            cursor:
+                              bookingBusy
+                                ? "wait"
+                                : "pointer",
+                            width:
+                              "100%",
+                          }}
+                        >
+                          Try verification again
+                        </button>
+                      )}
+
+                      {!bookingRecheck
+                        .retryable &&
+                        bookingUrl && (
+                          <a
+                            className="hotel-details-panel__booking"
+                            href={
+                              bookingUrl
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Continue on the booking partner
+                          </a>
+                        )}
+                    </>
+                  )}
+
+                  {bookingError && (
+                    <p
+                      role="alert"
+                      style={{
+                        marginTop:
+                          "12px",
+                      }}
+                    >
+                      {bookingError}
+                    </p>
+                  )}
+                </section>
               )}
 
               <p className="hotel-details-panel__provider">

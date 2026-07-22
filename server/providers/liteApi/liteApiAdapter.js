@@ -18,6 +18,12 @@ const {
   "../common/providerOfferRecheckResult"
 );
 
+const {
+  createProviderExternalBookingHandoff,
+} = require(
+  "../common/providerBookingHandoffResult"
+);
+
 const PROVIDER_ID =
   ACCOMMODATION_PROVIDER_IDS.LITE_API;
 
@@ -397,6 +403,10 @@ function loadDefaultDependencies() {
     createLiteApiPrebookOffer,
   } = require("./liteApiOfferMapper");
 
+  const {
+    createLiteApiWhitelabelCheckoutUrl,
+  } = require("./liteApiBookingHandoff");
+
   return {
     searchLiteApiRates,
     getLiteApiHotels,
@@ -407,6 +417,7 @@ function loadDefaultDependencies() {
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
     createLiteApiPrebookOffer,
+    createLiteApiWhitelabelCheckoutUrl,
     mergeProviderHotelResults,
   };
 }
@@ -428,6 +439,7 @@ function createLiteApiAdapter(
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
     createLiteApiPrebookOffer,
+    createLiteApiWhitelabelCheckoutUrl,
     mergeProviderHotelResults:
       mergeHotels,
   } = resolvedDependencies;
@@ -445,6 +457,7 @@ function createLiteApiAdapter(
   const optionalFunctions = {
     prebookLiteApiOffer,
     createLiteApiPrebookOffer,
+    createLiteApiWhitelabelCheckoutUrl,
   };
 
   for (
@@ -777,6 +790,37 @@ function createLiteApiAdapter(
 
         throw error;
       }
+    },
+
+    async createBookingHandoff({
+      providerBookingReference,
+    } = {}) {
+      if (
+        typeof createLiteApiWhitelabelCheckoutUrl !==
+          "function"
+      ) {
+        const error =
+          new Error(
+            "LiteAPI booking handoff dependency is unavailable."
+          );
+
+        error.code =
+          "PROVIDER_BOOKING_HANDOFF_UNAVAILABLE";
+
+        error.status =
+          501;
+
+        throw error;
+      }
+
+      return createProviderExternalBookingHandoff({
+        providerId:
+          PROVIDER_ID,
+        redirectUrl:
+          createLiteApiWhitelabelCheckoutUrl({
+            providerBookingReference,
+          }),
+      });
     },
 
     async getHotelDetails({

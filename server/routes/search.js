@@ -51,6 +51,14 @@ const {
   "../services/bookingOfferRecheckService"
 );
 
+const {
+  prepareBookingHandoff,
+  resolveBookingHandoff:
+    resolvePreparedBookingHandoff,
+} = require(
+  "../services/bookingHandoffService"
+);
+
 function getSearchIdFromRequest(req) {
 
   const searchId =
@@ -106,6 +114,15 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "OFFER_NOT_BOOKABLE",
     "OFFER_HANDOFF_UNSUPPORTED",
     "BOOKING_VERIFICATION_CAPACITY_REACHED",
+    "BOOKING_VERIFICATION_ID_INVALID",
+    "BOOKING_VERIFICATION_EXPIRED",
+    "BOOKING_CHANGES_CONFIRMATION_REQUIRED",
+    "BOOKING_HANDOFF_UNAVAILABLE",
+    "BOOKING_HANDOFF_REFERENCE_MISSING",
+    "BOOKING_HANDOFF_NOT_CONFIGURED",
+    "BOOKING_HANDOFF_CAPACITY_REACHED",
+    "BOOKING_HANDOFF_ID_INVALID",
+    "BOOKING_HANDOFF_EXPIRED",
     "HOTEL_SOURCE_UNAVAILABLE",
   ]);
 
@@ -524,6 +541,118 @@ router.post("/booking-offer-recheck", async (req, res) => {
       res,
       error,
       "Unable to verify this booking offer."
+    );
+  }
+});
+
+// =========================
+// Prepare Booking Handoff
+// =========================
+
+router.post("/booking-handoff", async (req, res) => {
+  try {
+    const payload =
+      req.body &&
+      typeof req.body ===
+        "object" &&
+      !Array.isArray(
+        req.body
+      )
+        ? req.body
+        : {};
+
+    const result =
+      await prepareBookingHandoff({
+        verificationId:
+          payload
+            .verificationId,
+        acceptChanges:
+          payload
+            .acceptChanges ===
+          true,
+      });
+
+    const handoffId =
+      result.handoff.id;
+
+    const openUrl =
+      `${req.baseUrl}/booking-handoff/open?handoffId=${encodeURIComponent(
+        handoffId
+      )}`;
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
+
+    return res.json({
+      success:
+        true,
+      state:
+        result.state,
+      code:
+        result.code,
+      message:
+        result.message,
+      handoff: {
+        id:
+          handoffId,
+        expiresAt:
+          result.handoff
+            .expiresAt,
+        openUrl,
+      },
+    });
+  } catch (error) {
+    return sendRouteError(
+      res,
+      error,
+      "Unable to prepare secure checkout."
+    );
+  }
+});
+
+// =========================
+// Open Booking Handoff
+// =========================
+
+router.get("/booking-handoff/open", (req, res) => {
+  try {
+    const handoffId =
+      typeof req.query
+        .handoffId ===
+        "string"
+        ? req.query
+            .handoffId
+            .trim()
+        : "";
+
+    const {
+      redirectUrl,
+    } =
+      resolvePreparedBookingHandoff({
+        handoffId,
+      });
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
+
+    res.set(
+      "Referrer-Policy",
+      "no-referrer"
+    );
+
+    return res.redirect(
+      302,
+      redirectUrl
+    );
+  } catch (error) {
+    return sendRouteError(
+      res,
+      error,
+      "Unable to open secure checkout."
     );
   }
 });

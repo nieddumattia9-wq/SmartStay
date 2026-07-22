@@ -5,6 +5,7 @@ const PROVIDER_ADAPTER_METHODS =
     "continueHotelSearch",
     "getHotelDetails",
     "recheckOffer",
+    "createBookingHandoff",
   ]);
 
 function normalizeProviderId(
