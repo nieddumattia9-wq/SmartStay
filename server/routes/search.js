@@ -55,6 +55,32 @@ function getSearchIdFromRequest(req) {
 
 }
 
+function requireSearchIdValue(
+  value
+) {
+  const searchId =
+    typeof value === "string"
+      ? value.trim()
+      : "";
+
+  if (searchId) {
+    return searchId;
+  }
+
+  const error =
+    new Error(
+      "searchId is required."
+    );
+
+  error.code =
+    "SEARCH_ID_REQUIRED";
+
+  error.status =
+    400;
+
+  throw error;
+}
+
 const PUBLIC_ROUTE_ERROR_CODES =
   new Set([
     "SEARCH_ID_REQUIRED",
@@ -198,6 +224,13 @@ function sendRouteError(
           )
         )
       )
+    );
+  }
+
+  if (includeSearchLifecycle) {
+    res.set(
+      "Cache-Control",
+      "no-store"
     );
   }
 
@@ -365,22 +398,17 @@ router.post("/search-hotels/continue", async (req, res) => {
   try {
 
     const searchId =
-      typeof req.body.searchId === "string"
-        ? req.body.searchId.trim()
-        : "";
-
-    if (!searchId) {
-
-      return res.status(400).json({
-        success: false,
-        code: "SEARCH_ID_REQUIRED",
-        message: "searchId is required.",
-      });
-
-    }
+      requireSearchIdValue(
+        req.body?.searchId
+      );
 
     const result =
       await continueHotelSearch(searchId);
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
 
     return res.json(
       createPublicSearchPayload(
@@ -552,20 +580,17 @@ router.get("/search-status", async (req, res) => {
   try {
 
     const searchId =
-      getSearchIdFromRequest(req);
-
-    if (!searchId) {
-
-      return res.status(400).json({
-        success: false,
-        code: "SEARCH_ID_REQUIRED",
-        message: "searchId is required.",
-      });
-
-    }
+      requireSearchIdValue(
+        getSearchIdFromRequest(req)
+      );
 
     const result =
       await getSearchStatus(searchId);
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
 
     return res.json(
       createPublicSearchStatus(
@@ -606,6 +631,11 @@ router.get("/search-session", (req, res) => {
       requireSearchSession(
         searchId
       );
+
+    res.set(
+      "Cache-Control",
+      "no-store"
+    );
 
     return res.json({
       success:

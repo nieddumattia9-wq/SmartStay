@@ -237,12 +237,22 @@ async function requestJson<T>(
 
     if (error instanceof TypeError) {
 
+      const isOffline =
+        typeof navigator !==
+          "undefined" &&
+        navigator.onLine ===
+          false;
+
       throw new ApiRequestError({
         message:
-          fallbackErrorMessage,
+          isOffline
+            ? "You appear to be offline."
+            : fallbackErrorMessage,
 
         code:
-          "NETWORK_ERROR",
+          isOffline
+            ? "NETWORK_OFFLINE"
+            : "NETWORK_ERROR",
       });
 
     }
@@ -434,7 +444,10 @@ export async function getSearchStatus(
 
   return requestJson(
     `${API_URL}/search-status${createSearchIdQuery(searchId)}`,
-    undefined,
+    {
+      cache:
+        "no-store",
+    },
     "Unable to retrieve search status.",
     STANDARD_REQUEST_TIMEOUT_MS,
     "Retrieving the search status took too long."
@@ -448,7 +461,10 @@ export async function getSearchSession(
 
   return requestJson(
     `${API_URL}/search-session${createSearchIdQuery(searchId)}`,
-    undefined,
+    {
+      cache:
+        "no-store",
+    },
     "Unable to retrieve search session.",
     STANDARD_REQUEST_TIMEOUT_MS,
     "Retrieving the search results took too long."

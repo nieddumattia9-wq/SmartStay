@@ -33,6 +33,10 @@ import {
     isSearchLifecycleFailure,
   } from "../../utils/searchLifecycle";
 
+  import {
+    getSearchRecoveryDecision,
+  } from "../../utils/searchRecovery";
+
   import "./LoadingScreen.css";
 
   const FIRST_STEP =
@@ -449,6 +453,65 @@ import {
 
     const [error, setError] =
       useState("");
+
+    const [canRetry, setCanRetry] =
+      useState(false);
+
+    const [flowAttempt, setFlowAttempt] =
+      useState(0);
+
+    function retrySearchFlow() {
+      if (
+        typeof navigator !==
+          "undefined" &&
+        navigator.onLine ===
+          false
+      ) {
+        const recovery =
+          getSearchRecoveryDecision({
+            code:
+              "NETWORK_OFFLINE",
+          });
+
+        setError(
+          recovery.message
+        );
+
+        setCanRetry(
+          true
+        );
+
+        return;
+      }
+
+      hasStartedRef.current =
+        false;
+
+      setCanRetry(
+        false
+      );
+
+      setError(
+        ""
+      );
+
+      setProgress(
+        8
+      );
+
+      setCurrentStep(
+        0
+      );
+
+      setCompletedSteps(
+        []
+      );
+
+      setFlowAttempt(
+        (currentAttempt) =>
+          currentAttempt + 1
+      );
+    }
 
     useEffect(() => {
       isMounted.current = true;
@@ -890,19 +953,56 @@ import {
             err.message ===
               SEARCH_TIMEOUT_MESSAGE;
 
-          if (isSearchTimeout) {
-            clearActiveSearchIdFromStorage();
-          }
+          const fallbackMessage =
+            err instanceof Error
+              ? getSafeSearchErrorMessage(
+                  err.message
+                )
+              : getSafeSearchErrorMessage(
+                  null
+                );
 
-          if (ownsSearchLock) {
+          const recovery =
+            isSearchTimeout
+              ? getSearchRecoveryDecision(
+                  {
+                    code:
+                      "REQUEST_TIMEOUT",
+                  },
+                  fallbackMessage
+                )
+              : getSearchRecoveryDecision(
+                  err,
+                  fallbackMessage
+                );
+
+          if (
+            recovery
+              .clearStoredSearchState
+          ) {
+            clearPendingSearch();
+            clearActiveSearchIdFromStorage();
+            clearSearchLock();
+
+            if (searchIdFromUrl) {
+              sessionStorage.removeItem(
+                getSearchMetaStorageKey(
+                  searchIdFromUrl
+                )
+              );
+            }
+          }
+          else if (ownsSearchLock) {
             clearSearchLock();
           }
 
           if (isMounted.current) {
+            setCanRetry(
+              recovery.retryable
+            );
+
             setError(
-              err instanceof Error
-                ? getSafeSearchErrorMessage(err.message)
-                : getSafeSearchErrorMessage(null)
+              recovery.message
             );
 
             setProgress(100);
@@ -912,6 +1012,7 @@ import {
 
       runSearchFlow();
     }, [
+      flowAttempt,
       loadingSteps,
       navigate,
       searchIdFromUrl,
@@ -980,13 +1081,40 @@ import {
                 {error}
               </p>
 
-              <button
-                type="button"
-                className="loading-error__button"
-                onClick={() => navigate("/")}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: "12px",
+                  marginTop: "20px",
+                }}
               >
-                Start a new search
-              </button>
+                {canRetry && (
+                  <button
+                    type="button"
+                    className="loading-error__button"
+                    style={{
+                      borderColor: "#059669",
+                      background: "#059669",
+                      color: "#ffffff",
+                    }}
+                    onClick={
+                      retrySearchFlow
+                    }
+                  >
+                    Try again
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="loading-error__button"
+                  onClick={() => navigate("/")}
+                >
+                  Start a new search
+                </button>
+              </div>
             </div>
           )}
 

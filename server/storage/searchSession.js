@@ -9,6 +9,17 @@ const EXPIRED_SEARCH_ID_RETENTION_MS =
 const CONTINUATION_LOCK_TTL_MS =
   5 * 60 * 1000;
 
+const SEARCH_SESSION_ID_VERSION =
+  "ss1";
+
+const SEARCH_SESSION_PROCESS_GENERATION =
+  crypto
+    .randomBytes(8)
+    .toString("hex");
+
+const SEARCH_SESSION_ID_PATTERN =
+  /^ss1\.([a-f0-9]{16})\.([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
+
 const SEARCH_SESSION_STATES =
   Object.freeze({
     MISSING:
@@ -104,9 +115,46 @@ function removeExpiredSessions() {
 
 }
 
+function getSearchIdGeneration(
+  searchId
+) {
+  const normalizedSearchId =
+    normalizeSearchId(
+      searchId
+    );
+
+  const match =
+    SEARCH_SESSION_ID_PATTERN.exec(
+      normalizedSearchId
+    );
+
+  return match
+    ? match[1].toLowerCase()
+    : null;
+}
+
+function isSearchIdFromPreviousProcess(
+  searchId
+) {
+  const generation =
+    getSearchIdGeneration(
+      searchId
+    );
+
+  return (
+    generation !== null &&
+    generation !==
+      SEARCH_SESSION_PROCESS_GENERATION
+  );
+}
+
 function createSearchId() {
 
-  return crypto.randomUUID();
+  return [
+    SEARCH_SESSION_ID_VERSION,
+    SEARCH_SESSION_PROCESS_GENERATION,
+    crypto.randomUUID(),
+  ].join(".");
 
 }
 
@@ -271,6 +319,25 @@ function getSearchSessionState(
 
   if (
     expiredSearchIds.has(
+      normalizedSearchId
+    )
+  ) {
+
+    return SEARCH_SESSION_STATES
+      .EXPIRED;
+
+  }
+
+  /*
+   * Search sessions are intentionally kept in
+   * process memory for the MVP. The opaque search
+   * id carries a random process generation so a
+   * link created before a backend restart can be
+   * classified as expired instead of being confused
+   * with a search id that never existed.
+   */
+  if (
+    isSearchIdFromPreviousProcess(
       normalizedSearchId
     )
   ) {
@@ -763,6 +830,7 @@ module.exports = {
   SEARCH_SESSION_TTL_MS,
   EXPIRED_SEARCH_ID_RETENTION_MS,
   CONTINUATION_LOCK_TTL_MS,
+  SEARCH_SESSION_ID_VERSION,
   SEARCH_SESSION_STATES,
   saveSearchSession,
   getSearchSession,

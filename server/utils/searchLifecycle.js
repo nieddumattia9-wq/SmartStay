@@ -29,6 +29,7 @@ const SEARCH_PUBLIC_CODES =
     PROVIDER_UNAVAILABLE: "SEARCH_PROVIDER_UNAVAILABLE",
     TIMEOUT: "SEARCH_TIMEOUT",
     RATE_LIMITED: "SEARCH_RATE_LIMITED",
+    ID_REQUIRED: "SEARCH_ID_REQUIRED",
     SESSION_EXPIRED: "SEARCH_SESSION_EXPIRED",
     SESSION_MISSING: "SEARCH_SESSION_MISSING",
     CANCELLED: "SEARCH_CANCELLED",
@@ -53,6 +54,9 @@ const PUBLIC_MESSAGES =
 
     [SEARCH_PUBLIC_CODES.RATE_LIMITED]:
       "Search is temporarily rate limited. Please try again shortly.",
+
+    [SEARCH_PUBLIC_CODES.ID_REQUIRED]:
+      "A searchId is required. Please start a new search.",
 
     [SEARCH_PUBLIC_CODES.SESSION_EXPIRED]:
       "This search has expired. Please start a new search.",
@@ -138,25 +142,49 @@ function hasAttemptOutcome(
   );
 }
 
+function normalizeRetryAfterMs(
+  value
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const retryAfterMs =
+    Number(
+      value
+    );
+
+  return (
+    Number.isFinite(
+      retryAfterMs
+    ) &&
+    retryAfterMs >= 0
+  )
+    ? retryAfterMs
+    : null;
+}
+
 function getRetryAfterMs(payload) {
   const directValue =
-    Number(payload?.retryAfterMs);
+    normalizeRetryAfterMs(
+      payload?.retryAfterMs
+    );
 
-  if (
-    Number.isFinite(directValue) &&
-    directValue >= 0
-  ) {
+  if (directValue !== null) {
     return directValue;
   }
 
   for (const attempt of getAttempts(payload)) {
     const attemptValue =
-      Number(attempt?.retryAfterMs);
+      normalizeRetryAfterMs(
+        attempt?.retryAfterMs
+      );
 
-    if (
-      Number.isFinite(attemptValue) &&
-      attemptValue >= 0
-    ) {
+    if (attemptValue !== null) {
       return attemptValue;
     }
   }
@@ -232,6 +260,25 @@ function deriveSearchLifecycle(
     payload.searchIncomplete === true ||
     payload.isContinuing === true ||
     Boolean(payload.continuation);
+
+  const isSearchIdRequired =
+    code ===
+      "SEARCH_ID_REQUIRED";
+
+  if (isSearchIdRequired) {
+    return createLifecycle({
+      phase:
+        SEARCH_LIFECYCLE_PHASES
+          .COMPLETE,
+      outcome:
+        SEARCH_LIFECYCLE_OUTCOMES
+          .SESSION_MISSING,
+      retryable: false,
+      publicCode:
+        SEARCH_PUBLIC_CODES
+          .ID_REQUIRED,
+    });
+  }
 
   const isSessionExpired =
     code ===

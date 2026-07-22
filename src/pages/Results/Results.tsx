@@ -38,6 +38,9 @@ import type {
 import {
   getSearchLifecycleLabel,
 } from "../../utils/searchLifecycle";
+import {
+  getSearchRecoveryDecision,
+} from "../../utils/searchRecovery";
 import type {
   SmartStayFrontendViewV2,
 } from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
@@ -481,117 +484,29 @@ function writeStoredRankingV2(
   type ResultsLoadFailure = {
     message: string;
     clearStoredMeta: boolean;
+    retryable: boolean;
   };
 
   function getResultsLoadFailure(
     error: unknown
   ): ResultsLoadFailure {
-
-    if (
-      !(error instanceof ApiRequestError)
-    ) {
-
-      return {
-        message:
-          "Unable to load hotels.",
-
-        clearStoredMeta:
-          false,
-      };
-
-    }
-
-    if (
-      error.code ===
-        "SEARCH_SESSION_EXPIRED" ||
-      error.status ===
-        410
-    ) {
-
-      return {
-        message:
-          "This search has expired. Please start a new search.",
-
-        clearStoredMeta:
-          true,
-      };
-
-    }
-
-    if (
-      error.code ===
-        "SEARCH_SESSION_NOT_FOUND" ||
-      error.status ===
-        404
-    ) {
-
-      return {
-        message:
-          "These search results are no longer available. Please start a new search.",
-
-        clearStoredMeta:
-          true,
-      };
-
-    }
-
-    if (
-      error.code ===
-        "SEARCH_ID_REQUIRED" ||
-      error.status ===
-        400
-    ) {
-
-      return {
-        message:
-          "This search link is not valid. Please start a new search.",
-
-        clearStoredMeta:
-          true,
-      };
-
-    }
-
-    if (
-      error.code ===
-        "REQUEST_TIMEOUT" ||
-      error.status ===
-        408
-    ) {
-
-      return {
-        message:
-          "Retrieving the search results took too long. Please try again.",
-
-        clearStoredMeta:
-          false,
-      };
-
-    }
-
-    if (
-      error.code ===
-        "NETWORK_ERROR"
-    ) {
-
-      return {
-        message:
-          "SmartStay could not be reached. Check your connection and try again.",
-
-        clearStoredMeta:
-          false,
-      };
-
-    }
+    const recovery =
+      getSearchRecoveryDecision(
+        error,
+        "Unable to load hotels."
+      );
 
     return {
       message:
-        "Unable to load hotels.",
+        recovery.message,
 
       clearStoredMeta:
-        false,
-    };
+        recovery
+          .clearStoredSearchState,
 
+      retryable:
+        recovery.retryable,
+    };
   }
 
 function getHotelBookingUrl(
@@ -685,6 +600,18 @@ function getHotelDetailsFailureMessage(
 
     const [error, setError] =
       useState("");
+
+    const [
+      resultsCanRetry,
+      setResultsCanRetry,
+    ] =
+      useState(false);
+
+    const [
+      resultsRetryAttempt,
+      setResultsRetryAttempt,
+    ] =
+      useState(0);
 
     const [status, setStatus] =
       useState<string | null>(null);
@@ -1084,6 +1011,18 @@ const rankedHotels =
 
     useEffect(() => {
       async function loadResults() {
+        setLoading(
+          true
+        );
+
+        setError(
+          ""
+        );
+
+        setResultsCanRetry(
+          false
+        );
+
         setDistanceOverrideKm(
           undefined
         );
@@ -1138,6 +1077,10 @@ const rankedHotels =
 
           }
 
+          setResultsCanRetry(
+            failure.retryable
+          );
+
           setError(
             failure.message
           );
@@ -1147,7 +1090,10 @@ const rankedHotels =
       }
 
       loadResults();
-    }, [searchId]);
+    }, [
+      resultsRetryAttempt,
+      searchId,
+    ]);
 
     useEffect(() => {
       if (hotels.length === 0) {
@@ -1551,13 +1497,39 @@ const rankedHotels =
             {error || engineError}
           </p>
 
-          <button
-            type="button"
-            className="results-state__button results-state__button--dark"
-            onClick={() => navigate("/")}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: "12px",
+              marginTop: "18px",
+            }}
           >
-            Start a new search
-          </button>
+            {error &&
+              resultsCanRetry && (
+                <button
+                  type="button"
+                  className="results-state__button results-state__button--dark"
+                  onClick={() =>
+                    setResultsRetryAttempt(
+                      (currentAttempt) =>
+                        currentAttempt + 1
+                    )
+                  }
+                >
+                  Try again
+                </button>
+              )}
+
+            <button
+              type="button"
+              className="results-state__button results-state__button--dark"
+              onClick={() => navigate("/")}
+            >
+              Start a new search
+            </button>
+          </div>
         </div>
       );
     }

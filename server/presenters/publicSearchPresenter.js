@@ -39,6 +39,22 @@ function normalizeLegacyBoolean(
     : fallback;
 }
 
+function normalizeTimestamp(
+  value
+) {
+  const timestamp =
+    Number(
+      value
+    );
+
+  return Number.isFinite(
+    timestamp
+  ) &&
+  timestamp > 0
+    ? timestamp
+    : null;
+}
+
 function createPublicSearchPayload(
   payload = {}
 ) {
@@ -201,18 +217,19 @@ function createPublicSearchSession(
         : null,
 
     createdAt:
-      Number.isFinite(
-        Number(session.createdAt)
-      )
-        ? Number(session.createdAt)
-        : null,
+      normalizeTimestamp(
+        session.createdAt
+      ),
 
     updatedAt:
-      Number.isFinite(
-        Number(session.updatedAt)
-      )
-        ? Number(session.updatedAt)
-        : null,
+      normalizeTimestamp(
+        session.updatedAt
+      ),
+
+    expiresAt:
+      normalizeTimestamp(
+        session.expiresAt
+      ),
 
     retryAfterMs:
       payload.retryAfterMs,
@@ -266,11 +283,14 @@ function createPublicSearchStatus(
         : null,
 
     updatedAt:
-      Number.isFinite(
-        Number(payload.updatedAt)
-      )
-        ? Number(payload.updatedAt)
-        : null,
+      normalizeTimestamp(
+        payload.updatedAt
+      ),
+
+    expiresAt:
+      normalizeTimestamp(
+        payload.expiresAt
+      ),
 
     retryAfterMs:
       publicPayload.retryAfterMs,

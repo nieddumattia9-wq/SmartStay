@@ -2038,6 +2038,9 @@ return {
 
         updatedAt:
           session.updatedAt ?? null,
+
+        expiresAt:
+          session.expiresAt ?? null,
       };
 
     }

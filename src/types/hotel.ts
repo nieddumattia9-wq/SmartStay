@@ -297,6 +297,8 @@ export interface SearchSession {
 
   updatedAt: number | null;
 
+  expiresAt?: number | null;
+
   retryAfterMs?: number | null;
 
   lifecycle?: SearchLifecycle | null;
