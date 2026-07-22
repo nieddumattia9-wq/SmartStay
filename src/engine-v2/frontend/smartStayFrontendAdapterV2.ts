@@ -7,6 +7,14 @@ import {
 } from "../../utils/reviewCountDisplay";
 
 import {
+  diagnoseSmartStayEmptyStateV2,
+} from "./constraintAwareEmptyStateV2";
+
+import type {
+  SmartStayEmptyStateV2,
+} from "./constraintAwareEmptyStateV2";
+
+import {
   evaluateSmartStaySearchV2,
 } from "../orchestrator/smartStayEngineV2";
 
@@ -216,6 +224,9 @@ export interface SmartStayFrontendViewV2 {
 
   suppressedHotelIds:
     string[];
+
+  emptyState:
+    SmartStayEmptyStateV2 | null;
 }
 
 export interface SmartStayFrontendInputV2 {
@@ -3507,6 +3518,142 @@ export function buildSmartStayFrontendViewV2(
         )
     );
 
+  const distanceExceededCount =
+    frontendEvaluations.filter(
+      (evaluation) =>
+        evaluation
+          .sourceEvaluation
+          .constraints
+          .some(
+            (constraint) =>
+              constraint.kind ===
+                "distance" &&
+              constraint.status ===
+                "exceeded"
+          )
+    ).length;
+
+  const reliabilityBlockedCount =
+    frontendEvaluations.filter(
+      (evaluation) =>
+        evaluation
+          .sourceEvaluation
+          .reliabilityGate
+          .eligible ===
+        false
+    ).length;
+
+  const mandatoryConstraintExceededCount =
+    frontendEvaluations.filter(
+      (evaluation) =>
+        evaluation
+          .sourceEvaluation
+          .constraints
+          .some(
+            (constraint) =>
+              constraint.kind ===
+                "mandatory-feature" &&
+              constraint.status ===
+                "exceeded"
+          )
+    ).length;
+
+  const budgetHiddenHotelIds =
+    new Set([
+      ...budgetVisibility
+        .hiddenNearBudgetHotelIds,
+
+      ...budgetVisibility
+        .hiddenFarOverBudgetHotelIds,
+
+      ...budgetVisibility
+        .hiddenBudgetUnverifiedHotelIds,
+    ]);
+
+  const productPolicyExcludedHotelIds =
+    new Set([
+      ...excludedHotelIds,
+      ...suppressedHotelIds,
+      ...budgetHiddenHotelIds,
+    ]);
+
+  const recoveryCandidateDistancesKm =
+    frontendEvaluations
+      .filter(
+        (evaluation) => {
+          const sourceEvaluation =
+            evaluation
+              .sourceEvaluation;
+
+          if (
+            !sourceEvaluation
+              .reliabilityGate
+              .eligible
+          ) {
+            return false;
+          }
+
+          return !sourceEvaluation
+            .constraints
+            .some(
+              (constraint) =>
+                constraint.kind !==
+                  "distance" &&
+                constraint.status ===
+                  "exceeded"
+            );
+        }
+      )
+      .map(
+        (evaluation) =>
+          evaluation
+            .sourceEvaluation
+            .constraints
+            .find(
+              (constraint) =>
+                constraint.kind ===
+                "distance"
+            )
+            ?.actualValue
+      )
+      .filter(
+        (
+          value
+        ): value is number =>
+          typeof value ===
+            "number" &&
+          Number.isFinite(value)
+      );
+
+  const emptyState =
+    diagnoseSmartStayEmptyStateV2({
+      providerHotelCount:
+        input.hotels.length,
+
+      visibleHotelCount:
+        rankedHotels.length,
+
+      distanceExceededCount,
+
+      budgetHiddenCount:
+        budgetHiddenHotelIds.size,
+
+      reliabilityBlockedCount,
+
+      mandatoryConstraintExceededCount,
+
+      productPolicyExcludedCount:
+        productPolicyExcludedHotelIds
+          .size,
+
+      maximumDistanceKm:
+        input.maximumDistanceKm,
+
+      totalBudget,
+
+      recoveryCandidateDistancesKm,
+    });
+
   return {
     engineVersion:
       result.engineVersion,
@@ -3555,5 +3702,7 @@ export function buildSmartStayFrontendViewV2(
 
     excludedHotelIds,
     suppressedHotelIds,
+
+    emptyState,
   };
 }

@@ -38,6 +38,15 @@ import type {
 } from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
 
 import {
+  diagnoseSmartStayEmptyStateV2,
+} from "../../engine-v2/frontend/constraintAwareEmptyStateV2";
+
+import type {
+  SmartStayEmptyStateV2,
+} from "../../engine-v2/frontend/constraintAwareEmptyStateV2";
+
+
+import {
   selectHotelOffers,
 } from "../../utils/hotelOfferSelection";
   
@@ -211,6 +220,20 @@ function writeStoredRankingV2(
     }
   }
 
+  function formatDistanceValue(
+    maxDistanceKm: number | null
+  ) {
+    if (maxDistanceKm === null) {
+      return "no distance limit";
+    }
+
+    if (maxDistanceKm < 1) {
+      return `${Math.round(maxDistanceKm * 1000)} m`;
+    }
+
+    return `${maxDistanceKm} km`;
+  }
+
   function formatDistanceLimit(
     maxDistanceKm: number | null
   ) {
@@ -218,7 +241,151 @@ function writeStoredRankingV2(
       return "Flexible distance";
     }
 
-    return `Within ${maxDistanceKm} km`;
+    return `Within ${formatDistanceValue(maxDistanceKm)}`;
+  }
+
+  function formatDistanceRecoveryAction(
+    maxDistanceKm: number | null
+  ) {
+    if (maxDistanceKm === null) {
+      return "Remove the distance limit";
+    }
+
+    if (maxDistanceKm < 1) {
+      return `Show within ${Math.round(maxDistanceKm * 1000)} m`;
+    }
+
+    return `Show within ${maxDistanceKm} km`;
+  }
+
+  function getEmptyStateTitle(
+    emptyState:
+      SmartStayEmptyStateV2
+  ) {
+    if (
+      emptyState.reason ===
+      "provider-no-results"
+    ) {
+      return "No stays are available for these dates";
+    }
+
+    if (
+      emptyState.reason ===
+      "distance-constraint"
+    ) {
+      return (
+        "No stays match your " +
+        formatDistanceValue(
+          emptyState.maximumDistanceKm
+        ) +
+        " distance limit"
+      );
+    }
+
+    if (
+      emptyState.reason ===
+      "budget-constraint"
+    ) {
+      return "No stays fit the current budget";
+    }
+
+    if (
+      emptyState.reason ===
+      "reliability-gate"
+    ) {
+      return "No stays passed SmartStay verification";
+    }
+
+    if (
+      emptyState.reason ===
+      "product-policy"
+    ) {
+      return "No stays satisfy all selected requirements";
+    }
+
+    return "No verified stays are currently visible";
+  }
+
+  function getEmptyStateDescription(
+    emptyState:
+      SmartStayEmptyStateV2
+  ) {
+    const analyzedCount =
+      emptyState.providerHotelCount;
+
+    if (
+      emptyState.reason ===
+      "provider-no-results"
+    ) {
+      return "The provider did not return an available stay for this destination and date range. Try different dates or adjust the search.";
+    }
+
+    if (
+      emptyState.reason ===
+      "distance-constraint"
+    ) {
+      return (
+        "SmartStay found " +
+        analyzedCount +
+        " " +
+        (
+          analyzedCount === 1
+            ? "stay"
+            : "stays"
+        ) +
+        ", but " +
+        (
+          emptyState.distanceExceededCount ===
+          analyzedCount
+            ? "all were"
+            : `${emptyState.distanceExceededCount} were`
+        ) +
+        " outside the selected area. Your distance limit was kept instead of showing farther options."
+      );
+    }
+
+    if (
+      emptyState.reason ===
+      "budget-constraint"
+    ) {
+      return (
+        "SmartStay analyzed " +
+        analyzedCount +
+        " " +
+        (
+          analyzedCount === 1
+            ? "stay"
+            : "stays"
+        ) +
+        ", but none could be shown as within or sensibly near your total budget."
+      );
+    }
+
+    if (
+      emptyState.reason ===
+      "reliability-gate"
+    ) {
+      return (
+        "SmartStay found " +
+        analyzedCount +
+        " " +
+        (
+          analyzedCount === 1
+            ? "stay"
+            : "stays"
+        ) +
+        ", but the available evidence was not strong enough to recommend any of them safely."
+      );
+    }
+
+    if (
+      emptyState.reason ===
+      "product-policy"
+    ) {
+      return "Available stays were found, but they were excluded by the selected requirements or SmartStay visibility policies.";
+    }
+
+    return "Available stays were found, but SmartStay could not identify a safe visible option with the current search settings.";
   }
 
   function getSelectedLocation(
@@ -519,7 +686,16 @@ function getHotelDetailsFailureMessage(
   
     const [searchMeta, setSearchMeta] =
       useState<SearchMeta | null>(null);
-  
+
+    const [
+      distanceOverrideKm,
+      setDistanceOverrideKm,
+    ] = useState<
+      number |
+      null |
+      undefined
+    >(undefined);
+
     const [engineView, setEngineView] =
       useState<SmartStayFrontendViewV2 | null>(null);
 
@@ -585,6 +761,21 @@ function getHotelDetailsFailureMessage(
     const smartStayProfile =
       searchMeta?.smartStayProfile ??
       null;
+
+    const originalMaximumDistanceKm =
+      searchMeta
+        ?.maxDistanceKm ??
+      null;
+
+    const effectiveMaximumDistanceKm =
+      distanceOverrideKm ===
+        undefined
+        ? originalMaximumDistanceKm
+        : distanceOverrideKm;
+
+    const distanceRecoveryActive =
+      distanceOverrideKm !==
+      undefined;
 
     const balanceSourceLabel =
       smartStayProfile
@@ -885,6 +1076,10 @@ const rankedHotels =
 
     useEffect(() => {
       async function loadResults() {
+        setDistanceOverrideKm(
+          undefined
+        );
+
         try {
           if (!searchId) {
             setError(
@@ -981,10 +1176,12 @@ const rankedHotels =
             );
 
           const previousRankingHotelIds =
-            readStoredRankingV2(
-              searchId,
-              hotels
-            );
+            distanceRecoveryActive
+              ? []
+              : readStoredRankingV2(
+                  searchId,
+                  hotels
+                );
 
           const view =
             engineModule
@@ -1008,9 +1205,7 @@ const rankedHotels =
                   null,
 
                 maximumDistanceKm:
-                  searchMeta
-                    ?.maxDistanceKm ??
-                  null,
+                  effectiveMaximumDistanceKm,
 
                 selectedLocation:
                   getSelectedLocation(
@@ -1079,13 +1274,15 @@ const rankedHotels =
             view
           );
 
-          writeStoredRankingV2(
-            searchId,
-            view.rankedHotels.map(
-              (evaluation) =>
-                evaluation.hotel.id
-            )
-          );
+          if (!distanceRecoveryActive) {
+            writeStoredRankingV2(
+              searchId,
+              view.rankedHotels.map(
+                (evaluation) =>
+                  evaluation.hotel.id
+              )
+            );
+          }
         }
         catch (engineFailure) {
           console.error(
@@ -1122,8 +1319,8 @@ const rankedHotels =
         ?.preferenceSource,
       searchMeta
         ?.totalBudget,
-      searchMeta
-        ?.maxDistanceKm,
+      effectiveMaximumDistanceKm,
+      distanceRecoveryActive,
       searchMeta
         ?.destinationLatitude,
       searchMeta
@@ -1232,6 +1429,74 @@ const rankedHotels =
         [searchId]
       );
 
+    const handleDistanceRecovery =
+      useCallback(
+        (
+          maximumDistanceKm:
+            number | null
+        ) => {
+          setDistanceOverrideKm(
+            maximumDistanceKm
+          );
+
+          setShowFullList(
+            false
+          );
+        },
+        []
+      );
+
+    const handleRestoreDistanceLimit =
+      useCallback(() => {
+        setDistanceOverrideKm(
+          undefined
+        );
+
+        setShowFullList(
+          false
+        );
+      }, []);
+
+    const emptyState =
+      useMemo(() => {
+        if (
+          engineView
+            ?.emptyState
+        ) {
+          return engineView
+            .emptyState;
+        }
+
+        if (
+          hotels.length ===
+          0
+        ) {
+          return diagnoseSmartStayEmptyStateV2({
+            providerHotelCount:
+              0,
+
+            visibleHotelCount:
+              0,
+
+            maximumDistanceKm:
+              effectiveMaximumDistanceKm,
+
+            totalBudget:
+              searchMeta
+                ?.totalBudget ??
+              null,
+          });
+        }
+
+        return null;
+      }, [
+        engineView,
+        hotels.length,
+        effectiveMaximumDistanceKm,
+        searchMeta
+          ?.totalBudget,
+      ]);
+
     if (loading) {
       return (
         <div
@@ -1301,7 +1566,9 @@ const rankedHotels =
             {searchMeta?.destinationLabel
               ? ` for your search in ${searchMeta.destinationLabel}`
               : " for your search"}.
-            {" "}{budgetVisibilitySummary}
+            {rankedHotels.length > 0
+              ? ` ${budgetVisibilitySummary}`
+              : ""}
           </p>
 
           <div className="results-balance-card">
@@ -1387,12 +1654,53 @@ const rankedHotels =
 
                 <span>
                   {formatDistanceLimit(
-                    searchMeta.maxDistanceKm
+                    effectiveMaximumDistanceKm
                   )}
                 </span>
               </div>
             )}
           </div>
+
+          {distanceRecoveryActive && (
+            <div
+              className="results-recovery-notice"
+              role="status"
+              data-recovery-source="existing-results"
+            >
+              <div>
+                <strong>
+                  {effectiveMaximumDistanceKm ===
+                    null
+                    ? "Distance limit removed."
+                    : (
+                        "Distance adjusted to " +
+                        formatDistanceValue(
+                          effectiveMaximumDistanceKm
+                        ) +
+                        "."
+                      )}
+                </strong>
+
+                <p>
+                  SmartStay reused the stays already found. No new provider search was sent.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="results-recovery-notice__restore"
+                onClick={
+                  handleRestoreDistanceLimit
+                }
+              >
+                Restore{" "}
+                {formatDistanceValue(
+                  originalMaximumDistanceKm
+                )}{" "}
+                limit
+              </button>
+            </div>
+          )}
 
           {status && (
             <p
@@ -1405,26 +1713,92 @@ const rankedHotels =
         </section>
 
         {rankedHotels.length === 0 ? (
-          <div className="results-state results-state--empty">
-            <h2>
-              {hotels.length === 0
-                ? "No stays found"
-                : "No stays passed the current verification checks"}
-            </h2>
-
-            <p>
-              {hotels.length === 0
-                ? "Try another destination or different dates."
-                : "SmartStay found stays, but none could be ranked safely with the current availability and location evidence."}
+          <div
+            className="results-state results-state--empty results-empty-state"
+            data-empty-state-reason={
+              emptyState
+                ?.reason ??
+              "unknown"
+            }
+          >
+            <p className="results-empty-state__eyebrow">
+              SmartStay respected your search
             </p>
 
-            <button
-              type="button"
-              className="results-state__button results-state__button--primary"
-              onClick={() => navigate("/")}
-            >
-              Search again
-            </button>
+            <h2>
+              {emptyState
+                ? getEmptyStateTitle(
+                    emptyState
+                  )
+                : "No verified stays are currently visible"}
+            </h2>
+
+            <p className="results-empty-state__description">
+              {emptyState
+                ? getEmptyStateDescription(
+                    emptyState
+                  )
+                : "Available stays were found, but SmartStay could not identify a safe visible option with the current search settings."}
+            </p>
+
+            {emptyState
+              ?.reason ===
+              "distance-constraint" &&
+              emptyState
+                .recoveryDistanceKmOptions
+                .length >
+                0 && (
+                <div className="results-empty-state__recovery">
+                  <p>
+                    Adjust the distance using the same provider results:
+                  </p>
+
+                  <div className="results-empty-state__actions">
+                    {emptyState
+                      .recoveryDistanceKmOptions
+                      .map(
+                        (
+                          maximumDistanceKm
+                        ) => (
+                          <button
+                            key={
+                              maximumDistanceKm ===
+                                null
+                                ? "distance-any"
+                                : `distance-${maximumDistanceKm}`
+                            }
+                            type="button"
+                            className="results-state__button results-state__button--primary"
+                            data-reuses-current-results="true"
+                            onClick={() =>
+                              handleDistanceRecovery(
+                                maximumDistanceKm
+                              )
+                            }
+                          >
+                            {formatDistanceRecoveryAction(
+                              maximumDistanceKm
+                            )}
+                          </button>
+                        )
+                      )}
+                  </div>
+
+                  <small>
+                    Your original limit is not changed unless you choose one of these options.
+                  </small>
+                </div>
+              )}
+
+            <div className="results-empty-state__footer">
+              <button
+                type="button"
+                className="results-state__button results-state__button--dark"
+                onClick={() => navigate("/")}
+              >
+                Modify the search
+              </button>
+            </div>
           </div>
       ) : (
         <>
