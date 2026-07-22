@@ -510,6 +510,42 @@ test(
         1
       );
 
+      const waiting =
+        await service
+          .continueHotelSearch(
+            session.searchId
+          );
+
+      assert.equal(
+        waiting.status,
+        "InProgress"
+      );
+
+      assert.equal(
+        waiting.searchIncomplete,
+        true
+      );
+
+      assert.equal(
+        providerCalls.get(
+          "provider-a"
+        ),
+        1
+      );
+
+      assert.equal(
+        Number(waiting.retryAfterMs) > 0,
+        true
+      );
+
+      await new Promise(
+        (resolve) =>
+          setTimeout(
+            resolve,
+            35
+          )
+      );
+
       const completed =
         await service
           .continueHotelSearch(

@@ -27,6 +27,7 @@ export interface SearchLifecycleCarrier {
   lifecycle?: SearchLifecycle | null;
   status?: string | null;
   totalHotels?: number | null;
+  retryAfterMs?: number | null;
 }
 
 const COMPLETED_OUTCOMES =
@@ -134,4 +135,44 @@ export function getSearchLifecycleLabel(
     default:
       return null;
   }
+}
+
+export const DEFAULT_SEARCH_POLLING_DELAY_MS =
+  1800;
+
+export const MAXIMUM_SEARCH_POLLING_DELAY_MS =
+  60_000;
+
+export function getSearchPollingDelayMs(
+  carrier: SearchLifecycleCarrier,
+  {
+    defaultDelayMs =
+      DEFAULT_SEARCH_POLLING_DELAY_MS,
+    maximumDelayMs =
+      MAXIMUM_SEARCH_POLLING_DELAY_MS,
+  } = {}
+) {
+  const retryAfterMs =
+    Number(
+      carrier.lifecycle
+        ?.retryAfterMs ??
+      carrier.retryAfterMs
+    );
+
+  if (
+    !Number.isFinite(
+      retryAfterMs
+    ) ||
+    retryAfterMs <= 0
+  ) {
+    return defaultDelayMs;
+  }
+
+  return Math.min(
+    Math.max(
+      defaultDelayMs,
+      retryAfterMs
+    ),
+    maximumDelayMs
+  );
 }

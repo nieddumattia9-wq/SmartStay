@@ -27,8 +27,15 @@ const {
     applyProviderExecutionFailure,
     summarizeProviderExecutions,
     getPrimaryRunnableProviderExecution,
+    getMinimumProviderRetryAfterMs,
   } = require(
     "../providers/common/providerContinuationState"
+  );
+
+  const {
+    normalizeRetryAfterMs,
+  } = require(
+    "../providers/common/providerRetryPolicy"
   );
 
   function isCompletedStatus(status) {
@@ -279,6 +286,8 @@ const {
       success,
       message = null,
       code = null,
+      retryable,
+      retryAfterMs,
     } = {}
   ) {
 
@@ -321,6 +330,20 @@ const {
       currency:
         session?.currency ??
         null,
+
+      retryable:
+        typeof retryable ===
+          "boolean"
+          ? retryable
+          : Boolean(
+              session?.retryable
+            ),
+
+      retryAfterMs:
+        normalizeRetryAfterMs(
+          retryAfterMs ??
+          session?.retryAfterMs
+        ),
 
       hotels:
         session?.hotels ??
@@ -1019,6 +1042,11 @@ const {
 
     }
 
+    const initialOutcome =
+      getContinuationSessionOutcome(
+        providerExecutions
+      );
+
     const savedSession =
       saveSearchSession({
         originalSearchData:
@@ -1029,19 +1057,10 @@ const {
         providerExecutions,
 
         status:
-          hasRunnableProviderExecutions(
-            providerExecutions
-          )
-            ? "InProgress"
-            : (
-                data?.result?.status ??
-                "Completed"
-              ),
+          initialOutcome.status,
 
         searchIncomplete:
-          hasRunnableProviderExecutions(
-            providerExecutions
-          ),
+          initialOutcome.searchIncomplete,
 
         continuation,
 
@@ -1058,7 +1077,13 @@ const {
           false,
 
         lastError:
-          null,
+          initialOutcome.message,
+
+        retryable:
+          initialOutcome.retryable,
+
+        retryAfterMs:
+          initialOutcome.retryAfterMs,
       });
 
     console.log(
@@ -1066,19 +1091,10 @@ const {
       savedSession.searchId
     );
 
-    return createPublicSearchResponse({
-      data,
-
-      searchId:
-        savedSession.searchId,
-
-      hotels,
-
-      currency,
-
-      continuation:
-        savedSession.continuation,
-    });
+    return createSearchSessionResponse(
+      savedSession,
+      initialOutcome
+    );
 
   }
 
@@ -1100,6 +1116,128 @@ const {
 
   }
 
+  function getTerminalProviderFailureCode(
+    providerExecutions
+  ) {
+
+    const terminalExecutions =
+      normalizeProviderExecutionStates(
+        providerExecutions
+      ).filter(
+        (execution) =>
+          execution.state ===
+          "terminal-failure"
+      );
+
+    const outcomes =
+      terminalExecutions.map(
+        (execution) =>
+          String(
+            execution.lastOutcome ??
+            ""
+          )
+            .trim()
+            .toLowerCase()
+      );
+
+    const allRateLimited =
+      outcomes.length > 0 &&
+      outcomes.every(
+        (outcome) =>
+          outcome ===
+            "rate_limited" ||
+          outcome ===
+            "rate-limited" ||
+          outcome ===
+            "circuit_open" ||
+          outcome ===
+            "circuit-open"
+      ) &&
+      outcomes.some(
+        (outcome) =>
+          outcome ===
+            "rate_limited" ||
+          outcome ===
+            "rate-limited"
+      );
+
+    if (allRateLimited) {
+
+      return {
+        code:
+          "PROVIDER_RATE_LIMITED",
+
+        message:
+          "Accommodation search is temporarily rate limited.",
+
+        retryable:
+          true,
+      };
+
+    }
+
+    const allTimeouts =
+      outcomes.length > 0 &&
+      outcomes.every(
+        (outcome) =>
+          outcome === "timeout"
+      );
+
+    if (allTimeouts) {
+
+      return {
+        code:
+          "PROVIDER_TIMEOUT",
+
+        message:
+          "Accommodation providers took too long to respond.",
+
+        retryable:
+          true,
+      };
+
+    }
+
+    const allUnavailable =
+      outcomes.length > 0 &&
+      outcomes.every(
+        (outcome) =>
+          outcome ===
+            "unavailable" ||
+          outcome ===
+            "circuit_open" ||
+          outcome ===
+            "circuit-open"
+      );
+
+    if (allUnavailable) {
+
+      return {
+        code:
+          "PROVIDER_UNAVAILABLE",
+
+        message:
+          "Accommodation search is temporarily unavailable.",
+
+        retryable:
+          true,
+      };
+
+    }
+
+    return {
+      code:
+        "PROVIDER_CONTINUATION_FAILED",
+
+      message:
+        "One or more providers could not complete the search.",
+
+      retryable:
+        false,
+    };
+
+  }
+
   function getContinuationSessionOutcome(
     providerExecutions
   ) {
@@ -1111,10 +1249,43 @@ const {
 
     const searchIncomplete =
       summary.runnable > 0 ||
-      summary.running > 0;
+      summary.running > 0 ||
+      summary.waitingForRetry > 0;
 
     const hasTerminalFailure =
       summary.terminalFailures > 0;
+
+    const terminalFailure =
+      getTerminalProviderFailureCode(
+        providerExecutions
+      );
+
+    const terminalRetryDelays =
+      normalizeProviderExecutionStates(
+        providerExecutions
+      )
+        .filter(
+          (execution) =>
+            execution.state ===
+              "terminal-failure"
+        )
+        .map(
+          (execution) =>
+            normalizeRetryAfterMs(
+              execution.retryAfterMs
+            )
+        )
+        .filter(
+          (value) =>
+            value !== null
+        );
+
+    const terminalRetryAfterMs =
+      terminalRetryDelays.length > 0
+        ? Math.min(
+            ...terminalRetryDelays
+          )
+        : null;
 
     return {
       summary,
@@ -1137,14 +1308,25 @@ const {
       code:
         !searchIncomplete &&
         hasTerminalFailure
-          ? "PROVIDER_CONTINUATION_FAILED"
+          ? terminalFailure.code
           : null,
 
       message:
         !searchIncomplete &&
         hasTerminalFailure
-          ? "One or more providers could not complete the search."
+          ? terminalFailure.message
           : null,
+
+      retryable:
+        !searchIncomplete &&
+        hasTerminalFailure
+          ? terminalFailure.retryable
+          : false,
+
+      retryAfterMs:
+        searchIncomplete
+          ? summary.retryAfterMs
+          : terminalRetryAfterMs,
     };
 
   }
@@ -1242,12 +1424,77 @@ const {
 
             lastError:
               preLockOutcome.message,
+
+            retryable:
+              preLockOutcome.retryable,
+
+            retryAfterMs:
+              preLockOutcome.retryAfterMs,
           }
         );
 
       return createSearchSessionResponse(
         completedSession,
         preLockOutcome
+      );
+
+    }
+
+    const runnableBeforeLock =
+      getRunnableProviderExecutions(
+        providerExecutions
+      );
+
+    if (
+      runnableBeforeLock.length === 0 &&
+      Number.isFinite(
+        Number(
+          preLockOutcome.retryAfterMs
+        )
+      ) &&
+      Number(
+        preLockOutcome.retryAfterMs
+      ) > 0
+    ) {
+
+      const waitingSession =
+        updateSearchSession(
+          searchId,
+          {
+            providerExecutions,
+
+            status:
+              "InProgress",
+
+            searchIncomplete:
+              true,
+
+            isContinuing:
+              false,
+
+            lastError:
+              null,
+
+            retryable:
+              true,
+
+            retryAfterMs:
+              preLockOutcome.retryAfterMs,
+          }
+        );
+
+      return createSearchSessionResponse(
+        waitingSession,
+        {
+          success:
+            true,
+
+          retryable:
+            true,
+
+          retryAfterMs:
+            preLockOutcome.retryAfterMs,
+        }
       );
 
     }
@@ -1335,6 +1582,12 @@ const {
               true,
 
             lastError:
+              null,
+
+            retryable:
+              false,
+
+            retryAfterMs:
               null,
           }
         );
@@ -1597,6 +1850,12 @@ const {
 
               isContinuing:
                 true,
+
+              retryable:
+                false,
+
+              retryAfterMs:
+                null,
             }
           );
 
@@ -1637,6 +1896,12 @@ const {
 
             lastError:
               outcome.message,
+
+            retryable:
+              outcome.retryable,
+
+            retryAfterMs:
+              outcome.retryAfterMs,
           }
         );
 
@@ -1760,6 +2025,16 @@ return {
 
         lastError:
           session.lastError ?? null,
+
+        retryable:
+          Boolean(
+            session.retryable
+          ),
+
+        retryAfterMs:
+          normalizeRetryAfterMs(
+            session.retryAfterMs
+          ),
 
         updatedAt:
           session.updatedAt ?? null,

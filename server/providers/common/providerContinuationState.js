@@ -1,3 +1,9 @@
+const {
+  DEFAULT_PROVIDER_RETRY_AFTER_MS,
+} = require(
+  "./providerRetryPolicy"
+);
+
 const PROVIDER_EXECUTION_STATES =
   Object.freeze({
     PENDING: "pending",
@@ -11,6 +17,9 @@ const PROVIDER_EXECUTION_STATES =
 
 const DEFAULT_MAX_ATTEMPTS_PER_CURSOR =
   2;
+
+const DEFAULT_MAX_CONTINUATION_RETRY_WAIT_MS =
+  60_000;
 
 function normalizeProviderId(
   providerId
@@ -64,6 +73,14 @@ function normalizeNullableTimestamp(
 function normalizeRetryAfterMs(
   value
 ) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
   const retryAfterMs =
     Number(value);
 
@@ -186,10 +203,12 @@ function createProviderExecutionState({
   providerContext = null,
   outcome = null,
   code = null,
+  message = null,
   retryable = false,
   retryAfterMs = null,
   maxAttemptsPerCursor =
     DEFAULT_MAX_ATTEMPTS_PER_CURSOR,
+  DEFAULT_MAX_CONTINUATION_RETRY_WAIT_MS,
 } = {}) {
   const normalizedProviderId =
     normalizeProviderId(
@@ -208,6 +227,25 @@ function createProviderExecutionState({
     Boolean(supportsContinuation) &&
     Boolean(normalizedContinuation);
 
+  const normalizedOutcome =
+    typeof outcome === "string"
+      ? outcome.trim().toLowerCase()
+      : "";
+
+  const terminalFailure =
+    new Set([
+      "error",
+      "timeout",
+      "rate_limited",
+      "rate-limited",
+      "unavailable",
+      "circuit_open",
+      "circuit-open",
+      "stalled",
+    ]).has(
+      normalizedOutcome
+    );
+
   return {
     providerId:
       normalizedProviderId,
@@ -221,8 +259,13 @@ function createProviderExecutionState({
       canContinue
         ? PROVIDER_EXECUTION_STATES
             .PENDING
-        : PROVIDER_EXECUTION_STATES
-            .COMPLETED,
+        : (
+            terminalFailure
+              ? PROVIDER_EXECUTION_STATES
+                  .TERMINAL_FAILURE
+              : PROVIDER_EXECUTION_STATES
+                  .COMPLETED
+          ),
 
     continuation:
       normalizedContinuation,
@@ -256,7 +299,11 @@ function createProviderExecutionState({
       code,
 
     lastError:
-      null,
+      terminalFailure &&
+      typeof message === "string" &&
+      message.trim()
+        ? message.trim()
+        : null,
 
     retryable:
       Boolean(retryable),
@@ -265,6 +312,9 @@ function createProviderExecutionState({
       normalizeRetryAfterMs(
         retryAfterMs
       ),
+
+    nextAttemptAt:
+      null,
   };
 }
 
@@ -412,6 +462,11 @@ function normalizeProviderExecutionState(
       normalizeRetryAfterMs(
         execution.retryAfterMs
       ),
+
+    nextAttemptAt:
+      normalizeNullableTimestamp(
+        execution.nextAttemptAt
+      ),
   };
 }
 
@@ -471,37 +526,120 @@ function normalizeProviderExecutionStates(
   );
 }
 
-function isProviderExecutionRunnable(
-  execution
+function getProviderExecutionRetryDelayMs(
+  execution,
+  now = Date.now()
 ) {
   const normalizedExecution =
     normalizeProviderExecutionState(
       execution
     );
 
-  return Boolean(
-    normalizedExecution
-      .supportsContinuation &&
-    normalizedExecution
-      .continuation &&
-    (
-      normalizedExecution.state ===
-        PROVIDER_EXECUTION_STATES
-          .PENDING ||
-      normalizedExecution.state ===
-        PROVIDER_EXECUTION_STATES
-          .RETRYABLE_FAILURE
+  if (
+    normalizedExecution.state !==
+      PROVIDER_EXECUTION_STATES
+        .RETRYABLE_FAILURE ||
+    !Number.isFinite(
+      normalizedExecution
+        .nextAttemptAt
     )
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    normalizedExecution
+      .nextAttemptAt - now
+  );
+}
+
+function isProviderExecutionRunnable(
+  execution,
+  now = Date.now()
+) {
+  const normalizedExecution =
+    normalizeProviderExecutionState(
+      execution
+    );
+
+  const stateAllowsExecution =
+    normalizedExecution.state ===
+      PROVIDER_EXECUTION_STATES
+        .PENDING ||
+    normalizedExecution.state ===
+      PROVIDER_EXECUTION_STATES
+        .RETRYABLE_FAILURE;
+
+  if (
+    !normalizedExecution
+      .supportsContinuation ||
+    !normalizedExecution
+      .continuation ||
+    !stateAllowsExecution
+  ) {
+    return false;
+  }
+
+  return (
+    getProviderExecutionRetryDelayMs(
+      normalizedExecution,
+      now
+    ) === 0
   );
 }
 
 function getRunnableProviderExecutions(
-  executions = []
+  executions = [],
+  now = Date.now()
 ) {
   return normalizeProviderExecutionStates(
     executions
   ).filter(
-    isProviderExecutionRunnable
+    (execution) =>
+      isProviderExecutionRunnable(
+        execution,
+        now
+      )
+  );
+}
+
+function getMinimumProviderRetryAfterMs(
+  executions = [],
+  now = Date.now()
+) {
+  const retryDelays =
+    normalizeProviderExecutionStates(
+      executions
+    )
+      .filter(
+        (execution) =>
+          execution.state ===
+            PROVIDER_EXECUTION_STATES
+              .RETRYABLE_FAILURE &&
+          Boolean(
+            execution.continuation
+          )
+      )
+      .map(
+        (execution) =>
+          getProviderExecutionRetryDelayMs(
+            execution,
+            now
+          )
+      )
+      .filter(
+        (delay) =>
+          Number.isFinite(delay) &&
+          delay > 0
+      );
+
+  if (retryDelays.length === 0) {
+    return null;
+  }
+
+  return Math.min(
+    ...retryDelays
   );
 }
 
@@ -617,6 +755,9 @@ function beginProviderExecutionAttempt(
 
       retryAfterMs:
         null,
+
+      nextAttemptAt:
+        null,
     }
   );
 }
@@ -691,6 +832,9 @@ function applyProviderExecutionSuccess(
 
         retryAfterMs:
           null,
+
+        nextAttemptAt:
+          null,
       }
     );
   }
@@ -747,6 +891,9 @@ function applyProviderExecutionSuccess(
 
       retryAfterMs:
         null,
+
+      nextAttemptAt:
+        null,
     }
   );
 }
@@ -776,8 +923,27 @@ function applyProviderExecutionFailure(
     );
   }
 
+  const normalizedRetryAfterMs =
+    normalizeRetryAfterMs(
+      retryAfterMs
+    );
+
+  const effectiveRetryAfterMs =
+    Boolean(retryable)
+      ? (
+          normalizedRetryAfterMs ??
+          DEFAULT_PROVIDER_RETRY_AFTER_MS
+        )
+      : normalizedRetryAfterMs;
+
+  const retryFitsCurrentSearch =
+    effectiveRetryAfterMs === null ||
+    effectiveRetryAfterMs <=
+      DEFAULT_MAX_CONTINUATION_RETRY_WAIT_MS;
+
   const canRetry =
     Boolean(retryable) &&
+    retryFitsCurrentSearch &&
     Boolean(execution.continuation) &&
     execution.attemptsForCursor <
       execution.maxAttemptsPerCursor;
@@ -824,10 +990,17 @@ function applyProviderExecutionFailure(
         canRetry,
 
       retryAfterMs:
-        canRetry
-          ? normalizeRetryAfterMs(
-              retryAfterMs
-            )
+        effectiveRetryAfterMs,
+
+      nextAttemptAt:
+        canRetry &&
+        effectiveRetryAfterMs !== null
+          ? (
+              normalizeNullableTimestamp(
+                now
+              ) ?? Date.now()
+            ) +
+            effectiveRetryAfterMs
           : null,
     }
   );
@@ -856,6 +1029,12 @@ function summarizeProviderExecutions(
 
     retryableFailures:
       0,
+
+    waitingForRetry:
+      0,
+
+    retryAfterMs:
+      null,
 
     terminalFailures:
       0,
@@ -898,6 +1077,23 @@ function summarizeProviderExecutions(
         .RETRYABLE_FAILURE
     ) {
       summary.retryableFailures += 1;
+
+      const retryDelay =
+        getProviderExecutionRetryDelayMs(
+          execution
+        );
+
+      if (retryDelay > 0) {
+        summary.waitingForRetry += 1;
+
+        summary.retryAfterMs =
+          summary.retryAfterMs === null
+            ? retryDelay
+            : Math.min(
+                summary.retryAfterMs,
+                retryDelay
+              );
+      }
     }
 
     if (
@@ -936,13 +1132,16 @@ function getPrimaryRunnableProviderExecution(
 module.exports = {
   PROVIDER_EXECUTION_STATES,
   DEFAULT_MAX_ATTEMPTS_PER_CURSOR,
+  DEFAULT_MAX_CONTINUATION_RETRY_WAIT_MS,
   normalizeProviderContinuation,
   createProviderExecutionState,
   createProviderExecutionStates,
   normalizeProviderExecutionState,
   normalizeProviderExecutionStates,
+  getProviderExecutionRetryDelayMs,
   isProviderExecutionRunnable,
   getRunnableProviderExecutions,
+  getMinimumProviderRetryAfterMs,
   getProviderExecution,
   beginProviderExecutionAttempt,
   applyProviderExecutionSuccess,

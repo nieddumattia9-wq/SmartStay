@@ -52,6 +52,12 @@ const {
 );
 
 const {
+  normalizeRetryAfterMs,
+} = require(
+  "./common/providerRetryPolicy"
+);
+
+const {
   executeProviderOperationWithTimeout,
 } = require(
   "./common/providerOperationTimeoutService"
@@ -70,20 +76,165 @@ function getEnabledProvidersForCapability(
     );
 }
 
+function getMinimumRetryAfterMs(
+  attempts = []
+) {
+  const retryDelays =
+    attempts
+      .map(
+        (attempt) =>
+          normalizeRetryAfterMs(
+            attempt?.retryAfterMs
+          )
+      )
+      .filter(
+        (value) =>
+          value !== null
+      );
+
+  return retryDelays.length > 0
+    ? Math.min(...retryDelays)
+    : null;
+}
+
+function classifyAggregateFailure(
+  attempts = [],
+  {
+    noResults = false,
+  } = {}
+) {
+  if (noResults) {
+    return {
+      outcome:
+        PROVIDER_SEARCH_OUTCOMES
+          .NO_RESULTS,
+
+      code:
+        "NO_RESULTS",
+
+      message:
+        "No stays were found for this destination, dates and guest configuration.",
+    };
+  }
+
+  const failedAttempts =
+    attempts.filter(
+      (attempt) =>
+        attempt?.failed === true
+    );
+
+  const outcomes =
+    failedAttempts.map(
+      (attempt) =>
+        attempt?.outcome
+    );
+
+  const allRateLimited =
+    outcomes.length > 0 &&
+    outcomes.every(
+      (outcome) =>
+        outcome ===
+          PROVIDER_SEARCH_OUTCOMES
+            .RATE_LIMITED ||
+        outcome ===
+          PROVIDER_SEARCH_OUTCOMES
+            .CIRCUIT_OPEN
+    ) &&
+    outcomes.some(
+      (outcome) =>
+        outcome ===
+        PROVIDER_SEARCH_OUTCOMES
+          .RATE_LIMITED
+    );
+
+  if (allRateLimited) {
+    return {
+      outcome:
+        PROVIDER_SEARCH_OUTCOMES
+          .RATE_LIMITED,
+
+      code:
+        "PROVIDER_RATE_LIMITED",
+
+      message:
+        "Accommodation search is temporarily rate limited.",
+    };
+  }
+
+  const allTimeouts =
+    outcomes.length > 0 &&
+    outcomes.every(
+      (outcome) =>
+        outcome ===
+        PROVIDER_SEARCH_OUTCOMES
+          .TIMEOUT
+    );
+
+  if (allTimeouts) {
+    return {
+      outcome:
+        PROVIDER_SEARCH_OUTCOMES
+          .TIMEOUT,
+
+      code:
+        "PROVIDER_TIMEOUT",
+
+      message:
+        "Accommodation providers took too long to respond.",
+    };
+  }
+
+  const allUnavailable =
+    outcomes.length > 0 &&
+    outcomes.every(
+      (outcome) =>
+        outcome ===
+          PROVIDER_SEARCH_OUTCOMES
+            .UNAVAILABLE ||
+        outcome ===
+          PROVIDER_SEARCH_OUTCOMES
+            .CIRCUIT_OPEN
+    );
+
+  if (allUnavailable) {
+    return {
+      outcome:
+        PROVIDER_SEARCH_OUTCOMES
+          .UNAVAILABLE,
+
+      code:
+        "PROVIDER_UNAVAILABLE",
+
+      message:
+        "Accommodation search is temporarily unavailable.",
+    };
+  }
+
+  return {
+    outcome:
+      PROVIDER_SEARCH_OUTCOMES
+        .ERROR,
+
+    code:
+      "NO_PROVIDER_RETURNED_RESULTS",
+
+    message:
+      "No accommodation provider returned usable hotel results for this search.",
+  };
+}
+
 function createAggregateFailureResult({
   currency = "EUR",
   attempts = [],
   noResults = false,
 } = {}) {
-  const code =
-    noResults
-      ? "NO_RESULTS"
-      : "NO_PROVIDER_RETURNED_RESULTS";
-
-  const message =
-    noResults
-      ? "No stays were found for this destination, dates and guest configuration."
-      : "No accommodation provider returned usable hotel results for this search.";
+  const classification =
+    classifyAggregateFailure(
+      attempts,
+      {
+        noResults,
+      }
+    );
 
   const retryable =
     attempts.some(
@@ -92,30 +243,16 @@ function createAggregateFailureResult({
     );
 
   const retryAfterMs =
-    attempts
-      .map(
-        (attempt) =>
-          Number(
-            attempt?.retryAfterMs
-          )
-      )
-      .find(
-        (value) =>
-          Number.isFinite(value) &&
-          value >= 0
-      ) ??
-    null;
+    getMinimumRetryAfterMs(
+      attempts
+    );
 
   return {
     providerId:
       null,
 
     outcome:
-      noResults
-        ? PROVIDER_SEARCH_OUTCOMES
-            .NO_RESULTS
-        : PROVIDER_SEARCH_OUTCOMES
-            .ERROR,
+      classification.outcome,
 
     data:
       null,
@@ -143,9 +280,11 @@ function createAggregateFailureResult({
       success:
         false,
 
-      message,
+      message:
+        classification.message,
 
-      code,
+      code:
+        classification.code,
 
       status:
         noResults
@@ -279,6 +418,20 @@ function createCircuitOpenAttempt(
   provider,
   permission
 ) {
+  const lastErrorType =
+    String(
+      permission.health
+        ?.lastErrorType ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const rateLimited =
+    lastErrorType ===
+      PROVIDER_SEARCH_OUTCOMES
+        .RATE_LIMITED;
+
   return {
     providerId:
       provider.id,
@@ -293,17 +446,24 @@ function createCircuitOpenAttempt(
       true,
 
     outcome:
-      PROVIDER_SEARCH_OUTCOMES
-        .CIRCUIT_OPEN,
+      rateLimited
+        ? PROVIDER_SEARCH_OUTCOMES
+            .RATE_LIMITED
+        : PROVIDER_SEARCH_OUTCOMES
+            .CIRCUIT_OPEN,
 
     code:
-      "PROVIDER_CIRCUIT_OPEN",
+      rateLimited
+        ? "PROVIDER_RATE_LIMITED"
+        : "PROVIDER_CIRCUIT_OPEN",
 
     status:
       null,
 
     message:
-      "Provider temporarily unavailable because its circuit is open.",
+      rateLimited
+        ? "Provider retry window is still active."
+        : "Provider temporarily unavailable because its circuit is open.",
 
     retryable:
       true,
@@ -402,10 +562,33 @@ async function executeProviderOperation({
           errorType:
             result.outcome,
 
+          status:
+            result.failedResponse
+              ?.status ??
+            null,
+
+          code:
+            result.failedResponse
+              ?.code ??
+            null,
+
           message:
             result.failedResponse
               ?.message ??
             "Provider returned an unusable response.",
+
+          retryAfterMs:
+            result.failedResponse
+              ?.retryAfterMs ??
+            null,
+
+          retryAfterWasExplicit:
+            result.failedResponse
+              ?.retryAfterMs !==
+              null &&
+            result.failedResponse
+              ?.retryAfterMs !==
+              undefined,
         }
       );
     }
@@ -515,21 +698,10 @@ async function executeProviderOperation({
           failureDetails.message,
 
         retryable:
-          error?.retryable === true ||
-          failureDetails.errorType !==
-            PROVIDER_SEARCH_OUTCOMES
-              .ERROR,
+          failureDetails.retryable,
 
         retryAfterMs:
-          Number.isFinite(
-            Number(
-              error?.retryAfterMs
-            )
-          )
-            ? Number(
-                error.retryAfterMs
-              )
-            : null,
+          failureDetails.retryAfterMs,
 
         circuitState:
           health.circuitState,
@@ -579,25 +751,23 @@ function createProviderExecutionDescriptor({
         ?.code ??
       null,
 
+    message:
+      attempt?.message ??
+      result?.failedResponse
+        ?.message ??
+      null,
+
     retryable:
       attempt?.retryable === true ||
       result?.failedResponse
         ?.retryable === true,
 
     retryAfterMs:
-      Number.isFinite(
-        Number(
-          attempt?.retryAfterMs ??
-          result?.failedResponse
-            ?.retryAfterMs
-        )
-      )
-        ? Number(
-            attempt?.retryAfterMs ??
-            result?.failedResponse
-              ?.retryAfterMs
-          )
-        : null,
+      normalizeRetryAfterMs(
+        attempt?.retryAfterMs ??
+        result?.failedResponse
+          ?.retryAfterMs
+      ),
   };
 }
 

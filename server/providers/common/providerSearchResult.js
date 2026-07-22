@@ -1,13 +1,20 @@
-﻿const {
+const {
   PROVIDER_SEARCH_OUTCOMES,
 } = require(
   "./providerSearchOutcomeService"
+);
+
+const {
+  normalizeRetryAfterMs,
+} = require(
+  "./providerRetryPolicy"
 );
 
 const FAILURE_OUTCOMES =
   new Set([
     PROVIDER_SEARCH_OUTCOMES.ERROR,
     PROVIDER_SEARCH_OUTCOMES.TIMEOUT,
+    PROVIDER_SEARCH_OUTCOMES.RATE_LIMITED,
     PROVIDER_SEARCH_OUTCOMES.UNAVAILABLE,
     PROVIDER_SEARCH_OUTCOMES.CIRCUIT_OPEN,
   ]);
@@ -18,6 +25,9 @@ const DEFAULT_FAILURE_CODES = {
 
   [PROVIDER_SEARCH_OUTCOMES.TIMEOUT]:
     "PROVIDER_TIMEOUT",
+
+  [PROVIDER_SEARCH_OUTCOMES.RATE_LIMITED]:
+    "PROVIDER_RATE_LIMITED",
 
   [PROVIDER_SEARCH_OUTCOMES.UNAVAILABLE]:
     "PROVIDER_UNAVAILABLE",
@@ -115,6 +125,7 @@ function createCompatibilityFailureResponse({
   currency,
   status,
   retryable,
+  retryAfterMs = null,
 }) {
   return {
     success: false,
@@ -140,6 +151,11 @@ function createCompatibilityFailureResponse({
       [],
 
     retryable,
+
+    retryAfterMs:
+      normalizeRetryAfterMs(
+        retryAfterMs
+      ),
   };
 }
 
@@ -297,6 +313,7 @@ function createProviderFailureResult({
   message,
   status = null,
   retryable,
+  retryAfterMs = null,
   rawData = null,
 } = {}) {
   const normalizedProviderId =
@@ -377,6 +394,8 @@ function createProviderFailureResult({
 
         retryable:
           isRetryable,
+
+        retryAfterMs,
       }),
   };
 }

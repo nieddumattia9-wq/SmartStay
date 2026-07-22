@@ -114,6 +114,7 @@ function createLiteApiError({
   endpointPath,
   status,
   data,
+  headers = null,
   message,
 }) {
   const error = new Error(
@@ -125,6 +126,12 @@ function createLiteApiError({
   error.endpointPath = endpointPath;
   error.status = status;
   error.data = data;
+
+  error.response = {
+    status,
+    headers,
+    data,
+  };
 
   return error;
 }
@@ -186,6 +193,7 @@ async function callLiteApiGet({
       endpointPath,
       status: response.status,
       data: response.data,
+      headers: response.headers,
     });
   }
 
@@ -246,6 +254,7 @@ async function callLiteApiPost({
       endpointPath,
       status: response.status,
       data: response.data,
+      headers: response.headers,
     });
   }
 

@@ -1,8 +1,17 @@
-﻿const PROVIDER_SEARCH_OUTCOMES = {
+const {
+  extractRetryAfterMs,
+  isRateLimitedProviderFailure,
+  resolveProviderRetryPolicy,
+} = require(
+  "./providerRetryPolicy"
+);
+
+const PROVIDER_SEARCH_OUTCOMES = {
   SUCCESS: "success",
   NO_RESULTS: "no_results",
   ERROR: "error",
   TIMEOUT: "timeout",
+  RATE_LIMITED: "rate_limited",
   UNAVAILABLE: "unavailable",
   CIRCUIT_OPEN: "circuit_open",
 };
@@ -12,6 +21,7 @@ const TIMEOUT_ERROR_CODES =
     "ECONNABORTED",
     "ETIMEDOUT",
     "ESOCKETTIMEDOUT",
+    "PROVIDER_TIMEOUT",
   ]);
 
 const UNAVAILABLE_ERROR_CODES =
@@ -70,7 +80,28 @@ function isProviderNoResultsResponse(
   );
 }
 
+function isRateLimitError(error) {
+  return isRateLimitedProviderFailure({
+    status:
+      getProviderErrorStatus(error),
+    code:
+      getProviderErrorCode(error),
+    outcome:
+      error?.outcome,
+  });
+}
+
 function isTimeoutError(error) {
+  const status =
+    getProviderErrorStatus(error);
+
+  if (
+    status === 408 ||
+    status === 504
+  ) {
+    return true;
+  }
+
   const code =
     getProviderErrorCode(error);
 
@@ -98,11 +129,8 @@ function isUnavailableError(error) {
     getProviderErrorStatus(error);
 
   if (
-    status === 429 ||
-    (
-      status !== null &&
-      status >= 500
-    )
+    status !== null &&
+    status >= 500
   ) {
     return true;
   }
@@ -121,6 +149,11 @@ function isUnavailableError(error) {
 function classifyProviderException(
   error
 ) {
+  if (isRateLimitError(error)) {
+    return PROVIDER_SEARCH_OUTCOMES
+      .RATE_LIMITED;
+  }
+
   if (isTimeoutError(error)) {
     return PROVIDER_SEARCH_OUTCOMES
       .TIMEOUT;
@@ -173,7 +206,27 @@ function classifyProviderResult(
         ""
       ).toUpperCase();
 
+    const status =
+      normalizeStatus(
+        result.failedResponse.status
+      );
+
     if (
+      isRateLimitedProviderFailure({
+        status,
+        code,
+        outcome:
+          result.failedResponse
+            .outcome,
+      })
+    ) {
+      return PROVIDER_SEARCH_OUTCOMES
+        .RATE_LIMITED;
+    }
+
+    if (
+      status === 408 ||
+      status === 504 ||
       code === "PROVIDER_TIMEOUT"
     ) {
       return PROVIDER_SEARCH_OUTCOMES
@@ -227,6 +280,9 @@ function shouldCountProviderFailure(
         .TIMEOUT ||
     outcome ===
       PROVIDER_SEARCH_OUTCOMES
+        .RATE_LIMITED ||
+    outcome ===
+      PROVIDER_SEARCH_OUTCOMES
         .UNAVAILABLE
   );
 }
@@ -234,20 +290,47 @@ function shouldCountProviderFailure(
 function createProviderFailureDetails(
   error
 ) {
+  const errorType =
+    classifyProviderException(
+      error
+    );
+
+  const status =
+    getProviderErrorStatus(error);
+
+  const code =
+    getProviderErrorCode(error);
+
+  const retryAfterMs =
+    extractRetryAfterMs(error);
+
+  const retryPolicy =
+    resolveProviderRetryPolicy({
+      status,
+      code,
+      outcome:
+        errorType,
+      explicitRetryable:
+        typeof error?.retryable ===
+          "boolean"
+          ? error.retryable
+          : undefined,
+      retryAfterMs,
+    });
+
   return {
-    errorType:
-      classifyProviderException(
-        error
-      ),
-
-    status:
-      getProviderErrorStatus(error),
-
-    code:
-      getProviderErrorCode(error),
-
+    errorType,
+    status,
+    code,
     message:
       getProviderErrorMessage(error),
+    retryable:
+      retryPolicy.retryable,
+    retryAfterMs:
+      retryPolicy.retryAfterMs,
+
+    retryAfterWasExplicit:
+      retryAfterMs !== null,
   };
 }
 
@@ -257,6 +340,7 @@ module.exports = {
   getProviderErrorCode,
   getProviderErrorMessage,
   isProviderNoResultsResponse,
+  isRateLimitError,
   isTimeoutError,
   isUnavailableError,
   classifyProviderException,

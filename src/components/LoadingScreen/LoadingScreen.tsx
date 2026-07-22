@@ -28,6 +28,7 @@ import {
   } from "../../types/hotel";
 
   import {
+    getSearchPollingDelayMs,
     isSearchLifecycleComplete,
     isSearchLifecycleFailure,
   } from "../../utils/searchLifecycle";
@@ -83,7 +84,7 @@ import {
     6 * 60 * 1000;
 
   const MAXIMUM_POLLING_CYCLES =
-    40;
+    220;
 
   const SEARCH_TIMEOUT_MESSAGE =
     "The search took too long to complete. Please try again with different dates or another destination.";
@@ -786,6 +787,26 @@ import {
               );
             }
 
+            const statusPollingDelayMs =
+              getSearchPollingDelayMs(
+                statusResponse,
+                {
+                  defaultDelayMs:
+                    POLLING_DELAY_MS,
+                }
+              );
+
+            if (
+              statusPollingDelayMs >
+              POLLING_DELAY_MS
+            ) {
+              await delay(
+                statusPollingDelayMs
+              );
+
+              continue;
+            }
+
             const continueResponse =
               await continueHotelSearch(
                 activeSearchId
@@ -828,7 +849,15 @@ import {
               );
             }
 
-            await delay(POLLING_DELAY_MS);
+            await delay(
+              getSearchPollingDelayMs(
+                continueResponse,
+                {
+                  defaultDelayMs:
+                    POLLING_DELAY_MS,
+                }
+              )
+            );
           }
         } catch (err) {
           const isMissingSearchData =

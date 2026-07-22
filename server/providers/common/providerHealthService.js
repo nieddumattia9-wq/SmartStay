@@ -1,4 +1,4 @@
-﻿const PROVIDER_CIRCUIT_STATES = {
+const PROVIDER_CIRCUIT_STATES = {
   CLOSED: "closed",
   OPEN: "open",
   HALF_OPEN: "half_open",
@@ -309,8 +309,18 @@ function recordProviderFailure(
   state.halfOpenProbeInFlight =
     false;
 
+  const retryAfterMs =
+    Number(failure.retryAfterMs);
+
+  const hasExplicitRetryDelay =
+    failure.retryAfterWasExplicit ===
+      true &&
+    Number.isFinite(retryAfterMs) &&
+    retryAfterMs >= 0;
+
   const shouldOpenCircuit =
     wasHalfOpen ||
+    hasExplicitRetryDelay ||
     state.consecutiveFailures >=
       policy.failureThreshold;
 
@@ -322,7 +332,11 @@ function recordProviderFailure(
       now;
 
     state.nextAttemptAt =
-      now + policy.cooldownMs;
+      now + (
+        hasExplicitRetryDelay
+          ? retryAfterMs
+          : policy.cooldownMs
+      );
   } else {
     state.circuitState =
       PROVIDER_CIRCUIT_STATES.CLOSED;

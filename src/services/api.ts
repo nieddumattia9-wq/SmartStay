@@ -20,6 +20,7 @@ type ApiRequestErrorOptions = {
   message: string;
   status?: number | null;
   code?: string | null;
+  retryAfterMs?: number | null;
 };
 
 export class ApiRequestError extends Error {
@@ -30,10 +31,14 @@ export class ApiRequestError extends Error {
   readonly code:
     string | null;
 
+  readonly retryAfterMs:
+    number | null;
+
   constructor({
     message,
     status = null,
     code = null,
+    retryAfterMs = null,
   }: ApiRequestErrorOptions) {
 
     super(
@@ -49,8 +54,87 @@ export class ApiRequestError extends Error {
     this.code =
       code;
 
+    this.retryAfterMs =
+      typeof retryAfterMs === "number" &&
+      Number.isFinite(
+        retryAfterMs
+      ) &&
+      retryAfterMs >= 0
+        ? retryAfterMs
+        : null;
+
   }
 
+}
+
+function getResponseRetryAfterMs(
+  response: Response,
+  data: unknown
+) {
+  const dataRetryAfterValue =
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data)
+      ? (
+          data as Record<
+            string,
+            unknown
+          >
+        ).retryAfterMs
+      : null;
+
+  const dataRetryAfterMs =
+    dataRetryAfterValue !== null &&
+    dataRetryAfterValue !== undefined &&
+    dataRetryAfterValue !== ""
+      ? Number(
+          dataRetryAfterValue
+        )
+      : Number.NaN;
+
+  if (
+    Number.isFinite(
+      dataRetryAfterMs
+    ) &&
+    dataRetryAfterMs >= 0
+  ) {
+    return dataRetryAfterMs;
+  }
+
+  const retryAfterHeader =
+    response.headers.get(
+      "Retry-After"
+    );
+
+  if (!retryAfterHeader) {
+    return null;
+  }
+
+  const retryAfterSeconds =
+    Number(
+      retryAfterHeader
+    );
+
+  if (
+    Number.isFinite(
+      retryAfterSeconds
+    ) &&
+    retryAfterSeconds >= 0
+  ) {
+    return retryAfterSeconds * 1000;
+  }
+
+  const retryAt =
+    Date.parse(
+      retryAfterHeader
+    );
+
+  return Number.isFinite(retryAt)
+    ? Math.max(
+        0,
+        retryAt - Date.now()
+      )
+    : null;
 }
 
 async function requestJson<T>(
@@ -110,6 +194,12 @@ async function requestJson<T>(
 
         code:
           responseCode,
+
+        retryAfterMs:
+          getResponseRetryAfterMs(
+            response,
+            data
+          ),
       });
 
     }

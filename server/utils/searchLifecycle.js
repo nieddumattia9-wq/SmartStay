@@ -164,6 +164,16 @@ function getRetryAfterMs(payload) {
   return null;
 }
 
+function resolveRetryable(
+  payload,
+  fallbackValue
+) {
+  return typeof payload?.retryable ===
+    "boolean"
+    ? payload.retryable
+    : fallbackValue;
+}
+
 function createLifecycle({
   phase,
   outcome,
@@ -302,7 +312,11 @@ function deriveSearchLifecycle(
       outcome:
         SEARCH_LIFECYCLE_OUTCOMES
           .PARTIAL_RESULTS,
-      retryable: true,
+      retryable:
+        resolveRetryable(
+          payload,
+          true
+        ),
       publicCode:
         SEARCH_PUBLIC_CODES
           .PARTIAL_RESULTS,
@@ -311,12 +325,20 @@ function deriveSearchLifecycle(
   }
 
   const isRateLimited =
+    Number(payload.httpStatus) === 429 ||
     code === "429" ||
     code === "RATE_LIMITED" ||
     code === "PROVIDER_RATE_LIMITED" ||
     hasAttemptStatus(
       attempts,
       429
+    ) ||
+    hasAttemptOutcome(
+      attempts,
+      [
+        "rate_limited",
+        "rate-limited",
+      ]
     );
 
   if (failed && isRateLimited) {
@@ -327,7 +349,11 @@ function deriveSearchLifecycle(
       outcome:
         SEARCH_LIFECYCLE_OUTCOMES
           .RATE_LIMITED,
-      retryable: true,
+      retryable:
+        resolveRetryable(
+          payload,
+          true
+        ),
       publicCode:
         SEARCH_PUBLIC_CODES
           .RATE_LIMITED,
@@ -336,6 +362,8 @@ function deriveSearchLifecycle(
   }
 
   const isTimeout =
+    Number(payload.httpStatus) === 408 ||
+    Number(payload.httpStatus) === 504 ||
     code === "REQUEST_TIMEOUT" ||
     code === "PROVIDER_TIMEOUT" ||
     code === "SEARCH_TIMEOUT" ||
@@ -352,7 +380,11 @@ function deriveSearchLifecycle(
       outcome:
         SEARCH_LIFECYCLE_OUTCOMES
           .TIMEOUT,
-      retryable: true,
+      retryable:
+        resolveRetryable(
+          payload,
+          true
+        ),
       publicCode:
         SEARCH_PUBLIC_CODES
           .TIMEOUT,
@@ -384,7 +416,11 @@ function deriveSearchLifecycle(
       outcome:
         SEARCH_LIFECYCLE_OUTCOMES
           .PROVIDER_ERROR,
-      retryable: true,
+      retryable:
+        resolveRetryable(
+          payload,
+          true
+        ),
       publicCode:
         SEARCH_PUBLIC_CODES
           .PROVIDER_UNAVAILABLE,
@@ -400,7 +436,11 @@ function deriveSearchLifecycle(
       outcome:
         SEARCH_LIFECYCLE_OUTCOMES
           .PROVIDER_ERROR,
-      retryable: true,
+      retryable:
+        resolveRetryable(
+          payload,
+          true
+        ),
       publicCode:
         SEARCH_PUBLIC_CODES
           .PROVIDER_ERROR,
@@ -434,10 +474,15 @@ function deriveSearchLifecycle(
       outcome:
         SEARCH_LIFECYCLE_OUTCOMES
           .PENDING,
-      retryable: false,
+      retryable:
+        resolveRetryable(
+          payload,
+          retryAfterMs !== null
+        ),
       publicCode:
         SEARCH_PUBLIC_CODES
           .PENDING,
+      retryAfterMs,
     });
   }
 

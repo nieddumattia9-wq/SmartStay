@@ -27,6 +27,12 @@ const {
 } = require("../utils/searchLifecycle");
 
 const {
+  extractRetryAfterMs,
+} = require(
+  "../providers/common/providerRetryPolicy"
+);
+
+const {
   searchDestinations,
   searchHotels,
   continueHotelSearch,
@@ -114,6 +120,11 @@ function sendRouteError(
       ? error.code
       : null;
 
+  const retryAfterMs =
+    extractRetryAfterMs(
+      error
+    );
+
   const lifecycle =
     includeSearchLifecycle
       ? deriveSearchLifecycle({
@@ -123,6 +134,12 @@ function sendRouteError(
             publicCode,
           httpStatus:
             status,
+          retryable:
+            typeof error?.retryable ===
+              "boolean"
+              ? error.retryable
+              : undefined,
+          retryAfterMs,
         })
       : null;
 
@@ -166,6 +183,24 @@ function sendRouteError(
     error?.message
   );
 
+  if (
+    lifecycle?.retryAfterMs != null &&
+    lifecycle.retryAfterMs > 0
+  ) {
+    res.set(
+      "Retry-After",
+      String(
+        Math.max(
+          1,
+          Math.ceil(
+            lifecycle.retryAfterMs /
+            1000
+          )
+        )
+      )
+    );
+  }
+
   return res
     .status(
       status
@@ -182,6 +217,9 @@ function sendRouteError(
 
       ...(lifecycle
         ? {
+            retryAfterMs:
+              lifecycle.retryAfterMs,
+
             lifecycle,
           }
         : {}),

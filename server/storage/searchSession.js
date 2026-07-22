@@ -191,6 +191,31 @@ function saveSearchSession(session) {
     lastError:
       sessionSnapshot.lastError ??
       null,
+
+    retryable:
+      Boolean(
+        sessionSnapshot.retryable
+      ),
+
+    retryAfterMs:
+      sessionSnapshot.retryAfterMs !==
+        null &&
+      sessionSnapshot.retryAfterMs !==
+        undefined &&
+      sessionSnapshot.retryAfterMs !==
+        "" &&
+      Number.isFinite(
+        Number(
+          sessionSnapshot.retryAfterMs
+        )
+      ) &&
+      Number(
+        sessionSnapshot.retryAfterMs
+      ) >= 0
+        ? Number(
+            sessionSnapshot.retryAfterMs
+          )
+        : null,
   };
 
   sessions.set(
