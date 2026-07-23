@@ -1,0 +1,394 @@
+{
+  "contractVersion": "1.0.0",
+  "eventVersion": 1,
+  "status": "foundation-only",
+  "transport": {
+    "mode": "first-party-only",
+    "endpoint": "/api/analytics/events",
+    "defaultEnabled": false,
+    "externalSdkAllowed": false,
+    "cookiesAllowed": false,
+    "maxEventBytes": 4096,
+    "maxBatchEvents": 20
+  },
+  "session": {
+    "scope": "browser-tab",
+    "storage": "sessionStorage",
+    "maxAgeMinutes": 120,
+    "crossSessionTracking": false,
+    "persistentUserId": false,
+    "fingerprinting": false
+  },
+  "privacySignals": {
+    "respectDoNotTrack": true,
+    "respectGlobalPrivacyControl": true
+  },
+  "retention": {
+    "rawEventMaximumDays": 30,
+    "aggregatedMetricMaximumDays": 180
+  },
+  "envelope": {
+    "required": [
+      "eventId",
+      "eventName",
+      "eventVersion",
+      "occurredAt",
+      "sessionId",
+      "releaseSha",
+      "page",
+      "properties"
+    ],
+    "optional": [
+      "journeyId"
+    ]
+  },
+  "forbiddenFields": [
+    "destination",
+    "destinationId",
+    "destinationName",
+    "cityName",
+    "countryCode",
+    "latitude",
+    "longitude",
+    "lat",
+    "long",
+    "checkIn",
+    "checkOut",
+    "budget",
+    "budgetInput",
+    "adults",
+    "children",
+    "childAges",
+    "hotelId",
+    "hotelName",
+    "offerId",
+    "verificationId",
+    "handoffId",
+    "searchId",
+    "requestId",
+    "idempotencyKey",
+    "provider",
+    "providerId",
+    "providerContext",
+    "email",
+    "phone",
+    "firstName",
+    "lastName",
+    "address",
+    "ip",
+    "userAgent",
+    "referrer",
+    "url",
+    "query",
+    "authorization",
+    "cookie",
+    "token",
+    "secret",
+    "password",
+    "apiKey"
+  ],
+  "propertyDefinitions": {
+    "entrySource": {
+      "type": "enum",
+      "values": [
+        "direct",
+        "internal",
+        "campaign",
+        "unknown"
+      ]
+    },
+    "nightsBucket": {
+      "type": "enum",
+      "values": [
+        "1-2",
+        "3-7",
+        "8-14",
+        "15-30",
+        "31-90"
+      ]
+    },
+    "partySizeBucket": {
+      "type": "enum",
+      "values": [
+        "1",
+        "2",
+        "3-4",
+        "5-8",
+        "9-32"
+      ]
+    },
+    "roomCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
+    },
+    "budgetProvided": {
+      "type": "boolean"
+    },
+    "distanceBand": {
+      "type": "enum",
+      "values": [
+        "500m",
+        "1km",
+        "2km",
+        "5km",
+        "10km",
+        "any"
+      ]
+    },
+    "outcome": {
+      "type": "enum",
+      "values": [
+        "pending",
+        "results",
+        "no-results",
+        "partial-results",
+        "provider-error",
+        "timeout",
+        "rate-limited",
+        "session-expired",
+        "session-missing",
+        "cancelled"
+      ]
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "publicCode": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_]{1,64}$",
+      "maximumLength": 64
+    },
+    "durationBucket": {
+      "type": "enum",
+      "values": [
+        "under-2s",
+        "2-5s",
+        "5-15s",
+        "15-30s",
+        "30-60s",
+        "1-3m",
+        "over-3m"
+      ]
+    },
+    "visibleResultsBucket": {
+      "type": "enum",
+      "values": [
+        "0",
+        "1-3",
+        "4-10",
+        "11-25",
+        "26+"
+      ]
+    },
+    "role": {
+      "type": "enum",
+      "values": [
+        "best-choice",
+        "best-sensible-saving",
+        "comfort-upgrade",
+        "best-location",
+        "unassigned"
+      ]
+    },
+    "rolesShown": {
+      "type": "enum-array",
+      "values": [
+        "best-choice",
+        "best-sensible-saving",
+        "comfort-upgrade",
+        "best-location"
+      ],
+      "maximumItems": 4
+    },
+    "positionBucket": {
+      "type": "enum",
+      "values": [
+        "1",
+        "2-3",
+        "4-10",
+        "11+"
+      ]
+    },
+    "selectionAction": {
+      "type": "enum",
+      "values": [
+        "details",
+        "explanation",
+        "recheck",
+        "handoff"
+      ]
+    },
+    "expanded": {
+      "type": "boolean"
+    },
+    "field": {
+      "type": "enum",
+      "values": [
+        "budget",
+        "distance",
+        "preference"
+      ]
+    },
+    "changeKind": {
+      "type": "enum",
+      "values": [
+        "increased",
+        "decreased",
+        "cleared",
+        "selected"
+      ]
+    },
+    "stage": {
+      "type": "enum",
+      "values": [
+        "home",
+        "loading",
+        "results",
+        "details",
+        "recheck",
+        "handoff"
+      ]
+    },
+    "recoveryAction": {
+      "type": "enum",
+      "values": [
+        "retry",
+        "new-search",
+        "relax-distance",
+        "raise-budget",
+        "view-partial"
+      ]
+    },
+    "recheckState": {
+      "type": "enum",
+      "values": [
+        "confirmed",
+        "changed",
+        "sold-out",
+        "recheck-required"
+      ]
+    },
+    "acceptedChanges": {
+      "type": "boolean"
+    }
+  },
+  "events": {
+    "page_view": {
+      "requiredProperties": [],
+      "optionalProperties": [
+        "entrySource"
+      ]
+    },
+    "search_started": {
+      "requiredProperties": [
+        "nightsBucket",
+        "partySizeBucket",
+        "roomCount",
+        "budgetProvided",
+        "distanceBand"
+      ],
+      "optionalProperties": []
+    },
+    "search_completed": {
+      "requiredProperties": [
+        "outcome",
+        "durationBucket",
+        "visibleResultsBucket"
+      ],
+      "optionalProperties": []
+    },
+    "search_failed": {
+      "requiredProperties": [
+        "outcome",
+        "retryable",
+        "publicCode",
+        "durationBucket"
+      ],
+      "optionalProperties": []
+    },
+    "results_viewed": {
+      "requiredProperties": [
+        "visibleResultsBucket",
+        "rolesShown"
+      ],
+      "optionalProperties": []
+    },
+    "recommendation_selected": {
+      "requiredProperties": [
+        "role",
+        "selectionAction",
+        "positionBucket"
+      ],
+      "optionalProperties": []
+    },
+    "hotel_details_opened": {
+      "requiredProperties": [
+        "role",
+        "positionBucket"
+      ],
+      "optionalProperties": []
+    },
+    "explanation_toggled": {
+      "requiredProperties": [
+        "role",
+        "expanded"
+      ],
+      "optionalProperties": []
+    },
+    "search_preferences_changed": {
+      "requiredProperties": [
+        "field",
+        "changeKind"
+      ],
+      "optionalProperties": []
+    },
+    "search_retried": {
+      "requiredProperties": [
+        "stage",
+        "recoveryAction"
+      ],
+      "optionalProperties": []
+    },
+    "booking_recheck_started": {
+      "requiredProperties": [
+        "role"
+      ],
+      "optionalProperties": []
+    },
+    "booking_recheck_completed": {
+      "requiredProperties": [
+        "role",
+        "recheckState",
+        "retryable"
+      ],
+      "optionalProperties": []
+    },
+    "booking_handoff_prepared": {
+      "requiredProperties": [
+        "role",
+        "acceptedChanges"
+      ],
+      "optionalProperties": []
+    },
+    "booking_handoff_opened": {
+      "requiredProperties": [
+        "role"
+      ],
+      "optionalProperties": []
+    },
+    "journey_abandoned": {
+      "requiredProperties": [
+        "stage",
+        "durationBucket"
+      ],
+      "optionalProperties": []
+    },
+    "results_recovery_applied": {
+      "requiredProperties": [
+        "recoveryAction"
+      ],
+      "optionalProperties": []
+    }
+  }
+}
