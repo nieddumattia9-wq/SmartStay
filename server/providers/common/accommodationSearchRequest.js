@@ -395,6 +395,15 @@ function createInvalidSearchRequestError(
   error.field =
     field;
 
+  error.status =
+    400;
+
+  error.exposePublic =
+    true;
+
+  error.isRequestValidationError =
+    true;
+
   return error;
 }
 

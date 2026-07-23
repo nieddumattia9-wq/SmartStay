@@ -59,16 +59,20 @@ const {
   "../services/bookingHandoffService"
 );
 
-function getSearchIdFromRequest(req) {
-
-  const searchId =
-    typeof req.query.searchId === "string"
-      ? req.query.searchId.trim()
-      : "";
-
-  return searchId || null;
-
-}
+const {
+  isRequestValidationError,
+  validateBookingHandoffOpenRequest,
+  validateBookingHandoffRequest,
+  validateBookingOfferRecheckRequest,
+  validateBookingRedirectRequest,
+  validateContinueHotelSearchRequest,
+  validateDestinationSearchRequest,
+  validateHotelDetailsRequest,
+  validateHotelSearchRequest,
+  validateSearchReadRequest,
+} = require(
+  "../validation/requestValidation"
+);
 
 function requireSearchIdValue(
   value
@@ -99,6 +103,7 @@ function requireSearchIdValue(
 const PUBLIC_ROUTE_ERROR_CODES =
   new Set([
     "SEARCH_ID_REQUIRED",
+    "SEARCH_ID_INVALID",
     "SEARCH_SESSION_NOT_FOUND",
     "SEARCH_SESSION_EXPIRED",
     "IDEMPOTENCY_KEY_REQUIRED",
@@ -107,6 +112,7 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "IDEMPOTENCY_KEY_CONFLICT",
     "IDEMPOTENCY_CAPACITY_REACHED",
     "HOTEL_ID_REQUIRED",
+    "HOTEL_ID_INVALID",
     "HOTEL_NOT_IN_SEARCH",
     "OFFER_ID_REQUIRED",
     "OFFER_ID_INVALID",
@@ -124,6 +130,10 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "BOOKING_HANDOFF_ID_INVALID",
     "BOOKING_HANDOFF_EXPIRED",
     "HOTEL_SOURCE_UNAVAILABLE",
+    "DESTINATION_QUERY_INVALID",
+    "INVALID_REQUEST",
+    "INVALID_SEARCH_REQUEST",
+    "UNSUPPORTED_MEDIA_TYPE",
   ]);
 
 function isValidHttpStatus(
@@ -179,7 +189,10 @@ function sendRouteError(
     );
 
   const lifecycle =
-    includeSearchLifecycle
+    includeSearchLifecycle &&
+    !isRequestValidationError(
+      error
+    )
       ? deriveSearchLifecycle({
           success: false,
           status: "Failed",
@@ -212,29 +225,43 @@ function sendRouteError(
         ? error.message
         : fallbackMessage;
 
-  console.error(
-    fallbackMessage
-  );
+  const requestLog =
+    res.req?.log;
 
-  console.error(
-    "Status:",
-    status
-  );
-
-  console.error(
-    "Code:",
-    error?.code
-  );
-
-  console.error(
-    "Data:",
-    error?.response?.data
-  );
-
-  console.error(
-    "Message:",
-    error?.message
-  );
+  if (
+    requestLog &&
+    typeof requestLog.error ===
+      "function"
+  ) {
+    requestLog.error(
+      "api.route.failed",
+      {
+        method:
+          res.req?.method,
+        path:
+          res.req?.path,
+        status,
+        code:
+          error?.code ??
+          null,
+        providerResponse:
+          error?.response?.data ??
+          null,
+        error,
+      }
+    );
+  }
+  else {
+    console.error(
+      fallbackMessage,
+      {
+        status,
+        code:
+          error?.code ??
+          null,
+      }
+    );
+  }
 
   if (
     lifecycle?.retryAfterMs != null &&
@@ -275,6 +302,22 @@ function sendRouteError(
       message:
         publicMessage,
 
+      ...(isRequestValidationError(
+        error
+      ) &&
+      typeof error?.field ===
+        "string" &&
+      error.field.trim()
+        ? {
+            field:
+              error.field,
+          }
+        : {}),
+
+      requestId:
+        res.req?.requestId ??
+        null,
+
       ...(lifecycle
         ? {
             retryAfterMs:
@@ -295,28 +338,12 @@ router.post("/search-destinations", async (req, res) => {
 
   try {
 
-    const query =
-      typeof req.body.query === "string"
-        ? req.body.query.trim()
-        : "";
-
-    if (!query) {
-
-      return res.status(400).json({
-        success: false,
-        message: "Missing search query.",
-      });
-
-    }
-
-    if (query.length < 2) {
-
-      return res.status(400).json({
-        success: false,
-        message: "Search query must contain at least 2 characters.",
-      });
-
-    }
+    const {
+      query,
+    } =
+      validateDestinationSearchRequest(
+        req
+      );
 
     const results =
       await searchDestinations(query);
@@ -343,14 +370,10 @@ router.post("/search-hotels", async (req, res) => {
 
   try {
 
-    if (!req.body || typeof req.body !== "object") {
-
-      return res.status(400).json({
-        success: false,
-        message: "Missing hotel search payload.",
-      });
-
-    }
+    const payload =
+      validateHotelSearchRequest(
+        req
+      );
 
     const idempotencyResult =
       await executeInitialSearchIdempotently({
@@ -359,14 +382,13 @@ router.post("/search-hotels", async (req, res) => {
             "Idempotency-Key"
           ),
 
-        payload:
-          req.body,
+        payload,
 
         execute:
           async () => {
             const results =
               await searchHotels(
-                req.body
+                payload
               );
 
             return createPublicSearchPayload(
@@ -424,9 +446,16 @@ router.post("/search-hotels/continue", async (req, res) => {
 
   try {
 
+    const {
+      searchId: validatedSearchId,
+    } =
+      validateContinueHotelSearchRequest(
+        req
+      );
+
     const searchId =
       requireSearchIdValue(
-        req.body?.searchId
+        validatedSearchId
       );
 
     const result =
@@ -466,11 +495,9 @@ router.post("/search-hotels/continue", async (req, res) => {
 router.post("/booking-offer-recheck", async (req, res) => {
   try {
     const payload =
-      req.body &&
-      typeof req.body === "object" &&
-      !Array.isArray(req.body)
-        ? req.body
-        : {};
+      validateBookingOfferRecheckRequest(
+        req
+      );
 
     const result =
       await recheckBookingOffer({
@@ -552,14 +579,9 @@ router.post("/booking-offer-recheck", async (req, res) => {
 router.post("/booking-handoff", async (req, res) => {
   try {
     const payload =
-      req.body &&
-      typeof req.body ===
-        "object" &&
-      !Array.isArray(
-        req.body
-      )
-        ? req.body
-        : {};
+      validateBookingHandoffRequest(
+        req
+      );
 
     const result =
       await prepareBookingHandoff({
@@ -568,8 +590,7 @@ router.post("/booking-handoff", async (req, res) => {
             .verificationId,
         acceptChanges:
           payload
-            .acceptChanges ===
-          true,
+            .acceptChanges,
       });
 
     const handoffId =
@@ -618,14 +639,12 @@ router.post("/booking-handoff", async (req, res) => {
 
 router.get("/booking-handoff/open", (req, res) => {
   try {
-    const handoffId =
-      typeof req.query
-        .handoffId ===
-        "string"
-        ? req.query
-            .handoffId
-            .trim()
-        : "";
+    const {
+      handoffId,
+    } =
+      validateBookingHandoffOpenRequest(
+        req
+      );
 
     const {
       redirectUrl,
@@ -665,23 +684,14 @@ router.get("/booking-redirect", (req, res) => {
 
   try {
 
-    const searchId =
-      typeof req.query.searchId ===
-        "string"
-        ? req.query.searchId.trim()
-        : "";
-
-    const hotelId =
-      typeof req.query.hotelId ===
-        "string"
-        ? req.query.hotelId.trim()
-        : "";
-
-    const offerId =
-      typeof req.query.offerId ===
-        "string"
-        ? req.query.offerId.trim()
-        : "";
+    const {
+      searchId,
+      hotelId,
+      offerId,
+    } =
+      validateBookingRedirectRequest(
+        req
+      );
 
     const {
       redirectUrl,
@@ -726,52 +736,14 @@ router.post("/hotel-details", async (req, res) => {
 
   try {
 
-    if (
-      !req.body ||
-      typeof req.body !== "object"
-    ) {
-
-      return res.status(400).json({
-        success: false,
-        message: "Missing hotel details payload.",
-      });
-
-    }
-
-    const hotelId =
-      typeof req.body.hotelId === "string"
-        ? req.body.hotelId.trim()
-        : "";
-
-    const searchId =
-      typeof req.body.searchId === "string"
-        ? req.body.searchId.trim()
-        : "";
-
-    const offerId =
-      typeof req.body.offerId === "string"
-        ? req.body.offerId.trim()
-        : "";
-
-    if (!hotelId) {
-
-      return res.status(400).json({
-        success: false,
-        code: "HOTEL_ID_REQUIRED",
-        message: "hotelId is required.",
-      });
-
-    }
-
-    if (!searchId) {
-
-      return res.status(400).json({
-        success: false,
-        code: "SEARCH_ID_REQUIRED",
-        message: "searchId is required.",
-      });
-
-    }
+    const {
+      hotelId,
+      searchId,
+      offerId,
+    } =
+      validateHotelDetailsRequest(
+        req
+      );
 
     const result =
       await getHotelDetails(
@@ -819,9 +791,16 @@ router.get("/search-status", async (req, res) => {
 
   try {
 
+    const {
+      searchId: validatedSearchId,
+    } =
+      validateSearchReadRequest(
+        req
+      );
+
     const searchId =
       requireSearchIdValue(
-        getSearchIdFromRequest(req)
+        validatedSearchId
       );
 
     const result =
@@ -862,8 +841,10 @@ router.get("/search-session", (req, res) => {
 
   try {
 
-    const searchId =
-      getSearchIdFromRequest(
+    const {
+      searchId,
+    } =
+      validateSearchReadRequest(
         req
       );
 

@@ -4,13 +4,147 @@ const DEFAULT_ALLOWED_ORIGIN =
   "http://localhost:5173";
 
 const DEFAULT_JSON_LIMIT =
-  "1mb";
+  "256kb";
 
 const DEFAULT_RATE_LIMIT_WINDOW_MS =
   15 * 60 * 1000;
 
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS =
-  100;
+  1000;
+
+const DEFAULT_ENDPOINT_RATE_LIMITS =
+  Object.freeze({
+    destinationSearch:
+      Object.freeze({
+        windowMs:
+          5 * 60 * 1000,
+        maxRequests:
+          180,
+      }),
+
+    hotelSearch:
+      Object.freeze({
+        windowMs:
+          15 * 60 * 1000,
+        maxRequests:
+          60,
+      }),
+
+    continuation:
+      Object.freeze({
+        windowMs:
+          15 * 60 * 1000,
+        maxRequests:
+          240,
+      }),
+
+    hotelDetails:
+      Object.freeze({
+        windowMs:
+          15 * 60 * 1000,
+        maxRequests:
+          180,
+      }),
+
+    bookingRecheck:
+      Object.freeze({
+        windowMs:
+          10 * 60 * 1000,
+        maxRequests:
+          30,
+      }),
+
+    bookingHandoff:
+      Object.freeze({
+        windowMs:
+          10 * 60 * 1000,
+        maxRequests:
+          30,
+      }),
+
+    bookingOpen:
+      Object.freeze({
+        windowMs:
+          10 * 60 * 1000,
+        maxRequests:
+          60,
+      }),
+
+    searchRead:
+      Object.freeze({
+        windowMs:
+          15 * 60 * 1000,
+        maxRequests:
+          600,
+      }),
+  });
+
+const ENDPOINT_RATE_LIMIT_ENVIRONMENT_KEYS =
+  Object.freeze({
+    destinationSearch:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_DESTINATION_SEARCH_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_DESTINATION_SEARCH_MAX_REQUESTS",
+      }),
+
+    hotelSearch:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_HOTEL_SEARCH_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_HOTEL_SEARCH_MAX_REQUESTS",
+      }),
+
+    continuation:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_CONTINUATION_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_CONTINUATION_MAX_REQUESTS",
+      }),
+
+    hotelDetails:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_HOTEL_DETAILS_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_HOTEL_DETAILS_MAX_REQUESTS",
+      }),
+
+    bookingRecheck:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_BOOKING_RECHECK_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_BOOKING_RECHECK_MAX_REQUESTS",
+      }),
+
+    bookingHandoff:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_BOOKING_HANDOFF_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_BOOKING_HANDOFF_MAX_REQUESTS",
+      }),
+
+    bookingOpen:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_BOOKING_OPEN_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_BOOKING_OPEN_MAX_REQUESTS",
+      }),
+
+    searchRead:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_SEARCH_READ_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_SEARCH_READ_MAX_REQUESTS",
+      }),
+  });
 
 function parsePositiveInteger(
   value,
@@ -101,6 +235,64 @@ function parseTrustProxy(
   );
 }
 
+function createEndpointRateLimits({
+  environment,
+  overrides,
+} = {}) {
+  const configuredOverrides =
+    overrides
+      ?.endpointRateLimits ??
+    {};
+
+  const result =
+    {};
+
+  for (
+    const [
+      policyName,
+      defaults,
+    ] of Object.entries(
+      DEFAULT_ENDPOINT_RATE_LIMITS
+    )
+  ) {
+    const environmentKeys =
+      ENDPOINT_RATE_LIMIT_ENVIRONMENT_KEYS[
+        policyName
+      ];
+
+    const policyOverrides =
+      configuredOverrides[
+        policyName
+      ] ??
+      {};
+
+    result[policyName] =
+      Object.freeze({
+        windowMs:
+          parsePositiveInteger(
+            policyOverrides.windowMs ??
+            environment?.[
+              environmentKeys.windowMs
+            ],
+            defaults.windowMs
+          ),
+
+        maxRequests:
+          parsePositiveInteger(
+            policyOverrides.maxRequests ??
+            environment?.[
+              environmentKeys.maxRequests
+            ],
+            defaults.maxRequests
+          ),
+      });
+  }
+
+  return Object.freeze(
+    result
+  );
+}
+
 function createRuntimeSecurityConfig({
   environment =
     process.env,
@@ -171,6 +363,12 @@ function createRuntimeSecurityConfig({
         DEFAULT_RATE_LIMIT_MAX_REQUESTS
       ),
 
+    endpointRateLimits:
+      createEndpointRateLimits({
+        environment,
+        overrides,
+      }),
+
     serviceName:
       String(
         overrides.serviceName ??
@@ -205,9 +403,11 @@ function createRuntimeSecurityConfig({
 
 module.exports = {
   DEFAULT_ALLOWED_ORIGIN,
+  DEFAULT_ENDPOINT_RATE_LIMITS,
   DEFAULT_JSON_LIMIT,
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
   DEFAULT_RATE_LIMIT_WINDOW_MS,
+  createEndpointRateLimits,
   createRuntimeSecurityConfig,
   parseAllowedOrigins,
   parseTrustProxy,

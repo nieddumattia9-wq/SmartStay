@@ -15,11 +15,6 @@ const helmet =
     "helmet"
   );
 
-const rateLimit =
-  require(
-    "express-rate-limit"
-  );
-
 const {
   createRuntimeSecurityConfig,
 } =
@@ -39,6 +34,14 @@ const {
 } =
   require(
     "./observability/securityLogger"
+  );
+
+const {
+  createEndpointRateLimiters,
+  createRateLimitHandler,
+} =
+  require(
+    "./middleware/endpointRateLimits"
   );
 
 function createRuntimeState() {
@@ -98,30 +101,6 @@ function createCorsOriginHandler(
       "CORS_ORIGIN_DENIED";
 
     callback(error);
-  };
-}
-
-function createRateLimitHandler() {
-  return function handleRateLimit(
-    req,
-    res
-  ) {
-    res.status(
-      429
-    ).json({
-      success:
-        false,
-
-      code:
-        "RATE_LIMITED",
-
-      message:
-        "Too many requests. Please try again later.",
-
-      requestId:
-        req.requestId ??
-        null,
-    });
   };
 }
 
@@ -200,35 +179,79 @@ function createApp({
     })
   );
 
+  const endpointRateLimiters =
+    createEndpointRateLimiters({
+      config,
+    });
+
+  app.use(
+    endpointRateLimiters.api
+  );
+
+  app.post(
+    "/api/search-destinations",
+    endpointRateLimiters
+      .destinationSearch
+  );
+
+  app.post(
+    "/api/search-hotels",
+    endpointRateLimiters
+      .hotelSearch
+  );
+
+  app.post(
+    "/api/search-hotels/continue",
+    endpointRateLimiters
+      .continuation
+  );
+
+  app.post(
+    "/api/hotel-details",
+    endpointRateLimiters
+      .hotelDetails
+  );
+
+  app.post(
+    "/api/booking-offer-recheck",
+    endpointRateLimiters
+      .bookingRecheck
+  );
+
+  app.post(
+    "/api/booking-handoff",
+    endpointRateLimiters
+      .bookingHandoff
+  );
+
+  app.get(
+    "/api/booking-handoff/open",
+    endpointRateLimiters
+      .bookingOpen
+  );
+
+  app.get(
+    "/api/booking-redirect",
+    endpointRateLimiters
+      .bookingOpen
+  );
+
+  app.get(
+    "/api/search-status",
+    endpointRateLimiters
+      .searchRead
+  );
+
+  app.get(
+    "/api/search-session",
+    endpointRateLimiters
+      .searchRead
+  );
+
   app.use(
     express.json({
       limit:
         config.jsonLimit,
-    })
-  );
-
-  app.use(
-    rateLimit({
-      windowMs:
-        config.rateLimitWindowMs,
-
-      max:
-        config.rateLimitMaxRequests,
-
-      standardHeaders:
-        true,
-
-      legacyHeaders:
-        false,
-
-      skip:
-        (req) =>
-          req.path.startsWith(
-            "/health"
-          ),
-
-      handler:
-        createRateLimitHandler(),
     })
   );
 
@@ -385,6 +408,44 @@ function createApp({
         error.type ===
           "entity.parse.failed";
 
+      const isPayloadTooLarge =
+        error?.type ===
+          "entity.too.large" ||
+        error?.status ===
+          413;
+
+      if (
+        isPayloadTooLarge
+      ) {
+        req.log.warn(
+          "http.request.payload-too-large",
+          {
+            method:
+              req.method,
+            path:
+              req.path,
+            status:
+              413,
+          }
+        );
+
+        res.status(
+          413
+        ).json({
+          success:
+            false,
+          code:
+            "PAYLOAD_TOO_LARGE",
+          message:
+            "Request payload is too large.",
+          requestId:
+            req.requestId ??
+            null,
+        });
+
+        return;
+      }
+
       if (
         isMalformedJson
       ) {
@@ -436,27 +497,41 @@ function createApp({
           ? rawStatus
           : 500;
 
-      const publicCode =
+      const isCorsFailure =
         status ===
           403 &&
         error.code ===
-          "CORS_ORIGIN_DENIED"
+          "CORS_ORIGIN_DENIED";
+
+      const isExposedFailure =
+        error?.exposePublic ===
+          true &&
+        typeof error?.code ===
+          "string" &&
+        error.code.trim();
+
+      const publicCode =
+        isCorsFailure
           ? "CORS_ORIGIN_DENIED"
-          : status >=
-              500
-            ? "INTERNAL_ERROR"
-            : "REQUEST_FAILED";
+          : isExposedFailure
+            ? error.code
+            : status >=
+                500
+              ? "INTERNAL_ERROR"
+              : "REQUEST_FAILED";
 
       const publicMessage =
-        status ===
-          403 &&
-        error.code ===
-          "CORS_ORIGIN_DENIED"
+        isCorsFailure
           ? "Origin is not allowed."
-          : status >=
-              500
-            ? "Internal server error."
-            : "Request failed.";
+          : isExposedFailure &&
+              typeof error.message ===
+                "string" &&
+              error.message.trim()
+            ? error.message
+            : status >=
+                500
+              ? "Internal server error."
+              : "Request failed.";
 
       req.log.error(
         "http.request.failed",
@@ -484,6 +559,16 @@ function createApp({
 
         message:
           publicMessage,
+
+        ...(isExposedFailure &&
+        typeof error.field ===
+          "string" &&
+        error.field.trim()
+          ? {
+              field:
+                error.field,
+            }
+          : {}),
 
         requestId:
           req.requestId ??
