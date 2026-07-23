@@ -26,8 +26,23 @@ const REQUIRED_RELEASE_ENVIRONMENT_KEYS =
     "VITE_API_URL",
   ]);
 
+const CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS =
+  Object.freeze([
+    "ANALYTICS_ADMIN_TOKEN",
+    "ANALYTICS_ENABLED",
+    "ANALYTICS_STORAGE_MODE",
+    "ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED",
+    "VITE_ANALYTICS_ENABLED",
+  ]);
+
 const REQUIRED_RUNTIME_STATE_MODE =
   "in-memory-single-instance";
+
+const REQUIRED_ANALYTICS_STORAGE_MODE =
+  "in-memory-single-instance";
+
+const MIN_ANALYTICS_ADMIN_TOKEN_LENGTH =
+  32;
 
 function normalizeText(
   value
@@ -36,6 +51,31 @@ function normalizeText(
     "string"
     ? value.trim()
     : "";
+}
+
+function normalizeBooleanFlag(
+  value
+) {
+  const normalized =
+    normalizeText(value)
+      .toLowerCase();
+
+  if (
+    normalized === "true" ||
+    normalized === "1"
+  ) {
+    return true;
+  }
+
+  if (
+    normalized === "false" ||
+    normalized === "0" ||
+    normalized === ""
+  ) {
+    return false;
+  }
+
+  return null;
 }
 
 function getDeploymentEnvironment(
@@ -494,6 +534,90 @@ function collectReleaseEnvironmentIssues(
     );
   }
 
+  const backendAnalyticsEnabled =
+    normalizeBooleanFlag(
+      environment.ANALYTICS_ENABLED
+    );
+
+  const frontendAnalyticsEnabled =
+    normalizeBooleanFlag(
+      environment.VITE_ANALYTICS_ENABLED
+    );
+
+  if (
+    backendAnalyticsEnabled === null ||
+    frontendAnalyticsEnabled === null
+  ) {
+    issues.push(
+      createIssue(
+        "ANALYTICS_ENABLED",
+        "INVALID_ANALYTICS_FLAG",
+        "Analytics flags must be true, false, 1, or 0."
+      )
+    );
+  }
+  else if (
+    backendAnalyticsEnabled !==
+      frontendAnalyticsEnabled
+  ) {
+    issues.push(
+      createIssue(
+        "ANALYTICS_ENABLED",
+        "ANALYTICS_FLAG_MISMATCH",
+        "VITE_ANALYTICS_ENABLED and ANALYTICS_ENABLED must match."
+      )
+    );
+  }
+
+  if (backendAnalyticsEnabled === true) {
+    const adminToken =
+      normalizeText(
+        environment.ANALYTICS_ADMIN_TOKEN
+      );
+
+    if (
+      adminToken.length <
+        MIN_ANALYTICS_ADMIN_TOKEN_LENGTH
+    ) {
+      issues.push(
+        createIssue(
+          "ANALYTICS_ADMIN_TOKEN",
+          "ANALYTICS_ADMIN_TOKEN_REQUIRED",
+          `ANALYTICS_ADMIN_TOKEN must contain at least ${MIN_ANALYTICS_ADMIN_TOKEN_LENGTH} characters.`
+        )
+      );
+    }
+
+    if (
+      normalizeText(
+        environment.ANALYTICS_STORAGE_MODE
+      ).toLowerCase() !==
+        REQUIRED_ANALYTICS_STORAGE_MODE
+    ) {
+      issues.push(
+        createIssue(
+          "ANALYTICS_STORAGE_MODE",
+          "ANALYTICS_STORAGE_MODE_REQUIRED",
+          `ANALYTICS_STORAGE_MODE must be ${REQUIRED_ANALYTICS_STORAGE_MODE}.`
+        )
+      );
+    }
+
+    if (
+      normalizeBooleanFlag(
+        environment.ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED
+      ) !== true
+    ) {
+      issues.push(
+        createIssue(
+          "ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED",
+          "VOLATILE_ANALYTICS_ACKNOWLEDGEMENT_REQUIRED",
+          "Volatile analytics storage must be explicitly acknowledged."
+        )
+      );
+    }
+  }
+
   return issues;
 }
 
@@ -544,17 +668,32 @@ function assertReleaseEnvironment({
           .RUNTIME_STATE_MODE
       ) ||
       "development",
+
+    analyticsEnabled:
+      normalizeBooleanFlag(
+        environment.ANALYTICS_ENABLED
+      ) === true,
+
+    analyticsStorageMode:
+      normalizeText(
+        environment.ANALYTICS_STORAGE_MODE
+      ) ||
+      "disabled",
   });
 }
 
 module.exports = {
+  CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS,
+  MIN_ANALYTICS_ADMIN_TOKEN_LENGTH,
   RELEASE_DEPLOYMENT_ENVIRONMENTS,
+  REQUIRED_ANALYTICS_STORAGE_MODE,
   REQUIRED_RELEASE_ENVIRONMENT_KEYS,
   REQUIRED_RUNTIME_STATE_MODE,
   assertReleaseEnvironment,
   collectReleaseEnvironmentIssues,
   getDeploymentEnvironment,
   isReleaseEnvironment,
+  normalizeBooleanFlag,
   validateClientOrigins,
   validateHttpsUrl,
 };

@@ -65,6 +65,15 @@ const {
     "./routes/analytics"
   );
 
+const {
+  createAnalyticsAdminAuthorization,
+  createAnalyticsDeletionHandler,
+  createAnalyticsReportHandler,
+} =
+  require(
+    "./routes/analyticsAdmin"
+  );
+
 function createRuntimeState() {
   let ready =
     true;
@@ -219,6 +228,14 @@ function createApp({
       config,
     });
 
+  const analyticsAdminAuthorization =
+    createAnalyticsAdminAuthorization({
+      enabled:
+        config.analyticsEnabled,
+      adminToken:
+        config.analyticsAdminToken,
+    });
+
   app.use(
     endpointRateLimiters.api
   );
@@ -234,6 +251,31 @@ function createApp({
     createAnalyticsEventHandler({
       enabled:
         config.analyticsEnabled,
+      store:
+        effectiveAnalyticsEventStore,
+    })
+  );
+
+  app.get(
+    "/api/internal/analytics/report",
+    endpointRateLimiters
+      .analyticsAdmin,
+    analyticsAdminAuthorization,
+    createAnalyticsReportHandler({
+      store:
+        effectiveAnalyticsEventStore,
+    })
+  );
+
+  app.delete(
+    "/api/internal/analytics/data",
+    endpointRateLimiters
+      .analyticsAdmin,
+    analyticsAdminAuthorization,
+    express.json({
+      limit: "4kb",
+    }),
+    createAnalyticsDeletionHandler({
       store:
         effectiveAnalyticsEventStore,
     })

@@ -8,6 +8,7 @@ const require =
   );
 
 const {
+  CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS,
   REQUIRED_RELEASE_ENVIRONMENT_KEYS,
   assertReleaseEnvironment,
 } =
@@ -85,8 +86,21 @@ try {
           result
             .runtimeStateMode,
 
+        analyticsEnabled:
+          result
+            .analyticsEnabled,
+
+        analyticsStorageMode:
+          result
+            .analyticsStorageMode,
+
         checkedKeys:
           REQUIRED_RELEASE_ENVIRONMENT_KEYS,
+
+        conditionalAnalyticsKeys:
+          result.analyticsEnabled
+            ? CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS
+            : [],
       },
       null,
       2

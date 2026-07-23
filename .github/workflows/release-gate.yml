@@ -79,5 +79,8 @@ jobs:
             package.json
             package-lock.json
             .nvmrc
+            contracts/analytics-event-contract.v1.json
+            docs/ANALYTICS_PRIVACY.md
+            docs/ANALYTICS_BETA_MEASUREMENT.md
             docs/STAGING_RELEASE.md
             docs/PRODUCTION_RELEASE.md

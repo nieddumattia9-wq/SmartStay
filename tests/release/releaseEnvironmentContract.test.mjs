@@ -35,6 +35,7 @@ const repositoryRoot =
   );
 
 const {
+  REQUIRED_ANALYTICS_STORAGE_MODE,
   REQUIRED_RUNTIME_STATE_MODE,
   assertReleaseEnvironment,
   collectReleaseEnvironmentIssues,
@@ -483,5 +484,82 @@ test(
       source,
       /LITEAPI_API_KEY/
     );
+  }
+);
+
+
+test(
+  "release environment requires matched analytics flags, admin protection and explicit volatile storage acknowledgement",
+  () => {
+    const enabledEnvironment =
+      createValidReleaseEnvironment({
+        ANALYTICS_ENABLED:
+          "true",
+        VITE_ANALYTICS_ENABLED:
+          "true",
+        ANALYTICS_ADMIN_TOKEN:
+          "a".repeat(32),
+        ANALYTICS_STORAGE_MODE:
+          REQUIRED_ANALYTICS_STORAGE_MODE,
+        ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED:
+          "true",
+      });
+
+    const result =
+      assertReleaseEnvironment({
+        environment:
+          enabledEnvironment,
+      });
+
+    assert.equal(
+      result.analyticsEnabled,
+      true
+    );
+    assert.equal(
+      result.analyticsStorageMode,
+      REQUIRED_ANALYTICS_STORAGE_MODE
+    );
+
+    const issues =
+      collectReleaseEnvironmentIssues(
+        createValidReleaseEnvironment({
+          ANALYTICS_ENABLED:
+            "true",
+          VITE_ANALYTICS_ENABLED:
+            "false",
+          ANALYTICS_ADMIN_TOKEN:
+            "short",
+          ANALYTICS_STORAGE_MODE:
+            "persistent",
+          ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED:
+            "false",
+        })
+      );
+
+    const issueCodes =
+      new Set(
+        issues.map(
+          (issue) =>
+            issue.code
+        )
+      );
+
+    for (
+      const expectedCode of
+      [
+        "ANALYTICS_FLAG_MISMATCH",
+        "ANALYTICS_ADMIN_TOKEN_REQUIRED",
+        "ANALYTICS_STORAGE_MODE_REQUIRED",
+        "VOLATILE_ANALYTICS_ACKNOWLEDGEMENT_REQUIRED",
+      ]
+    ) {
+      assert.equal(
+        issueCodes.has(
+          expectedCode
+        ),
+        true,
+        expectedCode
+      );
+    }
   }
 );

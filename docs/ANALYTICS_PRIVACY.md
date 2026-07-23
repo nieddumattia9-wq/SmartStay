@@ -2,7 +2,7 @@
 
 ## Status
 
-39C23B instruments the canonical 39C23A event contract.
+39C23C completes the first beta measurement gate on top of the canonical 39C23A contract and the 39C23B instrumentation.
 
 The implementation is:
 
@@ -13,16 +13,26 @@ The implementation is:
 - free of persistent user IDs and cross-session tracking;
 - provider-neutral;
 - failure-isolated from search, ranking and booking;
-- respectful of Do Not Track and Global Privacy Control.
+- respectful of Do Not Track and Global Privacy Control;
+- measurable through aggregate-only administrative reports;
+- explicit about its volatile in-memory storage boundary.
 
-Enabling analytics requires both:
+Enabling collection requires both:
 
 ```text
 VITE_ANALYTICS_ENABLED=true
 ANALYTICS_ENABLED=true
 ```
 
-If either side remains disabled, normal product flows continue and no analytics record is persisted.
+A staging or production release with analytics enabled additionally requires:
+
+```text
+ANALYTICS_ADMIN_TOKEN=<at least 32 random characters>
+ANALYTICS_STORAGE_MODE=in-memory-single-instance
+ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED=true
+```
+
+The frontend and backend flags must match. If analytics remains disabled, normal product flows continue and no analytics record is persisted.
 
 ## Transport
 
@@ -54,7 +64,7 @@ Sec-GPC: 1
 navigator.globalPrivacyControl === true
 ```
 
-The backend checks the request headers again before validation or storage.
+The backend checks request headers again before validation or storage.
 
 ## Identifiers
 
@@ -94,39 +104,58 @@ Only bucketed, enumerated or boolean decision-support properties are accepted.
 - maximum event and batch sizes;
 - bounded event timestamps.
 
-The request body is not added to structured logs.
+The request body and authorization header are not added to structured logs.
 
 ## Storage truth
 
-The MVP sink is:
+The current beta sink is:
 
 ```text
 in-memory-single-instance
 ```
 
-It is bounded, deduplicates retries by opaque `eventId`, and prunes raw records after at most 30 days. It is not durable and is lost when the backend restarts. This is intentional for the first instrumentation gate and must not be described as persistent analytics storage.
+It is bounded, deduplicates retries by opaque `eventId`, prunes raw records after at most 30 days, and keeps aggregate daily counters for at most 180 days.
 
-The sink is injected behind a small `write(events)` boundary so a future first-party database can replace it without coupling the frontend or domain engine to a vendor.
+It is **not durable**. Raw events, aggregate buckets and report state are lost when the backend restarts. Enabling this mode in a release environment therefore requires an explicit volatile-storage acknowledgement. It must not be described as persistent analytics storage.
 
-Aggregate retention remains capped at 180 days when aggregation is implemented in 39C23C.
+The sink remains injected behind a small interface so a future first-party persistent adapter can replace it without coupling the frontend, provider layer or SmartStay Engine to an analytics vendor.
 
-## Canonical events
+## Aggregate-only administration
 
-The 16 events remain defined in:
+No route exposes raw analytics records.
+
+The protected administrative surfaces are:
 
 ```text
-contracts/analytics-event-contract.v1.json
+GET /api/internal/analytics/report?windowDays=30
+DELETE /api/internal/analytics/data
 ```
 
-They cover page views, search lifecycle, recommendation engagement, recovery, booking recheck/handoff and journey abandonment. Abandonment is captured both when the browser page is left and when an active SPA journey returns to Home.
+They require a bearer token from `ANALYTICS_ADMIN_TOKEN`. If analytics or the token is unavailable, the administrative surface is hidden. Token comparison uses constant-time equality.
 
-## Next gate
+The report contains counts, rates, distributions, sample readiness and storage truth only. It does not include event, session or journey identifiers.
 
-39C23C must add and validate:
+Deletion accepts an explicit scope:
 
-- aggregate metrics and minimal reporting;
-- deletion/retention execution;
-- browser tests for enabled, disabled, DNT and GPC modes;
-- staged sampling with zero forbidden fields;
-- analytics release evidence;
-- beta measurement thresholds.
+```text
+expired
+raw
+aggregates
+all
+```
+
+Automatic pruning runs on write, read and status operations. Manual deletion exists for operational retention enforcement and incident response.
+
+## Measurement limits
+
+Rates are journey-level and use the first occurrence of an action within a journey. The current aggregate state is process-local and therefore cannot merge multiple backend instances. SmartStay staging and the first controlled beta must remain single-instance.
+
+The detailed metric definitions and sample-readiness rules are documented in:
+
+```text
+docs/ANALYTICS_BETA_MEASUREMENT.md
+```
+
+## Legal boundary
+
+This document is the technical privacy contract, not final legal advice. Before meaningful public traffic, the public privacy policy still needs professional legal review covering controller identity, lawful basis, processors, international transfers, rights, objections, complaints and incident handling.

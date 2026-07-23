@@ -261,6 +261,15 @@ function createEndpointRateLimiters({
         scope:
           "analytics-events",
       }),
+
+    analyticsAdmin:
+      createLimiter({
+        policy:
+          endpointPolicies
+            .analyticsAdmin,
+        scope:
+          "analytics-admin",
+      }),
   });
 }
 

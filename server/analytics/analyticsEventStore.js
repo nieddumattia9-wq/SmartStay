@@ -1,10 +1,18 @@
 "use strict";
 
+const {
+  AGGREGATED_METRIC_RETENTION_MS,
+  DAY_MS,
+  createAnalyticsAggregateState,
+} = require(
+  "./analyticsMeasurement"
+);
+
 const DEFAULT_MAX_EVENTS =
   20_000;
 
 const RAW_EVENT_RETENTION_MS =
-  30 * 24 * 60 * 60 * 1000;
+  30 * DAY_MS;
 
 function cloneEvent(
   event
@@ -22,6 +30,8 @@ function createInMemoryAnalyticsEventStore({
     DEFAULT_MAX_EVENTS,
   retentionMs =
     RAW_EVENT_RETENTION_MS,
+  aggregateRetentionMs =
+    AGGREGATED_METRIC_RETENTION_MS,
   now =
     () => Date.now(),
 } = {}) {
@@ -43,29 +53,131 @@ function createInMemoryAnalyticsEventStore({
     );
   }
 
-  let records =
-    [];
+  if (
+    !Number.isFinite(
+      aggregateRetentionMs
+    ) ||
+    aggregateRetentionMs <= 0
+  ) {
+    throw new TypeError(
+      "Analytics aggregate retentionMs must be positive."
+    );
+  }
 
-  function prune() {
+  let records = [];
+
+  const aggregateState =
+    createAnalyticsAggregateState({
+      retentionMs:
+        aggregateRetentionMs,
+      journeyStateRetentionMs:
+        retentionMs,
+      now,
+    });
+
+  function pruneRaw() {
+    const before =
+      records.length;
+
     const cutoff =
       now() - retentionMs;
 
     records =
       records.filter(
         (record) =>
-          record.receivedAt >=
-          cutoff
+          record.receivedAt >= cutoff
       );
 
     if (
-      records.length >
-        maxEvents
+      records.length > maxEvents
     ) {
       records =
-        records.slice(
-          -maxEvents
-        );
+        records.slice(-maxEvents);
     }
+
+    return before -
+      records.length;
+  }
+
+  function prune() {
+    return {
+      removedRawEvents:
+        pruneRaw(),
+      ...aggregateState.prune(),
+    };
+  }
+
+  function getStorageStatus() {
+    prune();
+
+    return Object.freeze({
+      storageMode:
+        "in-memory-single-instance",
+      volatile: true,
+      rawEventCount:
+        records.length,
+      aggregateBucketCount:
+        aggregateState.countBuckets(),
+      rawRetentionDays:
+        Math.floor(
+          retentionMs / DAY_MS
+        ),
+      aggregateRetentionDays:
+        Math.floor(
+          aggregateRetentionMs /
+            DAY_MS
+        ),
+      maxRawEvents:
+        maxEvents,
+    });
+  }
+
+  function deleteData(
+    scope = "all"
+  ) {
+    const allowedScopes =
+      new Set([
+        "expired",
+        "raw",
+        "aggregates",
+        "all",
+      ]);
+
+    if (!allowedScopes.has(scope)) {
+      throw new TypeError(
+        "Analytics deletion scope is invalid."
+      );
+    }
+
+    const before =
+      getStorageStatus();
+
+    if (scope === "expired") {
+      prune();
+    }
+
+    if (
+      scope === "raw" ||
+      scope === "all"
+    ) {
+      records = [];
+      aggregateState.clearJourneyState();
+    }
+
+    if (scope === "aggregates") {
+      aggregateState.clear();
+    }
+
+    if (scope === "all") {
+      aggregateState.clear();
+    }
+
+    return Object.freeze({
+      scope,
+      before,
+      after:
+        getStorageStatus(),
+    });
   }
 
   return Object.freeze({
@@ -83,8 +195,7 @@ function createInMemoryAnalyticsEventStore({
           )
         );
 
-      let accepted =
-        0;
+      const acceptedEvents = [];
 
       for (const event of events) {
         if (
@@ -105,12 +216,20 @@ function createInMemoryAnalyticsEventStore({
             cloneEvent(event),
         });
 
-        accepted += 1;
+        acceptedEvents.push(event);
+      }
+
+      if (
+        acceptedEvents.length > 0
+      ) {
+        aggregateState.recordEvents(
+          acceptedEvents
+        );
       }
 
       prune();
 
-      return accepted;
+      return acceptedEvents.length;
     },
 
     count() {
@@ -133,8 +252,25 @@ function createInMemoryAnalyticsEventStore({
       );
     },
 
+    readAggregateBuckets(
+      options = {}
+    ) {
+      return aggregateState
+        .readBuckets(options);
+    },
+
+    getStorageStatus,
+
+    deleteData,
+
+    deleteExpired() {
+      return deleteData(
+        "expired"
+      );
+    },
+
     clear() {
-      records = [];
+      deleteData("all");
     },
 
     getStorageMode() {

@@ -95,6 +95,14 @@ const DEFAULT_ENDPOINT_RATE_LIMITS =
         maxRequests:
           240,
       }),
+
+    analyticsAdmin:
+      Object.freeze({
+        windowMs:
+          15 * 60 * 1000,
+        maxRequests:
+          60,
+      }),
   });
 
 const ENDPOINT_RATE_LIMIT_ENVIRONMENT_KEYS =
@@ -169,6 +177,14 @@ const ENDPOINT_RATE_LIMIT_ENVIRONMENT_KEYS =
           "RATE_LIMIT_ANALYTICS_WINDOW_MS",
         maxRequests:
           "RATE_LIMIT_ANALYTICS_MAX_REQUESTS",
+      }),
+
+    analyticsAdmin:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_ANALYTICS_ADMIN_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_ANALYTICS_ADMIN_MAX_REQUESTS",
       }),
   });
 
@@ -475,6 +491,29 @@ function createRuntimeSecurityConfig({
         overrides.analyticsStoreMaxEvents ??
         environment.ANALYTICS_STORE_MAX_EVENTS,
         DEFAULT_ANALYTICS_STORE_MAX_EVENTS
+      ),
+
+    analyticsAdminToken:
+      String(
+        overrides.analyticsAdminToken ??
+        environment.ANALYTICS_ADMIN_TOKEN ??
+        ""
+      ).trim(),
+
+    analyticsStorageMode:
+      String(
+        overrides.analyticsStorageMode ??
+        environment.ANALYTICS_STORAGE_MODE ??
+        "in-memory-single-instance"
+      )
+        .trim()
+        .toLowerCase(),
+
+    analyticsVolatileStorageAcknowledged:
+      parseBoolean(
+        overrides.analyticsVolatileStorageAcknowledged ??
+        environment.ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED,
+        false
       ),
 
     serviceName:
