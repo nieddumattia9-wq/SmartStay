@@ -8,9 +8,9 @@ import {
   normalizeSearchIdempotencyKey,
 } from "../utils/searchIdempotency";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:3001/api";
+import {
+  API_URL,
+} from "../config/runtimeConfig";
 
 const STANDARD_REQUEST_TIMEOUT_MS =
   25_000;

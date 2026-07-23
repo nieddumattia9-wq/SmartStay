@@ -282,6 +282,10 @@ function createApp({
         version:
           config.serviceVersion,
 
+        environment:
+          config
+            .deploymentEnvironment,
+
         requestId:
           req.requestId,
       });
@@ -300,6 +304,13 @@ function createApp({
 
         service:
           config.serviceName,
+
+        version:
+          config.serviceVersion,
+
+        environment:
+          config
+            .deploymentEnvironment,
 
         requestId:
           req.requestId,
@@ -329,6 +340,13 @@ function createApp({
         service:
           config.serviceName,
 
+        version:
+          config.serviceVersion,
+
+        environment:
+          config
+            .deploymentEnvironment,
+
         requestId:
           req.requestId,
       });
@@ -356,6 +374,13 @@ function createApp({
 
         service:
           config.serviceName,
+
+        version:
+          config.serviceVersion,
+
+        environment:
+          config
+            .deploymentEnvironment,
 
         timestamp:
           new Date()

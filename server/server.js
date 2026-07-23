@@ -26,6 +26,13 @@ const {
   );
 
 const {
+  assertReleaseEnvironment,
+} =
+  require(
+    "./config/releaseEnvironment"
+  );
+
+const {
   createSecurityLogger,
 } =
   require(
@@ -74,6 +81,11 @@ function startServer({
   clearTimeoutFn =
     clearTimeout,
 } = {}) {
+  const releaseEnvironment =
+    assertReleaseEnvironment({
+      environment,
+    });
+
   const config =
     createRuntimeSecurityConfig({
       environment,
@@ -111,6 +123,14 @@ function startServer({
 
             version:
               config.serviceVersion,
+
+            deploymentEnvironment:
+              config
+                .deploymentEnvironment,
+
+            runtimeStateMode:
+              releaseEnvironment
+                .runtimeStateMode,
 
             port:
               config.port,

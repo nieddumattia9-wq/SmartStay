@@ -303,6 +303,31 @@ function createRuntimeSecurityConfig({
   overrides =
     {},
 } = {}) {
+  const nodeEnv =
+    String(
+      overrides.nodeEnv ??
+      environment.NODE_ENV ??
+      "development"
+    )
+      .trim()
+      .toLowerCase();
+
+  const deploymentEnvironment =
+    String(
+      overrides
+        .deploymentEnvironment ??
+      environment
+        .DEPLOYMENT_ENV ??
+      (
+        nodeEnv ===
+          "production"
+          ? "production"
+          : "development"
+      )
+    )
+      .trim()
+      .toLowerCase();
+
   const allowedOrigins =
     Array.isArray(
       overrides.allowedOrigins
@@ -318,14 +343,9 @@ function createRuntimeSecurityConfig({
         );
 
   return Object.freeze({
-    nodeEnv:
-      String(
-        overrides.nodeEnv ??
-        environment.NODE_ENV ??
-        "development"
-      )
-        .trim()
-        .toLowerCase(),
+    nodeEnv,
+
+    deploymentEnvironment,
 
     port:
       parsePositiveInteger(
