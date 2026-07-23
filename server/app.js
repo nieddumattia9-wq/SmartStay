@@ -37,6 +37,13 @@ const {
   );
 
 const {
+  configureOperationalLogger,
+} =
+  require(
+    "./observability/operationalLogger"
+  );
+
+const {
   createEndpointRateLimiters,
   createRateLimitHandler,
 } =
@@ -124,6 +131,10 @@ function createApp({
 } = {}) {
   const app =
     express();
+
+  configureOperationalLogger({
+    logger,
+  });
 
   app.disable(
     "x-powered-by"

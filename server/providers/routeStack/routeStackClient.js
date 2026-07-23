@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../../observability/operationalLogger"
+);
+
 const axios = require("axios");
 
 const config = require("../../config/routeStack");
@@ -11,24 +17,6 @@ const HOTEL_SEARCH_TIMEOUT_MS =
 
 const DESTINATION_SEARCH_TIMEOUT_MS =
   15000;
-
-function maskValue(value, visibleChars = 12) {
-
-  if (!value || typeof value !== "string") {
-
-    return "";
-
-  }
-
-  if (value.length <= visibleChars) {
-
-    return "*".repeat(value.length);
-
-  }
-
-  return `${value.slice(0, visibleChars)}...`;
-
-}
 
 function createAuthHeaders(token) {
 
@@ -73,114 +61,6 @@ function ensureHttpSuccess(response, context) {
 
 }
 
-function sanitizePayloadForLog(payload = {}) {
-
-  return {
-    ...payload,
-
-    token:
-      payload.token
-        ? maskValue(payload.token, 18)
-        : undefined,
-
-    correlationId:
-      payload.correlationId
-        ? maskValue(payload.correlationId, 18)
-        : undefined,
-  };
-
-}
-
-function logRouteStackRequest(
-  title,
-  endpoint,
-  payload,
-  token
-) {
-
-  console.log(`\n========== ${title} ==========`);
-  console.log("Endpoint:", endpoint);
-
-  console.log("\n----- REQUEST PAYLOAD -----");
-  console.dir(
-    sanitizePayloadForLog(payload),
-    {
-      depth: null,
-    }
-  );
-
-  console.log("\n----- REQUEST HEADERS -----");
-  console.dir(
-    {
-      Authorization:
-        `Bearer ${maskValue(token, 30)}`,
-
-      "Content-Type":
-        "application/json",
-
-      Accept:
-        "application/json",
-    },
-    {
-      depth: null,
-    }
-  );
-
-}
-
-function logRouteStackResponse(response) {
-
-  console.log("\n----- HTTP STATUS -----");
-  console.log(response.status);
-
-  console.log("\n----- RESPONSE SUMMARY -----");
-
-  const data =
-    response.data ?? {};
-
-  console.dir(
-    {
-      success:
-        data.success,
-
-      message:
-        data.message,
-
-      code:
-        data.code,
-
-      status:
-        data.result?.status,
-
-      count:
-        data.result?.count,
-
-      currency:
-        data.result?.currency,
-
-      nextResultsKey:
-        data.result?.nextResultsKey,
-
-      token:
-        maskValue(data.result?.token, 18),
-
-      correlationId:
-        maskValue(data.result?.correlationId, 18),
-
-      hotelsReceived:
-        Array.isArray(data.result?.result)
-          ? data.result.result.length
-          : 0,
-    },
-    {
-      depth: null,
-    }
-  );
-
-  console.log("=================================\n");
-
-}
-
 async function callRouteStackPost({
   endpointPath,
   payload,
@@ -189,46 +69,157 @@ async function callRouteStackPost({
   errorContext,
   signal,
 }) {
+  const startedAt =
+    Date.now();
 
-  const partnerToken =
-    await getToken();
+  operationalLogger.debug(
+    "provider.http.started",
+    {
+      providerId:
+        "routestack",
 
-  const endpoint =
-    `${config.baseUrl}${endpointPath}`;
+      operation:
+        title,
 
-  logRouteStackRequest(
-    title,
-    endpoint,
-    payload,
-    partnerToken
+      method:
+        "POST",
+
+      endpointPath,
+    }
   );
 
-  const response =
-    await axios.post(
-      endpoint,
-      payload,
+  try {
+    const partnerToken =
+      await getToken();
+
+    const endpoint =
+      `${config.baseUrl}${endpointPath}`;
+
+    const response =
+      await axios.post(
+        endpoint,
+        payload,
+        {
+          headers:
+            createAuthHeaders(
+              partnerToken
+            ),
+
+          signal,
+
+          timeout,
+
+          validateStatus:
+            () =>
+              true,
+        }
+      );
+
+    operationalLogger[
+      response.status >=
+          200 &&
+        response.status <
+          400
+        ? "info"
+        : "warn"
+    ](
+      "provider.http.completed",
       {
-        headers:
-          createAuthHeaders(partnerToken),
+        providerId:
+          "routestack",
 
-        signal,
+        operation:
+          title,
 
-        timeout,
+        method:
+          "POST",
 
-        validateStatus:
-          () => true,
+        endpointPath,
+
+        status:
+          response.status,
+
+        resultCount:
+          Array.isArray(
+            response.data
+              ?.result
+              ?.result
+          )
+            ? response.data
+                .result
+                .result
+                .length
+            : Number.isFinite(
+                Number(
+                  response.data
+                    ?.result
+                    ?.count
+                )
+              )
+              ? Number(
+                  response.data
+                    .result
+                    .count
+                )
+              : null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
       }
     );
 
-  logRouteStackResponse(response);
+    ensureHttpSuccess(
+      response,
+      errorContext
+    );
 
-  ensureHttpSuccess(
-    response,
-    errorContext
-  );
+    return (
+      response.data ??
+      {}
+    );
+  }
+  catch (error) {
+    operationalLogger.error(
+      "provider.http.failed",
+      {
+        providerId:
+          "routestack",
 
-  return response.data ?? {};
+        operation:
+          title,
 
+        method:
+          "POST",
+
+        endpointPath,
+
+        status:
+          error?.response
+            ?.status ??
+          error?.status ??
+          null,
+
+        code:
+          error?.code ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+
+        error,
+      }
+    );
+
+    throw error;
+  }
 }
 
 async function searchRouteStackDestinations(

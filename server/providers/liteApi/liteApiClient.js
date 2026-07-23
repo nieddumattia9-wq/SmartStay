@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../../observability/operationalLogger"
+);
+
 const axios = require("axios");
 const crypto = require("crypto");
 
@@ -13,18 +19,6 @@ const {
 
 const DEFAULT_HTTP_TIMEOUT_MS =
   Math.max(LITEAPI_TIMEOUT_SECONDS, 6) * 1000 + 3000;
-
-function maskValue(value) {
-  if (!value || typeof value !== "string") {
-    return null;
-  }
-
-  if (value.length <= 8) {
-    return "****";
-  }
-
-  return `${value.slice(0, 4)}****${value.slice(-4)}`;
-}
 
 function buildLiteApiUrl(endpointPath) {
   const cleanBaseUrl =
@@ -46,77 +40,6 @@ function createLiteApiHeaders() {
     "Content-Type": "application/json",
     "X-Api-Key": LITEAPI_API_KEY,
   };
-}
-
-function sanitizePayloadForLog(payload) {
-  if (!payload || typeof payload !== "object") {
-    return payload;
-  }
-
-  const clone = JSON.parse(
-    JSON.stringify(payload)
-  );
-
-  if (
-    typeof clone.offerId === "string"
-  ) {
-    clone.offerId =
-      maskValue(clone.offerId);
-  }
-
-  return clone;
-}
-
-function logLiteApiRequest({
-  title,
-  method,
-  endpointPath,
-  payload,
-  params,
-}) {
-  console.log(`\n[LITEAPI] ${title}`);
-  console.log("[LITEAPI] Method:", method);
-  console.log("[LITEAPI] Endpoint:", endpointPath);
-  console.log(
-    "[LITEAPI] API Key:",
-    maskValue(LITEAPI_API_KEY)
-  );
-
-  if (params) {
-    console.log(
-      "[LITEAPI] Params:",
-      sanitizePayloadForLog(params)
-    );
-  }
-
-  if (payload) {
-    console.log(
-      "[LITEAPI] Payload:",
-      sanitizePayloadForLog(payload)
-    );
-  }
-}
-
-function logLiteApiResponse({
-  title,
-  status,
-  data,
-}) {
-  console.log(`[LITEAPI] ${title} status:`, status);
-
-  if (status === 204) {
-    console.log("[LITEAPI] No content / no availability.");
-    return;
-  }
-
-  if (data && typeof data === "object") {
-    const keys = Object.keys(data);
-
-    console.log(
-      "[LITEAPI] Response keys:",
-      keys
-    );
-  }
 }
 
 function createLiteApiError({
@@ -162,29 +85,129 @@ async function callLiteApiGet({
   const url =
     buildLiteApiUrl(endpointPath);
 
-  logLiteApiRequest({
-    title,
-    method: "GET",
-    endpointPath,
-    params,
-  });
+  const startedAt =
+    Date.now();
 
-  const response = await axios.get(
-    url,
+  operationalLogger.debug(
+    "provider.http.started",
     {
-      headers: createLiteApiHeaders(),
-      params,
-      timeout: timeoutMs,
-      signal,
-      validateStatus: () => true,
+      providerId:
+        "liteapi",
+
+      operation:
+        title,
+
+      method:
+        "GET",
+
+      endpointPath,
     }
   );
 
-  logLiteApiResponse({
-    title,
-    status: response.status,
-    data: response.data,
-  });
+  let response;
+
+  try {
+    response =
+      await axios.get(
+        url,
+        {
+          headers:
+            createLiteApiHeaders(),
+          params,
+          timeout:
+            timeoutMs,
+          signal,
+          validateStatus:
+            () =>
+              true,
+        }
+      );
+  }
+  catch (error) {
+    operationalLogger.error(
+      "provider.http.failed",
+      {
+        providerId:
+          "liteapi",
+
+        operation:
+          title,
+
+        method:
+          "GET",
+
+        endpointPath,
+
+        status:
+          error?.response
+            ?.status ??
+          null,
+
+        code:
+          error?.code ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+
+        error,
+      }
+    );
+
+    throw error;
+  }
+
+  operationalLogger[
+    response.status >=
+        200 &&
+      response.status <
+        300
+      ? "info"
+      : "warn"
+  ](
+    "provider.http.completed",
+    {
+      providerId:
+        "liteapi",
+
+      operation:
+        title,
+
+      method:
+        "GET",
+
+      endpointPath,
+
+      status:
+        response.status,
+
+      noContent:
+        response.status ===
+        204,
+
+      responseType:
+        Array.isArray(
+          response.data
+        )
+          ? "array"
+          : response.data &&
+              typeof response.data ===
+                "object"
+            ? "object"
+            : typeof response.data,
+
+      durationMs:
+        Math.max(
+          0,
+          Date.now() -
+          startedAt
+        ),
+    }
+  );
 
   if (response.status === 204) {
     return {
@@ -223,29 +246,129 @@ async function callLiteApiPost({
   const url =
     buildLiteApiUrl(endpointPath);
 
-  logLiteApiRequest({
-    title,
-    method: "POST",
-    endpointPath,
-    payload,
-  });
+  const startedAt =
+    Date.now();
 
-  const response = await axios.post(
-    url,
-    payload,
+  operationalLogger.debug(
+    "provider.http.started",
     {
-      headers: createLiteApiHeaders(),
-      timeout: timeoutMs,
-      signal,
-      validateStatus: () => true,
+      providerId:
+        "liteapi",
+
+      operation:
+        title,
+
+      method:
+        "POST",
+
+      endpointPath,
     }
   );
 
-  logLiteApiResponse({
-    title,
-    status: response.status,
-    data: response.data,
-  });
+  let response;
+
+  try {
+    response =
+      await axios.post(
+        url,
+        payload,
+        {
+          headers:
+            createLiteApiHeaders(),
+          timeout:
+            timeoutMs,
+          signal,
+          validateStatus:
+            () =>
+              true,
+        }
+      );
+  }
+  catch (error) {
+    operationalLogger.error(
+      "provider.http.failed",
+      {
+        providerId:
+          "liteapi",
+
+        operation:
+          title,
+
+        method:
+          "POST",
+
+        endpointPath,
+
+        status:
+          error?.response
+            ?.status ??
+          null,
+
+        code:
+          error?.code ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+
+        error,
+      }
+    );
+
+    throw error;
+  }
+
+  operationalLogger[
+    response.status >=
+        200 &&
+      response.status <
+        300
+      ? "info"
+      : "warn"
+  ](
+    "provider.http.completed",
+    {
+      providerId:
+        "liteapi",
+
+      operation:
+        title,
+
+      method:
+        "POST",
+
+      endpointPath,
+
+      status:
+        response.status,
+
+      noContent:
+        response.status ===
+        204,
+
+      responseType:
+        Array.isArray(
+          response.data
+        )
+          ? "array"
+          : response.data &&
+              typeof response.data ===
+                "object"
+            ? "object"
+            : typeof response.data,
+
+      durationMs:
+        Math.max(
+          0,
+          Date.now() -
+          startedAt
+        ),
+    }
+  );
 
   if (response.status === 204) {
     return {

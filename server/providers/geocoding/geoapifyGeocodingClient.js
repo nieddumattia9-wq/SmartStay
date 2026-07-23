@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../../observability/operationalLogger"
+);
+
 const GEOAPIFY_AUTOCOMPLETE_URL =
   "https://api.geoapify.com/v1/geocode/autocomplete";
 
@@ -243,6 +249,9 @@ async function searchGeoapifyDestinations(
   } = {}
 ) {
 
+  const startedAt =
+    Date.now();
+
   const normalizedQuery =
     getStringValue(query);
 
@@ -379,9 +388,39 @@ async function searchGeoapifyDestinations(
           .filter(Boolean)
       );
 
-    console.log(
-      "[DESTINATION:geoapify] Destinations mapped:",
-      destinations.length
+    operationalLogger.info(
+      "provider.http.completed",
+      {
+        providerId:
+          "geoapify",
+
+        operation:
+          "searchDestinations",
+
+        method:
+          "GET",
+
+        endpointPath:
+          "/v1/geocode/autocomplete",
+
+        status:
+          response.status,
+
+        outcome:
+          destinations.length > 0
+            ? "success"
+            : "no-results",
+
+        resultCount:
+          destinations.length,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+      }
     );
 
     return {
@@ -448,6 +487,40 @@ async function searchGeoapifyDestinations(
 
       throw timeoutError;
     }
+
+    operationalLogger.error(
+      "provider.http.failed",
+      {
+        providerId:
+          "geoapify",
+
+        operation:
+          "searchDestinations",
+
+        method:
+          "GET",
+
+        endpointPath:
+          "/v1/geocode/autocomplete",
+
+        status:
+          error?.status ??
+          null,
+
+        code:
+          error?.code ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+
+        error,
+      }
+    );
 
     throw error;
 

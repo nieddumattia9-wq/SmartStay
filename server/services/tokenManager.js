@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../observability/operationalLogger"
+);
+
 const { getPartnerToken } = require("./authService");
 
 let currentToken = null;
@@ -20,7 +26,13 @@ function isTokenValid() {
 
 async function requestAndCacheToken() {
 
-  console.log("🔄 Requesting new RouteStack token...");
+  operationalLogger.info(
+    "provider.token.refresh-started",
+    {
+      providerId:
+        "routestack",
+    }
+  );
 
   const auth = await getPartnerToken();
 
@@ -37,7 +49,16 @@ async function requestAndCacheToken() {
   expiresAt =
     Date.now() + TOKEN_TTL_MS;
 
-  console.log("✅ RouteStack token cached.");
+  operationalLogger.info(
+    "provider.token.cached",
+    {
+      providerId:
+        "routestack",
+
+      ttlMs:
+        TOKEN_TTL_MS,
+    }
+  );
 
   return currentToken;
 

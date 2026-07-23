@@ -1,4 +1,10 @@
 const {
+  operationalLogger,
+} = require(
+  "../../observability/operationalLogger"
+);
+
+const {
   ACCOMMODATION_PROVIDER_IDS,
 } = require("../providerRegistry");
 
@@ -317,10 +323,17 @@ async function tryLoadLiteApiHotelMetadata(
       throw error;
     }
 
-    console.warn(
-      "[PROVIDER:liteapi] Static hotel metadata enrichment skipped:",
-      error?.message ??
-        error
+    operationalLogger.warn(
+      "provider.enrichment.skipped",
+      {
+        providerId:
+          PROVIDER_ID,
+
+        enrichment:
+          "hotel-metadata",
+
+        error,
+      }
     );
 
     return null;
@@ -371,10 +384,17 @@ async function tryLoadLiteApiHotelMetadata(
       throw error;
     }
 
-    console.warn(
-      "[PROVIDER:liteapi] Facility dictionary enrichment skipped:",
-      error?.message ??
-        error
+    operationalLogger.warn(
+      "provider.enrichment.skipped",
+      {
+        providerId:
+          PROVIDER_ID,
+
+        enrichment:
+          "facility-dictionary",
+
+        error,
+      }
     );
 
     return hotelMetadata;
@@ -594,14 +614,18 @@ function createLiteApiAdapter(
           mappedHotels
         );
 
-      console.log(
-        "[PROVIDER:liteapi] Hotels mapped:",
-        mappedHotels.length
-      );
+      operationalLogger.info(
+        "provider.results-mapped",
+        {
+          providerId:
+            PROVIDER_ID,
 
-      console.log(
-        "[PROVIDER:liteapi] Hotels after merge:",
-        hotels.length
+          mappedHotels:
+            mappedHotels.length,
+
+          mergedHotels:
+            hotels.length,
+        }
       );
 
       if (hotels.length === 0) {

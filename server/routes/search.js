@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../observability/operationalLogger"
+);
+
 const express = require("express");
 
 const router = express.Router();
@@ -244,21 +250,28 @@ function sendRouteError(
         code:
           error?.code ??
           null,
-        providerResponse:
-          error?.response?.data ??
+        providerStatus:
+          error?.response
+            ?.status ??
           null,
         error,
       }
     );
   }
   else {
-    console.error(
-      fallbackMessage,
+    operationalLogger.error(
+      "api.route.failed",
       {
         status,
+
         code:
           error?.code ??
           null,
+
+        message:
+          fallbackMessage,
+
+        error,
       }
     );
   }

@@ -5,6 +5,13 @@ const crypto =
     "node:crypto"
   );
 
+const {
+  runWithRequestContext,
+} =
+  require(
+    "../observability/asyncRequestContext"
+  );
+
 const REQUEST_ID_HEADER =
   "X-Request-ID";
 
@@ -80,33 +87,42 @@ function createRequestContextMiddleware({
       requestId
     );
 
-    res.once(
-      "finish",
+    return runWithRequestContext(
+      {
+        requestId,
+        logger:
+          req.log,
+      },
       () => {
-        req.log.info(
-          "http.request.completed",
-          {
-            method:
-              req.method,
+        res.once(
+          "finish",
+          () => {
+            req.log.info(
+              "http.request.completed",
+              {
+                method:
+                  req.method,
 
-            path:
-              req.path,
+                path:
+                  req.path,
 
-            status:
-              res.statusCode,
+                status:
+                  res.statusCode,
 
-            durationMs:
-              Math.max(
-                0,
-                now() -
-                startedAt
-              ),
+                durationMs:
+                  Math.max(
+                    0,
+                    now() -
+                    startedAt
+                  ),
+              }
+            );
           }
         );
+
+        next();
       }
     );
-
-    next();
   };
 }
 

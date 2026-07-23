@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../observability/operationalLogger"
+);
+
 ﻿const {
   DESTINATION_PROVIDER_CAPABILITIES,
   getDestinationProvidersByCapability,
@@ -156,15 +162,32 @@ async function executeDestinationProvider({
   provider,
   query,
 }) {
+  const startedAt =
+    Date.now();
+
   const permission =
     beginProviderAttempt(
       provider.id
     );
 
   if (!permission.allowed) {
-    console.warn(
-      `[DESTINATION:${provider.id}] Search skipped:`,
-      permission.reason
+    operationalLogger.warn(
+      "destination-provider.search.skipped",
+      {
+        providerId:
+          provider.id,
+
+        reason:
+          permission.reason ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+      }
     );
 
     return {
@@ -275,14 +298,21 @@ async function executeDestinationProvider({
       PROVIDER_SEARCH_OUTCOMES
         .SUCCESS
     ) {
-      console.log(
-        "[DESTINATION:selected]",
+      operationalLogger.info(
+        "destination-provider.search.selected",
         {
           providerId:
             provider.id,
 
           destinations:
             result.destinations.length,
+
+          durationMs:
+            Math.max(
+              0,
+              Date.now() -
+              startedAt
+            ),
         }
       );
 
@@ -329,9 +359,31 @@ async function executeDestinationProvider({
       failureDetails
     );
 
-    console.error(
-      `[DESTINATION:${provider.id}] Search failed:`,
-      failureDetails.message
+    operationalLogger.error(
+      "destination-provider.search.failed",
+      {
+        providerId:
+          provider.id,
+
+        outcome:
+          failureDetails.errorType,
+
+        status:
+          failureDetails.status,
+
+        code:
+          failureDetails.code ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+
+        error,
+      }
     );
 
     return {

@@ -12,6 +12,10 @@ const DEFAULT_RATE_LIMIT_WINDOW_MS =
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS =
   1000;
 
+const DEFAULT_SHUTDOWN_TIMEOUT_MS =
+  10_000;
+
+
 const DEFAULT_ENDPOINT_RATE_LIMITS =
   Object.freeze({
     destinationSearch:
@@ -398,6 +402,15 @@ function createRuntimeSecurityConfig({
           .toLowerCase() !==
           "production"
       ),
+
+    shutdownTimeoutMs:
+      parsePositiveInteger(
+        overrides
+          .shutdownTimeoutMs ??
+        environment
+          .SHUTDOWN_TIMEOUT_MS,
+        DEFAULT_SHUTDOWN_TIMEOUT_MS
+      ),
   });
 }
 
@@ -407,6 +420,7 @@ module.exports = {
   DEFAULT_JSON_LIMIT,
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
   DEFAULT_RATE_LIMIT_WINDOW_MS,
+  DEFAULT_SHUTDOWN_TIMEOUT_MS,
   createEndpointRateLimits,
   createRuntimeSecurityConfig,
   parseAllowedOrigins,

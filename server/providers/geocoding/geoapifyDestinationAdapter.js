@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../../observability/operationalLogger"
+);
+
 ﻿const {
   createDestinationSuccessResult,
   createDestinationNoResultsResult,
@@ -111,9 +117,15 @@ function createGeoapifyDestinationAdapter(
         });
       }
 
-      console.log(
-        "[PROVIDER:geoapify] Destinations mapped:",
-        destinations.length
+      operationalLogger.info(
+        "destination-provider.results-mapped",
+        {
+          providerId:
+            PROVIDER_ID,
+
+          destinations:
+            destinations.length,
+        }
       );
 
       return createDestinationSuccessResult({

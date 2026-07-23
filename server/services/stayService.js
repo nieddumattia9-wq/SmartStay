@@ -1,4 +1,10 @@
 const {
+  operationalLogger,
+} = require(
+  "../observability/operationalLogger"
+);
+
+const {
     searchDestinationsAcrossProviders,
     searchHotelsAcrossProviders,
     continueHotelSearchForProvider,
@@ -915,9 +921,18 @@ const {
             null,
         });
 
-      console.log(
-        "💾 Empty search session saved:",
-        emptySession.searchId
+      operationalLogger.info(
+        "search.session.saved",
+        {
+          searchId:
+            emptySession.searchId,
+
+          outcome:
+            "no-results",
+
+          totalHotels:
+            0,
+        }
       );
 
       return {
@@ -1096,9 +1111,22 @@ const {
           initialOutcome.retryAfterMs,
       });
 
-    console.log(
-      "💾 Search session saved:",
-      savedSession.searchId
+    operationalLogger.info(
+      "search.session.saved",
+      {
+        searchId:
+          savedSession.searchId,
+
+        outcome:
+          initialOutcome.outcome,
+
+        totalHotels:
+          hotels.length,
+
+        searchIncomplete:
+          initialOutcome
+            .searchIncomplete,
+      }
     );
 
     return createSearchSessionResponse(

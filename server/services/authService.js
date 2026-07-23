@@ -1,3 +1,9 @@
+const {
+  operationalLogger,
+} = require(
+  "../observability/operationalLogger"
+);
+
 const axios = require("axios");
 
 const config = require("../config/routeStack");
@@ -7,20 +13,6 @@ const {
   generateTimestamp,
   generateHmac,
 } = require("../utils/crypto");
-
-function maskValue(value, visibleChars = 8) {
-
-  if (!value || typeof value !== "string") {
-    return "";
-  }
-
-  if (value.length <= visibleChars) {
-    return "*".repeat(value.length);
-  }
-
-  return `${value.slice(0, visibleChars)}...`;
-
-}
 
 async function getPartnerToken() {
 
@@ -44,13 +36,19 @@ async function getPartnerToken() {
       hmac,
     };
 
-    console.log("\n========== RouteStack Auth ==========");
-    console.log("Authenticating with partner-token endpoint...");
-    console.log("Timestamp:", timestamp);
-    console.log("API Key:", maskValue(config.apiKey));
-    console.log("Nonce:", maskValue(nonce));
-    console.log("HMAC:", maskValue(hmac));
-    console.log("====================================\n");
+    const startedAt =
+      Date.now();
+
+    operationalLogger.info(
+      "provider.authentication.started",
+      {
+        providerId:
+          "routestack",
+
+        operation:
+          "partner-token",
+      }
+    );
 
     const response = await axios.post(
       `${config.baseUrl}/mcp/auth/partner-token`,
@@ -72,26 +70,56 @@ async function getPartnerToken() {
 
     }
 
-    console.log("✅ RouteStack partner token received.");
-    console.log("Token:", maskValue(response.data.token, 24));
-    console.log("Expires in:", response.data.expiresIn ?? "unknown");
+    operationalLogger.info(
+      "provider.authentication.completed",
+      {
+        providerId:
+          "routestack",
+
+        operation:
+          "partner-token",
+
+        status:
+          response.status,
+
+        expiresIn:
+          response.data.expiresIn ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+      }
+    );
 
     return response.data;
 
   } catch (error) {
 
-    console.error("\n❌ RouteStack Authentication Error");
+    operationalLogger.error(
+      "provider.authentication.failed",
+      {
+        providerId:
+          "routestack",
 
-    if (error.response) {
+        operation:
+          "partner-token",
 
-      console.error("Status:", error.response.status);
-      console.error("Body:", error.response.data);
+        status:
+          error?.response
+            ?.status ??
+          null,
 
-    } else {
+        code:
+          error?.code ??
+          null,
 
-      console.error("Message:", error.message);
-
-    }
+        error,
+      }
+    );
 
     throw error;
 

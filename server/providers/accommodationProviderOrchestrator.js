@@ -1,4 +1,10 @@
 const {
+  operationalLogger,
+} = require(
+  "../observability/operationalLogger"
+);
+
+const {
   getEnabledAccommodationProviders,
   getAccommodationProviderById,
   getPrimaryEnabledAccommodationProvider,
@@ -492,15 +498,40 @@ async function executeProviderOperation({
   request,
   title,
 }) {
+  const startedAt =
+    Date.now();
+
   const permission =
     beginProviderAttempt(
       provider.id
     );
 
   if (!permission.allowed) {
-    console.warn(
-      `[PROVIDER:${provider.id}] Operation skipped:`,
-      permission.reason
+    operationalLogger.warn(
+      "provider.operation.skipped",
+      {
+        providerId:
+          provider.id,
+
+        operation:
+          methodName,
+
+        reason:
+          permission.reason ??
+          null,
+
+        retryAfterMs:
+          permission.health
+            ?.retryAfterMs ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+      }
     );
 
     return {
@@ -605,6 +636,56 @@ async function executeProviderOperation({
       );
     }
 
+    operationalLogger[
+      result.outcome ===
+        PROVIDER_SEARCH_OUTCOMES
+          .SUCCESS
+        ? "info"
+        : "warn"
+    ](
+      "provider.operation.completed",
+      {
+        providerId:
+          provider.id,
+
+        operation:
+          methodName,
+
+        outcome:
+          result.outcome,
+
+        status:
+          result.failedResponse
+            ?.status ??
+          null,
+
+        code:
+          result.failedResponse
+            ?.code ??
+          null,
+
+        totalHotels:
+          result.hotels.length,
+
+        retryable:
+          result.failedResponse
+            ?.retryable ===
+          true,
+
+        retryAfterMs:
+          result.failedResponse
+            ?.retryAfterMs ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+      }
+    );
+
     return {
       result,
 
@@ -673,9 +754,38 @@ async function executeProviderOperation({
         failureDetails
       );
 
-    console.error(
-      `[PROVIDER:${provider.id}] Operation failed:`,
-      failureDetails.message
+    operationalLogger.error(
+      "provider.operation.failed",
+      {
+        providerId:
+          provider.id,
+
+        operation:
+          methodName,
+
+        outcome:
+          failureDetails.errorType,
+
+        status:
+          failureDetails.status,
+
+        code:
+          failureDetails.code ??
+          null,
+
+        retryAfterMs:
+          failureDetails.retryAfterMs ??
+          null,
+
+        durationMs:
+          Math.max(
+            0,
+            Date.now() -
+            startedAt
+          ),
+
+        error,
+      }
     );
 
     return {
@@ -1022,8 +1132,8 @@ async function searchHotelsAcrossProviders({
       PROVIDER_SEARCH_OUTCOMES
         .SUCCESS
     ) {
-      console.log(
-        "[PROVIDER:selected]",
+      operationalLogger.info(
+        "provider.search.selected",
         {
           providerId:
             execution.result

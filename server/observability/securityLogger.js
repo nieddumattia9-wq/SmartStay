@@ -1,7 +1,7 @@
 "use strict";
 
 const SENSITIVE_KEY_PATTERN =
-  /authorization|cookie|set-cookie|api[-_]?key|secret|token|password|passphrase|providercontext|providerofferreference|providerbookingreference|prebookid|deeplink|cardnumber|cvv|cvc|paymentmethod/i;
+  /authorization|cookie|set-cookie|api[-_]?key|secret|token|password|passphrase|providercontext|providerofferreference|providerbookingreference|prebookid|verificationid|handoffid|offerid|nonce|hmac|deeplink|cardnumber|cvv|cvc|paymentmethod/i;
 
 const SENSITIVE_ENVIRONMENT_KEY_PATTERN =
   /api[-_]?key|secret|token|password|passphrase|private|credential/i;
@@ -78,7 +78,7 @@ function sanitizeString(
         "Bearer [REDACTED]"
       )
       .replace(
-        /([?&](?:api[_-]?key|token|secret|password|prebookId|offerId)=)[^&#\s]+/gi,
+        /([?&](?:api[_-]?key|token|secret|password|prebookId|verificationId|handoffId|offerId|nonce|hmac)=)[^&#\s]+/gi,
         "$1[REDACTED]"
       );
 

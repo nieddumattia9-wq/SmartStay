@@ -943,8 +943,13 @@ test(
     let mapperCallCount =
       0;
 
-    const warningMessages:
-      string[] = [];
+    const structuredLogRecords:
+      Array<
+        Record<
+          string,
+          unknown
+        >
+      > = [];
 
     const adapter =
       createLiteApiRuntimeAdapter({
@@ -1035,26 +1040,54 @@ test(
             hotels,
       });
 
-    const originalWarn =
-      console.warn;
+    const originalLog =
+      console.log;
 
     let result:
       LiteApiRuntimeSearchResult |
       null =
         null;
 
-    console.warn =
+    console.log =
       (
         ...values:
           unknown[]
       ) => {
-        warningMessages.push(
-          values
-            .map(
-              String
+        const firstValue =
+          values[0];
+
+        if (
+          typeof firstValue !==
+            "string"
+        ) {
+          return;
+        }
+
+        try {
+          const parsed =
+            JSON.parse(
+              firstValue
+            ) as unknown;
+
+          if (
+            parsed &&
+            typeof parsed ===
+              "object" &&
+            !Array.isArray(
+              parsed
             )
-            .join(" ")
-        );
+          ) {
+            structuredLogRecords.push(
+              parsed as Record<
+                string,
+                unknown
+              >
+            );
+          }
+        }
+        catch {
+          // Non-JSON output is outside this structured-log assertion.
+        }
       };
 
     try {
@@ -1065,8 +1098,8 @@ test(
         });
     }
     finally {
-      console.warn =
-        originalWarn;
+      console.log =
+        originalLog;
     }
 
     assert.ok(
@@ -1085,15 +1118,47 @@ test(
       1
     );
 
+    const enrichmentWarnings =
+      structuredLogRecords.filter(
+        (
+          record
+        ) =>
+          record.level ===
+            "warn" &&
+          record.event ===
+            "provider.enrichment.skipped" &&
+          record.providerId ===
+            "liteapi" &&
+          record.enrichment ===
+            "hotel-metadata"
+      );
+
     assert.equal(
-      warningMessages.length,
+      enrichmentWarnings.length,
       1
     );
 
-    assert.match(
-      warningMessages[0] ??
-        "",
-      /metadata unavailable/
+    const enrichmentError =
+      enrichmentWarnings[0]
+        ?.error;
+
+    assert.ok(
+      enrichmentError &&
+      typeof enrichmentError ===
+        "object" &&
+      !Array.isArray(
+        enrichmentError
+      )
+    );
+
+    assert.equal(
+      (
+        enrichmentError as Record<
+          string,
+          unknown
+        >
+      ).message,
+      "metadata unavailable"
     );
   }
 );
