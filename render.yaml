@@ -1,0 +1,83 @@
+services:
+  - type: web
+    name: smartstay-staging-api
+    runtime: node
+    branch: main
+    region: frankfurt
+    plan: starter
+    numInstances: 1
+    autoDeployTrigger: off
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_VERSION
+        value: 24.18.0
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOYMENT_ENV
+        value: staging
+      - key: RUNTIME_STATE_MODE
+        value: in-memory-single-instance
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SERVICE_NAME
+        value: smartstay-staging-api
+      - key: RELEASE_SHA
+        fromService:
+          name: smartstay-staging-api
+          type: web
+          envVarKey: RENDER_GIT_COMMIT
+      - key: CLIENT_ORIGINS
+        sync: false
+      - key: VITE_API_URL
+        sync: false
+      - key: GEOAPIFY_API_KEY
+        sync: false
+      - key: LITEAPI_API_KEY
+        sync: false
+      - key: LITEAPI_WHITELABEL_BASE_URL
+        sync: false
+      - key: ANALYTICS_ENABLED
+        value: "false"
+      - key: VITE_ANALYTICS_ENABLED
+        value: "false"
+      - key: ANALYTICS_STORAGE_MODE
+        value: in-memory-single-instance
+      - key: ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED
+        value: "false"
+
+  - type: web
+    name: smartstay-staging-web
+    runtime: static
+    branch: main
+    autoDeployTrigger: off
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 24.18.0
+      - key: RELEASE_SHA
+        fromService:
+          name: smartstay-staging-web
+          type: web
+          envVarKey: RENDER_GIT_COMMIT
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_ANALYTICS_ENABLED
+        value: "false"
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
