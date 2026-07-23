@@ -24,7 +24,11 @@
     "smoke:staging:local": "node scripts/run-staging-runtime-smoke.mjs --local",
     "smoke:staging": "node scripts/run-staging-runtime-smoke.mjs",
     "release:ci": "npm run typecheck && npm test && npm run build && npm run audit:security && npm run smoke:staging:local",
-    "release:gate": "npm run release:ci && npm run check:release-env"
+    "release:gate": "npm run release:ci && npm run check:release-env",
+    "release:candidate": "node scripts/create-release-candidate.mjs",
+    "release:verify": "node scripts/verify-release-candidate.mjs",
+    "release:evidence": "node scripts/verify-production-release-evidence.mjs",
+    "rollback:verify": "node scripts/verify-rollback-target.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

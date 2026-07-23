@@ -170,3 +170,16 @@ deployment timestamp
 smoke-test report
 rollback commit/artifact
 ```
+
+## Immutable release candidates
+
+After `npm run release:ci`, create and verify the immutable candidate evidence:
+
+```text
+npm run release:candidate -- --expected-sha <git-sha> --output .smartstay-release
+npm run release:verify -- --manifest .smartstay-release/release-manifest.json --expected-sha <git-sha> --root .
+```
+
+The generated directory is ignored by Git. GitHub Actions retains it as a workflow artifact for pushes to `main` and manual workflow runs.
+
+Production promotion and rollback rules are defined in [`PRODUCTION_RELEASE.md`](PRODUCTION_RELEASE.md).

@@ -12,10 +12,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: smartstay-release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     env:
       VITE_API_URL: /api
@@ -23,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 24
         uses: actions/setup-node@v4
@@ -41,3 +47,37 @@ jobs:
 
       - name: Run release CI gate
         run: npm run release:ci
+
+      - name: Create immutable release candidate manifest
+        run: >-
+          npm run release:candidate --
+          --expected-sha "${GITHUB_SHA}"
+          --output ".smartstay-release"
+
+      - name: Verify release candidate manifest
+        run: >-
+          npm run release:verify --
+          --manifest ".smartstay-release/release-manifest.json"
+          --expected-sha "${GITHUB_SHA}"
+          --root "."
+
+      - name: Upload release candidate evidence
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartstay-release-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: error
+          include-hidden-files: true
+          path: |
+            .smartstay-release/
+            dist/
+            server/**
+            !server/node_modules/**
+            !server/.env
+            !server/.env.*
+            package.json
+            package-lock.json
+            .nvmrc
+            docs/STAGING_RELEASE.md
+            docs/PRODUCTION_RELEASE.md
