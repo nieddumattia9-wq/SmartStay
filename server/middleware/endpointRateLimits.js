@@ -252,6 +252,15 @@ function createEndpointRateLimiters({
         scope:
           "search-read",
       }),
+
+    analytics:
+      createLimiter({
+        policy:
+          endpointPolicies
+            .analytics,
+        scope:
+          "analytics-events",
+      }),
   });
 }
 

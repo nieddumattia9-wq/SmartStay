@@ -1,4 +1,9 @@
 import {
+  useId,
+  useState,
+} from "react";
+
+import {
   selectHotelOffers,
 } from "../../utils/hotelOfferSelection";
 import "./HotelCard.css";
@@ -41,6 +46,9 @@ type HotelCardProps = {
     selectedOffer:
       SmartStaySelectedOfferV2 |
       null
+  ) => void;
+  onExplanationToggle?: (
+    expanded: boolean
   ) => void;
 };
 
@@ -294,7 +302,17 @@ function HotelCard({
   bookingUrl = null,
   showRecommendationLabel = false,
   onViewDetails,
+  onExplanationToggle,
 }: HotelCardProps) {
+  const explanationId =
+    useId();
+
+  const [
+    explanationExpanded,
+    setExplanationExpanded,
+  ] = useState(
+    showRecommendationLabel
+  );
   const hasImage =
     Boolean(hotel.image);
 
@@ -457,57 +475,94 @@ function HotelCard({
 
           {hasExplanation && (
             <section className="hotel-card__engine">
-              <div className="hotel-card__engine-heading">
-                <span className="hotel-card__engine-icon">
-                  ✓
+              <button
+                type="button"
+                className="hotel-card__engine-toggle"
+                aria-expanded={
+                  explanationExpanded
+                }
+                aria-controls={
+                  explanationId
+                }
+                onClick={() => {
+                  const nextExpanded =
+                    !explanationExpanded;
+
+                  setExplanationExpanded(
+                    nextExpanded
+                  );
+
+                  onExplanationToggle?.(
+                    nextExpanded
+                  );
+                }}
+              >
+                <span className="hotel-card__engine-heading">
+                  <span className="hotel-card__engine-icon">
+                    ✓
+                  </span>
+
+                  <span>
+                    <span className="hotel-card__engine-title">
+                      {showRecommendationLabel
+                        ? "Why SmartStay recommends this"
+                        : "How this stay compares"}
+                    </span>
+
+                    <span className="hotel-card__engine-subtitle">
+                      Evidence-backed strengths and trade-offs for this search.
+                    </span>
+                  </span>
                 </span>
 
-                <div>
-                  <p className="hotel-card__engine-title">
-                    {showRecommendationLabel
-                      ? "Why SmartStay recommends this"
-                      : "How this stay compares"}
-                  </p>
+                <span
+                  className="hotel-card__engine-toggle-label"
+                  aria-hidden="true"
+                >
+                  {explanationExpanded
+                    ? "Hide"
+                    : "Show"}
+                </span>
+              </button>
 
-                  <p className="hotel-card__engine-subtitle">
-                    Evidence-backed strengths and trade-offs for this search.
-                  </p>
+              {explanationExpanded && (
+                <div
+                  id={explanationId}
+                  className="hotel-card__explanation-groups"
+                >
+                  {strengths.length > 0 && (
+                    <div className="hotel-card__explanation-group">
+                      <p className="hotel-card__explanation-label">
+                        What stands out
+                      </p>
+
+                      <ul className="hotel-card__reasons">
+                        {strengths.map((strength) => (
+                          <li key={strength}>
+                            {strength}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {tradeOffs.length > 0 && (
+                    <div className="hotel-card__explanation-group">
+                      <p className="hotel-card__explanation-label">
+                        What to consider
+                      </p>
+
+                      <ul className="hotel-card__reasons">
+                        {tradeOffs.map((tradeOff) => (
+                          <li key={tradeOff}>
+                            {tradeOff}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              <div className="hotel-card__explanation-groups">
-                {strengths.length > 0 && (
-                  <div className="hotel-card__explanation-group">
-                    <p className="hotel-card__explanation-label">
-                      What stands out
-                    </p>
-
-                    <ul className="hotel-card__reasons">
-                      {strengths.map((strength) => (
-                        <li key={strength}>
-                          {strength}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {tradeOffs.length > 0 && (
-                  <div className="hotel-card__explanation-group">
-                    <p className="hotel-card__explanation-label">
-                      What to consider
-                    </p>
-
-                    <ul className="hotel-card__reasons">
-                      {tradeOffs.map((tradeOff) => (
-                        <li key={tradeOff}>
-                          {tradeOff}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              )}
             </section>
           )}
         </div>

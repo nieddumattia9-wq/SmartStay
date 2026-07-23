@@ -51,6 +51,20 @@ const {
     "./middleware/endpointRateLimits"
   );
 
+const {
+  createInMemoryAnalyticsEventStore,
+} =
+  require(
+    "./analytics/analyticsEventStore"
+  );
+
+const {
+  createAnalyticsEventHandler,
+} =
+  require(
+    "./routes/analytics"
+  );
+
 function createRuntimeState() {
   let ready =
     true;
@@ -128,9 +142,19 @@ function createApp({
     require(
       "./routes/search"
     ),
+
+  analyticsEventStore =
+    null,
 } = {}) {
   const app =
     express();
+
+  const effectiveAnalyticsEventStore =
+    analyticsEventStore ??
+    createInMemoryAnalyticsEventStore({
+      maxEvents:
+        config.analyticsStoreMaxEvents,
+    });
 
   configureOperationalLogger({
     logger,
@@ -197,6 +221,22 @@ function createApp({
 
   app.use(
     endpointRateLimiters.api
+  );
+
+  app.post(
+    "/api/analytics/events",
+    endpointRateLimiters
+      .analytics,
+    express.json({
+      limit:
+        config.analyticsJsonLimit,
+    }),
+    createAnalyticsEventHandler({
+      enabled:
+        config.analyticsEnabled,
+      store:
+        effectiveAnalyticsEventStore,
+    })
   );
 
   app.post(
@@ -618,6 +658,8 @@ function createApp({
     config,
     logger,
     runtimeState,
+    analyticsEventStore:
+      effectiveAnalyticsEventStore,
   };
 }
 

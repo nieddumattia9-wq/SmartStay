@@ -330,12 +330,12 @@ export function validateAnalyticsContract(
 
   if (
     contract.status !==
-      "foundation-only"
+      "instrumented-disabled-default"
   ) {
     addIssue(
       issues,
       "status",
-      "must remain foundation-only until instrumentation is implemented"
+      "must be instrumented-disabled-default after 39C23B instrumentation"
     );
   }
 

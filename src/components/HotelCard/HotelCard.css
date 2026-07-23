@@ -614,3 +614,35 @@
   font-weight: 750;
   line-height: 1.35;
 }
+
+.hotel-card__engine-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hotel-card__engine-toggle:focus-visible {
+  outline: 3px solid rgba(5, 150, 105, 0.32);
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
+.hotel-card__engine-toggle .hotel-card__engine-title,
+.hotel-card__engine-toggle .hotel-card__engine-subtitle {
+  display: block;
+}
+
+.hotel-card__engine-toggle-label {
+  flex: 0 0 auto;
+  color: #047857;
+  font-size: 0.82rem;
+  font-weight: 800;
+}

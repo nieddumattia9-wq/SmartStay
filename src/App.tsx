@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
 } from "react";
 
 import {
@@ -19,6 +20,16 @@ import Home from "./pages/Home/Home";
 import Results from "./pages/Results/Results";
 
 import "./styles/frontendMobile.css";
+
+import {
+  flushAnalyticsQueue,
+  trackAnalyticsJourneyAbandonment,
+  trackAnalyticsPageView,
+} from "./analytics/analyticsClient";
+
+import type {
+  AnalyticsPage,
+} from "./analytics/analyticsTypes";
 
 function RouteAccessibility() {
   const location =
@@ -51,6 +62,87 @@ function RouteAccessibility() {
   return null;
 }
 
+function getAnalyticsPage(
+  pathname: string
+): AnalyticsPage {
+  if (
+    pathname.startsWith(
+      "/loading"
+    )
+  ) {
+    return "loading";
+  }
+
+  if (
+    pathname.startsWith(
+      "/results"
+    )
+  ) {
+    return "results";
+  }
+
+  return "home";
+}
+
+function AnalyticsRouteObserver() {
+  const location =
+    useLocation();
+
+  const previousPageRef =
+    useRef<AnalyticsPage>(
+      getAnalyticsPage(
+        location.pathname
+      )
+    );
+
+  useEffect(() => {
+    const nextPage =
+      getAnalyticsPage(
+        location.pathname
+      );
+
+    if (
+      previousPageRef.current !==
+        "home" &&
+      nextPage === "home"
+    ) {
+      trackAnalyticsJourneyAbandonment();
+    }
+
+    trackAnalyticsPageView(
+      nextPage
+    );
+
+    previousPageRef.current =
+      nextPage;
+  }, [
+    location.pathname,
+  ]);
+
+  useEffect(() => {
+    function handlePageHide() {
+      trackAnalyticsJourneyAbandonment();
+      void flushAnalyticsQueue({
+        keepalive: true,
+      });
+    }
+
+    window.addEventListener(
+      "pagehide",
+      handlePageHide
+    );
+
+    return () => {
+      window.removeEventListener(
+        "pagehide",
+        handlePageHide
+      );
+    };
+  }, []);
+
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -62,6 +154,7 @@ function App() {
       </a>
 
       <RouteAccessibility />
+      <AnalyticsRouteObserver />
 
       <Navbar />
 

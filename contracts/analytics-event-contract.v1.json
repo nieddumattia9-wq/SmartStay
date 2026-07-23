@@ -1,7 +1,7 @@
 {
   "contractVersion": "1.0.0",
   "eventVersion": 1,
-  "status": "foundation-only",
+  "status": "instrumented-disabled-default",
   "transport": {
     "mode": "first-party-only",
     "endpoint": "/api/analytics/events",

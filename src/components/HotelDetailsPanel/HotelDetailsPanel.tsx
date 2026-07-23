@@ -23,6 +23,19 @@ import {
 
 import "./HotelDetailsPanel.css";
 
+import {
+  completeAnalyticsJourney,
+  flushAnalyticsQueue,
+  setAnalyticsJourneyStage,
+  trackAnalyticsEvent,
+  trackAnalyticsPageView,
+} from "../../analytics/analyticsClient";
+
+import type {
+  AnalyticsPositionBucket,
+  AnalyticsRole,
+} from "../../analytics/analyticsTypes";
+
 type HotelDetailsPanelProps = {
   details: HotelDetails | null;
   loading: boolean;
@@ -32,6 +45,9 @@ type HotelDetailsPanelProps = {
   searchId: string | null;
   hotelId: string | null;
   offerId: string | null;
+  analyticsRole: AnalyticsRole;
+  analyticsPositionBucket:
+    AnalyticsPositionBucket;
   onClose: () => void;
 };
 
@@ -219,6 +235,8 @@ function HotelDetailsPanel({
   searchId,
   hotelId,
   offerId,
+  analyticsRole,
+  analyticsPositionBucket,
   onClose,
 }: HotelDetailsPanelProps) {
   const panelRef =
@@ -279,6 +297,36 @@ function HotelDetailsPanel({
       return;
     }
 
+    setAnalyticsJourneyStage(
+      "recheck"
+    );
+
+    trackAnalyticsPageView(
+      "recheck"
+    );
+
+    trackAnalyticsEvent(
+      "recommendation_selected",
+      "details",
+      {
+        role:
+          analyticsRole,
+        selectionAction:
+          "recheck",
+        positionBucket:
+          analyticsPositionBucket,
+      }
+    );
+
+    trackAnalyticsEvent(
+      "booking_recheck_started",
+      "recheck",
+      {
+        role:
+          analyticsRole,
+      }
+    );
+
     setBookingBusy(
       true
     );
@@ -298,7 +346,42 @@ function HotelDetailsPanel({
       setBookingRecheck(
         response
       );
+
+      trackAnalyticsEvent(
+        "booking_recheck_completed",
+        "recheck",
+        {
+          role:
+            analyticsRole,
+          recheckState:
+            response.state,
+          retryable:
+            response.retryable,
+        }
+      );
     } catch (recheckError) {
+      trackAnalyticsEvent(
+        "booking_recheck_completed",
+        "recheck",
+        {
+          role:
+            analyticsRole,
+          recheckState:
+            "recheck-required",
+          retryable:
+            recheckError instanceof
+              ApiRequestError
+              ? recheckError.status ===
+                  null ||
+                recheckError.status >=
+                  500 ||
+                recheckError.status ===
+                  408 ||
+                recheckError.status ===
+                  429
+              : true,
+        }
+      );
       setBookingError(
         getBookingFailureMessage(
           recheckError
@@ -328,6 +411,27 @@ function HotelDetailsPanel({
       return;
     }
 
+    setAnalyticsJourneyStage(
+      "handoff"
+    );
+
+    trackAnalyticsPageView(
+      "handoff"
+    );
+
+    trackAnalyticsEvent(
+      "recommendation_selected",
+      "details",
+      {
+        role:
+          analyticsRole,
+        selectionAction:
+          "handoff",
+        positionBucket:
+          analyticsPositionBucket,
+      }
+    );
+
     setBookingBusy(
       true
     );
@@ -343,6 +447,17 @@ function HotelDetailsPanel({
           acceptChanges
         );
 
+      trackAnalyticsEvent(
+        "booking_handoff_prepared",
+        "handoff",
+        {
+          role:
+            analyticsRole,
+          acceptedChanges:
+            acceptChanges,
+        }
+      );
+
       const openUrl =
         resolveBookingHandoffOpenUrl(
           response
@@ -356,10 +471,29 @@ function HotelDetailsPanel({
         );
       }
 
+      trackAnalyticsEvent(
+        "booking_handoff_opened",
+        "handoff",
+        {
+          role:
+            analyticsRole,
+        }
+      );
+
+      completeAnalyticsJourney();
+
+      void flushAnalyticsQueue({
+        keepalive: true,
+      });
+
       window.location.assign(
         openUrl
       );
     } catch (handoffError) {
+      setAnalyticsJourneyStage(
+        "recheck"
+      );
+
       setBookingError(
         getBookingFailureMessage(
           handoffError

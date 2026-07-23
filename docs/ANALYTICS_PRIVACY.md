@@ -1,110 +1,132 @@
-# SmartStay Analytics Contract & Privacy
+# SmartStay Analytics & Privacy — Contract v1
 
 ## Status
 
-This document defines the analytics foundation for SmartStay beta measurement.
+39C23B instruments the canonical 39C23A event contract.
 
-It does **not** enable analytics, add an SDK, create cookies, or send events. Instrumentation and first-party ingestion belong to 39C23B.
+The implementation is:
 
-## Product purpose
+- first-party only;
+- disabled by default;
+- cookie-free;
+- limited to browser-tab identifiers stored in `sessionStorage`;
+- free of persistent user IDs and cross-session tracking;
+- provider-neutral;
+- failure-isolated from search, ranking and booking;
+- respectful of Do Not Track and Global Privacy Control.
 
-Analytics must answer only questions that improve the user decision flow:
+Enabling analytics requires both:
 
-- Did a search start and complete?
-- Which lifecycle outcome occurred?
-- Were useful recommendation roles visible?
-- Did the user open details, verify an offer, or continue to booking?
-- Did recovery actions help?
-- How long did each stage take, using coarse buckets?
-
-Analytics must not become a parallel copy of search, booking, or provider data.
-
-## Privacy rules
-
-The canonical contract is:
-
-`contracts/analytics-event-contract.v1.json`
-
-Non-negotiable rules:
-
-- first-party transport only;
-- disabled by default until 39C23B explicitly enables it;
-- no third-party analytics SDK;
-- no analytics cookies;
-- no `localStorage`;
-- one random browser-tab session only;
-- no cross-session user profile;
-- no fingerprinting;
-- respect Do Not Track and Global Privacy Control;
-- maximum 30 days for raw events;
-- maximum 180 days for aggregated metrics.
-
-## Data that must never enter analytics
-
-Examples include:
-
-- destination text, destination IDs, coordinates, country or city;
-- exact dates and exact budget;
-- exact adults, children, or child ages;
-- hotel names and IDs;
-- offer, verification, handoff, search, request, or idempotency IDs;
-- provider names, IDs, contexts, or proprietary payloads;
-- email, phone, names, addresses, IP, user-agent, raw referrer, or full URL;
-- API keys, tokens, authorization headers, cookies, or secrets.
-
-The contract permits only coarse product buckets such as stay-length band, party-size band, result-count band, duration band, recommendation role, lifecycle outcome, and boolean states.
-
-## Session model
-
-A future analytics session may be generated randomly for one browser tab and stored only in `sessionStorage`.
-
-It is not a user ID. It must expire at browser-tab end or after at most 120 minutes and must not be reused across sessions.
-
-Existing SmartStay search/session storage is operational state and must not be copied into analytics.
-
-## Event set
-
-The beta contract includes:
-
-- `page_view`
-- `search_started`
-- `search_completed`
-- `search_failed`
-- `results_viewed`
-- `recommendation_selected`
-- `hotel_details_opened`
-- `explanation_toggled`
-- `search_preferences_changed`
-- `search_retried`
-- `booking_recheck_started`
-- `booking_recheck_completed`
-- `booking_handoff_prepared`
-- `booking_handoff_opened`
-- `journey_abandoned`
-- `results_recovery_applied`
-
-Event names and allowed properties are provider-neutral.
-
-## Validation
-
-Run:
-
-```bash
-npm run validate:analytics
-npm run test:analytics
+```text
+VITE_ANALYTICS_ENABLED=true
+ANALYTICS_ENABLED=true
 ```
 
-The main `npm test` and release CI gate also include the analytics contract tests.
+If either side remains disabled, normal product flows continue and no analytics record is persisted.
 
-## Next block
+## Transport
 
-39C23B will implement:
+Frontend batches are sent only to:
 
-1. a small first-party client;
-2. Do Not Track / Global Privacy Control enforcement;
-3. event batching and strict payload limits;
-4. a backend ingestion boundary;
-5. instrumentation at selected frontend/backend decision points;
-6. no external SDK and no persistent user identity.
+```text
+POST /api/analytics/events
+```
 
-This is a technical privacy-by-design policy, not legal advice. Before public production, the privacy notice and legal basis must be reviewed for the actual hosting, retention, and analytics configuration.
+The client uses:
+
+- `credentials: "omit"`;
+- `cache: "no-store"`;
+- `referrerPolicy: "no-referrer"`;
+- an in-memory queue scoped to the current tab;
+- a maximum of 20 events per request;
+- a smaller keepalive batch when the page is leaving;
+- a maximum canonical event size of 4 KB.
+
+Transient network, rate-limit and server failures are retried in memory. Permanent 4xx contract failures are dropped instead of creating an infinite retry loop. Delivery failures are swallowed by the analytics boundary and cannot fail search, results, recheck or handoff.
+
+## Privacy signals
+
+Collection is skipped when the browser exposes either:
+
+```text
+DNT: 1
+Sec-GPC: 1
+navigator.globalPrivacyControl === true
+```
+
+The backend checks the request headers again before validation or storage.
+
+## Identifiers
+
+The only analytics identifiers are random opaque IDs for:
+
+- the current browser-tab session;
+- the current search journey;
+- the individual event.
+
+They are not derived from account, device, IP, search, booking, hotel or provider data. They are not stored in cookies or `localStorage`.
+
+## Prohibited data
+
+The contract and server validator reject raw values or keys for:
+
+- destination, city, country or coordinates;
+- exact check-in/check-out dates;
+- exact budget;
+- exact adult/child ages or child-age arrays;
+- search/request/idempotency identifiers;
+- hotel, offer, verification or handoff identifiers;
+- provider identifiers or provider context;
+- names, email, phone, address or authentication data;
+- IP, user agent, full URL, referrer, query, cookie, token, secret or API key.
+
+Only bucketed, enumerated or boolean decision-support properties are accepted.
+
+## Backend validation
+
+`server/analytics/analyticsEventValidator.js` loads the canonical JSON contract and enforces:
+
+- exact envelope keys;
+- exact event names and event version;
+- required and optional properties per event;
+- property types, enums, ranges and patterns;
+- recursive forbidden-field rejection;
+- maximum event and batch sizes;
+- bounded event timestamps.
+
+The request body is not added to structured logs.
+
+## Storage truth
+
+The MVP sink is:
+
+```text
+in-memory-single-instance
+```
+
+It is bounded, deduplicates retries by opaque `eventId`, and prunes raw records after at most 30 days. It is not durable and is lost when the backend restarts. This is intentional for the first instrumentation gate and must not be described as persistent analytics storage.
+
+The sink is injected behind a small `write(events)` boundary so a future first-party database can replace it without coupling the frontend or domain engine to a vendor.
+
+Aggregate retention remains capped at 180 days when aggregation is implemented in 39C23C.
+
+## Canonical events
+
+The 16 events remain defined in:
+
+```text
+contracts/analytics-event-contract.v1.json
+```
+
+They cover page views, search lifecycle, recommendation engagement, recovery, booking recheck/handoff and journey abandonment. Abandonment is captured both when the browser page is left and when an active SPA journey returns to Home.
+
+## Next gate
+
+39C23C must add and validate:
+
+- aggregate metrics and minimal reporting;
+- deletion/retention execution;
+- browser tests for enabled, disabled, DNT and GPC modes;
+- staged sampling with zero forbidden fields;
+- analytics release evidence;
+- beta measurement thresholds.

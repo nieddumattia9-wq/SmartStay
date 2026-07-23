@@ -6,6 +6,12 @@ const DEFAULT_ALLOWED_ORIGIN =
 const DEFAULT_JSON_LIMIT =
   "256kb";
 
+const DEFAULT_ANALYTICS_JSON_LIMIT =
+  "96kb";
+
+const DEFAULT_ANALYTICS_STORE_MAX_EVENTS =
+  20_000;
+
 const DEFAULT_RATE_LIMIT_WINDOW_MS =
   15 * 60 * 1000;
 
@@ -81,6 +87,14 @@ const DEFAULT_ENDPOINT_RATE_LIMITS =
         maxRequests:
           600,
       }),
+
+    analytics:
+      Object.freeze({
+        windowMs:
+          15 * 60 * 1000,
+        maxRequests:
+          240,
+      }),
   });
 
 const ENDPOINT_RATE_LIMIT_ENVIRONMENT_KEYS =
@@ -148,7 +162,56 @@ const ENDPOINT_RATE_LIMIT_ENVIRONMENT_KEYS =
         maxRequests:
           "RATE_LIMIT_SEARCH_READ_MAX_REQUESTS",
       }),
+
+    analytics:
+      Object.freeze({
+        windowMs:
+          "RATE_LIMIT_ANALYTICS_WINDOW_MS",
+        maxRequests:
+          "RATE_LIMIT_ANALYTICS_MAX_REQUESTS",
+      }),
   });
+
+function parseBoolean(
+  value,
+  fallback =
+    false
+) {
+  if (
+    typeof value ===
+      "boolean"
+  ) {
+    return value;
+  }
+
+  const normalized =
+    String(
+      value ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalized ===
+      "true" ||
+    normalized ===
+      "1"
+  ) {
+    return true;
+  }
+
+  if (
+    normalized ===
+      "false" ||
+    normalized ===
+      "0"
+  ) {
+    return false;
+  }
+
+  return fallback;
+}
 
 function parsePositiveInteger(
   value,
@@ -393,6 +456,27 @@ function createRuntimeSecurityConfig({
         overrides,
       }),
 
+    analyticsEnabled:
+      parseBoolean(
+        overrides.analyticsEnabled ??
+        environment.ANALYTICS_ENABLED,
+        false
+      ),
+
+    analyticsJsonLimit:
+      String(
+        overrides.analyticsJsonLimit ??
+        environment.ANALYTICS_JSON_BODY_LIMIT ??
+        DEFAULT_ANALYTICS_JSON_LIMIT
+      ).trim(),
+
+    analyticsStoreMaxEvents:
+      parsePositiveInteger(
+        overrides.analyticsStoreMaxEvents ??
+        environment.ANALYTICS_STORE_MAX_EVENTS,
+        DEFAULT_ANALYTICS_STORE_MAX_EVENTS
+      ),
+
     serviceName:
       String(
         overrides.serviceName ??
@@ -436,6 +520,8 @@ function createRuntimeSecurityConfig({
 
 module.exports = {
   DEFAULT_ALLOWED_ORIGIN,
+  DEFAULT_ANALYTICS_JSON_LIMIT,
+  DEFAULT_ANALYTICS_STORE_MAX_EVENTS,
   DEFAULT_ENDPOINT_RATE_LIMITS,
   DEFAULT_JSON_LIMIT,
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
@@ -444,5 +530,6 @@ module.exports = {
   createEndpointRateLimits,
   createRuntimeSecurityConfig,
   parseAllowedOrigins,
+  parseBoolean,
   parseTrustProxy,
 };

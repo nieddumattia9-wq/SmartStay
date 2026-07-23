@@ -54,6 +54,11 @@ test(
       );
 
     assert.equal(
+      contract.status,
+      "instrumented-disabled-default"
+    );
+
+    assert.equal(
       contract.transport.mode,
       "first-party-only"
     );

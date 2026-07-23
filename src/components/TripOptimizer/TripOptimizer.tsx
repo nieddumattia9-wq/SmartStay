@@ -56,6 +56,18 @@ import SmartOptimizer, {
 
 import "./TripOptimizer.css";
 
+import {
+  bucketAnalyticsDistance,
+  bucketAnalyticsNights,
+  bucketAnalyticsPartySize,
+  getAnalyticsChangeKind,
+} from "../../analytics/analyticsBuckets";
+
+import {
+  beginAnalyticsJourney,
+  trackAnalyticsEvent,
+} from "../../analytics/analyticsClient";
+
 type HotelRoomPayload = {
   adults: number;
   children: number;
@@ -217,7 +229,67 @@ function TripOptimizer() {
   function handleBudgetChange(
     value: string
   ) {
+    const previousValue =
+      Number(
+        budget
+          .trim()
+          .replace(",", ".")
+      );
+
+    const nextValue =
+      Number(
+        value
+          .trim()
+          .replace(",", ".")
+      );
+
+    if (value !== budget) {
+      trackAnalyticsEvent(
+        "search_preferences_changed",
+        "home",
+        {
+          field: "budget",
+          changeKind:
+            getAnalyticsChangeKind(
+              Number.isFinite(
+                previousValue
+              ) &&
+              previousValue > 0
+                ? previousValue
+                : null,
+              Number.isFinite(
+                nextValue
+              ) &&
+              nextValue > 0
+                ? nextValue
+                : null
+            ),
+        }
+      );
+    }
+
     setBudget(value);
+  }
+
+  function handleDistanceChange(
+    value: number | null
+  ) {
+    if (value !== maxDistanceKm) {
+      trackAnalyticsEvent(
+        "search_preferences_changed",
+        "home",
+        {
+          field: "distance",
+          changeKind:
+            getAnalyticsChangeKind(
+              maxDistanceKm,
+              value
+            ),
+        }
+      );
+    }
+
+    setMaxDistanceKm(value);
   }
 
   function handleSearch() {
@@ -407,6 +479,41 @@ function TripOptimizer() {
         )
       );
 
+      beginAnalyticsJourney();
+
+      trackAnalyticsEvent(
+        "search_started",
+        "home",
+        {
+          nightsBucket:
+            bucketAnalyticsNights(
+              currentNightCount
+            ),
+          partySizeBucket:
+            bucketAnalyticsPartySize(
+              guests.adults +
+              guests.children
+            ),
+          roomCount:
+            Math.min(
+              8,
+              Math.max(
+                1,
+                guests.rooms
+              )
+            ),
+          budgetProvided:
+            Number.isFinite(
+              numericBudget
+            ) &&
+            numericBudget > 0,
+          distanceBand:
+            bucketAnalyticsDistance(
+              maxDistanceKm
+            ),
+        }
+      );
+
       navigate("/loading");
     } catch (error) {
       hasSubmittedRef.current =
@@ -481,7 +588,29 @@ function TripOptimizer() {
       return;
     }
 
+    trackAnalyticsEvent(
+      "search_preferences_changed",
+      "home",
+      {
+        field: "preference",
+        changeKind: "selected",
+      }
+    );
+
     setManualSmartPreference(value);
+  }
+
+  function handleResetSmartPreference() {
+    trackAnalyticsEvent(
+      "search_preferences_changed",
+      "home",
+      {
+        field: "preference",
+        changeKind: "selected",
+      }
+    );
+
+    setManualSmartPreference(null);
   }
 
   const numericBudget =
@@ -570,7 +699,7 @@ function TripOptimizer() {
               maxDistanceKm
             }
             onChange={
-              setMaxDistanceKm
+              handleDistanceChange
             }
           />
         </div>
@@ -627,8 +756,8 @@ function TripOptimizer() {
                 <button
                   type="button"
                   className="trip-card__balance-reset"
-                  onClick={() =>
-                    setManualSmartPreference(null)
+                  onClick={
+                    handleResetSmartPreference
                   }
                 >
                   Use automatic suggestion

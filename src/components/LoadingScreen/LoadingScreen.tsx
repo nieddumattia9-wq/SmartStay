@@ -39,6 +39,19 @@ import {
 
   import "./LoadingScreen.css";
 
+import {
+  bucketAnalyticsDuration,
+  bucketAnalyticsResults,
+} from "../../analytics/analyticsBuckets";
+
+import {
+  trackAnalyticsEvent,
+} from "../../analytics/analyticsClient";
+
+import type {
+  AnalyticsSearchOutcome,
+} from "../../analytics/analyticsTypes";
+
   const FIRST_STEP =
     "Searching thousands of stays...";
 
@@ -415,6 +428,85 @@ import {
     return null;
   }
 
+  function getAnalyticsFailureOutcome(
+    recoveryKind: string
+  ): AnalyticsSearchOutcome {
+    switch (recoveryKind) {
+      case "session-expired":
+        return "session-expired";
+
+      case "session-missing":
+      case "invalid-link":
+        return "session-missing";
+
+      case "timeout":
+        return "timeout";
+
+      default:
+        return "provider-error";
+    }
+  }
+
+  function getAnalyticsPublicCode(
+    lifecycleCode: string | null | undefined,
+    recoveryKind: string
+  ) {
+    const normalizedLifecycleCode =
+      typeof lifecycleCode === "string"
+        ? lifecycleCode
+            .trim()
+            .toUpperCase()
+        : "";
+
+    if (
+      /^[A-Z0-9_]{1,64}$/.test(
+        normalizedLifecycleCode
+      )
+    ) {
+      return normalizedLifecycleCode;
+    }
+
+    const normalizedRecoveryCode =
+      recoveryKind
+        .trim()
+        .toUpperCase()
+        .replace(
+          /[^A-Z0-9]+/g,
+          "_"
+        )
+        .slice(0, 64);
+
+    return normalizedRecoveryCode ||
+      "SEARCH_FAILED";
+  }
+
+  function trackMissingSearchDataFailure(
+    startedAt: number,
+    flowAttempt: number
+  ) {
+    trackAnalyticsEvent(
+      "search_failed",
+      "loading",
+      {
+        outcome:
+          "session-missing",
+        retryable:
+          false,
+        publicCode:
+          "SEARCH_SESSION_MISSING",
+        durationBucket:
+          bucketAnalyticsDuration(
+            Date.now() -
+            startedAt
+          ),
+      },
+      {
+        onceKey:
+          `search-failed:${flowAttempt}`,
+      }
+    );
+  }
+
   function LoadingScreen() {
     const navigate =
       useNavigate();
@@ -461,6 +553,15 @@ import {
       useState(0);
 
     function retrySearchFlow() {
+      trackAnalyticsEvent(
+        "search_retried",
+        "loading",
+        {
+          stage: "loading",
+          recoveryAction: "retry",
+        }
+      );
+
       if (
         typeof navigator !==
           "undefined" &&
@@ -511,6 +612,19 @@ import {
         (currentAttempt) =>
           currentAttempt + 1
       );
+    }
+
+    function startNewSearch() {
+      trackAnalyticsEvent(
+        "search_retried",
+        "loading",
+        {
+          stage: "loading",
+          recoveryAction: "new-search",
+        }
+      );
+
+      navigate("/");
     }
 
     useEffect(() => {
@@ -687,6 +801,47 @@ import {
         return initialResponse.searchId;
       }
 
+      let lastLifecycle:
+        SearchProgressResponse["lifecycle"] =
+          null;
+
+      function trackSearchCompletion(
+        response: SearchProgressResponse,
+        startedAt: number
+      ) {
+        const outcome =
+          response.lifecycle?.outcome ??
+          (
+            Number(
+              response.totalHotels
+            ) > 0
+              ? "results"
+              : "no-results"
+          );
+
+        trackAnalyticsEvent(
+          "search_completed",
+          "loading",
+          {
+            outcome,
+            durationBucket:
+              bucketAnalyticsDuration(
+                Date.now() -
+                startedAt
+              ),
+            visibleResultsBucket:
+              bucketAnalyticsResults(
+                response.totalHotels ??
+                0
+              ),
+          },
+          {
+            onceKey:
+              `search-completed:${flowAttempt}`,
+          }
+        );
+      }
+
       async function finishAndNavigate(
         finalSearchId: string,
         startedAt: number
@@ -802,6 +957,10 @@ import {
               return;
             }
 
+            lastLifecycle =
+              statusResponse.lifecycle ??
+              lastLifecycle;
+
             if (!statusResponse.success) {
               throw new Error(
                 getSafeSearchErrorMessage(
@@ -820,6 +979,11 @@ import {
               )
             ) {
               finished = true;
+
+              trackSearchCompletion(
+                statusResponse,
+                startedAt
+              );
 
               await finishAndNavigate(
                 activeSearchId,
@@ -879,6 +1043,10 @@ import {
               return;
             }
 
+            lastLifecycle =
+              continueResponse.lifecycle ??
+              lastLifecycle;
+
             await applyProgress(
               continueResponse
             );
@@ -889,6 +1057,11 @@ import {
               )
             ) {
               finished = true;
+
+              trackSearchCompletion(
+                continueResponse,
+                startedAt
+              );
 
               await finishAndNavigate(
                 activeSearchId,
@@ -943,6 +1116,11 @@ import {
               );
             }
 
+            trackMissingSearchDataFailure(
+              startedAt,
+              flowAttempt
+            );
+
             return;
           }
 
@@ -975,6 +1153,47 @@ import {
                   err,
                   fallbackMessage
                 );
+
+          const failureOutcome =
+            lastLifecycle?.outcome &&
+            lastLifecycle.outcome !==
+              "pending" &&
+            lastLifecycle.outcome !==
+              "results" &&
+            lastLifecycle.outcome !==
+              "no-results" &&
+            lastLifecycle.outcome !==
+              "partial-results"
+              ? lastLifecycle.outcome
+              : getAnalyticsFailureOutcome(
+                  recovery.kind
+                );
+
+          trackAnalyticsEvent(
+            "search_failed",
+            "loading",
+            {
+              outcome:
+                failureOutcome,
+              retryable:
+                lastLifecycle?.retryable ??
+                recovery.retryable,
+              publicCode:
+                getAnalyticsPublicCode(
+                  lastLifecycle?.publicCode,
+                  recovery.kind
+                ),
+              durationBucket:
+                bucketAnalyticsDuration(
+                  Date.now() -
+                  startedAt
+                ),
+            },
+            {
+              onceKey:
+                `search-failed:${flowAttempt}`,
+            }
+          );
 
           if (
             recovery
@@ -1110,7 +1329,7 @@ import {
                 <button
                   type="button"
                   className="loading-error__button"
-                  onClick={() => navigate("/")}
+                  onClick={startNewSearch}
                 >
                   Start a new search
                 </button>

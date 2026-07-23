@@ -61,6 +61,23 @@ import {
 
 import "./Results.css";
 
+import {
+  bucketAnalyticsPosition,
+  bucketAnalyticsResults,
+  mapAnalyticsRole,
+} from "../../analytics/analyticsBuckets";
+
+import {
+  setAnalyticsJourneyStage,
+  trackAnalyticsEvent,
+  trackAnalyticsPageView,
+} from "../../analytics/analyticsClient";
+
+import type {
+  AnalyticsPositionBucket,
+  AnalyticsRole,
+} from "../../analytics/analyticsTypes";
+
   const SEARCH_META_STORAGE_PREFIX =
     "smartstay_search_meta_";
 
@@ -69,6 +86,12 @@ import "./Results.css";
 
   type SearchMeta =
     StoredSearchMeta;
+
+  type HotelAnalyticsContext = {
+    role: AnalyticsRole;
+    positionBucket:
+      AnalyticsPositionBucket;
+  };
 
   function getSearchMetaStorageKey(
     searchId: string
@@ -680,6 +703,13 @@ function getHotelDetailsFailureMessage(
     const [activeDetailsOfferId, setActiveDetailsOfferId] =
       useState<string | null>(null);
 
+    const [
+      activeAnalyticsContext,
+      setActiveAnalyticsContext,
+    ] = useState<
+      HotelAnalyticsContext | null
+    >(null);
+
     const detailsRequestIdRef =
       useRef(0);
 
@@ -756,6 +786,79 @@ const rankedHotels =
 
     const recommendationPicks =
       engineView?.recommendationPicks ?? [];
+
+    const analyticsContextByHotelId =
+      useMemo(() => {
+        const roleByHotelId =
+          new Map<
+            string,
+            AnalyticsRole
+          >();
+
+        for (
+          const pick of
+          recommendationPicks
+        ) {
+          roleByHotelId.set(
+            pick.evaluation.hotel.id,
+            mapAnalyticsRole(
+              pick.role
+            )
+          );
+        }
+
+        return new Map(
+          rankedHotels.map(
+            (
+              evaluation,
+              index
+            ) => [
+              evaluation.hotel.id,
+              {
+                role:
+                  roleByHotelId.get(
+                    evaluation.hotel.id
+                  ) ??
+                  "unassigned",
+                positionBucket:
+                  bucketAnalyticsPosition(
+                    index
+                  ),
+              } satisfies
+                HotelAnalyticsContext,
+            ]
+          )
+        );
+      }, [
+        rankedHotels,
+        recommendationPicks,
+      ]);
+
+    const analyticsRolesShown =
+      useMemo(() => {
+        const roles =
+          recommendationPicks
+            .map(
+              (pick) =>
+                mapAnalyticsRole(
+                  pick.role
+                )
+            )
+            .filter(
+              (role): role is Exclude<
+                AnalyticsRole,
+                "unassigned"
+              > =>
+                role !==
+                  "unassigned"
+            );
+
+        return [
+          ...new Set(roles),
+        ];
+      }, [
+        recommendationPicks,
+      ]);
 
     const recommendationHotelIds =
       useMemo(() => {
@@ -1025,6 +1128,37 @@ const rankedHotels =
                 : ""
             )
           );
+
+    useEffect(() => {
+      if (!engineView) {
+        return;
+      }
+
+      setAnalyticsJourneyStage(
+        "results"
+      );
+
+      trackAnalyticsEvent(
+        "results_viewed",
+        "results",
+        {
+          visibleResultsBucket:
+            bucketAnalyticsResults(
+              rankedHotels.length
+            ),
+          rolesShown:
+            analyticsRolesShown,
+        },
+        {
+          onceKey:
+            "results-viewed",
+        }
+      );
+    }, [
+      analyticsRolesShown,
+      engineView,
+      rankedHotels.length,
+    ]);
 
     useEffect(() => {
       async function loadResults() {
@@ -1321,6 +1455,10 @@ const rankedHotels =
         setHotelDetailsOffer(null);
         setActiveDetailsHotelId(null);
         setActiveDetailsOfferId(null);
+        setActiveAnalyticsContext(null);
+        setAnalyticsJourneyStage(
+          "results"
+        );
       }, []);
 
     const handleViewHotelDetails =
@@ -1333,6 +1471,50 @@ const rankedHotels =
             } |
             null
         ) => {
+          const analyticsContext =
+            analyticsContextByHotelId.get(
+              hotel.id
+            ) ?? {
+              role:
+                "unassigned",
+              positionBucket:
+                "11+",
+            };
+
+          setActiveAnalyticsContext(
+            analyticsContext
+          );
+
+          trackAnalyticsEvent(
+            "recommendation_selected",
+            "results",
+            {
+              role:
+                analyticsContext.role,
+              selectionAction:
+                "details",
+              positionBucket:
+                analyticsContext
+                  .positionBucket,
+            }
+          );
+
+          trackAnalyticsEvent(
+            "hotel_details_opened",
+            "details",
+            {
+              role:
+                analyticsContext.role,
+              positionBucket:
+                analyticsContext
+                  .positionBucket,
+            }
+          );
+
+          trackAnalyticsPageView(
+            "details"
+          );
+
           const requestId =
             detailsRequestIdRef.current + 1;
 
@@ -1427,7 +1609,57 @@ const rankedHotels =
             }
           }
         },
-        [searchId]
+        [
+          analyticsContextByHotelId,
+          searchId,
+        ]
+      );
+
+    const handleExplanationToggle =
+      useCallback(
+        (
+          hotelId: string,
+          expanded: boolean
+        ) => {
+          const analyticsContext =
+            analyticsContextByHotelId.get(
+              hotelId
+            ) ?? {
+              role:
+                "unassigned",
+              positionBucket:
+                "11+",
+            };
+
+          trackAnalyticsEvent(
+            "explanation_toggled",
+            "results",
+            {
+              role:
+                analyticsContext.role,
+              expanded,
+            }
+          );
+
+          if (expanded) {
+            trackAnalyticsEvent(
+              "recommendation_selected",
+              "results",
+              {
+                role:
+                  analyticsContext.role,
+                selectionAction:
+                  "explanation",
+                positionBucket:
+                  analyticsContext
+                    .positionBucket,
+              }
+            );
+          }
+        },
+        [
+          analyticsContextByHotelId,
+        ]
       );
 
     const handleDistanceRecovery =
@@ -1436,6 +1668,28 @@ const rankedHotels =
           maximumDistanceKm:
             number | null
         ) => {
+          trackAnalyticsEvent(
+            "results_recovery_applied",
+            "results",
+            {
+              recoveryAction:
+                "relax-distance",
+            }
+          );
+
+          trackAnalyticsEvent(
+            "search_preferences_changed",
+            "results",
+            {
+              field: "distance",
+              changeKind:
+                maximumDistanceKm ===
+                  null
+                  ? "cleared"
+                  : "increased",
+            }
+          );
+
           setDistanceOverrideKm(
             maximumDistanceKm
           );
@@ -1457,6 +1711,39 @@ const rankedHotels =
           false
         );
       }, []);
+
+    const handleResultsRetry =
+      useCallback(() => {
+        trackAnalyticsEvent(
+          "search_retried",
+          "results",
+          {
+            stage: "results",
+            recoveryAction:
+              "retry",
+          }
+        );
+
+        setResultsRetryAttempt(
+          (currentAttempt) =>
+            currentAttempt + 1
+        );
+      }, []);
+
+    const handleNewSearch =
+      useCallback(() => {
+        trackAnalyticsEvent(
+          "search_retried",
+          "results",
+          {
+            stage: "results",
+            recoveryAction:
+              "new-search",
+          }
+        );
+
+        navigate("/");
+      }, [navigate]);
 
     const emptyState =
       useMemo(() => {
@@ -1554,11 +1841,8 @@ const rankedHotels =
                 <button
                   type="button"
                   className="results-state__button results-state__button--dark"
-                  onClick={() =>
-                    setResultsRetryAttempt(
-                      (currentAttempt) =>
-                        currentAttempt + 1
-                    )
+                  onClick={
+                    handleResultsRetry
                   }
                 >
                   Try again
@@ -1568,7 +1852,7 @@ const rankedHotels =
             <button
               type="button"
               className="results-state__button results-state__button--dark"
-              onClick={() => navigate("/")}
+              onClick={handleNewSearch}
             >
               Start a new search
             </button>
@@ -1845,7 +2129,7 @@ const rankedHotels =
               <button
                 type="button"
                 className="results-state__button results-state__button--dark"
-                onClick={() => navigate("/")}
+                onClick={handleNewSearch}
               >
                 Modify the search
               </button>
@@ -1901,6 +2185,14 @@ const rankedHotels =
                           evaluation.selectedOffer
                             ?.offerId ??
                             null
+                        )
+                      }
+                      onExplanationToggle={(
+                        expanded
+                      ) =>
+                        handleExplanationToggle(
+                          evaluation.hotel.id,
+                          expanded
                         )
                       }
                       onViewDetails={
@@ -2108,6 +2400,14 @@ const rankedHotels =
                             null
                         )
                       }
+                      onExplanationToggle={(
+                        expanded
+                      ) =>
+                        handleExplanationToggle(
+                          evaluation.hotel.id,
+                          expanded
+                        )
+                      }
                       onViewDetails={
                         handleViewHotelDetails
                       }
@@ -2252,6 +2552,14 @@ const rankedHotels =
                               null
                           )
                         }
+                        onExplanationToggle={(
+                          expanded
+                        ) =>
+                          handleExplanationToggle(
+                            evaluation.hotel.id,
+                            expanded
+                          )
+                        }
                         onViewDetails={
                           handleViewHotelDetails
                         }
@@ -2276,6 +2584,16 @@ const rankedHotels =
           offerId={
             hotelDetailsOffer?.id ??
             activeDetailsOfferId
+          }
+          analyticsRole={
+            activeAnalyticsContext
+              ?.role ??
+            "unassigned"
+          }
+          analyticsPositionBucket={
+            activeAnalyticsContext
+              ?.positionBucket ??
+            "11+"
           }
           onClose={handleCloseHotelDetails}
         />
