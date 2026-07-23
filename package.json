@@ -21,7 +21,9 @@
     "test:release": "node --test tests/release/*.test.mjs",
     "audit:security": "node scripts/run-security-dependency-audit.mjs",
     "check:release-env": "node scripts/check-release-environment.mjs",
-    "release:ci": "npm run typecheck && npm test && npm run build && npm run audit:security",
+    "smoke:staging:local": "node scripts/run-staging-runtime-smoke.mjs --local",
+    "smoke:staging": "node scripts/run-staging-runtime-smoke.mjs",
+    "release:ci": "npm run typecheck && npm test && npm run build && npm run audit:security && npm run smoke:staging:local",
     "release:gate": "npm run release:ci && npm run check:release-env"
   },
   "dependencies": {

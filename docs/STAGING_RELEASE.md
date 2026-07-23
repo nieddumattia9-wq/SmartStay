@@ -119,21 +119,39 @@ GET /health/ready
 
 A release is eligible for traffic only when readiness returns HTTP 200 and the expected `RELEASE_SHA` appears as `version`.
 
-## Staging smoke test
+## Staging runtime smoke test
 
-39C22B must verify against the deployed staging URLs:
+The permanent smoke runner supports two modes.
 
-- frontend loads through HTTPS;
-- backend liveness and readiness;
-- CORS permits only the staging frontend;
-- one real destination search;
-- one real hotel search;
+Local production-like backend process:
+
+```text
+npm run smoke:staging:local
+```
+
+This mode starts the real Node backend with controlled staging variables on an isolated local port. It verifies release identity, liveness, readiness, CORS, preflight, security headers, canonical public errors, request-ID propagation, structured logs, secret redaction, controlled shutdown, and zero provider calls.
+
+Public staging endpoints:
+
+```text
+STAGING_FRONTEND_URL=https://staging.example.com
+STAGING_BACKEND_URL=https://api-staging.example.com
+EXPECTED_RELEASE_SHA=<deployed Git commit>
+npm run smoke:staging
+```
+
+Remote mode verifies that the frontend loads through HTTPS and repeats the safe backend checks without issuing a valid provider-triggering search. It therefore proves deployment/runtime integrity, not live inventory correctness.
+
+The full release smoke in 39C22C must additionally verify:
+
+- one controlled live destination search;
+- one controlled live hotel search;
 - partial/complete lifecycle;
 - details for the Engine-selected offer;
 - offer recheck;
 - secure handoff using the approved white-label domain;
 - no secret or provider-private data in browser responses;
-- logs contain the request ID and no sensitive values.
+- rollback to the previously validated artifact.
 
 ## Rollback
 
