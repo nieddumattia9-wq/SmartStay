@@ -1,175 +1,185 @@
-require("dotenv").config();
+"use strict";
 
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
+const path =
+  require(
+    "node:path"
+  );
 
-const searchRoutes = require("./routes/search");
+require(
+  "dotenv"
+).config({
+  path:
+    path.join(
+      __dirname,
+      ".env"
+    ),
 
-const app = express();
-
-const PORT =
-  Number(process.env.PORT) || 3001;
-
-const CLIENT_ORIGIN =
-  process.env.CLIENT_ORIGIN || "http://localhost:5173";
-
-// =========================
-// Middleware
-// =========================
-
-app.use(helmet());
-
-app.use(
-  cors({
-    origin: CLIENT_ORIGIN,
-  })
-);
-
-app.use(
-  express.json({
-    limit: "1mb",
-  })
-);
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many requests. Please try again later.",
-  },
+  override:
+    false,
 });
 
-app.use(limiter);
+const {
+  createRuntimeSecurityConfig,
+} =
+  require(
+    "./config/runtimeSecurityConfig"
+  );
 
-// =========================
-// Health Check
-// =========================
+const {
+  createSecurityLogger,
+} =
+  require(
+    "./observability/securityLogger"
+  );
 
-app.get("/", (req, res) => {
+const {
+  createApp,
+  createRuntimeState,
+} =
+  require(
+    "./app"
+  );
 
-  res.json({
-    status: "ok",
-    message: "🚀 SmartStay Backend Running",
-  });
+function startServer({
+  environment =
+    process.env,
+} = {}) {
+  const config =
+    createRuntimeSecurityConfig({
+      environment,
+    });
 
-});
+  const logger =
+    createSecurityLogger({
+      environment,
 
-app.get("/health", (req, res) => {
+      includeErrorStack:
+        config.includeErrorStack,
+    });
 
-  res.json({
-    status: "ok",
-    service: "smartstay-backend",
-    timestamp: new Date().toISOString(),
-  });
+  const runtimeState =
+    createRuntimeState();
 
-});
+  const {
+    app,
+  } =
+    createApp({
+      config,
+      logger,
+      runtimeState,
+    });
 
-// =========================
-// Routes
-// =========================
+  const server =
+    app.listen(
+      config.port,
+      () => {
+        logger.info(
+          "service.started",
+          {
+            service:
+              config.serviceName,
 
-app.use("/api", searchRoutes);
+            version:
+              config.serviceVersion,
 
-// =========================
-// 404 Handler
-// =========================
+            port:
+              config.port,
 
-app.use((req, res) => {
+            allowedOrigins:
+              config.allowedOrigins,
 
-  res.status(404).json({
-    success: false,
-    message: "Route not found.",
-  });
-
-});
-
-// =========================
-// Global Error Handler
-// =========================
-
-app.use((error, req, res, next) => {
-
-  if (res.headersSent) {
-
-    return next(error);
-
-  }
-
-  const isMalformedJson =
-    error instanceof SyntaxError &&
-    error.status === 400 &&
-    error.type === "entity.parse.failed";
-
-  if (isMalformedJson) {
-
-    console.error(
-      "Invalid JSON payload received."
+            trustProxy:
+              config.trustProxy,
+          }
+        );
+      }
     );
 
-    console.error({
-      method: req.method,
-      path: req.originalUrl,
-      message: error.message,
-    });
+  let stopping =
+    false;
 
-    return res.status(400).json({
-      success: false,
-      message: "Invalid JSON payload.",
-    });
+  function stop(
+    signal
+  ) {
+    if (stopping) {
+      return;
+    }
 
+    stopping =
+      true;
+
+    runtimeState.setReady(
+      false
+    );
+
+    logger.info(
+      "service.stopping",
+      {
+        signal,
+      }
+    );
+
+    server.close(
+      (error) => {
+        if (error) {
+          logger.error(
+            "service.stop-failed",
+            {
+              signal,
+              error,
+            }
+          );
+
+          process.exitCode =
+            1;
+        }
+        else {
+          logger.info(
+            "service.stopped",
+            {
+              signal,
+            }
+          );
+        }
+      }
+    );
   }
 
-  const rawStatus =
-    error.status ?? error.statusCode;
-
-  const status =
-    Number.isInteger(rawStatus) &&
-    rawStatus >= 400 &&
-    rawStatus <= 599
-      ? rawStatus
-      : 500;
-
-  console.error(
-    "Unhandled request error."
+  process.once(
+    "SIGTERM",
+    () =>
+      stop(
+        "SIGTERM"
+      )
   );
 
-  console.error({
-    method: req.method,
-    path: req.originalUrl,
-    status,
-    message: error.message,
-    stack: error.stack,
-  });
-
-  const publicMessage =
-    status >= 500
-      ? "Internal server error."
-      : "Request failed.";
-
-  return res.status(status).json({
-    success: false,
-    message: publicMessage,
-  });
-
-});
-
-// =========================
-// Start Server
-// =========================
-
-app.listen(PORT, () => {
-
-  console.log(
-    `✅ SmartStay Backend running on port ${PORT}`
+  process.once(
+    "SIGINT",
+    () =>
+      stop(
+        "SIGINT"
+      )
   );
 
-  console.log(
-    `🌍 Allowed client origin: ${CLIENT_ORIGIN}`
-  );
+  return {
+    app,
+    config,
+    logger,
+    runtimeState,
+    server,
+    stop,
+  };
+}
 
-});
+if (
+  require.main ===
+  module
+) {
+  startServer();
+}
+
+module.exports = {
+  createApp,
+  createRuntimeState,
+  startServer,
+};
