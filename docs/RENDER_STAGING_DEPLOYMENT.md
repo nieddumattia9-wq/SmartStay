@@ -51,8 +51,22 @@ The Blueprint pins Node to:
 24.18.0
 ```
 
-The release SHA is copied from Render's `RENDER_GIT_COMMIT` into the
-application's canonical `RELEASE_SHA`.
+Render exposes `RENDER_GIT_COMMIT` automatically at build time and runtime.
+
+SmartStay maps it to the canonical `RELEASE_SHA` without creating a Blueprint
+environment-variable reference:
+
+```text
+Backend start:
+RELEASE_SHA=$RENDER_GIT_COMMIT npm start
+
+Frontend build:
+RELEASE_SHA=$RENDER_GIT_COMMIT npm run build
+```
+
+Do not add `RELEASE_SHA` with `fromService.envVarKey`. Render default
+environment variables are not Blueprint-defined service environment
+variables.
 
 ## Values to enter in Render
 
@@ -110,23 +124,25 @@ Analytics can be enabled later only through a separate reviewed staging
 decision and with the volatile-storage acknowledgement required by the release
 contract.
 
-## Blueprint creation
+## Blueprint creation and recovery
 
 1. Confirm `main` is clean and aligned with `origin/main`.
 2. Confirm `npm run release:ci` passed for the exact commit.
-3. Open Render and create a new Blueprint from the SmartStay repository.
+3. Open Render and create or sync the Blueprint from the SmartStay repository.
 4. Use the root `render.yaml`.
-5. Keep the service names unchanged. The release SHA self-references depend on
-   those names.
-6. Enter the prompted values without committing them.
-7. Confirm the backend is in Frankfurt, uses Starter, and has one instance.
-8. Confirm automatic deploys remain off.
-9. Deploy the reviewed commit manually.
-10. Record the exact frontend URL, backend URL, service IDs, and deployed SHA.
+5. Enter the prompted values without committing them.
+6. Confirm the backend is in Frankfurt, uses Starter, and has one instance.
+7. Confirm automatic deploys remain off.
+8. Deploy the reviewed commit manually.
+9. Record the exact frontend URL, backend URL, service IDs, and deployed SHA.
 
-If a requested service name is unavailable, stop. Update both the service name
-and every matching `fromService.name` reference in `render.yaml`, validate the
-repository again, then commit the change.
+If a Blueprint sync fails before deployment, correct `render.yaml`, validate
+and commit the correction, then use Manual sync on the existing Blueprint. Do
+not create duplicate services.
+
+If a requested service name is unavailable, stop. Update the names in
+`render.yaml`, validate the repository again, then update the exact deployed
+origins in `CLIENT_ORIGINS` and `VITE_API_URL`.
 
 ## Required checks before provider traffic
 

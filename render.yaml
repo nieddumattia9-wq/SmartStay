@@ -9,7 +9,7 @@ services:
     autoDeployTrigger: off
     rootDir: server
     buildCommand: npm ci --omit=dev
-    startCommand: npm start
+    startCommand: RELEASE_SHA=$RENDER_GIT_COMMIT npm start
     healthCheckPath: /health/ready
     envVars:
       - key: NODE_VERSION
@@ -24,11 +24,6 @@ services:
         value: "1"
       - key: SERVICE_NAME
         value: smartstay-staging-api
-      - key: RELEASE_SHA
-        fromService:
-          name: smartstay-staging-api
-          type: web
-          envVarKey: RENDER_GIT_COMMIT
       - key: CLIENT_ORIGINS
         sync: false
       - key: VITE_API_URL
@@ -53,16 +48,11 @@ services:
     runtime: static
     branch: main
     autoDeployTrigger: off
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && RELEASE_SHA=$RENDER_GIT_COMMIT npm run build
     staticPublishPath: ./dist
     envVars:
       - key: NODE_VERSION
         value: 24.18.0
-      - key: RELEASE_SHA
-        fromService:
-          name: smartstay-staging-web
-          type: web
-          envVarKey: RENDER_GIT_COMMIT
       - key: VITE_API_URL
         sync: false
       - key: VITE_ANALYTICS_ENABLED

@@ -154,8 +154,8 @@ test(
 
     assertContains(
       backend,
-      "    startCommand: npm start\n",
-      "backend start"
+      "    startCommand: RELEASE_SHA=$RENDER_GIT_COMMIT npm start\n",
+      "backend release SHA start mapping"
     );
 
     assertContains(
@@ -248,14 +248,18 @@ test(
       );
     }
 
-    assertContains(
-      backend,
-      "      - key: RELEASE_SHA\n" +
-        "        fromService:\n" +
-        "          name: smartstay-staging-api\n" +
-        "          type: web\n" +
-        "          envVarKey: RENDER_GIT_COMMIT\n",
-      "backend release SHA"
+    assert.ok(
+      !backend.includes(
+        "      - key: RELEASE_SHA\n"
+      ),
+      "RELEASE_SHA must not be created through Blueprint envVars."
+    );
+
+    assert.ok(
+      !backend.includes(
+        "envVarKey: RENDER_GIT_COMMIT"
+      ),
+      "Render default variables cannot be referenced with fromService.envVarKey."
     );
 
     assert.ok(
@@ -285,8 +289,8 @@ test(
 
     assertContains(
       frontend,
-      "    buildCommand: npm ci && npm run build\n",
-      "frontend build"
+      "    buildCommand: npm ci && RELEASE_SHA=$RENDER_GIT_COMMIT npm run build\n",
+      "frontend release SHA build mapping"
     );
 
     assertContains(
@@ -312,14 +316,18 @@ test(
       "VITE_API_URL"
     );
 
-    assertContains(
-      frontend,
-      "      - key: RELEASE_SHA\n" +
-        "        fromService:\n" +
-        "          name: smartstay-staging-web\n" +
-        "          type: web\n" +
-        "          envVarKey: RENDER_GIT_COMMIT\n",
-      "frontend release SHA"
+    assert.ok(
+      !frontend.includes(
+        "      - key: RELEASE_SHA\n"
+      ),
+      "Frontend RELEASE_SHA must be injected at build time."
+    );
+
+    assert.ok(
+      !frontend.includes(
+        "envVarKey: RENDER_GIT_COMMIT"
+      ),
+      "Frontend must not reference Render default variables through fromService."
     );
 
     assertContains(
@@ -348,6 +356,46 @@ test(
 );
 
 test(
+  "Render release SHA uses default variables directly and never fromService",
+  () => {
+    const yaml =
+      readText(
+        "render.yaml"
+      );
+
+    assert.equal(
+      (
+        yaml.match(
+          /RENDER_GIT_COMMIT/g
+        ) ?? []
+      ).length,
+      2,
+      "Exactly backend start and frontend build should use RENDER_GIT_COMMIT."
+    );
+
+    assert.equal(
+      (
+        yaml.match(
+          /fromService:/g
+        ) ?? []
+      ).length,
+      0,
+      "The Blueprint must not use fromService for Render default variables."
+    );
+
+    assert.equal(
+      (
+        yaml.match(
+          /- key: RELEASE_SHA/g
+        ) ?? []
+      ).length,
+      0,
+      "The Blueprint must not declare RELEASE_SHA as an envVar."
+    );
+  }
+);
+
+test(
   "Render staging guide blocks beta and invented operational values",
   () => {
     const guide =
@@ -366,6 +414,8 @@ test(
         "Analytics remain disabled",
         "Run exactly one bounded journey",
         "production remains blocked",
+        "Do not add `RELEASE_SHA` with `fromService.envVarKey`",
+        "use Manual sync on the existing Blueprint",
       ]
     ) {
       assert.ok(
