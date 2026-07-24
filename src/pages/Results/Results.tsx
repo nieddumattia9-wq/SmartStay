@@ -36,9 +36,6 @@ import type {
 } from "../../types/hotel";
 
 import {
-  getSearchLifecycleLabel,
-} from "../../utils/searchLifecycle";
-import {
   getSearchRecoveryDecision,
 } from "../../utils/searchRecovery";
 import type {
@@ -50,6 +47,8 @@ import {
 } from "../../engine-v2/frontend/constraintAwareEmptyStateV2";
 
 import type {
+  SmartStayBudgetRecoverySuggestionV2,
+  SmartStayDistanceRecoverySuggestionV2,
   SmartStayEmptyStateV2,
 } from "../../engine-v2/frontend/constraintAwareEmptyStateV2";
 
@@ -312,10 +311,62 @@ function writeStoredRankingV2(
     }
 
     if (maxDistanceKm < 1) {
-      return `Show within ${Math.round(maxDistanceKm * 1000)} m`;
+      return `Expand to ${Math.round(maxDistanceKm * 1000)} m`;
     }
 
-    return `Show within ${maxDistanceKm} km`;
+    return `Expand to ${maxDistanceKm} km`;
+  }
+
+  function formatUnlockedStayCount(
+    unlockedHotelCount:
+      number
+  ) {
+    return (
+      unlockedHotelCount +
+      " " +
+      (
+        unlockedHotelCount ===
+          1
+          ? "stay"
+          : "stays"
+      )
+    );
+  }
+
+  function getBudgetRecoveryDescription(
+    suggestion:
+      SmartStayBudgetRecoverySuggestionV2,
+    currency:
+      string
+  ) {
+    return (
+      "Unlocks " +
+      formatUnlockedStayCount(
+        suggestion
+          .unlockedHotelCount
+      ) +
+      " with a fully priced offer. That is " +
+      formatSearchMoney(
+        suggestion
+          .additionalBudget,
+        currency
+      ) +
+      " above the current total budget."
+    );
+  }
+
+  function getDistanceRecoveryDescription(
+    suggestion:
+      SmartStayDistanceRecoverySuggestionV2
+  ) {
+    return (
+      "Unlocks " +
+      formatUnlockedStayCount(
+        suggestion
+          .unlockedHotelCount
+      ) +
+      " already found in this search."
+    );
   }
 
   function getEmptyStateTitle(
@@ -384,6 +435,15 @@ function writeStoredRankingV2(
       emptyState.reason ===
       "distance-constraint"
     ) {
+      if (
+        emptyState
+          .recoveryDistanceSuggestions
+          .length >
+          0
+      ) {
+        return "Your distance limit is the main constraint. SmartStay calculated the smallest useful expansions from the stays already found.";
+      }
+
       return (
         "SmartStay found " +
         analyzedCount +
@@ -408,6 +468,15 @@ function writeStoredRankingV2(
       emptyState.reason ===
       "budget-constraint"
     ) {
+      if (
+        emptyState
+          .recoveryBudgetSuggestions
+          .length >
+          0
+      ) {
+        return "Your total budget is the main limit. SmartStay found fully priced options and calculated the smallest useful adjustments below.";
+      }
+
       return (
         "SmartStay analyzed " +
         analyzedCount +
@@ -636,9 +705,6 @@ function getHotelDetailsFailureMessage(
     ] =
       useState(0);
 
-    const [status, setStatus] =
-      useState<string | null>(null);
-
     const [lifecycle, setLifecycle] =
       useState<SearchLifecycle | null>(null);
 
@@ -651,6 +717,14 @@ function getHotelDetailsFailureMessage(
     ] = useState<
       number |
       null |
+      undefined
+    >(undefined);
+
+    const [
+      budgetOverrideTotal,
+      setBudgetOverrideTotal,
+    ] = useState<
+      number |
       undefined
     >(undefined);
 
@@ -708,6 +782,14 @@ function getHotelDetailsFailureMessage(
       setVerifiedOffersByHotelId(
         {}
       );
+
+      setDistanceOverrideKm(
+        undefined
+      );
+
+      setBudgetOverrideTotal(
+        undefined
+      );
     }, [searchId]);
 
     const selectedPreferenceIndex =
@@ -730,15 +812,34 @@ function getHotelDetailsFailureMessage(
         ?.maxDistanceKm ??
       null;
 
+    const originalTotalBudget =
+      searchMeta
+        ?.totalBudget ??
+      null;
+
     const effectiveMaximumDistanceKm =
       distanceOverrideKm ===
         undefined
         ? originalMaximumDistanceKm
         : distanceOverrideKm;
 
+    const effectiveTotalBudget =
+      budgetOverrideTotal ===
+        undefined
+        ? originalTotalBudget
+        : budgetOverrideTotal;
+
     const distanceRecoveryActive =
       distanceOverrideKm !==
       undefined;
+
+    const budgetRecoveryActive =
+      budgetOverrideTotal !==
+      undefined;
+
+    const recoveryActive =
+      distanceRecoveryActive ||
+      budgetRecoveryActive;
 
     const balanceSourceLabel =
       smartStayProfile
@@ -1181,10 +1282,6 @@ const rankedHotels =
             response.session.hotels ?? []
           );
 
-          setStatus(
-            response.session.status ?? null
-          );
-
           setLifecycle(
             response.session.lifecycle ?? null
           );
@@ -1266,7 +1363,7 @@ const rankedHotels =
             );
 
           const previousRankingHotelIds =
-            distanceRecoveryActive
+            recoveryActive
               ? []
               : readStoredRankingV2(
                   searchId,
@@ -1290,9 +1387,7 @@ const rankedHotels =
                   "default",
 
                 totalBudget:
-                  searchMeta
-                    ?.totalBudget ??
-                  null,
+                  effectiveTotalBudget,
 
                 maximumDistanceKm:
                   effectiveMaximumDistanceKm,
@@ -1364,7 +1459,7 @@ const rankedHotels =
             view
           );
 
-          if (!distanceRecoveryActive) {
+          if (!recoveryActive) {
             writeStoredRankingV2(
               searchId,
               view.rankedHotels.map(
@@ -1407,10 +1502,9 @@ const rankedHotels =
       selectedPreferenceIndex,
       smartStayProfile
         ?.preferenceSource,
-      searchMeta
-        ?.totalBudget,
+      effectiveTotalBudget,
       effectiveMaximumDistanceKm,
-      distanceRecoveryActive,
+      recoveryActive,
       searchMeta
         ?.destinationLatitude,
       searchMeta
@@ -1710,6 +1804,54 @@ const rankedHotels =
         );
       }, []);
 
+    const handleBudgetRecovery =
+      useCallback(
+        (
+          suggestedTotalBudget:
+            number
+        ) => {
+          trackAnalyticsEvent(
+            "results_recovery_applied",
+            "results",
+            {
+              recoveryAction:
+                "raise-budget",
+            }
+          );
+
+          trackAnalyticsEvent(
+            "search_preferences_changed",
+            "results",
+            {
+              field:
+                "budget",
+              changeKind:
+                "increased",
+            }
+          );
+
+          setBudgetOverrideTotal(
+            suggestedTotalBudget
+          );
+
+          setShowFullList(
+            false
+          );
+        },
+        []
+      );
+
+    const handleRestoreBudget =
+      useCallback(() => {
+        setBudgetOverrideTotal(
+          undefined
+        );
+
+        setShowFullList(
+          false
+        );
+      }, []);
+
     const handleResultsRetry =
       useCallback(() => {
         trackAnalyticsEvent(
@@ -1768,9 +1910,7 @@ const rankedHotels =
               effectiveMaximumDistanceKm,
 
             totalBudget:
-              searchMeta
-                ?.totalBudget ??
-              null,
+              effectiveTotalBudget,
           });
         }
 
@@ -1779,8 +1919,7 @@ const rankedHotels =
         engineView,
         hotels.length,
         effectiveMaximumDistanceKm,
-        searchMeta
-          ?.totalBudget,
+        effectiveTotalBudget,
       ]);
 
     if (loading) {
@@ -1916,13 +2055,15 @@ const rankedHotels =
 
             {searchMeta && (
               <div className="results-balance-card__facts">
-                {searchMeta.totalBudget !== null && (
+                {effectiveTotalBudget !== null && (
                   <span>
                     {formatSearchMoney(
-                      searchMeta.totalBudget,
+                      effectiveTotalBudget,
                       searchMeta.currency
                     )}{" "}
-                    total budget
+                    {budgetRecoveryActive
+                      ? "adjusted total budget"
+                      : "total budget"}
                   </span>
                 )}
 
@@ -2011,6 +2152,49 @@ const rankedHotels =
             </div>
           )}
 
+          {budgetRecoveryActive &&
+            effectiveTotalBudget !==
+              null &&
+            originalTotalBudget !==
+              null && (
+              <div
+                className="results-recovery-notice"
+                role="status"
+                data-recovery-source="existing-results"
+              >
+                <div>
+                  <strong>
+                    Total budget adjusted to{" "}
+                    {formatSearchMoney(
+                      effectiveTotalBudget,
+                      searchMeta?.currency ||
+                      "EUR"
+                    )}.
+                  </strong>
+
+                  <p>
+                    SmartStay reused the stays already found. No new provider search was sent.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="results-recovery-notice__restore"
+                  onClick={
+                    handleRestoreBudget
+                  }
+                >
+                  Restore{" "}
+                  {formatSearchMoney(
+                    originalTotalBudget,
+                    searchMeta?.currency ||
+                    "EUR"
+                  )}{" "}
+                  budget
+                </button>
+              </div>
+            )}
+
           {
             lifecycle?.outcome ===
               "partial-results" && (
@@ -2029,20 +2213,6 @@ const rankedHotels =
             )
           }
 
-          {(status || lifecycle) && (
-            <p
-              className="results-page__status"
-              role="status"
-            >
-              Search status:{" "}
-              {
-                getSearchLifecycleLabel(
-                  lifecycle
-                ) ??
-                status
-              }
-            </p>
-          )}
         </section>
 
         {rankedHotels.length === 0 ? (
@@ -2055,7 +2225,7 @@ const rankedHotels =
             }
           >
             <p className="results-empty-state__eyebrow">
-              SmartStay respected your search
+              Your criteria were kept
             </p>
 
             <h2>
@@ -2074,53 +2244,143 @@ const rankedHotels =
                 : "Available stays were found, but SmartStay could not identify a safe visible option with the current search settings."}
             </p>
 
-            {emptyState
-              ?.reason ===
-              "distance-constraint" &&
-              emptyState
-                .recoveryDistanceKmOptions
-                .length >
-                0 && (
-                <div className="results-empty-state__recovery">
-                  <p>
-                    Adjust the distance using the same provider results:
-                  </p>
+            {emptyState &&
+              (
+                emptyState
+                  .recoveryBudgetSuggestions
+                  .length >
+                  0 ||
+                emptyState
+                  .recoveryDistanceSuggestions
+                  .length >
+                  0
+              ) && (
+                <section
+                  className="results-empty-state__recovery"
+                  aria-labelledby="results-recovery-title"
+                >
+                  <div className="results-empty-state__recovery-heading">
+                    <p>
+                      Best next step
+                    </p>
 
-                  <div className="results-empty-state__actions">
+                    <h3 id="results-recovery-title">
+                      See more options without starting over
+                    </h3>
+                  </div>
+
+                  <div className="results-empty-state__suggestions">
                     {emptyState
-                      .recoveryDistanceKmOptions
+                      .recoveryBudgetSuggestions
                       .map(
                         (
-                          maximumDistanceKm
+                          suggestion
                         ) => (
-                          <button
+                          <article
                             key={
-                              maximumDistanceKm ===
+                              `budget-${suggestion.totalBudget}`
+                            }
+                            className="results-empty-state__suggestion"
+                            data-recovery-kind="budget"
+                          >
+                            <div>
+                              <strong>
+                                Increase the total budget to{" "}
+                                {formatSearchMoney(
+                                  suggestion
+                                    .totalBudget,
+                                  searchMeta?.currency ||
+                                  "EUR"
+                                )}
+                              </strong>
+
+                              <p>
+                                {getBudgetRecoveryDescription(
+                                  suggestion,
+                                  searchMeta?.currency ||
+                                  "EUR"
+                                )}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="results-state__button results-state__button--primary"
+                              data-reuses-current-results="true"
+                              onClick={() =>
+                                handleBudgetRecovery(
+                                  suggestion
+                                    .totalBudget
+                                )
+                              }
+                            >
+                              Use{" "}
+                              {formatSearchMoney(
+                                suggestion
+                                  .totalBudget,
+                                searchMeta?.currency ||
+                                "EUR"
+                              )}{" "}
+                              budget
+                            </button>
+                          </article>
+                        )
+                      )}
+
+                    {emptyState
+                      .recoveryDistanceSuggestions
+                      .map(
+                        (
+                          suggestion
+                        ) => (
+                          <article
+                            key={
+                              suggestion
+                                .maximumDistanceKm ===
                                 null
                                 ? "distance-any"
-                                : `distance-${maximumDistanceKm}`
+                                : `distance-${suggestion.maximumDistanceKm}`
                             }
-                            type="button"
-                            className="results-state__button results-state__button--primary"
-                            data-reuses-current-results="true"
-                            onClick={() =>
-                              handleDistanceRecovery(
-                                maximumDistanceKm
-                              )
-                            }
+                            className="results-empty-state__suggestion"
+                            data-recovery-kind="distance"
                           >
-                            {formatDistanceRecoveryAction(
-                              maximumDistanceKm
-                            )}
-                          </button>
+                            <div>
+                              <strong>
+                                {formatDistanceRecoveryAction(
+                                  suggestion
+                                    .maximumDistanceKm
+                                )}
+                              </strong>
+
+                              <p>
+                                {getDistanceRecoveryDescription(
+                                  suggestion
+                                )}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="results-state__button results-state__button--primary"
+                              data-reuses-current-results="true"
+                              onClick={() =>
+                                handleDistanceRecovery(
+                                  suggestion
+                                    .maximumDistanceKm
+                                )
+                              }
+                            >
+                              Apply this distance
+                            </button>
+                          </article>
                         )
                       )}
                   </div>
 
                   <small>
-                    Your original limit is not changed unless you choose one of these options.
+                    These suggestions reuse the current results. Your original criteria stay saved until you choose.
                   </small>
-                </div>
+                </section>
               )}
 
             <div className="results-empty-state__footer">
@@ -2129,7 +2389,11 @@ const rankedHotels =
                 className="results-state__button results-state__button--dark"
                 onClick={handleNewSearch}
               >
-                Modify the search
+                {emptyState
+                  ?.reason ===
+                  "provider-no-results"
+                  ? "Change dates or destination"
+                  : "Edit search criteria"}
               </button>
             </div>
           </div>

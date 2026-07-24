@@ -6,6 +6,25 @@ export type SmartStayEmptyStateReasonV2 =
   | "product-policy"
   | "unknown";
 
+export interface SmartStayDistanceRecoverySuggestionV2 {
+  maximumDistanceKm:
+    number | null;
+
+  unlockedHotelCount:
+    number;
+}
+
+export interface SmartStayBudgetRecoverySuggestionV2 {
+  totalBudget:
+    number;
+
+  additionalBudget:
+    number;
+
+  unlockedHotelCount:
+    number;
+}
+
 export interface SmartStayEmptyStateV2 {
   reason:
     SmartStayEmptyStateReasonV2;
@@ -45,6 +64,12 @@ export interface SmartStayEmptyStateV2 {
 
   recoveryDistanceKmOptions:
     Array<number | null>;
+
+  recoveryDistanceSuggestions:
+    SmartStayDistanceRecoverySuggestionV2[];
+
+  recoveryBudgetSuggestions:
+    SmartStayBudgetRecoverySuggestionV2[];
 }
 
 export interface SmartStayEmptyStateDiagnosticInputV2 {
@@ -83,6 +108,9 @@ export interface SmartStayEmptyStateDiagnosticInputV2 {
 
   recoveryCandidateDistancesKm?:
     number[];
+
+  recoveryCandidateTotalCosts?:
+    number[];
 }
 
 const DISTANCE_RECOVERY_STEPS_KM = [
@@ -92,6 +120,9 @@ const DISTANCE_RECOVERY_STEPS_KM = [
   5,
   10,
 ] as const;
+
+const MAXIMUM_RECOVERY_SUGGESTIONS =
+  2;
 
 function normalizeCount(
   value:
@@ -118,12 +149,23 @@ function normalizeOptionalNumber(
     : null;
 }
 
-function buildDistanceRecoveryOptions(
+function roundMoney(
+  value:
+    number
+) {
+  return Number(
+    value.toFixed(
+      2
+    )
+  );
+}
+
+function buildDistanceRecoverySuggestions(
   currentMaximumDistanceKm:
     number,
   candidateDistancesKm:
     number[]
-): Array<number | null> {
+): SmartStayDistanceRecoverySuggestionV2[] {
   const meaningfulDistances =
     candidateDistancesKm
       .filter(
@@ -137,8 +179,11 @@ function buildDistanceRecoveryOptions(
           first - second
       );
 
-  const usefulSteps:
-    number[] = [];
+  const suggestions:
+    SmartStayDistanceRecoverySuggestionV2[] = [];
+
+  let previousUnlockedCount =
+    0;
 
   for (
     const step of
@@ -151,27 +196,150 @@ function buildDistanceRecoveryOptions(
       continue;
     }
 
-    const unlocksCandidate =
-      meaningfulDistances.some(
+    const unlockedHotelCount =
+      meaningfulDistances.filter(
         (distance) =>
           distance <= step
-      );
+      ).length;
 
-    if (!unlocksCandidate) {
+    if (
+      unlockedHotelCount <=
+      previousUnlockedCount
+    ) {
       continue;
     }
 
-    usefulSteps.push(step);
+    suggestions.push({
+      maximumDistanceKm:
+        step,
+      unlockedHotelCount,
+    });
 
-    if (usefulSteps.length >= 2) {
-      break;
+    previousUnlockedCount =
+      unlockedHotelCount;
+
+    if (
+      suggestions.length >=
+      MAXIMUM_RECOVERY_SUGGESTIONS
+    ) {
+      return suggestions;
     }
   }
 
-  return [
-    ...usefulSteps,
-    null,
+  if (
+    meaningfulDistances.length >
+      previousUnlockedCount &&
+    suggestions.length <
+      MAXIMUM_RECOVERY_SUGGESTIONS
+  ) {
+    suggestions.push({
+      maximumDistanceKm:
+        null,
+      unlockedHotelCount:
+        meaningfulDistances.length,
+    });
+  }
+
+  return suggestions;
+}
+
+function buildBudgetRecoverySuggestions(
+  currentTotalBudget:
+    number,
+  candidateTotalCosts:
+    number[]
+): SmartStayBudgetRecoverySuggestionV2[] {
+  const meaningfulCosts =
+    candidateTotalCosts
+      .filter(
+        (totalCost) =>
+          Number.isFinite(totalCost) &&
+          totalCost >
+            currentTotalBudget
+      )
+      .map(
+        roundMoney
+      )
+      .sort(
+        (first, second) =>
+          first - second
+      );
+
+  const thresholds = [
+    ...new Set(
+      meaningfulCosts
+    ),
   ];
+
+  if (
+    thresholds.length ===
+    0
+  ) {
+    return [];
+  }
+
+  const createSuggestion =
+    (
+      totalBudget:
+        number
+    ): SmartStayBudgetRecoverySuggestionV2 => ({
+      totalBudget,
+      additionalBudget:
+        roundMoney(
+          totalBudget -
+          currentTotalBudget
+        ),
+      unlockedHotelCount:
+        meaningfulCosts.filter(
+          (totalCost) =>
+            totalCost <=
+            totalBudget
+        ).length,
+    });
+
+  const firstThreshold =
+    thresholds[0];
+
+  const suggestions = [
+    createSuggestion(
+      firstThreshold
+    ),
+  ];
+
+  const targetUnlockedCount =
+    Math.min(
+      3,
+      meaningfulCosts.length
+    );
+
+  const secondThreshold =
+    thresholds.find(
+      (threshold) =>
+        threshold >
+          firstThreshold &&
+        meaningfulCosts.filter(
+          (totalCost) =>
+            totalCost <=
+            threshold
+        ).length >=
+          targetUnlockedCount
+    ) ??
+    null;
+
+  if (
+    secondThreshold !==
+      null &&
+    suggestions.length <
+      MAXIMUM_RECOVERY_SUGGESTIONS
+  ) {
+    suggestions.push(
+      createSuggestion(
+        secondThreshold
+      )
+    );
+  }
+
+  return suggestions;
 }
 
 export function diagnoseSmartStayEmptyStateV2(
@@ -248,6 +416,16 @@ export function diagnoseSmartStayEmptyStateV2(
         Number.isFinite(distance)
     );
 
+  const recoveryCandidateTotalCosts =
+    (
+      input
+        .recoveryCandidateTotalCosts ??
+      []
+    ).filter(
+      (totalCost) =>
+        Number.isFinite(totalCost)
+    );
+
   let reason:
     SmartStayEmptyStateReasonV2 =
       "unknown";
@@ -300,15 +478,32 @@ export function diagnoseSmartStayEmptyStateV2(
       "product-policy";
   }
 
-  const recoveryDistanceKmOptions =
+  const recoveryDistanceSuggestions =
     reason ===
       "distance-constraint" &&
     maximumDistanceKm !== null
-      ? buildDistanceRecoveryOptions(
+      ? buildDistanceRecoverySuggestions(
           maximumDistanceKm,
           recoveryCandidateDistancesKm
         )
       : [];
+
+  const recoveryBudgetSuggestions =
+    reason ===
+      "budget-constraint" &&
+    totalBudget !== null
+      ? buildBudgetRecoverySuggestions(
+          totalBudget,
+          recoveryCandidateTotalCosts
+        )
+      : [];
+
+  const recoveryDistanceKmOptions =
+    recoveryDistanceSuggestions.map(
+      (suggestion) =>
+        suggestion
+          .maximumDistanceKm
+    );
 
   return {
     reason,
@@ -324,5 +519,7 @@ export function diagnoseSmartStayEmptyStateV2(
     maximumDistanceKm,
     totalBudget,
     recoveryDistanceKmOptions,
+    recoveryDistanceSuggestions,
+    recoveryBudgetSuggestions,
   };
 }

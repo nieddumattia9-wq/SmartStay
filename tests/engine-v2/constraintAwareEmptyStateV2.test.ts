@@ -217,6 +217,16 @@ test(
       result?.recoveryDistanceKmOptions,
       []
     );
+
+    assert.deepEqual(
+      result?.recoveryDistanceSuggestions,
+      []
+    );
+
+    assert.deepEqual(
+      result?.recoveryBudgetSuggestions,
+      []
+    );
   }
 );
 
@@ -250,7 +260,24 @@ test(
       [
         1,
         2,
-        null,
+      ]
+    );
+
+    assert.deepEqual(
+      result?.recoveryDistanceSuggestions,
+      [
+        {
+          maximumDistanceKm:
+            1,
+          unlockedHotelCount:
+            1,
+        },
+        {
+          maximumDistanceKm:
+            2,
+          unlockedHotelCount:
+            2,
+        },
       ]
     );
   }
@@ -269,6 +296,11 @@ test(
           12,
         totalBudget:
           400,
+        recoveryCandidateTotalCosts: [
+          450,
+          520,
+          720,
+        ],
       });
 
     const reliabilityResult =
@@ -290,9 +322,38 @@ test(
       "budget-constraint"
     );
 
+    assert.deepEqual(
+      budgetResult
+        ?.recoveryBudgetSuggestions,
+      [
+        {
+          totalBudget:
+            450,
+          additionalBudget:
+            50,
+          unlockedHotelCount:
+            1,
+        },
+        {
+          totalBudget:
+            720,
+          additionalBudget:
+            320,
+          unlockedHotelCount:
+            3,
+        },
+      ]
+    );
+
     assert.equal(
       reliabilityResult?.reason,
       "reliability-gate"
+    );
+
+    assert.deepEqual(
+      reliabilityResult
+        ?.recoveryBudgetSuggestions,
+      []
     );
   }
 );
@@ -381,7 +442,26 @@ test(
       [
         1,
         2,
-        null,
+      ]
+    );
+
+    assert.deepEqual(
+      strictView
+        .emptyState
+        ?.recoveryDistanceSuggestions,
+      [
+        {
+          maximumDistanceKm:
+            1,
+          unlockedHotelCount:
+            1,
+        },
+        {
+          maximumDistanceKm:
+            2,
+          unlockedHotelCount:
+            2,
+        },
       ]
     );
 
@@ -433,9 +513,29 @@ test(
       /setDistanceOverrideKm\(/
     );
 
+    assert.match(
+      resultsSource,
+      /setBudgetOverrideTotal\(/
+    );
+
+    assert.match(
+      resultsSource,
+      /recoveryAction:\s*\n\s*"raise-budget"/
+    );
+
+    assert.match(
+      resultsSource,
+      /Unlocks/
+    );
+
     assert.doesNotMatch(
       resultsSource,
-      /handleDistanceRecovery[\s\S]{0,700}searchHotels\(/
+      /handleDistanceRecovery[\s\S]{0,900}searchHotels\(/
+    );
+
+    assert.doesNotMatch(
+      resultsSource,
+      /handleBudgetRecovery[\s\S]{0,900}searchHotels\(/
     );
   }
 );
@@ -531,6 +631,92 @@ test(
         .emptyState
         ?.budgetBlockedCandidateCount,
       2
+    );
+
+    assert.deepEqual(
+      view
+        .emptyState
+        ?.recoveryBudgetSuggestions,
+      [
+        {
+          totalBudget:
+            450,
+          additionalBudget:
+            350,
+          unlockedHotelCount:
+            1,
+        },
+        {
+          totalBudget:
+            520,
+          additionalBudget:
+            420,
+          unlockedHotelCount:
+            2,
+        },
+      ]
+    );
+
+    const recoveredView =
+      buildSmartStayFrontendViewV2({
+        hotels,
+        preferenceId:
+          "maximum-savings",
+        selectedIndex:
+          4,
+        preferenceSource:
+          "manual",
+        totalBudget:
+          450,
+        maximumDistanceKm:
+          5,
+        selectedLocation: {
+          latitude:
+            48.8588897,
+          longitude:
+            2.320041,
+          confidence:
+            1,
+          label:
+            "Test destination",
+        },
+        nights:
+          3,
+        adults:
+          4,
+        children:
+          0,
+        rooms:
+          2,
+        destinationKey:
+          "Barcelona, Spain",
+        currency:
+          "EUR",
+        checkIn:
+          "2026-09-04",
+        checkOut:
+          "2026-09-07",
+        marketContextMode:
+          "current-search",
+        maximumVisibleResults:
+          hotels.length,
+      });
+
+    assert.ok(
+      recoveredView
+        .rankedHotels
+        .some(
+          (evaluation) =>
+            evaluation
+              .hotel
+              .id ===
+            "over-budget-one"
+        )
+    );
+
+    assert.equal(
+      recoveredView.emptyState,
+      null
     );
   }
 );

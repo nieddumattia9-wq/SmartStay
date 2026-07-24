@@ -3599,6 +3599,33 @@ export function buildSmartStayFrontendViewV2(
           "unverified"
     ).length;
 
+  const recoveryCandidateTotalCosts =
+    totalBudget ===
+      null
+      ? []
+      : budgetEligibleCandidates
+          .filter(
+            (evaluation) =>
+              evaluation
+                .selectedOffer
+                ?.completeness ===
+                "reported-complete" &&
+              evaluation
+                .budgetVisibility !==
+                "unverified" &&
+              evaluation
+                .totalCost !==
+                null &&
+              evaluation
+                .totalCost >
+                totalBudget
+          )
+          .map(
+            (evaluation) =>
+              evaluation
+                .totalCost as number
+          );
+
   const budgetHiddenHotelIds =
     new Set([
       ...budgetVisibility
@@ -3698,6 +3725,8 @@ export function buildSmartStayFrontendViewV2(
       totalBudget,
 
       recoveryCandidateDistancesKm,
+
+      recoveryCandidateTotalCosts,
     });
 
   return {
