@@ -16,7 +16,7 @@ import {
   createSmartStaySearchProfile,
   SMARTSTAY_HOME_BALANCE_VERSION,
 } from "../../utils/smartStaySearchProfile";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import {
   useEffect,

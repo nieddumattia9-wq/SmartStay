@@ -14,7 +14,7 @@ import {
   import {
     useNavigate,
     useSearchParams,
-  } from "react-router-dom";
+  } from "react-router";
 
 import HotelCard from "../../components/HotelCard/HotelCard";
 import HotelDetailsPanel from "../../components/HotelDetailsPanel/HotelDetailsPanel";
@@ -24,7 +24,6 @@ import HotelDetailsPanel from "../../components/HotelDetailsPanel/HotelDetailsPa
   } from "../../components/SmartOptimizer/sliderData";
 import {
   ApiRequestError,
-  createBookingRedirectUrl,
   getHotelDetails,
   getSearchSession,
 } from "../../services/api";
@@ -250,6 +249,35 @@ function writeStoredRankingV2(
         amount.toFixed(2)
       );
     }
+  }
+
+  function getHotelOfferTotal(
+    offer: HotelOffer | null
+  ) {
+    if (!offer) {
+      return null;
+    }
+
+    if (
+      typeof offer.totalKnownCost ===
+        "number" &&
+      Number.isFinite(
+        offer.totalKnownCost
+      ) &&
+      offer.totalKnownCost >
+        0
+    ) {
+      return offer.totalKnownCost;
+    }
+
+    return (
+      Number.isFinite(
+        offer.price
+      ) &&
+      offer.price > 0
+        ? offer.price
+        : null
+    );
   }
 
   function formatDistanceValue(
@@ -533,50 +561,6 @@ function writeStoredRankingV2(
     };
   }
 
-function getHotelBookingUrl(
-  hotel: Hotel | null,
-  searchId: string | null,
-  selectedOfferId:
-    string |
-    null = null
-) {
-  if (!hotel) {
-    return null;
-  }
-
-  const offerSelection =
-    selectHotelOffers(
-      hotel
-    );
-
-  const selectedOffer =
-    selectedOfferId
-      ? offerSelection.offers.find(
-          (candidate) =>
-            candidate.offer.id ===
-            selectedOfferId
-        ) ?? null
-      : offerSelection.primary;
-
-  const selectedOfferIsRedirectable =
-    selectedOffer?.offer
-      .redirectable ===
-    true;
-
-  if (
-    !selectedOffer ||
-    !selectedOfferIsRedirectable
-  ) {
-    return null;
-  }
-
-  return createBookingRedirectUrl(
-    searchId,
-    hotel.id,
-    selectedOffer.offer.id
-  );
-}
-
 function getHotelDetailsFailureMessage(
   error: unknown
 ) {
@@ -704,6 +688,13 @@ function getHotelDetailsFailureMessage(
       useState<string | null>(null);
 
     const [
+      verifiedOffersByHotelId,
+      setVerifiedOffersByHotelId,
+    ] = useState<
+      Record<string, HotelOffer>
+    >({});
+
+    const [
       activeAnalyticsContext,
       setActiveAnalyticsContext,
     ] = useState<
@@ -713,21 +704,11 @@ function getHotelDetailsFailureMessage(
     const detailsRequestIdRef =
       useRef(0);
 
-    const activeDetailsHotel =
-      hotels.find(
-        (hotel) =>
-          hotel.id ===
-          activeDetailsHotelId
-      ) ??
-      null;
-
-    const activeDetailsBookingUrl =
-      getHotelBookingUrl(
-        activeDetailsHotel,
-        searchId,
-        hotelDetailsOffer?.id ??
-        activeDetailsOfferId
+    useEffect(() => {
+      setVerifiedOffersByHotelId(
+        {}
       );
+    }, [searchId]);
 
     const selectedPreferenceIndex =
       useMemo(() => {
@@ -1461,6 +1442,23 @@ const rankedHotels =
         );
       }, []);
 
+    const handleOfferRechecked =
+      useCallback(
+        (
+          hotelId: string,
+          confirmedOffer: HotelOffer
+        ) => {
+          setVerifiedOffersByHotelId(
+            (currentOffers) => ({
+              ...currentOffers,
+              [hotelId]:
+                confirmedOffer,
+            })
+          );
+        },
+        []
+      );
+
     const handleViewHotelDetails =
       useCallback(
         async (
@@ -2173,19 +2171,16 @@ const rankedHotels =
                       selectedOffer={
                         evaluation.selectedOffer
                       }
+                      displayOfferOverride={
+                        verifiedOffersByHotelId[
+                          evaluation.hotel.id
+                        ] ??
+                        null
+                      }
                       detailsLoading={
                         hotelDetailsLoading &&
                         activeDetailsHotelId ===
                           evaluation.hotel.id
-                      }
-                      bookingUrl={
-                        getHotelBookingUrl(
-                          evaluation.hotel,
-                          searchId,
-                          evaluation.selectedOffer
-                            ?.offerId ??
-                            null
-                        )
                       }
                       onExplanationToggle={(
                         expanded
@@ -2215,12 +2210,27 @@ const rankedHotels =
                   budgetPolicy?.totalBudget ??
                   null;
 
+                const verifiedOffer =
+                  verifiedOffersByHotelId[
+                    evaluation.hotel.id
+                  ] ??
+                  null;
+
+                const verifiedTotal =
+                  getHotelOfferTotal(
+                    verifiedOffer
+                  );
+
+                const effectiveTotal =
+                  verifiedTotal ??
+                  evaluation.totalCost;
+
                 const overBudgetAmount =
                   budgetTotal !== null &&
-                  evaluation.totalCost !==
+                  effectiveTotal !==
                     null
                     ? Math.max(
-                        evaluation.totalCost -
+                        effectiveTotal -
                           budgetTotal,
                         0
                       )
@@ -2386,19 +2396,16 @@ const rankedHotels =
                       selectedOffer={
                         evaluation.selectedOffer
                       }
+                      displayOfferOverride={
+                        verifiedOffersByHotelId[
+                          evaluation.hotel.id
+                        ] ??
+                        null
+                      }
                       detailsLoading={
                         hotelDetailsLoading &&
                         activeDetailsHotelId ===
                           evaluation.hotel.id
-                      }
-                      bookingUrl={
-                        getHotelBookingUrl(
-                          evaluation.hotel,
-                          searchId,
-                          evaluation.selectedOffer
-                            ?.offerId ??
-                            null
-                        )
                       }
                       onExplanationToggle={(
                         expanded
@@ -2538,19 +2545,16 @@ const rankedHotels =
                         selectedOffer={
                           evaluation.selectedOffer
                         }
+                        displayOfferOverride={
+                          verifiedOffersByHotelId[
+                            evaluation.hotel.id
+                          ] ??
+                          null
+                        }
                         detailsLoading={
                           hotelDetailsLoading &&
                           activeDetailsHotelId ===
                             evaluation.hotel.id
-                        }
-                        bookingUrl={
-                          getHotelBookingUrl(
-                            evaluation.hotel,
-                            searchId,
-                            evaluation.selectedOffer
-                              ?.offerId ??
-                              null
-                          )
                         }
                         onExplanationToggle={(
                           expanded
@@ -2578,7 +2582,6 @@ const rankedHotels =
           loading={hotelDetailsLoading}
           error={hotelDetailsError}
           offer={hotelDetailsOffer}
-          bookingUrl={activeDetailsBookingUrl}
           searchId={searchId}
           hotelId={activeDetailsHotelId}
           offerId={
@@ -2594,6 +2597,9 @@ const rankedHotels =
             activeAnalyticsContext
               ?.positionBucket ??
             "11+"
+          }
+          onOfferRechecked={
+            handleOfferRechecked
           }
           onClose={handleCloseHotelDetails}
         />

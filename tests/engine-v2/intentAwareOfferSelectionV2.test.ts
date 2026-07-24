@@ -398,12 +398,27 @@ test(
     );
     assert.ok(
       hotelCardSource.includes(
-        "Refundable offer selected"
+        "getOfferCondition("
       )
     );
     assert.ok(
       hotelCardSource.includes(
-        "How this stay compares"
+        "displayOfferOverride"
+      )
+    );
+    assert.ok(
+      hotelCardSource.includes(
+        "\"Refundable\""
+      )
+    );
+    assert.ok(
+      hotelCardSource.includes(
+        "\"Non-refundable\""
+      )
+    );
+    assert.ok(
+      hotelCardSource.includes(
+        "Full SmartStay comparison"
       )
     );
     assert.ok(

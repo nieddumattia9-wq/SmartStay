@@ -14,7 +14,7 @@ import {
   import {
     useNavigate,
     useSearchParams,
-  } from "react-router-dom";
+  } from "react-router";
 
   import {
     continueHotelSearch,

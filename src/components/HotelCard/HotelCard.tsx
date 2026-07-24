@@ -10,6 +10,7 @@ import "./HotelCard.css";
 
 import type {
   Hotel,
+  HotelOffer,
 } from "../../types/hotel";
 
 import {
@@ -38,8 +39,8 @@ type HotelCardProps = {
   strengths?: string[];
   tradeOffs?: string[];
   selectedOffer?: SmartStaySelectedOfferV2 | null;
+  displayOfferOverride?: HotelOffer | null;
   detailsLoading?: boolean;
-  bookingUrl?: string | null;
   showRecommendationLabel?: boolean;
   onViewDetails: (
     hotel: Hotel,
@@ -52,6 +53,17 @@ type HotelCardProps = {
   ) => void;
 };
 
+type DisplayPrice = {
+  price: number;
+  currency: string;
+  completeness:
+    | "reported-complete"
+    | "reported-tax-status-unknown"
+    | "partial"
+    | "unknown";
+  verified: boolean;
+};
+
 function formatPrice(
   price: number,
   currency: string
@@ -60,10 +72,13 @@ function formatPrice(
     return new Intl.NumberFormat(
       "en-US",
       {
-        style: "currency",
+        style:
+          "currency",
         currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        minimumFractionDigits:
+          2,
+        maximumFractionDigits:
+          2,
       }
     ).format(price);
   } catch {
@@ -85,95 +100,124 @@ function formatLocation(
     : "Location unavailable";
 }
 
-function formatStars(stars: number) {
-  const safeStars = Math.min(
-    Math.max(
-      Math.round(stars || 0),
-      0
-    ),
-    5
-  );
+function formatStars(
+  stars: number
+) {
+  const safeStars =
+    Math.min(
+      Math.max(
+        Math.round(
+          stars ||
+          0
+        ),
+        0
+      ),
+      5
+    );
 
-  return "★".repeat(safeStars);
+  return "★".repeat(
+    safeStars
+  );
 }
 
 function formatReviewScore(
-  reviewScore: number | null
+  reviewScore:
+    number |
+    null
 ) {
-  if (reviewScore === null) {
+  if (
+    reviewScore ===
+    null
+  ) {
     return "-";
   }
 
-  return String(reviewScore);
+  return `${reviewScore}/10`;
 }
 
-function formatRiskLabel(
-  riskLevel?: SmartStayRiskLevelV2
+function getOfferAmount(
+  offer:
+    HotelOffer
 ) {
-  if (riskLevel === "low") {
-    return "Low risk";
+  if (
+    typeof offer
+      .totalKnownCost ===
+      "number" &&
+    Number.isFinite(
+      offer.totalKnownCost
+    ) &&
+    offer.totalKnownCost >
+      0
+  ) {
+    return offer.totalKnownCost;
   }
 
-  if (riskLevel === "medium") {
-    return "Medium risk";
-  }
-
-  if (riskLevel === "high") {
-    return "Higher risk";
-  }
-
-  return "Risk unavailable";
+  return offer.price;
 }
 
-function formatDataConfidence(
-  dataConfidence:
-    SmartStayDataConfidenceLevelV2
-) {
-  if (dataConfidence === "high") {
-    return "High data confidence";
+function getOverrideCompleteness(
+  offer:
+    HotelOffer
+): DisplayPrice["completeness"] {
+  if (
+    offer.taxesIncluded ===
+      true ||
+    offer.taxesIncluded ===
+      false
+  ) {
+    return "reported-complete";
   }
 
-  if (dataConfidence === "medium") {
-    return "Medium data confidence";
+  if (
+    typeof offer.unknownTaxes ===
+      "number" &&
+    offer.unknownTaxes >
+      0
+  ) {
+    return "reported-tax-status-unknown";
   }
 
-  if (dataConfidence === "low") {
-    return "Limited data confidence";
-  }
-
-  return "Insufficient data";
-}
-
-function getDataConfidenceModifier(
-  dataConfidence:
-    SmartStayDataConfidenceLevelV2
-) {
-  if (dataConfidence === "high") {
-    return "full";
-  }
-
-  if (dataConfidence === "medium") {
-    return "partial";
-  }
-
-  return "limited";
+  return "partial";
 }
 
 function getBestDisplayPrice(
-  hotel: Hotel,
+  hotel:
+    Hotel,
   selectedOffer:
-    SmartStaySelectedOfferV2 | null
-) {
+    SmartStaySelectedOfferV2 |
+    null,
+  displayOfferOverride:
+    HotelOffer |
+    null
+): DisplayPrice {
+  if (displayOfferOverride) {
+    return {
+      price:
+        getOfferAmount(
+          displayOfferOverride
+        ),
+      currency:
+        displayOfferOverride
+          .currency,
+      completeness:
+        getOverrideCompleteness(
+          displayOfferOverride
+        ),
+      verified:
+        true,
+    };
+  }
+
   if (selectedOffer) {
     return {
       price:
         selectedOffer.amount,
-
       currency:
         selectedOffer.currency,
-
       completeness:
         selectedOffer.completeness,
+      verified:
+        false,
     };
   }
 
@@ -186,12 +230,12 @@ function getBestDisplayPrice(
     return {
       price:
         primaryOffer.amount,
-
       currency:
         primaryOffer.currency,
-
       completeness:
         primaryOffer.completeness,
+      verified:
+        false,
     };
   }
 
@@ -199,107 +243,240 @@ function getBestDisplayPrice(
     price:
       hotel.totalKnownCost ??
       hotel.price,
-
     currency:
       hotel.currency,
-
     completeness:
-      "unknown" as const,
+      "unknown",
+    verified:
+      false,
   };
 }
 
-function formatSelectedOfferSummary(
-  selectedOffer:
-    SmartStaySelectedOfferV2 | null
+function getPriceNote(
+  displayPrice:
+    DisplayPrice
 ) {
-  if (!selectedOffer) {
-    return null;
+  if (displayPrice.verified) {
+    return "Latest total verified before checkout.";
   }
 
   if (
-    selectedOffer.refundable ===
-      true
+    displayPrice.completeness ===
+    "reported-complete"
   ) {
-    if (
-      selectedOffer
-        .freeCancellationUntil
-    ) {
-      const parsedDate =
-        new Date(
-          selectedOffer
-            .freeCancellationUntil
-        );
-
-      if (
-        Number.isFinite(
-          parsedDate.getTime()
-        )
-      ) {
-        return (
-          "Refundable offer selected · Free cancellation until " +
-          new Intl.DateTimeFormat(
-            "en-GB",
-            {
-              day:
-                "numeric",
-
-              month:
-                "short",
-
-              year:
-                "numeric",
-            }
-          ).format(
-            parsedDate
-          )
-        );
-      }
-    }
-
-    return "Refundable offer selected for this search";
+    return "Total stay cost based on mandatory charges reported by the provider.";
   }
 
   if (
-    selectedOffer.refundable ===
-      false
+    displayPrice.completeness ===
+    "reported-tax-status-unknown"
   ) {
-    return "Non-refundable offer selected for this search";
+    return "Provider-reported stay amount; tax inclusion was not confirmed.";
   }
 
-  return "Offer selected by SmartStay for this search";
+  if (
+    displayPrice.completeness ===
+    "partial"
+  ) {
+    return "Total known stay cost; some mandatory charges may still be uncertain.";
+  }
+
+  return "Price from available offer data; final mandatory charges may vary.";
 }
 
-function getBadgeModifier(badge: SmartStayFrontendBadgeV2) {
+function uniqueMessages(
+  values:
+    Array<
+      string |
+      null |
+      undefined
+    >
+) {
+  const seen =
+    new Set<string>();
+
+  return values
+    .map(
+      (value) =>
+        typeof value ===
+          "string"
+          ? value.trim()
+          : ""
+    )
+    .filter(
+      (value) => {
+        if (!value) {
+          return false;
+        }
+
+        const normalized =
+          value
+            .toLowerCase()
+            .replace(/\s+/g, " ");
+
+        if (
+          seen.has(
+            normalized
+          )
+        ) {
+          return false;
+        }
+
+        seen.add(
+          normalized
+        );
+
+        return true;
+      }
+    );
+}
+
+function getVisibleBadges(
+  badges:
+    SmartStayFrontendBadgeV2[]
+) {
+  const hidden =
+    new Set<
+      SmartStayFrontendBadgeV2
+    >([
+      "Low Risk",
+      "Solid Data",
+      "Limited Data",
+      "Balanced Choice",
+      "Smart Pick",
+    ]);
+
+  return uniqueMessages(
+    badges.filter(
+      (badge) =>
+        !hidden.has(
+          badge
+        )
+    )
+  ).slice(
+    0,
+    2
+  );
+}
+
+function getOfferCondition(
+  selectedOffer:
+    SmartStaySelectedOfferV2 |
+    null,
+  displayOfferOverride:
+    HotelOffer |
+    null
+) {
+  const refundable =
+    displayOfferOverride
+      ?.refundable ??
+    selectedOffer
+      ?.refundable ??
+    null;
+
   if (
-    badge === "Limited Data" ||
-    badge === "Balanced Choice"
+    refundable ===
+    false
   ) {
-    return "neutral";
+    return {
+      label:
+        "Non-refundable",
+      modifier:
+        "warning",
+    } as const;
   }
 
   if (
-    badge === "Reliable Reviews" ||
-    badge === "Solid Data" ||
-    badge === "Low Risk" ||
-    badge === "Smart Pick"
+    refundable ===
+    true
   ) {
-    return "strong";
+    return {
+      label:
+        "Refundable",
+      modifier:
+        "positive",
+    } as const;
   }
 
-  return "positive";
+  return null;
+}
+
+function buildTradeOffPreview({
+  tradeOffs,
+  selectedOffer,
+  displayOfferOverride,
+  riskLevel,
+  dataConfidenceLevel,
+}: {
+  tradeOffs:
+    string[];
+  selectedOffer:
+    SmartStaySelectedOfferV2 |
+    null;
+  displayOfferOverride:
+    HotelOffer |
+    null;
+  riskLevel?:
+    SmartStayRiskLevelV2;
+  dataConfidenceLevel:
+    SmartStayDataConfidenceLevelV2;
+}) {
+  const refundable =
+    displayOfferOverride
+      ?.refundable ??
+    selectedOffer
+      ?.refundable ??
+    null;
+
+  const taxStatus =
+    displayOfferOverride
+      ?.taxesIncluded ??
+    selectedOffer
+      ?.taxesIncluded ??
+    null;
+
+  return uniqueMessages([
+    refundable ===
+      false
+      ? "The selected offer is non-refundable."
+      : null,
+
+    taxStatus ===
+      null
+      ? "Some mandatory taxes or fees may still need final confirmation."
+      : null,
+
+    riskLevel ===
+      "high"
+      ? "This option has important booking trade-offs."
+      : riskLevel ===
+          "medium"
+        ? "Review the booking conditions before checkout."
+        : null,
+
+    dataConfidenceLevel ===
+      "low" ||
+    dataConfidenceLevel ===
+      "none"
+      ? "Some supporting accommodation data is limited."
+      : null,
+
+    ...tradeOffs,
+  ]);
 }
 
 function HotelCard({
   hotel,
   smartScore,
   riskLevel,
-  dataConfidenceLevel = "none",
+  dataConfidenceLevel =
+    "none",
   badges = [],
   strengths = [],
   tradeOffs = [],
   selectedOffer = null,
+  displayOfferOverride = null,
   detailsLoading = false,
-  bookingUrl = null,
   showRecommendationLabel = false,
   onViewDetails,
   onExplanationToggle,
@@ -311,67 +488,67 @@ function HotelCard({
     explanationExpanded,
     setExplanationExpanded,
   ] = useState(
-    showRecommendationLabel
+    false
   );
-  const hasImage =
-    Boolean(hotel.image);
-
-  const location =
-    formatLocation(
-      hotel.city,
-      hotel.country
-    );
-
-  const riskLabel =
-    formatRiskLabel(riskLevel);
-
-  const dataConfidence =
-    getDataConfidenceModifier(
-      dataConfidenceLevel
-    );
-
-  const dataConfidenceLabel =
-    formatDataConfidence(
-      dataConfidenceLevel
-    );
-
-  const offerSelection =
-    selectHotelOffers(hotel);
 
   const displayPrice =
     getBestDisplayPrice(
       hotel,
-      selectedOffer
+      selectedOffer,
+      displayOfferOverride
     );
-
-  const selectedOfferSummary =
-    showRecommendationLabel ||
-    selectedOffer
-      ?.selectionMode ===
-      "intent-aware-flexibility"
-      ? formatSelectedOfferSummary(
-          selectedOffer
-        )
-      : null;
 
   const visibleBadges =
-    badges.filter(
-      (badge) =>
-        badge !==
-        "Low Risk"
+    getVisibleBadges(
+      badges
     );
 
-  const hasExplanation =
-    strengths.length > 0 ||
-    tradeOffs.length > 0;
+  const strengthPreview =
+    uniqueMessages(
+      strengths
+    ).slice(
+      0,
+      2
+    );
 
-  const hasBadges =
-    visibleBadges.length > 0;
+  const fullTradeOffs =
+    buildTradeOffPreview({
+      tradeOffs,
+      selectedOffer,
+      displayOfferOverride,
+      riskLevel,
+      dataConfidenceLevel,
+    });
+
+  const tradeOffPreview =
+    fullTradeOffs.slice(
+      0,
+      2
+    );
+
+  const offerCondition =
+    getOfferCondition(
+      selectedOffer,
+      displayOfferOverride
+    );
+
+  const displayRoomName =
+    displayOfferOverride
+      ?.roomName ??
+    selectedOffer
+      ?.roomName ??
+    null;
+
+  const hasExplanation =
+    strengths.length >
+      0 ||
+    fullTradeOffs.length >
+      0;
 
   return (
     <article className="hotel-card">
       <div className="hotel-card__image">
-        {hasImage ? (
+        {hotel.image ? (
           <img
             src={hotel.image}
             alt={hotel.name}
@@ -382,19 +559,23 @@ function HotelCard({
           </div>
         )}
 
-        {smartScore !== undefined && (
+        {smartScore !==
+          undefined && (
           <div className="hotel-card__image-score">
             <span>
-              Your SmartScore
+              SmartStay fit
             </span>
 
             <strong>
               {smartScore}
+              <small>
+                /100
+              </small>
             </strong>
 
-            <small>
+            <em>
               For this search
-            </small>
+            </em>
           </div>
         )}
       </div>
@@ -413,32 +594,55 @@ function HotelCard({
                 {hotel.name}
               </h2>
 
-              {hotel.stars > 0 && (
+              {hotel.stars >
+                0 && (
                 <div className="hotel-card__stars">
-                  {formatStars(hotel.stars)}
+                  {formatStars(
+                    hotel.stars
+                  )}
                 </div>
               )}
 
               <div className="hotel-card__meta">
                 <span>
-                  📍 {location}
+                  📍 {formatLocation(
+                    hotel.city,
+                    hotel.country
+                  )}
                 </span>
 
-                {hotel.distance !== null && (
+                {hotel.distance !==
+                  null && (
                   <span>
-                    {hotel.distance.toFixed(1)} km from center
+                    {hotel.distance.toFixed(
+                      1
+                    )}{" "}
+                    km from centre
+                  </span>
+                )}
+
+                {displayRoomName && (
+                  <span className="hotel-card__room">
+                    {displayRoomName}
                   </span>
                 )}
               </div>
             </div>
 
             <div className="hotel-card__review-panel">
+              <span className="hotel-card__review-label">
+                Guest rating
+              </span>
+
               <span className="hotel-card__review-score">
-                {formatReviewScore(hotel.reviewScore)}
+                {formatReviewScore(
+                  hotel.reviewScore
+                )}
               </span>
 
               <span className="hotel-card__review-text">
-                {hotel.reviewText || "No review score"}
+                {hotel.reviewText ||
+                  "No guest rating"}
               </span>
 
               <span className="hotel-card__review-count">
@@ -450,28 +654,75 @@ function HotelCard({
             </div>
           </div>
 
-          {hasBadges && (
+          {(visibleBadges.length >
+            0 ||
+            offerCondition) && (
             <div className="hotel-card__badges">
-              {visibleBadges.map((badge) => (
+              {visibleBadges.map(
+                (badge) => (
+                  <span
+                    key={badge}
+                    className="hotel-card__badge hotel-card__badge--positive"
+                  >
+                    {badge}
+                  </span>
+                )
+              )}
+
+              {offerCondition && (
                 <span
-                  key={badge}
-                  className={`hotel-card__badge hotel-card__badge--${getBadgeModifier(badge)}`}
+                  className={`hotel-card__offer-condition hotel-card__offer-condition--${offerCondition.modifier}`}
                 >
-                  {badge}
+                  {offerCondition.label}
                 </span>
-              ))}
+              )}
             </div>
           )}
 
-          <div className="hotel-card__trust-row">
-            <span className={`hotel-card__risk hotel-card__risk--${riskLevel ?? "medium"}`}>
-              {riskLabel}
-            </span>
+          {(strengthPreview.length >
+            0 ||
+            tradeOffPreview.length >
+              0) && (
+            <div className="hotel-card__decision-grid">
+              {strengthPreview.length >
+                0 && (
+                <section className="hotel-card__decision-panel hotel-card__decision-panel--positive">
+                  <p>
+                    Why it stands out
+                  </p>
 
-            <span className={`hotel-card__data-confidence hotel-card__data-confidence--${dataConfidence}`}>
-              {dataConfidenceLabel}
-            </span>
-          </div>
+                  <ul>
+                    {strengthPreview.map(
+                      (strength) => (
+                        <li key={strength}>
+                          {strength}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </section>
+              )}
+
+              {tradeOffPreview.length >
+                0 && (
+                <section className="hotel-card__decision-panel hotel-card__decision-panel--warning">
+                  <p>
+                    What to know
+                  </p>
+
+                  <ul>
+                    {tradeOffPreview.map(
+                      (tradeOff) => (
+                        <li key={tradeOff}>
+                          {tradeOff}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </section>
+              )}
+            </div>
+          )}
 
           {hasExplanation && (
             <section className="hotel-card__engine">
@@ -504,13 +755,11 @@ function HotelCard({
 
                   <span>
                     <span className="hotel-card__engine-title">
-                      {showRecommendationLabel
-                        ? "Why SmartStay recommends this"
-                        : "How this stay compares"}
+                      Full SmartStay comparison
                     </span>
 
                     <span className="hotel-card__engine-subtitle">
-                      Evidence-backed strengths and trade-offs for this search.
+                      See the complete evidence-backed strengths and trade-offs.
                     </span>
                   </span>
                 </span>
@@ -530,34 +779,42 @@ function HotelCard({
                   id={explanationId}
                   className="hotel-card__explanation-groups"
                 >
-                  {strengths.length > 0 && (
+                  {strengths.length >
+                    0 && (
                     <div className="hotel-card__explanation-group">
                       <p className="hotel-card__explanation-label">
-                        What stands out
+                        Why it stands out
                       </p>
 
                       <ul className="hotel-card__reasons">
-                        {strengths.map((strength) => (
-                          <li key={strength}>
-                            {strength}
-                          </li>
-                        ))}
+                        {uniqueMessages(
+                          strengths
+                        ).map(
+                          (strength) => (
+                            <li key={strength}>
+                              {strength}
+                            </li>
+                          )
+                        )}
                       </ul>
                     </div>
                   )}
 
-                  {tradeOffs.length > 0 && (
+                  {fullTradeOffs.length >
+                    0 && (
                     <div className="hotel-card__explanation-group">
                       <p className="hotel-card__explanation-label">
-                        What to consider
+                        What to know
                       </p>
 
                       <ul className="hotel-card__reasons">
-                        {tradeOffs.map((tradeOff) => (
-                          <li key={tradeOff}>
-                            {tradeOff}
-                          </li>
-                        ))}
+                        {fullTradeOffs.map(
+                          (tradeOff) => (
+                            <li key={tradeOff}>
+                              {tradeOff}
+                            </li>
+                          )
+                        )}
                       </ul>
                     </div>
                   )}
@@ -569,6 +826,10 @@ function HotelCard({
 
         <div className="hotel-card__bottom">
           <div className="hotel-card__price-block">
+            <p className="hotel-card__price-label">
+              Total stay
+            </p>
+
             <p className="hotel-card__price">
               {formatPrice(
                 displayPrice.price,
@@ -577,30 +838,17 @@ function HotelCard({
             </p>
 
             <p className="hotel-card__price-note">
-              {displayPrice.completeness ===
-              "reported-complete"
-                ? "Total stay cost based on mandatory charges reported by the provider"
-                : displayPrice.completeness ===
-                    "reported-tax-status-unknown"
-                  ? "Provider-reported stay amount; tax inclusion was not confirmed, so the final total may be higher"
-                  : displayPrice.completeness ===
-                      "partial"
-                    ? "Total known stay cost; some mandatory charges may still be uncertain"
-                    : "Price from available offer data; final mandatory charges may vary"}
+              {getPriceNote(
+                displayPrice
+              )}
             </p>
 
-            {selectedOfferSummary && (
-              <p className="hotel-card__price-note">
-                {selectedOfferSummary}
+            {displayPrice.verified && (
+              <p className="hotel-card__verified-total">
+                Price checked
               </p>
             )}
           </div>
-
-          {offerSelection.offers.length > 1 && (
-            <p className="hotel-card__offer-count">
-              {offerSelection.offers.length} available offers
-            </p>
-          )}
 
           <div className="hotel-card__actions">
             <button
@@ -612,24 +860,17 @@ function HotelCard({
                   selectedOffer
                 );
               }}
-              disabled={detailsLoading}
-              aria-busy={detailsLoading}
+              disabled={
+                detailsLoading
+              }
+              aria-busy={
+                detailsLoading
+              }
             >
               {detailsLoading
                 ? "Loading details..."
-                : "View Details"}
+                : "View details and offer"}
             </button>
-
-            {bookingUrl && (
-              <a
-                className="hotel-card__booking-link"
-                href={bookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View booking offer
-              </a>
-            )}
           </div>
         </div>
       </div>

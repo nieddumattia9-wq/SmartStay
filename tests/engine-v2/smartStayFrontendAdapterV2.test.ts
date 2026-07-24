@@ -1378,8 +1378,26 @@ test(
     );
 
     assert.ok(
-      resultsSource.includes(
+      !resultsSource.includes(
         ".redirectable ==="
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "createBookingRedirectUrl"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "displayOfferOverride={"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "onOfferRechecked={"
       )
     );
 

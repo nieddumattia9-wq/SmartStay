@@ -49,7 +49,25 @@ test(
 
     assert.ok(
       panelSource.includes(
-        "Accept updated total and continue"
+        "Accept verified offer and continue"
+      )
+    );
+
+    assert.ok(
+      panelSource.includes(
+        "Review the verified total"
+      )
+    );
+
+    assert.ok(
+      panelSource.includes(
+        "Previously shown:"
+      )
+    );
+
+    assert.ok(
+      panelSource.includes(
+        "requiresChangeAcceptance"
       )
     );
 
@@ -119,15 +137,25 @@ test(
 test(
   "hotel cards show total stay amounts with cents",
   () => {
+    assert.match(
+      cardSource,
+      /minimumFractionDigits:\s*2/
+    );
+
+    assert.match(
+      cardSource,
+      /maximumFractionDigits:\s*2/
+    );
+
     assert.ok(
       cardSource.includes(
-        "minimumFractionDigits: 2"
+        "formatPrice("
       )
     );
 
     assert.ok(
       cardSource.includes(
-        "maximumFractionDigits: 2"
+        "Total stay"
       )
     );
   }

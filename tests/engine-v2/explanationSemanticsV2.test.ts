@@ -452,13 +452,19 @@ test(
 
     assert.ok(
       hotelCardSource.includes(
-        "What stands out"
+        "Why it stands out"
       )
     );
 
     assert.ok(
       hotelCardSource.includes(
-        "What to consider"
+        "What to know"
+      )
+    );
+
+    assert.ok(
+      hotelCardSource.includes(
+        "Full SmartStay comparison"
       )
     );
 
