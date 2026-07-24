@@ -15,9 +15,12 @@ import "./App.css";
 
 import Navbar from "./components/Navbar/Navbar";
 import LoadingScreen from "./components/LoadingScreen/LoadingScreen";
+import BetaFooter from "./components/BetaFooter/BetaFooter";
 
 import Home from "./pages/Home/Home";
 import Results from "./pages/Results/Results";
+import Privacy from "./pages/Privacy/Privacy";
+import BetaFeedback from "./pages/BetaFeedback/BetaFeedback";
 
 import "./styles/frontendMobile.css";
 
@@ -64,7 +67,18 @@ function RouteAccessibility() {
 
 function getAnalyticsPage(
   pathname: string
-): AnalyticsPage {
+): AnalyticsPage | null {
+  if (
+    pathname.startsWith(
+      "/privacy"
+    ) ||
+    pathname.startsWith(
+      "/feedback"
+    )
+  ) {
+    return null;
+  }
+
   if (
     pathname.startsWith(
       "/loading"
@@ -89,7 +103,7 @@ function AnalyticsRouteObserver() {
     useLocation();
 
   const previousPageRef =
-    useRef<AnalyticsPage>(
+    useRef<AnalyticsPage | null>(
       getAnalyticsPage(
         location.pathname
       )
@@ -101,7 +115,25 @@ function AnalyticsRouteObserver() {
         location.pathname
       );
 
+    if (nextPage === null) {
+      if (
+        previousPageRef.current !==
+          null &&
+        previousPageRef.current !==
+          "home"
+      ) {
+        trackAnalyticsJourneyAbandonment();
+      }
+
+      previousPageRef.current =
+        null;
+
+      return;
+    }
+
     if (
+      previousPageRef.current !==
+        null &&
       previousPageRef.current !==
         "home" &&
       nextPage === "home"
@@ -180,6 +212,16 @@ function App() {
           />
 
           <Route
+            path="/privacy"
+            element={<Privacy />}
+          />
+
+          <Route
+            path="/feedback"
+            element={<BetaFeedback />}
+          />
+
+          <Route
             path="*"
             element={
               <Navigate
@@ -190,6 +232,8 @@ function App() {
           />
         </Routes>
       </main>
+
+      <BetaFooter />
     </BrowserRouter>
   );
 }

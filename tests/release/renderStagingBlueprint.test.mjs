@@ -211,13 +211,18 @@ test(
     assertLiteralEnv(
       backend,
       "ANALYTICS_ENABLED",
-      '"false"'
+      '"true"'
     );
 
     assertLiteralEnv(
       backend,
       "VITE_ANALYTICS_ENABLED",
-      '"false"'
+      '"true"'
+    );
+
+    assertPromptedEnv(
+      backend,
+      "ANALYTICS_ADMIN_TOKEN"
     );
 
     assertLiteralEnv(
@@ -229,7 +234,7 @@ test(
     assertLiteralEnv(
       backend,
       "ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED",
-      '"false"'
+      '"true"'
     );
 
     for (
@@ -308,7 +313,7 @@ test(
     assertLiteralEnv(
       frontend,
       "VITE_ANALYTICS_ENABLED",
-      '"false"'
+      '"true"'
     );
 
     assertPromptedEnv(
@@ -346,11 +351,17 @@ test(
       "The stateful staging backend must not use a sleeping Free instance."
     );
 
+    assert.match(
+      backend,
+      /      - key: ANALYTICS_ADMIN_TOKEN\n        sync: false(?:\n|$)/,
+      "The beta analytics admin token must be prompted and never committed."
+    );
+
     assert.ok(
-      !yaml.includes(
-        "ANALYTICS_ADMIN_TOKEN"
+      !/ANALYTICS_ADMIN_TOKEN\n\s+value:/.test(
+        backend
       ),
-      "No analytics admin token is needed while analytics are disabled."
+      "The analytics admin token value must never be committed."
     );
   }
 );
@@ -411,7 +422,9 @@ test(
         "Do not enable horizontal scaling",
         "Do not invent a domain",
         "Do not add RouteStack credentials",
-        "Analytics remain disabled",
+        "Controlled-beta analytics are enabled",
+        "`ANALYTICS_ADMIN_TOKEN` must be added manually",
+        "The current analytics store is volatile",
         "Run exactly one bounded journey",
         "production remains blocked",
         "Do not add `RELEASE_SHA` with `fromService.envVarKey`",

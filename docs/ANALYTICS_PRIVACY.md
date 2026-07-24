@@ -159,3 +159,24 @@ docs/ANALYTICS_BETA_MEASUREMENT.md
 ## Legal boundary
 
 This document is the technical privacy contract, not final legal advice. Before meaningful public traffic, the public privacy policy still needs professional legal review covering controller identity, lawful basis, processors, international transfers, rights, objections, complaints and incident handling.
+
+## Public controlled-beta notice
+
+The public route `/privacy` presents a concise notice for invited testers. It
+does not replace this technical contract or professional legal review.
+
+For the controlled beta:
+
+- the staging URL is shared only through private invitations;
+- search and booking data remain outside analytics events;
+- first-party analytics use no cookies and no persistent cross-session ID;
+- DNT and Global Privacy Control disable analytics collection;
+- raw analytics are retained for at most 30 days and aggregates for at most
+  180 days;
+- the current in-memory store can lose data earlier after a restart or deploy;
+- privacy requests are handled through the same private channel used for the
+  tester invitation.
+
+Before wider public traffic, SmartStay still needs a final public privacy
+policy with verified controller details, contact information, legal basis,
+processor list and professional legal review.

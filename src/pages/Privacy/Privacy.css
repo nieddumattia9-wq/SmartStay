@@ -1,0 +1,57 @@
+.beta-information-page {
+  width: min(920px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+.beta-information-page__card {
+  padding: clamp(24px, 5vw, 48px);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+.beta-information-page__eyebrow {
+  margin: 0 0 8px;
+  color: #047857;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.beta-information-page h1 {
+  margin: 0 0 24px;
+  color: #0f172a;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.05;
+}
+
+.beta-information-page h2 {
+  margin: 32px 0 10px;
+  color: #0f172a;
+  font-size: 1.2rem;
+}
+
+.beta-information-page p,
+.beta-information-page li,
+.beta-information-page label {
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.beta-information-page ul {
+  padding-left: 22px;
+}
+
+@media (max-width: 640px) {
+  .beta-information-page {
+    padding: 24px 0 48px;
+  }
+
+  .beta-information-page__card {
+    border-radius: 18px;
+  }
+}

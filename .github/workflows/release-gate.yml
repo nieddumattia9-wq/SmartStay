@@ -82,5 +82,6 @@ jobs:
             contracts/analytics-event-contract.v1.json
             docs/ANALYTICS_PRIVACY.md
             docs/ANALYTICS_BETA_MEASUREMENT.md
+            docs/CONTROLLED_BETA_OPERATIONS.md
             docs/STAGING_RELEASE.md
             docs/PRODUCTION_RELEASE.md

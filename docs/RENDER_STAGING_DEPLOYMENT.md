@@ -107,22 +107,30 @@ VITE_API_URL=https://<actual-backend-host>/api
 The value is embedded at frontend build time. After changing it, redeploy the
 frontend.
 
-## Analytics during the first remote smoke
+## Analytics during the controlled beta
 
-Analytics remain disabled:
+The first infrastructure smoke and provider journey were completed with
+analytics disabled.
+
+Controlled-beta analytics are enabled only after 39C24A passes:
 
 ```text
-ANALYTICS_ENABLED=false
-VITE_ANALYTICS_ENABLED=false
+ANALYTICS_ENABLED=true
+VITE_ANALYTICS_ENABLED=true
 ANALYTICS_STORAGE_MODE=in-memory-single-instance
-ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED=false
+ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED=true
 ```
 
-Do not set `ANALYTICS_ADMIN_TOKEN` while analytics are disabled.
+`ANALYTICS_ADMIN_TOKEN` must be added manually in the Render backend
+environment before the Blueprint is synchronized. The token value must never be
+committed, placed in `render.yaml`, or shared with testers.
 
-Analytics can be enabled later only through a separate reviewed staging
-decision and with the volatile-storage acknowledgement required by the release
-contract.
+The current analytics store is volatile. Deploys, restarts, and service
+replacement can erase raw events and aggregates. Capture the aggregate report
+regularly and avoid unnecessary deploys during the controlled beta.
+
+Analytics remain first-party, cookie-free, and disabled for browsers that send
+Do Not Track or Global Privacy Control.
 
 ## Blueprint creation and recovery
 
@@ -210,6 +218,7 @@ evidence gates.
 - one bounded provider journey passes;
 - booking recheck and handoff are verified;
 - rollback target is known and verified;
-- analytics remain disabled unless separately approved;
+- controlled-beta analytics use the reviewed first-party contract;
+- the admin token is configured outside the repository;
 - evidence ZIP is produced;
 - production remains blocked.
