@@ -995,15 +995,25 @@ export function evaluateRiskV2(
       )
     );
 
+  const thresholdLevel =
+    getLevel(
+      score,
+      mediumThreshold,
+      highThreshold
+    );
+
+  const level =
+    refundable?.value ===
+      false &&
+    thresholdLevel ===
+      "low"
+      ? "medium"
+      : thresholdLevel;
+
   return {
     score,
 
-    level:
-      getLevel(
-        score,
-        mediumThreshold,
-        highThreshold
-      ),
+    level,
 
     factorCodes:
       sortedContributions.map(

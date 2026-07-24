@@ -450,7 +450,9 @@ function buildTradeOffPreview({
       "high"
       ? "This option has important booking trade-offs."
       : riskLevel ===
-          "medium"
+          "medium" &&
+        refundable !==
+          false
         ? "Review the booking conditions before checkout."
         : null,
 

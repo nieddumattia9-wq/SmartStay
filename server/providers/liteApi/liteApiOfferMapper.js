@@ -1117,6 +1117,9 @@ function createLiteApiOffer({
 
     ...cancellationSummary,
 
+    bookable:
+      true,
+
     roomName:
       buildRoomName(rate),
 

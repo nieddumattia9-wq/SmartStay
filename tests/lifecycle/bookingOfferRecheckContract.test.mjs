@@ -255,6 +255,69 @@ test(
 );
 
 test(
+  "a lower verified total is still a material offer change that requires acceptance",
+  async () => {
+    const fixture =
+      createFixture();
+
+    const setup =
+      createService({
+        providerResult: {
+          outcome:
+            "confirmed",
+          offer: {
+            ...fixture.offer,
+            price:
+              90,
+            totalKnownCost:
+              100,
+          },
+          providerBookingReference:
+            "private-prebook-id",
+        },
+      });
+
+    const result =
+      await setup.service({
+        searchId:
+          "search-1",
+        hotelId:
+          setup.fixture.hotel.id,
+        offerId:
+          setup.fixture.offerId,
+      });
+
+    assert.equal(
+      result.state,
+      "changed"
+    );
+
+    assert.equal(
+      result.requiresUserConfirmation,
+      true
+    );
+
+    assert.deepEqual(
+      result.changedFields,
+      [
+        "price",
+        "totalKnownCost",
+      ]
+    );
+
+    assert.equal(
+      result.offer.price,
+      90
+    );
+
+    assert.equal(
+      result.offer.totalKnownCost,
+      100
+    );
+  }
+);
+
+test(
   "sold-out and unsupported providers produce deterministic public states",
   async () => {
     const soldOut =

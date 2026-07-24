@@ -76,6 +76,9 @@ function formatLocation(
     .join(", ");
 }
 
+const PAYMENT_CHECKOUT_DISCLOSURE =
+  "Payment timing and accepted methods are shown by the booking partner in secure checkout.";
+
 function formatOfferMoney(
   amount: number,
   currency: string
@@ -1123,6 +1126,10 @@ function HotelDetailsPanel({
                         <p>
                           SmartStay will check availability, the complete known total, taxes and cancellation conditions before opening secure checkout.
                         </p>
+
+                        <p>
+                          {PAYMENT_CHECKOUT_DISCLOSURE}
+                        </p>
                       </div>
 
                       <button
@@ -1170,6 +1177,10 @@ function HotelDetailsPanel({
                           {getOfferTaxLabel(
                             bookingRecheck.offer
                           )}
+                        </p>
+
+                        <p>
+                          {PAYMENT_CHECKOUT_DISCLOSURE}
                         </p>
                       </div>
 
@@ -1242,6 +1253,10 @@ function HotelDetailsPanel({
                           {getOfferTaxLabel(
                             bookingRecheck.offer
                           )}
+                        </p>
+
+                        <p>
+                          {PAYMENT_CHECKOUT_DISCLOSURE}
                         </p>
                       </div>
 

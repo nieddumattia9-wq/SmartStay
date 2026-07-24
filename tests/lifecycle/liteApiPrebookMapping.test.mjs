@@ -6,6 +6,7 @@ const require =
   createRequire(import.meta.url);
 
 const {
+  createLiteApiOffer,
   createLiteApiPrebookOffer,
 } = require(
   "../../server/providers/liteApi/liteApiOfferMapper.js"
@@ -51,6 +52,46 @@ function createOriginalOffer() {
       true,
   };
 }
+
+test(
+  "LiteAPI mapping marks every valid provider offer as explicitly bookable",
+  () => {
+    const mapped =
+      createLiteApiOffer({
+        rate: {
+          offerId:
+            "offer-token",
+          suggestedSellingPrice: {
+            amount:
+              120,
+            currency:
+              "EUR",
+          },
+          roomName:
+            "Standard room",
+        },
+        hotelId:
+          "hotel-1",
+        index:
+          0,
+        fallbackCurrency:
+          "EUR",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(
+      mapped
+    );
+
+    assert.equal(
+      mapped.bookable,
+      true
+    );
+  }
+);
 
 test(
   "LiteAPI prebook mapping keeps the original offer reference and extracts private prebook identity",
@@ -123,6 +164,11 @@ test(
     assert.equal(
       mapped.offer.totalKnownCost,
       132
+    );
+
+    assert.equal(
+      mapped.offer.bookable,
+      true
     );
   }
 );
