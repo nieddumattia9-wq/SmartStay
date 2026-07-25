@@ -43,7 +43,12 @@ test(
 
     assert.match(
       results,
-      /remainingHotels\.length[\s\S]{0,220}available in the full list/
+      /results-search-summary__facts/
+    );
+
+    assert.match(
+      results,
+      /other suitable/
     );
 
     assert.match(
@@ -161,7 +166,7 @@ test(
 
     assert.match(
       mapComponent,
-      /Open larger map/
+      /Open in Google Maps/
     );
 
     assert.match(

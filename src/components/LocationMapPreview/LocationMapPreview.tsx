@@ -29,21 +29,12 @@ type LocationMapPreviewProps = {
 
   distanceFromSelectedPointKm?:
     number | null;
-
-  selectedLocationLabel?:
-    string | null;
 };
 
-function formatDistanceContext({
-  distanceFromSelectedPointKm,
-  selectedLocationLabel,
-}: {
+function formatDistanceContext(
   distanceFromSelectedPointKm:
-    number | null;
-
-  selectedLocationLabel:
-    string | null;
-}) {
+    number | null
+) {
   if (
     distanceFromSelectedPointKm ===
       null ||
@@ -73,11 +64,7 @@ function formatDistanceContext({
 
   return (
     distanceLabel +
-    " from " +
-    (
-      selectedLocationLabel?.trim() ||
-      "your selected point"
-    )
+    " from your selected location"
   );
 }
 
@@ -87,8 +74,6 @@ function LocationMapPreview({
   accommodationName,
   address,
   distanceFromSelectedPointKm =
-    null,
-  selectedLocationLabel =
     null,
 }: LocationMapPreviewProps) {
   const coordinates =
@@ -137,10 +122,9 @@ function LocationMapPreview({
     ]);
 
   const distanceContext =
-    formatDistanceContext({
-      distanceFromSelectedPointKm,
-      selectedLocationLabel,
-    });
+    formatDistanceContext(
+      distanceFromSelectedPointKm
+    );
 
   if (
     !coordinates ||
@@ -171,14 +155,16 @@ function LocationMapPreview({
           )}
         </div>
 
-        <a
-          className="hotel-location-map__link"
-          href={externalMapUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open larger map
-        </a>
+        {embedUrl && (
+          <a
+            className="hotel-location-map__link"
+            href={externalMapUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open in Google Maps
+          </a>
+        )}
       </div>
 
       {embedUrl ? (
@@ -208,11 +194,11 @@ function LocationMapPreview({
 
           <span>
             <strong>
-              View location on Google Maps
+              Open this stay in Google Maps
             </strong>
 
             <small>
-              The embedded preview is not configured in this environment.
+              See the exact location in a new tab.
             </small>
           </span>
         </a>

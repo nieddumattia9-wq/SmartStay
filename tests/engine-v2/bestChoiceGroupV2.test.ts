@@ -287,7 +287,7 @@ test(
 );
 
 test(
-  "Best Choice Group exposes at most three choices and keeps further equivalents for the normal list",
+  "Best Choice Group exposes up to four equivalent choices",
   () => {
     const result = evaluateRecommendationRolesV2(
       maximumComfortCandidates()
@@ -295,11 +295,38 @@ test(
 
     assert.deepEqual(
       result.bestChoiceGroup?.visibleHotelIds,
-      ["rocco-forte", "luxury-900", "luxury-700"]
+      [
+        "rocco-forte",
+        "luxury-900",
+        "luxury-700",
+        "golden-tower",
+      ]
     );
     assert.deepEqual(
       result.bestChoiceGroup?.additionalEquivalentHotelIds,
-      ["golden-tower"]
+      []
+    );
+  }
+);
+
+test(
+  "Best Choice Group caps an oversized visibility request at four",
+  () => {
+    const result = evaluateRecommendationRolesV2(
+      maximumComfortCandidates(),
+      {
+        maximumInitiallyVisiblePerGroup:
+          99,
+      }
+    );
+
+    assert.equal(
+      result.bestChoiceGroup?.visibleHotelIds.length,
+      4
+    );
+    assert.deepEqual(
+      result.bestChoiceGroup?.additionalEquivalentHotelIds,
+      []
     );
   }
 );

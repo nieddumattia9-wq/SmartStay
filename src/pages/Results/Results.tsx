@@ -250,32 +250,67 @@ function writeStoredRankingV2(
     }
   }
 
-  function getHotelOfferTotal(
-    offer: HotelOffer | null
+  function formatDestinationLabel(
+    value:
+      string |
+      null |
+      undefined
   ) {
-    if (!offer) {
-      return null;
+    if (
+      typeof value !==
+        "string"
+    ) {
+      return "";
     }
+
+    const parts =
+      value
+        .split(",")
+        .map(
+          (part) =>
+            part.trim()
+        )
+        .filter(
+          Boolean
+        );
+
+    const uniqueParts =
+      parts.filter(
+        (
+          part,
+          index
+        ) =>
+          index === 0 ||
+          part.toLowerCase() !==
+            parts[
+              index - 1
+            ]?.toLowerCase()
+      );
+
+    const lastPart =
+      uniqueParts[
+        uniqueParts.length -
+          1
+      ];
 
     if (
-      typeof offer.totalKnownCost ===
-        "number" &&
-      Number.isFinite(
-        offer.totalKnownCost
+      uniqueParts.length >=
+        3 &&
+      lastPart &&
+      /^[A-Z]{2}$/i.test(
+        lastPart
       ) &&
-      offer.totalKnownCost >
-        0
+      uniqueParts[
+        uniqueParts.length -
+          2
+      ]?.length >
+        2
     ) {
-      return offer.totalKnownCost;
+      uniqueParts.pop();
     }
 
-    return (
-      Number.isFinite(
-        offer.price
-      ) &&
-      offer.price > 0
-        ? offer.price
-        : null
+    return uniqueParts.join(
+      ", "
     );
   }
 
@@ -551,8 +586,10 @@ function writeStoredRankingV2(
         1,
 
       label:
-        searchMeta
-          .destinationLabel ||
+        formatDestinationLabel(
+          searchMeta
+            .destinationLabel
+        ) ||
         "Selected destination",
     };
   }
@@ -807,6 +844,19 @@ function getHotelDetailsFailureMessage(
       searchMeta?.smartStayProfile ??
       null;
 
+    const displayDestinationLabel =
+      useMemo(
+        () =>
+          formatDestinationLabel(
+            searchMeta
+              ?.destinationLabel
+          ),
+        [
+          searchMeta
+            ?.destinationLabel,
+        ]
+      );
+
     const originalMaximumDistanceKm =
       searchMeta
         ?.maxDistanceKm ??
@@ -841,19 +891,10 @@ function getHotelDetailsFailureMessage(
       distanceRecoveryActive ||
       budgetRecoveryActive;
 
-    const balanceSourceLabel =
+    const balanceWasManuallySelected =
       smartStayProfile
-        ?.preferenceSource === "manual"
-        ? "Your choice"
-        : smartStayProfile
-          ? "Automatic"
-          : "Saved preference";
-
-    const balanceSourceClassName =
-      smartStayProfile
-        ?.preferenceSource === "manual"
-        ? "results-balance-card__source--manual"
-        : "results-balance-card__source--automatic";
+        ?.preferenceSource ===
+      "manual";
 
     const balanceExplanation =
       smartStayProfile
@@ -868,6 +909,78 @@ const rankedHotels =
 
     const recommendationPicks =
       engineView?.recommendationPicks ?? [];
+
+    const recommendationGroups =
+      useMemo(() => {
+        const roleOrder = [
+          "best-choice",
+          "cheaper-alternative",
+          "comfort-upgrade",
+        ] as const;
+
+        return roleOrder.flatMap(
+          (role) => {
+            const picks =
+              recommendationPicks.filter(
+                (pick) =>
+                  pick.role ===
+                  role
+              );
+
+            if (
+              picks.length ===
+              0
+            ) {
+              return [];
+            }
+
+            const firstPick =
+              picks[0];
+
+            const hasMultipleStays =
+              picks.length >
+              1;
+
+            const label =
+              role ===
+                "best-choice"
+                ? "Best choice for you"
+                : role ===
+                    "cheaper-alternative"
+                  ? hasMultipleStays
+                    ? firstPick.label ===
+                        "Best saving with less flexibility"
+                      ? "Best savings with less flexibility"
+                      : "Best sensible savings"
+                    : firstPick.label
+                  : hasMultipleStays
+                    ? "Worthwhile upgrades"
+                    : firstPick.label;
+
+            const reason =
+              hasMultipleStays
+                ? role ===
+                    "best-choice"
+                  ? "These stays offer an equivalent evidence-backed fit for your budget, distance and selected SmartStay balance."
+                  : role ===
+                      "cheaper-alternative"
+                    ? "These stays offer comparable savings while keeping overall trip fit within SmartStay's quality threshold."
+                    : "These stays offer a comparable, worthwhile improvement for the extra cost."
+                : firstPick.reason;
+
+            return [
+              {
+                role,
+                label,
+                reason,
+                picks,
+              },
+            ];
+          }
+        );
+      }, [
+        recommendationPicks,
+      ]);
 
     const analyticsContextByHotelId =
       useMemo(() => {
@@ -954,21 +1067,6 @@ const rankedHotels =
         recommendationPicks,
       ]);
 
-    const bestChoiceEvaluation =
-      useMemo(() => {
-        return (
-          recommendationPicks.find(
-            (pick) =>
-              pick.role ===
-              "best-choice"
-          )
-            ?.evaluation ??
-          null
-        );
-      }, [
-        recommendationPicks,
-      ]);
-
     const nearBudgetHotels =
       useMemo(() => {
         return rankedHotels.filter(
@@ -1024,95 +1122,25 @@ const rankedHotels =
       engineView?.budgetPolicy ??
       null;
 
-    const budgetVisibilitySummary =
+    const featuredRecommendationCount =
+      recommendationPicks.length +
+      nearBudgetHotels.length;
+
+    const totalSuitableStayCount =
+      featuredRecommendationCount +
+      remainingHotels.length;
+
+    const totalBudgetSummaryLabel =
       budgetPolicy &&
       budgetPolicy.totalBudget !==
         null
-        ? [
-            budgetPolicy
-              .withinBudgetVisibleCount >
-              0
-              ? (
-                  budgetPolicy
-                    .withinBudgetVisibleCount +
-                  " verified " +
-                  (
-                    budgetPolicy
-                      .withinBudgetVisibleCount ===
-                      1
-                      ? "stay fits"
-                      : "stays fit"
-                  ) +
-                  " your " +
-                  formatSearchMoney(
-                    budgetPolicy
-                      .totalBudget,
-                    searchMeta
-                      ?.currency ??
-                    "EUR"
-                  ) +
-                  " total budget."
-                )
-              : (
-                  "No fully verified stay fits your " +
-                  formatSearchMoney(
-                    budgetPolicy
-                      .totalBudget,
-                    searchMeta
-                      ?.currency ??
-                    "EUR"
-                  ) +
-                  " total budget."
-                ),
-
-            budgetPolicy
-              .nearBudgetVisibleCount >
-              0
-              ? (
-                  budgetPolicy
-                    .nearBudgetVisibleCount +
-                  " sensible near-budget " +
-                  (
-                    budgetPolicy
-                      .nearBudgetVisibleCount ===
-                      1
-                      ? "option is"
-                      : "options are"
-                  ) +
-                  " shown."
-                )
-              : null,
-
-            remainingHotels.length >
-              0
-              ? (
-                  remainingHotels.length +
-                  " other suitable " +
-                  (
-                    remainingHotels.length ===
-                      1
-                      ? "stay is"
-                      : "stays are"
-                  ) +
-                  " available in the full list."
-                )
-              : null,
-          ]
-            .filter(
-              Boolean
-            )
-            .join(" ")
-        : (
-            rankedHotels.length +
-            " suitable " +
-            (
-              rankedHotels.length ===
-                1
-                ? "stay is"
-                : "stays are"
-            ) +
-            " available."
-          );
+        ? formatSearchMoney(
+            budgetPolicy.totalBudget,
+            searchMeta
+              ?.currency ??
+            "EUR"
+          )
+        : null;
 
     useEffect(() => {
       if (!engineView) {
@@ -1914,42 +1942,118 @@ const rankedHotels =
 
           <p className="results-search-summary">
             SmartStay analyzed {hotels.length} stays
-            {searchMeta?.destinationLabel
-              ? ` for your search in ${searchMeta.destinationLabel}`
+            {displayDestinationLabel
+              ? ` for your search in ${displayDestinationLabel}`
               : " for your search"}.
-            {rankedHotels.length > 0
-              ? ` ${budgetVisibilitySummary}`
-              : ""}
           </p>
+
+          {rankedHotels.length > 0 && (
+            <div
+              className="results-search-summary__facts"
+              aria-label={`${totalSuitableStayCount} suitable stays available`}
+            >
+              {featuredRecommendationCount > 0 && (
+                <span>
+                  <strong>
+                    {featuredRecommendationCount}
+                  </strong>{" "}
+                  {featuredRecommendationCount ===
+                    1
+                    ? "recommendation"
+                    : "recommendations"}{" "}
+                  shown first
+                </span>
+              )}
+
+              <span>
+                {remainingHotels.length >
+                0 ? (
+                  <>
+                    <strong>
+                      {remainingHotels.length}
+                    </strong>{" "}
+                    other suitable{" "}
+                    {remainingHotels.length ===
+                      1
+                      ? "stay"
+                      : "stays"}{" "}
+                    in the full list
+                  </>
+                ) : (
+                  "No other suitable stays"
+                )}
+              </span>
+
+              {budgetPolicy &&
+                totalBudgetSummaryLabel && (
+                <span>
+                  {budgetPolicy
+                    .withinBudgetVisibleCount >
+                  0 ? (
+                    <>
+                      <strong>
+                        {
+                          budgetPolicy
+                            .withinBudgetVisibleCount
+                        }
+                      </strong>{" "}
+                      within{" "}
+                      {totalBudgetSummaryLabel}{" "}
+                      total budget
+                    </>
+                  ) : (
+                    <>
+                      No verified stay within{" "}
+                      {totalBudgetSummaryLabel}
+                    </>
+                  )}
+                </span>
+              )}
+
+              {budgetPolicy &&
+                budgetPolicy
+                  .nearBudgetVisibleCount >
+                  0 && (
+                  <span>
+                    <strong>
+                      {
+                        budgetPolicy
+                          .nearBudgetVisibleCount
+                      }
+                    </strong>{" "}
+                    sensible near-budget{" "}
+                    {budgetPolicy
+                      .nearBudgetVisibleCount ===
+                    1
+                      ? "option"
+                      : "options"}
+                  </span>
+                )}
+            </div>
+          )}
 
           <div className="results-balance-card">
             <div className="results-balance-card__header">
-              <div>
-                <p className="results-balance-card__eyebrow">
-                  Your SmartStay balance
-                </p>
+              <div className="results-balance-card__title-row">
+                <span
+                  className="results-balance-card__dot"
+                  style={{
+                    background:
+                      selectedPreference.color,
+                  }}
+                  aria-hidden="true"
+                />
 
-                <div className="results-balance-card__title-row">
-                  <span
-                    className="results-balance-card__dot"
-                    style={{
-                      background:
-                        selectedPreference.color,
-                    }}
-                    aria-hidden="true"
-                  />
-
-                  <strong>
-                    {selectedPreference.title}
-                  </strong>
-                </div>
+                <strong>
+                  {selectedPreference.title} for this trip
+                </strong>
               </div>
 
-              <span
-                className={`results-balance-card__source ${balanceSourceClassName}`}
-              >
-                {balanceSourceLabel}
-              </span>
+              {balanceWasManuallySelected && (
+                <span className="results-balance-card__source results-balance-card__source--manual">
+                  Your choice
+                </span>
+              )}
             </div>
 
             <p className="results-balance-card__explanation">
@@ -2302,293 +2406,215 @@ const rankedHotels =
           </div>
       ) : (
         <>
-          {recommendationPicks.length > 0 && (
-            <section
-              className="results__recommendations"
-              aria-label="SmartStay recommendations"
-            >
-              {recommendationPicks.map((pick) => {
-                const evaluation =
-                  pick.evaluation;
+          {recommendationGroups.map(
+            (group) => {
+              const headingId =
+                `recommendation-group-${group.role}`;
 
-                return (
-                  <div
-                    key={`${pick.role}-${evaluation.hotel.id}`}
-                    className={`results__recommendation results__recommendation--${pick.role}`}
-                  >
-                    <div className="results__recommendation-heading">
-                      <p className="results__recommendation-role">
-                        {pick.label}
+              return (
+                <section
+                  key={group.role}
+                  className={`results__recommendation-group results__recommendation-group--${group.role}`}
+                  aria-labelledby={
+                    headingId
+                  }
+                >
+                  <div className="results__recommendation-heading">
+                    <div className="results__recommendation-heading-main">
+                      <p
+                        id={headingId}
+                        className="results__recommendation-role"
+                      >
+                        {group.label}
                       </p>
 
-                      <p className="results__recommendation-summary">
-                        {pick.reason}
-                      </p>
+                      {group.picks.length >
+                        1 && (
+                        <span className="results__recommendation-count">
+                          {
+                            group.picks
+                              .length
+                          }{" "}
+                          comparable stays
+                        </span>
+                      )}
                     </div>
 
-                    <HotelCard
-                      showRecommendationLabel
-                      hotel={evaluation.hotel}
-                      smartScore={evaluation.smartScore}
-                      riskLevel={evaluation.riskLevel}
-                      dataConfidenceLevel={evaluation.dataConfidenceLevel}
-                      badges={evaluation.badges}
-                      strengths={evaluation.strengths}
-                      tradeOffs={evaluation.tradeOffs}
-                      selectedOffer={
-                        evaluation.selectedOffer
-                      }
-                      displayOfferOverride={
-                        verifiedOffersByHotelId[
-                          evaluation.hotel.id
-                        ] ??
-                        null
-                      }
-                      detailsLoading={
-                        hotelDetailsLoading &&
-                        activeDetailsHotelId ===
-                          evaluation.hotel.id
-                      }
-                      onExplanationToggle={(
-                        expanded
-                      ) =>
-                        handleExplanationToggle(
-                          evaluation.hotel.id,
-                          expanded
-                        )
-                      }
-                      onViewDetails={
-                        handleViewHotelDetails
-                      }
-                    />
+                    <p className="results__recommendation-summary">
+                      {group.reason}
+                    </p>
                   </div>
-                );
-              })}
-            </section>
+
+                  <div className="results__recommendation-list">
+                    {group.picks.map(
+                      (pick) => {
+                        const evaluation =
+                          pick.evaluation;
+
+                        return (
+                          <div
+                            key={`${pick.role}-${evaluation.hotel.id}`}
+                            className="results__recommendation-card"
+                          >
+                            <HotelCard
+                              hotel={
+                                evaluation.hotel
+                              }
+                              smartScore={
+                                evaluation.smartScore
+                              }
+                              riskLevel={
+                                evaluation.riskLevel
+                              }
+                              dataConfidenceLevel={
+                                evaluation.dataConfidenceLevel
+                              }
+                              badges={
+                                evaluation.badges
+                              }
+                              strengths={
+                                evaluation.strengths
+                              }
+                              tradeOffs={
+                                evaluation.tradeOffs
+                              }
+                              selectedOffer={
+                                evaluation.selectedOffer
+                              }
+                              displayOfferOverride={
+                                verifiedOffersByHotelId[
+                                  evaluation
+                                    .hotel
+                                    .id
+                                ] ??
+                                null
+                              }
+                              detailsLoading={
+                                hotelDetailsLoading &&
+                                activeDetailsHotelId ===
+                                  evaluation
+                                    .hotel
+                                    .id
+                              }
+                              onExplanationToggle={(
+                                expanded
+                              ) =>
+                                handleExplanationToggle(
+                                  evaluation
+                                    .hotel
+                                    .id,
+                                  expanded
+                                )
+                              }
+                              onViewDetails={
+                                handleViewHotelDetails
+                              }
+                            />
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                </section>
+              );
+            }
           )}
 
           {nearBudgetHotels.length > 0 && (
             <section
-              className="results__recommendations"
-              aria-label="Near-budget alternatives"
+              className="results__recommendation-group results__recommendation-group--near-budget"
+              aria-labelledby="recommendation-group-near-budget"
             >
-              {nearBudgetHotels.map((evaluation) => {
-                const budgetTotal =
-                  budgetPolicy?.totalBudget ??
-                  null;
-
-                const verifiedOffer =
-                  verifiedOffersByHotelId[
-                    evaluation.hotel.id
-                  ] ??
-                  null;
-
-                const verifiedTotal =
-                  getHotelOfferTotal(
-                    verifiedOffer
-                  );
-
-                const effectiveTotal =
-                  verifiedTotal ??
-                  evaluation.totalCost;
-
-                const overBudgetAmount =
-                  budgetTotal !== null &&
-                  effectiveTotal !==
-                    null
-                    ? Math.max(
-                        effectiveTotal -
-                          budgetTotal,
-                        0
-                      )
-                    : null;
-
-                const currency =
-                  searchMeta?.currency ||
-                  evaluation.hotel.currency ||
-                  "EUR";
-
-                const candidateDistanceConstraint =
-                  evaluation
-                    .sourceEvaluation
-                    .constraints
-                    .find(
-                      (constraint) =>
-                        constraint.kind ===
-                        "distance"
-                    );
-
-                const bestChoiceDistanceConstraint =
-                  bestChoiceEvaluation
-                    ?.sourceEvaluation
-                    .constraints
-                    .find(
-                      (constraint) =>
-                        constraint.kind ===
-                        "distance"
-                    );
-
-                const candidateDistance =
-                  typeof candidateDistanceConstraint
-                    ?.actualValue ===
-                    "number" &&
-                  Number.isFinite(
-                    candidateDistanceConstraint
-                      .actualValue
-                  )
-                    ? candidateDistanceConstraint
-                        .actualValue
-                    : null;
-
-                const bestChoiceDistance =
-                  typeof bestChoiceDistanceConstraint
-                    ?.actualValue ===
-                    "number" &&
-                  Number.isFinite(
-                    bestChoiceDistanceConstraint
-                      .actualValue
-                  )
-                    ? bestChoiceDistanceConstraint
-                        .actualValue
-                    : null;
-
-                const distanceGain =
-                  candidateDistance !==
-                    null &&
-                  bestChoiceDistance !==
-                    null
-                    ? (
-                        bestChoiceDistance -
-                        candidateDistance
-                      )
-                    : null;
-
-                const smartScoreDifference =
-                  bestChoiceEvaluation
-                    ? (
-                        evaluation.smartScore -
-                        bestChoiceEvaluation
-                          .smartScore
-                      )
-                    : null;
-
-                let nearBudgetSummary =
-                  overBudgetAmount !==
-                    null
-                    ? (
-                        formatSearchMoney(
-                          overBudgetAmount,
-                          currency
-                        ) +
-                        " over your total budget, but still inside SmartStay's near-budget range."
-                      )
-                    : "A verified option just above your budget.";
-
-                if (
-                  overBudgetAmount !==
-                    null &&
-                  distanceGain !==
-                    null &&
-                  distanceGain >=
-                    0.5
-                ) {
-                  nearBudgetSummary =
-                    formatSearchMoney(
-                      overBudgetAmount,
-                      currency
-                    ) +
-                    " over your total budget, but " +
-                    distanceGain.toFixed(
-                      1
-                    ) +
-                    " km closer than the Best Choice.";
-                }
-                else if (
-                  overBudgetAmount !==
-                    null &&
-                  smartScoreDifference !==
-                    null &&
-                  smartScoreDifference >
-                    0
-                ) {
-                  nearBudgetSummary =
-                    formatSearchMoney(
-                      overBudgetAmount,
-                      currency
-                    ) +
-                    " over your total budget with a SmartScore " +
-                    smartScoreDifference +
-                    " points higher than the Best Choice.";
-                }
-                else if (
-                  overBudgetAmount !==
-                    null &&
-                  smartScoreDifference ===
-                    0
-                ) {
-                  nearBudgetSummary =
-                    formatSearchMoney(
-                      overBudgetAmount,
-                      currency
-                    ) +
-                    " over your total budget with the same SmartScore as the Best Choice.";
-                }
-
-                return (
-                  <div
-                    key={
-                      "near-budget-" +
-                      evaluation.hotel.id
-                    }
-                    className="results__recommendation results__recommendation--near-budget"
+              <div className="results__recommendation-heading">
+                <div className="results__recommendation-heading-main">
+                  <p
+                    id="recommendation-group-near-budget"
+                    className="results__recommendation-role"
                   >
-                    <div className="results__recommendation-heading">
-                      <p className="results__recommendation-role">
-                        Near-budget alternative
-                      </p>
+                    {nearBudgetHotels.length ===
+                    1
+                      ? "Sensible near-budget option"
+                      : "Sensible near-budget options"}
+                  </p>
 
-                      <p className="results__recommendation-summary">
-                        {nearBudgetSummary}
-                      </p>
-                    </div>
+                  {nearBudgetHotels.length >
+                    1 && (
+                    <span className="results__recommendation-count">
+                      {
+                        nearBudgetHotels.length
+                      }{" "}
+                      comparable stays
+                    </span>
+                  )}
+                </div>
 
-                    <HotelCard
-                      hotel={evaluation.hotel}
-                      smartScore={evaluation.smartScore}
-                      riskLevel={evaluation.riskLevel}
-                      dataConfidenceLevel={evaluation.dataConfidenceLevel}
-                      badges={evaluation.badges}
-                      strengths={evaluation.strengths}
-                      tradeOffs={evaluation.tradeOffs}
-                      selectedOffer={
-                        evaluation.selectedOffer
+                <p className="results__recommendation-summary">
+                  Verified stays just above your budget that still offer a sensible overall trade-off.
+                </p>
+              </div>
+
+              <div className="results__recommendation-list">
+                {nearBudgetHotels.map(
+                  (evaluation) => (
+                    <div
+                      key={
+                        "near-budget-" +
+                        evaluation.hotel.id
                       }
-                      displayOfferOverride={
-                        verifiedOffersByHotelId[
-                          evaluation.hotel.id
-                        ] ??
-                        null
-                      }
-                      detailsLoading={
-                        hotelDetailsLoading &&
-                        activeDetailsHotelId ===
-                          evaluation.hotel.id
-                      }
-                      onExplanationToggle={(
-                        expanded
-                      ) =>
-                        handleExplanationToggle(
-                          evaluation.hotel.id,
+                      className="results__recommendation-card"
+                    >
+                      <HotelCard
+                        hotel={
+                          evaluation.hotel
+                        }
+                        smartScore={
+                          evaluation.smartScore
+                        }
+                        riskLevel={
+                          evaluation.riskLevel
+                        }
+                        dataConfidenceLevel={
+                          evaluation.dataConfidenceLevel
+                        }
+                        badges={
+                          evaluation.badges
+                        }
+                        strengths={
+                          evaluation.strengths
+                        }
+                        tradeOffs={
+                          evaluation.tradeOffs
+                        }
+                        selectedOffer={
+                          evaluation.selectedOffer
+                        }
+                        displayOfferOverride={
+                          verifiedOffersByHotelId[
+                            evaluation.hotel.id
+                          ] ??
+                          null
+                        }
+                        detailsLoading={
+                          hotelDetailsLoading &&
+                          activeDetailsHotelId ===
+                            evaluation.hotel.id
+                        }
+                        onExplanationToggle={(
                           expanded
-                        )
-                      }
-                      onViewDetails={
-                        handleViewHotelDetails
-                      }
-                    />
-                  </div>
-                );
-              })}
+                        ) =>
+                          handleExplanationToggle(
+                            evaluation.hotel.id,
+                            expanded
+                          )
+                        }
+                        onViewDetails={
+                          handleViewHotelDetails
+                        }
+                      />
+                    </div>
+                  )
+                )}
+              </div>
             </section>
           )}
 
@@ -2768,11 +2794,6 @@ const rankedHotels =
           distanceFromSelectedPointKm={
             activeDetailsHotel
               ?.distance ??
-            null
-          }
-          selectedLocationLabel={
-            searchMeta
-              ?.destinationLabel ??
             null
           }
           onOfferRechecked={

@@ -570,7 +570,7 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "No fully verified stay fits your"
+        "No verified stay within"
       )
     );
 

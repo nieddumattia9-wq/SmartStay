@@ -61,8 +61,6 @@ type HotelDetailsPanelProps = {
     AnalyticsPositionBucket;
   distanceFromSelectedPointKm?:
     number | null;
-  selectedLocationLabel?:
-    string | null;
   onOfferRechecked?: (
     hotelId: string,
     offer: HotelOffer
@@ -204,6 +202,120 @@ function shouldShowCancellationPolicy(
   }
 
   return true;
+}
+
+const CANCELLATION_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+function formatCancellationDeadline(
+  value:
+    string |
+    null |
+    undefined
+) {
+  if (!value) {
+    return null;
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return null;
+  }
+
+  const day =
+    date.getUTCDate();
+
+  const month =
+    CANCELLATION_MONTHS[
+      date.getUTCMonth()
+    ];
+
+  const year =
+    date.getUTCFullYear();
+
+  const hours =
+    String(
+      date.getUTCHours()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const minutes =
+    String(
+      date.getUTCMinutes()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  return (
+    day +
+    " " +
+    month +
+    " " +
+    year +
+    " at " +
+    hours +
+    ":" +
+    minutes +
+    " GMT"
+  );
+}
+
+function getCancellationPolicyDisplay(
+  offer:
+    HotelOffer
+) {
+  const freeCancellationDeadline =
+    formatCancellationDeadline(
+      offer
+        .freeCancellationUntil
+    );
+
+  if (
+    offer.refundable ===
+      true &&
+    freeCancellationDeadline
+  ) {
+    return (
+      "Free cancellation until " +
+      freeCancellationDeadline +
+      "."
+    );
+  }
+
+  if (
+    !shouldShowCancellationPolicy(
+      offer
+    )
+  ) {
+    return null;
+  }
+
+  return (
+    offer.cancellationPolicy
+      ?.trim() ||
+    null
+  );
 }
 
 function getChangedFieldLabel(
@@ -487,8 +599,6 @@ function HotelDetailsPanel({
   analyticsPositionBucket,
   distanceFromSelectedPointKm =
     null,
-  selectedLocationLabel =
-    null,
   onOfferRechecked,
   onClose,
 }: HotelDetailsPanelProps) {
@@ -525,6 +635,12 @@ function HotelDetailsPanel({
   ] =
     useState(false);
 
+  const [
+    showFullDescription,
+    setShowFullDescription,
+  ] =
+    useState(false);
+
   useEffect(() => {
     setBookingRecheck(
       null
@@ -539,6 +655,10 @@ function HotelDetailsPanel({
     );
 
     setShowAllAmenities(
+      false
+    );
+
+    setShowFullDescription(
       false
     );
   }, [
@@ -942,6 +1062,28 @@ function HotelDetailsPanel({
       ]
     );
 
+  const cancellationPolicyDisplay =
+    useMemo(
+      () =>
+        offer
+          ? getCancellationPolicyDisplay(
+              offer
+            )
+          : null,
+      [
+        offer,
+      ]
+    );
+
+  const descriptionIsLong =
+    (
+      descriptionPresentation
+        .overview
+        ?.length ??
+      0
+    ) >
+    320;
+
   const amenityPresentation =
     useMemo(
       () =>
@@ -1174,11 +1316,9 @@ function HotelDetailsPanel({
                     </span>
                   </div>
 
-                  {shouldShowCancellationPolicy(
-                    offer
-                  ) && (
+                  {cancellationPolicyDisplay && (
                     <p className="hotel-details-panel__offer-policy">
-                      {offer.cancellationPolicy}
+                      {cancellationPolicyDisplay}
                     </p>
                   )}
                 </section>
@@ -1201,9 +1341,6 @@ function HotelDetailsPanel({
                     address={location}
                     distanceFromSelectedPointKm={
                       distanceFromSelectedPointKm
-                    }
-                    selectedLocationLabel={
-                      selectedLocationLabel
                     }
                   />
                 )}
@@ -1450,9 +1587,41 @@ function HotelDetailsPanel({
                   </div>
 
                   {descriptionPresentation.overview && (
-                    <p className="hotel-details-panel__description">
-                      {descriptionPresentation.overview}
-                    </p>
+                    <>
+                      <p
+                        className={
+                          "hotel-details-panel__description" +
+                          (
+                            descriptionIsLong &&
+                            !showFullDescription
+                              ? " hotel-details-panel__description--collapsed"
+                              : ""
+                          )
+                        }
+                      >
+                        {descriptionPresentation.overview}
+                      </p>
+
+                      {descriptionIsLong && (
+                        <button
+                          type="button"
+                          className="hotel-details-panel__description-toggle"
+                          aria-expanded={
+                            showFullDescription
+                          }
+                          onClick={() =>
+                            setShowFullDescription(
+                              (current) =>
+                                !current
+                            )
+                          }
+                        >
+                          {showFullDescription
+                            ? "Show less"
+                            : "Read full description"}
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {descriptionPresentation.highlights.length > 0 && (

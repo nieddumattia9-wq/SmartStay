@@ -1,103 +1,22 @@
 .results-search-summary {
   max-width: 780px;
-  margin: 0 0 20px;
+  margin: 0;
 
   color: #64748b;
-  font-size: 1.02rem;
-  line-height: 1.65;
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
-.results-balance-card {
-  max-width: 820px;
-  padding: 18px 20px;
-
-  border: 1px solid
-    rgba(22, 224, 110, 0.28);
-  border-radius: 18px;
-
-  background:
-    rgba(22, 224, 110, 0.045);
-}
-
-.results-balance-card__header {
+.results-search-summary__facts {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.results-balance-card__eyebrow {
-  margin: 0 0 7px;
-
-  color: #64748b;
-  font-size: 0.76rem;
-  font-weight: 850;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.results-balance-card__title-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-
-  color: #0f172a;
-  font-size: 1.08rem;
-}
-
-.results-balance-card__dot {
-  flex: 0 0 auto;
-
-  width: 10px;
-  height: 10px;
-
-  border-radius: 999px;
-}
-
-.results-balance-card__source {
-  display: inline-flex;
-  align-items: center;
-
-  min-height: 26px;
-  padding: 4px 10px;
-
-  border-radius: 999px;
-
-  font-size: 0.74rem;
-  font-weight: 850;
-  white-space: nowrap;
-}
-
-.results-balance-card__source--automatic {
-  background:
-    rgba(22, 224, 110, 0.14);
-  color: #15803d;
-}
-
-.results-balance-card__source--manual {
-  background: #e2e8f0;
-  color: #334155;
-}
-
-.results-balance-card__explanation {
-  max-width: 720px;
-  margin: 13px 0 0;
-
-  color: #475569;
-  font-size: 0.94rem;
-  line-height: 1.6;
-}
-
-.results-balance-card__facts {
-  display: flex;
-  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
 
-  margin-top: 14px;
+  max-width: 920px;
+  margin: 10px 0 16px;
 }
 
-.results-balance-card__facts span {
+.results-search-summary__facts span {
   padding: 5px 9px;
 
   border: 1px solid #e2e8f0;
@@ -107,40 +26,122 @@
 
   color: #475569;
   font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.results-search-summary__facts strong {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.results-balance-card {
+  max-width: 920px;
+  padding: 14px 16px;
+
+  border: 1px solid
+    rgba(22, 198, 91, 0.26);
+  border-radius: 16px;
+
+  background:
+    rgba(236, 253, 245, 0.74);
+}
+
+.results-balance-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.results-balance-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.results-balance-card__dot {
+  flex: 0 0 auto;
+
+  width: 9px;
+  height: 9px;
+
+  border-radius: 999px;
+}
+
+.results-balance-card__source {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 24px;
+  padding: 3px 9px;
+
+  border-radius: 999px;
+
+  font-size: 0.72rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.results-balance-card__source--manual {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.results-balance-card__explanation {
+  max-width: 760px;
+  margin: 7px 0 0;
+
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.results-balance-card__facts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  margin-top: 10px;
+}
+
+.results-balance-card__facts span {
+  padding: 4px 8px;
+
+  border: 1px solid #dbe7df;
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.9);
+
+  color: #475569;
+  font-size: 0.74rem;
   font-weight: 750;
 }
 
-@media (max-width: 640px) {
-  .results-search-summary {
-    font-size: 0.95rem;
-  }
-
-  .results-balance-card {
-    padding: 16px;
-  }
-
-  .results-balance-card__header {
-    flex-direction: column;
-    gap: 12px;
-  }
-}
-
-
-.results__recommendations {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-  margin-top: 28px;
+.results__recommendation-group {
+  margin-top: 30px;
 }
 
 .results__recommendation-heading {
-  margin: 0 4px 11px;
+  margin: 0 4px 12px;
   padding-left: 14px;
+
   border-left: 4px solid #16a66a;
+}
+
+.results__recommendation-heading-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
 }
 
 .results__recommendation-role {
   margin: 0;
+
   color: #08794d;
   font-size: 0.84rem;
   font-weight: 900;
@@ -149,24 +150,94 @@
   text-transform: uppercase;
 }
 
+.results__recommendation-count {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 23px;
+  padding: 3px 8px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+
+  background: #f0fdf4;
+
+  color: #15803d;
+  font-size: 0.7rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .results__recommendation-summary {
-  max-width: 720px;
+  max-width: 760px;
   margin: 5px 0 0;
+
   color: #64748b;
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.45;
 }
 
-.results__recommendation--comfort-upgrade
+.results__recommendation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.results__recommendation-card {
+  min-width: 0;
+}
+
+.results__recommendation-group--comfort-upgrade
   .results__recommendation-heading {
   border-left-color: #475569;
 }
 
+.results__recommendation-group--near-budget
+  .results__recommendation-heading {
+  border-left-color: #d97706;
+}
+
+.results__recommendation-group--near-budget
+  .results__recommendation-role {
+  color: #b45309;
+}
+
+.results__recommendation-group--near-budget
+  .results__recommendation-count {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #b45309;
+}
+
 @media (max-width: 640px) {
-  .results__recommendations {
-    gap: 26px;
-    margin-top: 22px;
+  .results-search-summary {
+    font-size: 0.94rem;
+  }
+
+  .results-search-summary__facts {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .results-search-summary__facts span {
+    font-size: 0.73rem;
+  }
+
+  .results-balance-card {
+    padding: 13px 14px;
+  }
+
+  .results-balance-card__header {
+    align-items: flex-start;
+  }
+
+  .results-balance-card__explanation {
+    font-size: 0.82rem;
+  }
+
+  .results__recommendation-group {
+    margin-top: 24px;
   }
 
   .results__recommendation-heading {
@@ -183,7 +254,12 @@
     font-size: 0.82rem;
     line-height: 1.4;
   }
+
+  .results__recommendation-list {
+    gap: 18px;
+  }
 }
+
 
 .results-recovery-notice {
   display: flex;

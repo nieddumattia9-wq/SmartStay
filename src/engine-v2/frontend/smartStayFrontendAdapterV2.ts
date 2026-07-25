@@ -34,6 +34,7 @@ import type {
   SmartStayBestChoiceGroupV2,
   SmartStayRecommendationEvaluationV2,
   SmartStayRecommendationPickV2,
+  SmartStayRecommendationRoleGroupV2,
 } from "../recommendation/recommendationRolesEngine";
 
 import type {
@@ -2245,31 +2246,37 @@ function createRecommendationPicks(
       string,
       SmartStayFrontendEvaluationV2
     >,
-  bestChoiceGroup:
-    SmartStayBestChoiceGroupV2 | null
+  groups:
+    SmartStayRecommendationRoleGroupV2[]
 ) {
   const usedHotelIds =
     new Set<
       string
     >();
-  const visibleBestChoiceHotelIds =
-    new Set(
-      bestChoiceGroup
-        ?.visibleHotelIds ??
-      []
+
+  const visibleHotelIdsByRole =
+    new Map(
+      groups.map(
+        (group) => [
+          group.role,
+          new Set(
+            group.initiallyVisibleHotelIds
+          ),
+        ] as const
+      )
     );
 
   return sourcePicks
     .filter(
       (pick) =>
-        pick.role ===
-          "best-choice"
-          ? visibleBestChoiceHotelIds.has(
-              pick.hotelId
-            )
-          : pick.primaryInGroup ||
-            pick.groupPosition ===
-              0
+        visibleHotelIdsByRole
+          .get(
+            pick.role
+          )
+          ?.has(
+            pick.hotelId
+          ) ??
+        pick.primaryInGroup
     )
     .map(
       (pick) => {
@@ -2394,7 +2401,7 @@ function prioritizeBestChoiceGroup(
 }
 
 const MAXIMUM_NEAR_BUDGET_RESULTS =
-  3;
+  4;
 
 const NEAR_BUDGET_RATIO =
   0.2;
@@ -3507,7 +3514,7 @@ export function buildSmartStayFrontendViewV2(
       evaluationsById,
       result
         .recommendationRoles
-        .bestChoiceGroup
+        .groups
     ).filter(
       (pick) =>
         visibleHotelIds.has(

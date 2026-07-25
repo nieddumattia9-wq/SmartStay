@@ -817,7 +817,7 @@ test(
 );
 
 test(
-  "Budget visibility exposes at most three deterministic near-budget upgrades",
+  "Budget visibility exposes at most four deterministic near-budget options without forcing weak candidates",
   () => {
     const forward =
       buildView(
@@ -864,7 +864,14 @@ test(
 
     assert.ok(
       visibleNearBudget.length <=
-        3
+        4
+    );
+
+    assert.equal(
+      forward
+        .budgetPolicy
+        .maximumNearBudgetResults,
+      4
     );
 
     assert.equal(
@@ -872,6 +879,13 @@ test(
         .budgetPolicy
         .nearBudgetCandidateCount,
       4
+    );
+
+    assert.ok(
+      forward
+        .budgetPolicy
+        .hiddenNearBudgetNotUsefulCount >
+        0
     );
 
     assert.equal(
@@ -1341,6 +1355,12 @@ test(
         "utf8"
       );
 
+    const recommendationRolesSource =
+      readFileSync(
+        "src/engine-v2/recommendation/recommendationRolesEngine.ts",
+        "utf8"
+      );
+
     assert.ok(
       !resultsSource.includes(
         "rankHotelsWithSmartStayEngine"
@@ -1481,25 +1501,37 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "Near-budget alternative"
+        "Sensible near-budget option"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "No fully verified stay fits your"
+        "No verified stay within"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "other suitable"
+        "results-search-summary__facts"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "distanceGain.toFixed"
+        "recommendationGroups.map"
+      )
+    );
+
+    assert.ok(
+      frontendAdapterSource.includes(
+        "group.initiallyVisibleHotelIds"
+      )
+    );
+
+    assert.ok(
+      recommendationRolesSource.includes(
+        "MAXIMUM_RECOMMENDATIONS_PER_GROUP"
       )
     );
 

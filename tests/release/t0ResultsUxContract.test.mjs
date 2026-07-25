@@ -181,7 +181,7 @@ test(
 
     assert.match(
       mapComponent,
-      /Open larger map/
+      /Open in Google Maps/
     );
 
     assert.match(

@@ -299,6 +299,9 @@ type ResolvedOptions = Omit<
   upgradeCurveOptions: SmartStayUpgradeCurveOptionsV2;
 };
 
+const MAXIMUM_RECOMMENDATIONS_PER_GROUP =
+  4;
+
 const DEFAULTS: ResolvedOptions = {
   minimumScoreConfidence: 0.55,
   minimumEvidenceCoverage: 0.55,
@@ -320,7 +323,7 @@ const DEFAULTS: ResolvedOptions = {
   maximumUpgradeAdjustedBenefitDifference: 3,
   maximumUpgradeEfficiencyDifference: 0.35,
   upgradeCurveOptions: {},
-  maximumInitiallyVisiblePerGroup: 3,
+  maximumInitiallyVisiblePerGroup: 4,
 };
 
 const ROLE_ORDER: readonly SmartStayPrimaryRecommendationRoleV2[] = [
@@ -691,9 +694,12 @@ function resolveOptions(
     upgradeCurveOptions: {
       ...(options.upgradeCurveOptions ?? DEFAULTS.upgradeCurveOptions),
     },
-    maximumInitiallyVisiblePerGroup: normalizePositiveInteger(
-      options.maximumInitiallyVisiblePerGroup,
-      DEFAULTS.maximumInitiallyVisiblePerGroup
+    maximumInitiallyVisiblePerGroup: Math.min(
+      normalizePositiveInteger(
+        options.maximumInitiallyVisiblePerGroup,
+        DEFAULTS.maximumInitiallyVisiblePerGroup
+      ),
+      MAXIMUM_RECOMMENDATIONS_PER_GROUP
     ),
   };
 }
@@ -1449,7 +1455,7 @@ function createBestChoiceGroupV2(
 ): SmartStayBestChoiceGroupV2 {
   const maximumVisibleCount = Math.min(
     Math.max(options.maximumInitiallyVisiblePerGroup, 1),
-    3
+    MAXIMUM_RECOMMENDATIONS_PER_GROUP
   );
   const allEquivalentHotelIds = picks.map((pick) => pick.hotelId);
 
@@ -1681,6 +1687,11 @@ function createGroup(
   maximumInitiallyVisiblePerGroup: number
 ): SmartStayRecommendationRoleGroupV2 {
   const memberHotelIds = picks.map((pick) => pick.hotelId);
+  const maximumVisibleCount = Math.min(
+    Math.max(maximumInitiallyVisiblePerGroup, 1),
+    MAXIMUM_RECOMMENDATIONS_PER_GROUP
+  );
+
   return {
     tieGroupId: picks[0].tieGroupId,
     role,
@@ -1688,9 +1699,9 @@ function createGroup(
     memberHotelIds,
     initiallyVisibleHotelIds: memberHotelIds.slice(
       0,
-      maximumInitiallyVisiblePerGroup
+      maximumVisibleCount
     ),
-    additionalHotelIds: memberHotelIds.slice(maximumInitiallyVisiblePerGroup),
+    additionalHotelIds: memberHotelIds.slice(maximumVisibleCount),
     comparisonTargetHotelId,
     reasonCodes: uniqueSorted(reasonCodes),
   };
@@ -1845,7 +1856,7 @@ function selectBestChoiceGroup(
           ? "recommendation-multiple-equivalent-options"
           : "recommendation-single-best-option",
       ],
-      Math.min(options.maximumInitiallyVisiblePerGroup, 3)
+      options.maximumInitiallyVisiblePerGroup
     ),
   };
 }

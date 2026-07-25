@@ -127,7 +127,7 @@ test(
 
     assert.match(
       recommendationEngine,
-      /maximumInitiallyVisiblePerGroup:\s*3/
+      /maximumInitiallyVisiblePerGroup:\s*4/
     );
 
     assert.match(
@@ -137,17 +137,17 @@ test(
 
     assert.match(
       adapter,
-      /bestChoiceGroup[\s\S]{0,400}visibleHotelIds/
+      /recommendationRoles[\s\S]{0,120}\.groups/
     );
 
     assert.match(
       adapter,
-      /visibleBestChoiceHotelIds\.has\(\s*pick\.hotelId\s*\)/
+      /group\.initiallyVisibleHotelIds/
     );
 
     assert.match(
       results,
-      /recommendationPicks\.map\(\(pick\) =>/
+      /recommendationGroups\.map/
     );
 
     assert.ok(
