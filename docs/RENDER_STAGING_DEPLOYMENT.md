@@ -102,10 +102,16 @@ Set:
 
 ```text
 VITE_API_URL=https://<actual-backend-host>/api
+VITE_GOOGLE_MAPS_EMBED_KEY=<restricted-browser-key>
 ```
 
-The value is embedded at frontend build time. After changing it, redeploy the
-frontend.
+Both values are embedded at frontend build time. After changing either value,
+redeploy the frontend.
+
+The Google Maps key is intentionally a browser key, not a backend secret.
+Restrict it to the SmartStay frontend origins and to the Maps Embed API only.
+The details modal falls back to a normal Google Maps link when the embed key is
+not configured.
 
 ## Analytics during the controlled beta
 

@@ -413,6 +413,11 @@ test(
     );
     assert.ok(
       hotelCardSource.includes(
+        "The selected offer is non-refundable."
+      )
+    );
+    assert.ok(
+      !hotelCardSource.includes(
         "\"Non-refundable\""
       )
     );

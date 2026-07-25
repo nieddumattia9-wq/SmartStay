@@ -94,6 +94,17 @@ test(
       /View all \$\{amenityPresentation\.totalCount\} amenities/
     );
 
+    assert.match(
+      component,
+      /Hide amenities/
+    );
+
+    assert.ok(
+      !component.includes(
+        "Hide all amenities"
+      )
+    );
+
     for (
       const category
       of [
@@ -125,6 +136,57 @@ test(
     assert.match(
       presentation,
       /id:\s*"karaoke"/
+    );
+  }
+);
+
+test(
+  "T0 details avoid duplicate conditions and expose a progressive location map",
+  () => {
+    const component =
+      readText(
+        "src/components/HotelDetailsPanel/HotelDetailsPanel.tsx"
+      );
+
+    const mapComponent =
+      readText(
+        "src/components/LocationMapPreview/LocationMapPreview.tsx"
+      );
+
+    assert.match(
+      component,
+      /shouldShowCancellationPolicy/
+    );
+
+    assert.match(
+      component,
+      /LocationMapPreview/
+    );
+
+    assert.match(
+      component,
+      /Known taxes included in total/
+    );
+
+    assert.ok(
+      !component.includes(
+        "Known taxes payable separately are already included in the displayed stay total."
+      )
+    );
+
+    assert.match(
+      mapComponent,
+      /loading="lazy"/
+    );
+
+    assert.match(
+      mapComponent,
+      /Open larger map/
+    );
+
+    assert.match(
+      mapComponent,
+      /VITE_GOOGLE_MAPS_EMBED_KEY|GOOGLE_MAPS_EMBED_KEY/
     );
   }
 );
@@ -164,7 +226,14 @@ test(
 
     assert.match(
       card,
-      /Non-refundable/
+      /The selected offer is non-refundable\./
+    );
+
+    assert.ok(
+      !card.includes(
+        'modifier:\n        "warning"'
+      ),
+      "Non-refundable must not be duplicated as a top condition badge."
     );
 
     assert.ok(

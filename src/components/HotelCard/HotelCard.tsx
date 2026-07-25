@@ -376,18 +376,6 @@ function getOfferCondition(
 
   if (
     refundable ===
-    false
-  ) {
-    return {
-      label:
-        "Non-refundable",
-      modifier:
-        "warning",
-    } as const;
-  }
-
-  if (
-    refundable ===
     true
   ) {
     return {

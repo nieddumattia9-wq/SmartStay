@@ -321,6 +321,11 @@ test(
       "VITE_API_URL"
     );
 
+    assertPromptedEnv(
+      frontend,
+      "VITE_GOOGLE_MAPS_EMBED_KEY"
+    );
+
     assert.ok(
       !frontend.includes(
         "      - key: RELEASE_SHA\n"

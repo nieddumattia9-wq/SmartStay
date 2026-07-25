@@ -1001,214 +1001,117 @@ const rankedHotels =
         recommendationHotelIds,
       ]);
 
+    const activeDetailsHotel =
+      useMemo(() => {
+        if (!activeDetailsHotelId) {
+          return null;
+        }
+
+        return (
+          hotels.find(
+            (hotel) =>
+              hotel.id ===
+              activeDetailsHotelId
+          ) ??
+          null
+        );
+      }, [
+        hotels,
+        activeDetailsHotelId,
+      ]);
+
     const budgetPolicy =
       engineView?.budgetPolicy ??
       null;
-
-    const visibleTaxStatusUnknownCount =
-      useMemo(() => {
-        return rankedHotels.filter(
-          (evaluation) =>
-            evaluation
-              .selectedOffer
-              ?.completeness ===
-            "reported-tax-status-unknown"
-        ).length;
-      }, [
-        rankedHotels,
-      ]);
-
-    const hiddenNearBudgetNotUsefulCount =
-      budgetPolicy
-        ?.hiddenNearBudgetNotUsefulCount ??
-      0;
-
-    const hiddenAdditionalBudgetOptionCount =
-      budgetPolicy
-        ? budgetPolicy
-            .hiddenNearBudgetOverflowCount +
-          budgetPolicy
-            .hiddenFarOverBudgetCount +
-          budgetPolicy
-            .hiddenBudgetUnverifiedCount
-        : 0;
-
-    const excludedVerificationCount =
-      engineView
-        ?.excludedHotelIds
-        .length ??
-      0;
-
-    const suppressedDuplicateCount =
-      engineView
-        ?.suppressedHotelIds
-        .length ??
-      0;
-
-    const provisionalUnderBudgetVisibleCount =
-      budgetPolicy
-        ?.provisionalUnderBudgetVisibleCount ??
-      0;
-
-    const otherVisibleTaxStatusUnknownCount =
-      Math.max(
-        visibleTaxStatusUnknownCount -
-          provisionalUnderBudgetVisibleCount,
-        0
-      );
 
     const budgetVisibilitySummary =
       budgetPolicy &&
       budgetPolicy.totalBudget !==
         null
-        ? (
-            (
-              budgetPolicy
-                .withinBudgetVisibleCount >
-                0
-                ? (
+        ? [
+            budgetPolicy
+              .withinBudgetVisibleCount >
+              0
+              ? (
+                  budgetPolicy
+                    .withinBudgetVisibleCount +
+                  " verified " +
+                  (
                     budgetPolicy
-                      .withinBudgetVisibleCount +
-                    " " +
-                    (
-                      budgetPolicy
-                        .withinBudgetVisibleCount ===
-                        1
-                        ? "stay fits"
-                        : "stays fit"
-                    ) +
-                    " your budget."
-                  )
-                : "No stay has a fully verified total within your budget."
-            ) +
-            (
-              provisionalUnderBudgetVisibleCount >
-                0
-                ? (
-                    " " +
-                    provisionalUnderBudgetVisibleCount +
-                    " additional " +
-                    (
-                      provisionalUnderBudgetVisibleCount ===
-                        1
-                        ? "stay has a provider-reported amount"
-                        : "stays have provider-reported amounts"
-                    ) +
-                    " below your budget with tax inclusion not confirmed, so the final total may be higher."
-                  )
-                : ""
-            ) +
-            (
-              budgetPolicy
-                .nearBudgetVisibleCount >
-                0
-                ? (
-                    " " +
+                      .withinBudgetVisibleCount ===
+                      1
+                      ? "stay fits"
+                      : "stays fit"
+                  ) +
+                  " your " +
+                  formatSearchMoney(
                     budgetPolicy
-                      .nearBudgetVisibleCount +
-                    " near-budget " +
-                    (
-                      budgetPolicy
-                        .nearBudgetVisibleCount ===
-                        1
-                        ? "alternative remains visible."
-                        : "alternatives remain visible."
-                    )
-                  )
-                : ""
-            ) +
-            (
-              otherVisibleTaxStatusUnknownCount >
-                0
-                ? (
-                    " " +
-                    otherVisibleTaxStatusUnknownCount +
-                    " other visible " +
-                    (
-                      otherVisibleTaxStatusUnknownCount ===
-                        1
-                        ? "price uses"
-                        : "prices use"
-                    ) +
-                    " a provider-reported amount with tax inclusion not confirmed, so the final total may be higher."
-                  )
-                : ""
-            ) +
-            (
-              hiddenNearBudgetNotUsefulCount >
-                0
-                ? (
-                    " " +
-                    hiddenNearBudgetNotUsefulCount +
-                    " near-budget " +
-                    (
-                      hiddenNearBudgetNotUsefulCount ===
-                        1
-                        ? "option was"
-                        : "options were"
-                    ) +
-                    " hidden because " +
-                    (
-                      hiddenNearBudgetNotUsefulCount ===
-                        1
-                        ? "it did"
-                        : "they did"
-                    ) +
-                    " not offer a meaningful improvement."
-                  )
-                : ""
-            ) +
-            (
-              hiddenAdditionalBudgetOptionCount >
-                0
-                ? (
-                    " " +
-                    hiddenAdditionalBudgetOptionCount +
-                    " additional options were hidden to keep the results focused."
-                  )
-                : ""
-            ) +
-            (
-              excludedVerificationCount >
-                0
-                ? (
-                    " " +
-                    excludedVerificationCount +
-                    " other stays did not pass SmartStay verification."
-                  )
-                : ""
-            ) +
-            (
-              suppressedDuplicateCount >
-                0
-                ? (
-                    " " +
-                    suppressedDuplicateCount +
-                    " duplicate " +
-                    (
-                      suppressedDuplicateCount ===
-                        1
-                        ? "offer was"
-                        : "offers were"
-                    ) +
-                    " merged."
-                  )
-                : ""
+                      .totalBudget,
+                    searchMeta
+                      ?.currency ??
+                    "EUR"
+                  ) +
+                  " total budget."
+                )
+              : (
+                  "No fully verified stay fits your " +
+                  formatSearchMoney(
+                    budgetPolicy
+                      .totalBudget,
+                    searchMeta
+                      ?.currency ??
+                    "EUR"
+                  ) +
+                  " total budget."
+                ),
+
+            budgetPolicy
+              .nearBudgetVisibleCount >
+              0
+              ? (
+                  budgetPolicy
+                    .nearBudgetVisibleCount +
+                  " sensible near-budget " +
+                  (
+                    budgetPolicy
+                      .nearBudgetVisibleCount ===
+                      1
+                      ? "option is"
+                      : "options are"
+                  ) +
+                  " shown."
+                )
+              : null,
+
+            remainingHotels.length >
+              0
+              ? (
+                  remainingHotels.length +
+                  " other suitable " +
+                  (
+                    remainingHotels.length ===
+                      1
+                      ? "stay is"
+                      : "stays are"
+                  ) +
+                  " available in the full list."
+                )
+              : null,
+          ]
+            .filter(
+              Boolean
             )
-          )
+            .join(" ")
         : (
             rankedHotels.length +
-            " relevant matches remain visible." +
+            " suitable " +
             (
-              excludedVerificationCount >
-                0
-                ? (
-                    " " +
-                    excludedVerificationCount +
-                    " other stays did not pass SmartStay verification."
-                  )
-                : ""
-            )
+              rankedHotels.length ===
+                1
+                ? "stay is"
+                : "stays are"
+            ) +
+            " available."
           );
 
     useEffect(() => {
@@ -2713,7 +2616,7 @@ const rankedHotels =
                       letterSpacing: "-0.03em",
                     }}
                   >
-                    Want to compare the other verified options?
+                    Want to compare other suitable stays?
                   </h2>
 
                   <p
@@ -2724,9 +2627,7 @@ const rankedHotels =
                       lineHeight: 1.6,
                     }}
                   >
-                    {nearBudgetHotels.length > 0
-                      ? "SmartStay already separated the Best Choice and near-budget alternatives above. Open the remaining verified list to compare the other budget-relevant stays."
-                      : "SmartStay already separated the Best Choice above. Open the remaining verified list to compare the other budget-relevant stays."}
+                    Your SmartStay recommendations stay above. Open the full list only if you want to compare the other suitable options.
                   </p>
 
                   <button
@@ -2744,7 +2645,11 @@ const rankedHotels =
                     }}
                     onClick={() => setShowFullList(true)}
                   >
-                    View remaining verified stays
+                    View {remainingHotels.length} other{" "}
+                    {remainingHotels.length ===
+                      1
+                      ? "stay"
+                      : "stays"}
                   </button>
                 </div>
               ) : (
@@ -2764,7 +2669,7 @@ const rankedHotels =
                         letterSpacing: "0.08em",
                       }}
                     >
-                      Remaining verified list
+                      Full list
                     </p>
 
                     <h2
@@ -2774,7 +2679,7 @@ const rankedHotels =
                         letterSpacing: "-0.04em",
                       }}
                     >
-                      Other verified stays
+                      Other suitable stays
                     </h2>
 
                     <p
@@ -2783,9 +2688,7 @@ const rankedHotels =
                         color: "#64748b",
                       }}
                     >
-                      {nearBudgetHotels.length > 0
-                        ? "Near-budget alternatives are shown above. These remaining options are ordered by SmartScore."
-                        : "These remaining verified options are ordered by SmartScore."}
+                      These stays also match your current search and are ordered by SmartStay fit.
                     </p>
                   </div>
 
@@ -2861,6 +2764,16 @@ const rankedHotels =
             activeAnalyticsContext
               ?.positionBucket ??
             "11+"
+          }
+          distanceFromSelectedPointKm={
+            activeDetailsHotel
+              ?.distance ??
+            null
+          }
+          selectedLocationLabel={
+            searchMeta
+              ?.destinationLabel ??
+            null
           }
           onOfferRechecked={
             handleOfferRechecked

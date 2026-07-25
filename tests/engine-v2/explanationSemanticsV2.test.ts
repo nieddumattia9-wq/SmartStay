@@ -662,7 +662,7 @@ test(
 
 
 test(
-  "Remaining-list copy mentions near-budget alternatives only when they are visible",
+  "Remaining-list copy keeps the full list closed and counts only suitable alternatives",
   () => {
     const resultsSource =
       readFileSync(
@@ -672,37 +672,43 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "nearBudgetHotels.length > 0"
+        "const [showFullList, setShowFullList]"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "Near-budget alternatives are shown above."
+        "useState(false)"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "These remaining verified options are ordered by SmartScore."
+        "Want to compare other suitable stays?"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "SmartStay already separated the Best Choice above."
+        "Other suitable stays"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "These stays also match your current search and are ordered by SmartStay fit."
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "remainingHotels.length"
       )
     );
 
     assert.ok(
       !resultsSource.includes(
-        "Near-budget alternatives are already shown above."
-      )
-    );
-
-    assert.ok(
-      !resultsSource.includes(
-        "any near-budget alternatives above."
+        "additional options were hidden to keep the results focused"
       )
     );
   }

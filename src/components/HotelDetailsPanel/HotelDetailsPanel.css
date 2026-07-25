@@ -50,6 +50,8 @@
 
 .hotel-details-panel__close:focus-visible,
 .hotel-details-panel__amenity-toggle:focus-visible,
+.hotel-location-map__link:focus-visible,
+.hotel-location-map__fallback:focus-visible,
 .hotel-details-panel__booking:focus-visible,
 .hotel-details-panel__amenity-group summary:focus-visible {
   outline: 3px solid rgba(5, 150, 105, 0.3);

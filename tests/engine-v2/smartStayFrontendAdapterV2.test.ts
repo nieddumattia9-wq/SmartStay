@@ -1487,13 +1487,13 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "did not pass SmartStay verification"
+        "No fully verified stay fits your"
       )
     );
 
     assert.ok(
       resultsSource.includes(
-        "not offer a meaningful improvement"
+        "other suitable"
       )
     );
 
@@ -1505,7 +1505,19 @@ test(
 
     assert.ok(
       !resultsSource.includes(
-        "useful near-budget upgrade"
+        "did not pass SmartStay verification"
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "additional options were hidden to keep the results focused"
+      )
+    );
+
+    assert.ok(
+      !resultsSource.includes(
+        "not offer a meaningful improvement"
       )
     );
   }

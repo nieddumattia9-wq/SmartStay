@@ -36,3 +36,10 @@ export const RELEASE_SHA =
     "development"
   ).trim() ||
   "development";
+
+export const GOOGLE_MAPS_EMBED_KEY =
+  String(
+    import.meta.env
+      .VITE_GOOGLE_MAPS_EMBED_KEY ??
+    ""
+  ).trim();

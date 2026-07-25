@@ -570,7 +570,13 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "tax inclusion not confirmed, so the final total may be higher"
+        "No fully verified stay fits your"
+      )
+    );
+
+    assert.ok(
+      resultsSource.includes(
+        "withinBudgetVisibleCount"
       )
     );
 

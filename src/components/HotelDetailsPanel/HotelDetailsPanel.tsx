@@ -27,6 +27,8 @@ import {
   presentHotelDescription,
 } from "../../utils/hotelDetailsPresentation";
 
+import LocationMapPreview from "../LocationMapPreview/LocationMapPreview";
+
 import type {
   HotelAmenityGroup,
 } from "../../utils/hotelDetailsPresentation";
@@ -57,6 +59,10 @@ type HotelDetailsPanelProps = {
   analyticsRole: AnalyticsRole;
   analyticsPositionBucket:
     AnalyticsPositionBucket;
+  distanceFromSelectedPointKm?:
+    number | null;
+  selectedLocationLabel?:
+    string | null;
   onOfferRechecked?: (
     hotelId: string,
     offer: HotelOffer
@@ -123,17 +129,81 @@ function getOfferTaxLabel(
     offer.taxesIncluded ===
       true
   ) {
-    return "Known mandatory taxes are included in this stay total.";
+    return "Known taxes included in total.";
   }
 
   if (
     offer.taxesIncluded ===
       false
   ) {
-    return "Known taxes payable separately are already included in the displayed stay total.";
+    return "Known taxes included in total; some are payable at the property.";
   }
 
-  return "This is the total currently known; some mandatory taxes or fees may still be added.";
+  return "Some mandatory taxes or fees may still be added.";
+}
+
+function normalizeCancellationCopy(
+  value:
+    string | null
+) {
+  return String(
+    value ??
+    ""
+  )
+    .trim()
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      " "
+    )
+    .trim();
+}
+
+function shouldShowCancellationPolicy(
+  offer:
+    HotelOffer
+) {
+  const normalizedPolicy =
+    normalizeCancellationCopy(
+      offer
+        .cancellationPolicy
+    );
+
+  if (!normalizedPolicy) {
+    return false;
+  }
+
+  if (
+    offer.refundable ===
+      false &&
+    new Set([
+      "non refundable",
+      "this rate is non refundable",
+      "the selected offer is non refundable",
+      "this offer is non refundable",
+    ]).has(
+      normalizedPolicy
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    offer.refundable ===
+      true &&
+    new Set([
+      "refundable",
+      "fully refundable",
+      "this rate is refundable",
+      "this offer is refundable",
+    ]).has(
+      normalizedPolicy
+    )
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function getChangedFieldLabel(
@@ -415,6 +485,10 @@ function HotelDetailsPanel({
   offerId,
   analyticsRole,
   analyticsPositionBucket,
+  distanceFromSelectedPointKm =
+    null,
+  selectedLocationLabel =
+    null,
   onOfferRechecked,
   onClose,
 }: HotelDetailsPanelProps) {
@@ -1100,12 +1174,39 @@ function HotelDetailsPanel({
                     </span>
                   </div>
 
-                  <p className="hotel-details-panel__offer-policy">
-                    {offer.cancellationPolicy ||
-                      "Cancellation conditions are not available."}
-                  </p>
+                  {shouldShowCancellationPolicy(
+                    offer
+                  ) && (
+                    <p className="hotel-details-panel__offer-policy">
+                      {offer.cancellationPolicy}
+                    </p>
+                  )}
                 </section>
               )}
+
+              {details.latitude !==
+                null &&
+                details.longitude !==
+                  null && (
+                  <LocationMapPreview
+                    latitude={
+                      details.latitude
+                    }
+                    longitude={
+                      details.longitude
+                    }
+                    accommodationName={
+                      details.name
+                    }
+                    address={location}
+                    distanceFromSelectedPointKm={
+                      distanceFromSelectedPointKm
+                    }
+                    selectedLocationLabel={
+                      selectedLocationLabel
+                    }
+                  />
+                )}
 
               {offer && (
                 <section
@@ -1439,7 +1540,7 @@ function HotelDetailsPanel({
                       }
                     >
                       {showAllAmenities
-                        ? "Hide all amenities"
+                        ? "Hide amenities"
                         : `View all ${amenityPresentation.totalCount} amenities`}
                     </button>
                   )}
