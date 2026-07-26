@@ -71,25 +71,6 @@
   border-radius: 999px;
 }
 
-.results-balance-card__source {
-  display: inline-flex;
-  align-items: center;
-
-  min-height: 24px;
-  padding: 3px 9px;
-
-  border-radius: 999px;
-
-  font-size: 0.72rem;
-  font-weight: 850;
-  white-space: nowrap;
-}
-
-.results-balance-card__source--manual {
-  background: #e2e8f0;
-  color: #334155;
-}
-
 .results-balance-card__explanation {
   max-width: 760px;
   margin: 7px 0 0;
@@ -122,13 +103,36 @@
 }
 
 .results__recommendation-group {
+  position: relative;
+
   margin-top: 30px;
+  padding: 18px;
+
+  border: 1px solid
+    rgba(22, 166, 106, 0.22);
+  border-radius: 24px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(236, 253, 245, 0.7),
+      rgba(248, 250, 252, 0.92)
+    );
+
+  box-shadow:
+    0 14px 34px rgba(15, 23, 42, 0.05);
 }
 
 .results__recommendation-heading {
-  margin: 0 4px 12px;
-  padding-left: 14px;
+  margin: 0 2px 15px;
+  padding:
+    0
+    4px
+    14px
+    14px;
 
+  border-bottom: 1px solid
+    rgba(22, 166, 106, 0.13);
   border-left: 4px solid #16a66a;
 }
 
@@ -181,20 +185,68 @@
 .results__recommendation-list {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 14px;
 }
 
 .results__recommendation-card {
   min-width: 0;
 }
 
+.results__recommendation-card +
+.results__recommendation-card {
+  padding-top: 14px;
+
+  border-top: 1px dashed
+    rgba(100, 116, 139, 0.24);
+}
+
+.results__recommendation-group--cheaper-alternative {
+  border-color:
+    rgba(5, 150, 105, 0.2);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(240, 253, 250, 0.75),
+      rgba(248, 250, 252, 0.94)
+    );
+}
+
+.results__recommendation-group--comfort-upgrade {
+  border-color:
+    rgba(71, 85, 105, 0.2);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(241, 245, 249, 0.78),
+      rgba(248, 250, 252, 0.96)
+    );
+}
+
 .results__recommendation-group--comfort-upgrade
   .results__recommendation-heading {
+  border-bottom-color:
+    rgba(71, 85, 105, 0.14);
   border-left-color: #475569;
+}
+
+.results__recommendation-group--near-budget {
+  border-color:
+    rgba(217, 119, 6, 0.24);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 251, 235, 0.84),
+      rgba(248, 250, 252, 0.96)
+    );
 }
 
 .results__recommendation-group--near-budget
   .results__recommendation-heading {
+  border-bottom-color:
+    rgba(217, 119, 6, 0.14);
   border-left-color: #d97706;
 }
 
@@ -238,12 +290,19 @@
 
   .results__recommendation-group {
     margin-top: 24px;
+    padding: 13px;
+
+    border-radius: 20px;
   }
 
   .results__recommendation-heading {
-    margin-right: 2px;
-    margin-left: 2px;
-    padding-left: 11px;
+    margin-right: 1px;
+    margin-left: 1px;
+    padding:
+      0
+      2px
+      12px
+      10px;
   }
 
   .results__recommendation-role {
@@ -256,7 +315,12 @@
   }
 
   .results__recommendation-list {
-    gap: 18px;
+    gap: 12px;
+  }
+
+  .results__recommendation-card +
+  .results__recommendation-card {
+    padding-top: 12px;
   }
 }
 

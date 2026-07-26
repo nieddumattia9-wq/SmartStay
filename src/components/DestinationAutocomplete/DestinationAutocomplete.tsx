@@ -11,6 +11,11 @@ import {
 
 import { searchDestinations } from "../../services/api";
 
+import {
+  formatDestinationLabel,
+  normalizeDestinationCountry,
+} from "../../utils/destinationLabel";
+
 import type {
   Destination,
   SearchDestinationsResponse,
@@ -105,16 +110,8 @@ export type DestinationAutocompleteProps = {
 
 };
 
-export function cleanDestinationCountry(
-  country: string
-) {
-  return country
-    .replace(
-      /,\s*[A-Z]{2}$/i,
-      ""
-    )
-    .trim();
-}
+export const cleanDestinationCountry =
+  normalizeDestinationCountry;
 
 function DestinationAutocomplete({
   value,
@@ -175,15 +172,11 @@ function DestinationAutocomplete({
     destination: Destination
   ) => {
 
-    const countryLabel =
-      cleanDestinationCountry(
+    const label =
+      formatDestinationLabel(
+        destination.name,
         destination.country
       );
-
-    const label =
-      countryLabel
-        ? `${destination.name}, ${countryLabel}`
-        : destination.name;
 
     selectedDestinationLabelRef.current =
       label;

@@ -1,3 +1,6 @@
+import {
+  formatDestinationLabel,
+} from "../../utils/destinationLabel";
 import { normalizeStoredSearchMeta, type StoredSearchMeta } from "../../utils/searchMeta";
 
 import {
@@ -248,70 +251,6 @@ function writeStoredRankingV2(
         amount.toFixed(2)
       );
     }
-  }
-
-  function formatDestinationLabel(
-    value:
-      string |
-      null |
-      undefined
-  ) {
-    if (
-      typeof value !==
-        "string"
-    ) {
-      return "";
-    }
-
-    const parts =
-      value
-        .split(",")
-        .map(
-          (part) =>
-            part.trim()
-        )
-        .filter(
-          Boolean
-        );
-
-    const uniqueParts =
-      parts.filter(
-        (
-          part,
-          index
-        ) =>
-          index === 0 ||
-          part.toLowerCase() !==
-            parts[
-              index - 1
-            ]?.toLowerCase()
-      );
-
-    const lastPart =
-      uniqueParts[
-        uniqueParts.length -
-          1
-      ];
-
-    if (
-      uniqueParts.length >=
-        3 &&
-      lastPart &&
-      /^[A-Z]{2}$/i.test(
-        lastPart
-      ) &&
-      uniqueParts[
-        uniqueParts.length -
-          2
-      ]?.length >
-        2
-    ) {
-      uniqueParts.pop();
-    }
-
-    return uniqueParts.join(
-      ", "
-    );
   }
 
   function formatDistanceValue(
@@ -890,11 +829,6 @@ function getHotelDetailsFailureMessage(
     const recoveryActive =
       distanceRecoveryActive ||
       budgetRecoveryActive;
-
-    const balanceWasManuallySelected =
-      smartStayProfile
-        ?.preferenceSource ===
-      "manual";
 
     const balanceExplanation =
       smartStayProfile
@@ -2049,11 +1983,6 @@ const rankedHotels =
                 </strong>
               </div>
 
-              {balanceWasManuallySelected && (
-                <span className="results-balance-card__source results-balance-card__source--manual">
-                  Your choice
-                </span>
-              )}
             </div>
 
             <p className="results-balance-card__explanation">
@@ -2415,6 +2344,12 @@ const rankedHotels =
                 <section
                   key={group.role}
                   className={`results__recommendation-group results__recommendation-group--${group.role}`}
+                  data-recommendation-group={
+                    group.role
+                  }
+                  data-recommendation-count={
+                    group.picks.length
+                  }
                   aria-labelledby={
                     headingId
                   }
@@ -2523,6 +2458,10 @@ const rankedHotels =
           {nearBudgetHotels.length > 0 && (
             <section
               className="results__recommendation-group results__recommendation-group--near-budget"
+              data-recommendation-group="near-budget"
+              data-recommendation-count={
+                nearBudgetHotels.length
+              }
               aria-labelledby="recommendation-group-near-budget"
             >
               <div className="results__recommendation-heading">

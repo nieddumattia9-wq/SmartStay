@@ -1,4 +1,8 @@
 import {
+  formatDestinationLabel,
+} from "./destinationLabel";
+
+import {
   normalizeSmartPreference,
   normalizeSmartStaySearchProfile,
   type SmartStayPreference,
@@ -396,7 +400,7 @@ export function createStoredSearchMeta(
 
   return {
     destinationLabel:
-      normalizeText(
+      formatDestinationLabel(
         input.destinationLabel
       ),
 
@@ -509,7 +513,7 @@ export function normalizeStoredSearchMeta(
 
   return {
     destinationLabel:
-      normalizeText(
+      formatDestinationLabel(
         source.destinationLabel
       ),
 
