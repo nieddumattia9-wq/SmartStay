@@ -284,6 +284,40 @@ function getPublicPrice(rate) {
   ]);
 }
 
+function getCheckoutPrice(rate) {
+  return (
+    pickNumber(rate, [
+      [
+        "offerRetailRate",
+        "amount",
+      ],
+      ["offerRetailRate"],
+      [
+        "retailRate",
+        "total",
+        0,
+        "amount",
+      ],
+      [
+        "retailRate",
+        "total",
+        "amount",
+      ],
+      [
+        "retailRate",
+        "amount",
+      ],
+      ["price", "amount"],
+      ["price"],
+      ["amount"],
+      ["total"],
+      ["totalPrice"],
+      ["sellingPrice"],
+    ]) ??
+    getPublicPrice(rate)
+  );
+}
+
 function getRateCurrency(
   rate,
   fallbackCurrency = "EUR"
@@ -315,6 +349,48 @@ function getRateCurrency(
       ],
       ["price", "currency"],
       ["currency"],
+    ]) ||
+    fallbackCurrency ||
+    "EUR"
+  );
+}
+
+function getCheckoutCurrency(
+  rate,
+  fallbackCurrency = "EUR"
+) {
+  return (
+    pickString(rate, [
+      [
+        "offerRetailRate",
+        "currency",
+      ],
+      [
+        "retailRate",
+        "total",
+        0,
+        "currency",
+      ],
+      [
+        "retailRate",
+        "total",
+        "currency",
+      ],
+      [
+        "retailRate",
+        "currency",
+      ],
+      ["price", "currency"],
+      ["currency"],
+      [
+        "suggestedSellingPrice",
+        "currency",
+      ],
+      [
+        "suggestedSellingPrice",
+        0,
+        "currency",
+      ],
     ]) ||
     fallbackCurrency ||
     "EUR"
@@ -367,6 +443,50 @@ function buildRoomName(rate) {
       ["name"],
     ]) ||
     null
+  );
+}
+
+function buildMealPlan(rate) {
+  const nestedRates =
+    getNestedRates(rate);
+
+  const sources =
+    nestedRates.length > 0
+      ? nestedRates
+      : [rate];
+
+  const mealPlans =
+    sources
+      .map((source) =>
+        pickString(source, [
+          ["boardName"],
+          ["boardDescription"],
+          ["mealPlan"],
+          ["mealPlanName"],
+          ["boardType"],
+        ])
+      )
+      .filter(Boolean);
+
+  const uniqueMealPlans =
+    [...new Set(
+      mealPlans
+    )];
+
+  if (
+    uniqueMealPlans.length === 0
+  ) {
+    return null;
+  }
+
+  if (
+    uniqueMealPlans.length === 1
+  ) {
+    return uniqueMealPlans[0];
+  }
+
+  return uniqueMealPlans.join(
+    " + "
   );
 }
 
@@ -751,6 +871,65 @@ function normalizeRefundableTag(
   return null;
 }
 
+function normalizeCancellationDeadline(
+  value,
+  timezone
+) {
+  const raw =
+    asString(value);
+
+  if (!raw) {
+    return null;
+  }
+
+  if (
+    /(?:z|[+-]\d{2}:?\d{2})$/i.test(
+      raw
+    )
+  ) {
+    const date =
+      new Date(raw);
+
+    return Number.isNaN(
+      date.getTime()
+    )
+      ? raw
+      : date.toISOString();
+  }
+
+  const match =
+    raw.match(
+      /^(\d{4}-\d{2}-\d{2})[ t](\d{2}:\d{2})(?::(\d{2}))?$/i
+    );
+
+  const normalizedTimezone =
+    asString(timezone)
+      .toUpperCase();
+
+  if (
+    match &&
+    [
+      "GMT",
+      "UTC",
+      "ETC/UTC",
+      "ETC/GMT",
+    ].includes(
+      normalizedTimezone
+    )
+  ) {
+    return (
+      match[1] +
+      "T" +
+      match[2] +
+      ":" +
+      (match[3] ?? "00") +
+      ".000Z"
+    );
+  }
+
+  return raw;
+}
+
 function createCancellationSummary(
   rate
 ) {
@@ -830,13 +1009,18 @@ function createCancellationSummary(
 
       const item = {
         cancelTime:
-          pickString(penalty, [
-            ["cancelTime"],
-            ["cancellationTime"],
-            ["from"],
-            ["deadline"],
-          ]) ||
-          null,
+          normalizeCancellationDeadline(
+            pickString(penalty, [
+              ["cancelTime"],
+              ["cancellationTime"],
+              ["from"],
+              ["deadline"],
+            ]),
+            pickString(penalty, [
+              ["timezone"],
+              ["timeZone"],
+            ])
+          ),
 
         amount:
           pickNumber(penalty, [
@@ -1036,9 +1220,17 @@ function createLiteApiOffer({
   fallbackCurrency = "EUR",
   sourceProvider,
   providerName,
+  priceMode = "public",
 }) {
   const price =
-    getPublicPrice(rate);
+    priceMode ===
+      "checkout"
+      ? getCheckoutPrice(
+          rate
+        )
+      : getPublicPrice(
+          rate
+        );
 
   if (
     price === null ||
@@ -1055,10 +1247,16 @@ function createLiteApiOffer({
 
 
   const currency =
-    getRateCurrency(
-      rate,
-      fallbackCurrency
-    );
+    priceMode ===
+      "checkout"
+      ? getCheckoutCurrency(
+          rate,
+          fallbackCurrency
+        )
+      : getRateCurrency(
+          rate,
+          fallbackCurrency
+        );
 
   const taxSummary =
     createTaxSummary(rate);
@@ -1123,6 +1321,9 @@ function createLiteApiOffer({
     roomName:
       buildRoomName(rate),
 
+    mealPlan:
+      buildMealPlan(rate),
+
     deepLink:
       getDeepLink(rate),
   };
@@ -1147,6 +1348,84 @@ function getLiteApiPrebookPayload(
     : data;
 }
 
+function getOfferReferenceCandidates(
+  offer
+) {
+  return [
+    pickString(
+      offer,
+      [["offerId"]]
+    ),
+    pickString(
+      offer,
+      [["rateId"]]
+    ),
+    pickString(
+      offer,
+      [["rateToken"]]
+    ),
+    pickString(
+      offer,
+      [["id"]]
+    ),
+  ].filter(Boolean);
+}
+
+function selectPrebookOfferRecord({
+  payload,
+  originalOffer,
+} = {}) {
+  const records =
+    getLiteApiOfferRecords(
+      payload
+    );
+
+  const expectedReference =
+    asString(
+      originalOffer
+        ?.providerOfferReference
+    );
+
+  if (expectedReference) {
+    const exactMatches =
+      records.filter(
+        (record) =>
+          getOfferReferenceCandidates(
+            record
+          ).includes(
+            expectedReference
+          )
+      );
+
+    if (
+      exactMatches.length === 1
+    ) {
+      return exactMatches[0];
+    }
+
+    if (
+      exactMatches.length > 1
+    ) {
+      return null;
+    }
+  }
+
+  if (
+    records.length === 1
+  ) {
+    return records[0];
+  }
+
+  if (
+    records.length === 0 &&
+    getCheckoutPrice(payload) > 0
+  ) {
+    return payload;
+  }
+
+  return null;
+}
+
 function createLiteApiPrebookOffer({
   data,
   originalOffer,
@@ -1165,10 +1444,14 @@ function createLiteApiPrebookOffer({
   }
 
   const offerRecord =
-    getLiteApiOfferRecords(
-      payload
-    )[0] ??
-    payload;
+    selectPrebookOfferRecord({
+      payload,
+      originalOffer,
+    });
+
+  if (!offerRecord) {
+    return null;
+  }
 
   const mappedOffer =
     createLiteApiOffer({
@@ -1186,6 +1469,8 @@ function createLiteApiPrebookOffer({
         fallbackCurrency,
       sourceProvider,
       providerName,
+      priceMode:
+        "checkout",
     });
 
   if (!mappedOffer) {
@@ -1228,5 +1513,8 @@ module.exports = {
   createLiteApiOffer,
   createLiteApiPrebookOffer,
   createTaxSummary,
+  getCheckoutPrice,
   getLiteApiOfferRecords,
+  normalizeCancellationDeadline,
+  selectPrebookOfferRecord,
 };

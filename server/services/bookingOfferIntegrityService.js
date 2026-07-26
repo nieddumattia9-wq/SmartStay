@@ -56,6 +56,192 @@ function normalizeBoolean(
     : "";
 }
 
+function getFirstText(
+  source,
+  paths
+) {
+  for (const path of paths) {
+    let current =
+      source;
+
+    for (const key of path) {
+      current =
+        current?.[key];
+    }
+
+    const text =
+      normalizeText(
+        current
+      );
+
+    if (text) {
+      return text;
+    }
+  }
+
+  return "";
+}
+
+function normalizeChildAges(
+  value
+) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const rawAge =
+        item &&
+        typeof item ===
+          "object"
+          ? item.age
+          : item;
+
+      const age =
+        Number(rawAge);
+
+      return Number.isFinite(
+        age
+      )
+        ? Math.max(
+            0,
+            Math.round(age)
+          )
+        : null;
+    })
+    .filter(
+      (age) =>
+        age !== null
+    );
+}
+
+function createBookingStayContext(
+  searchData
+) {
+  const source =
+    searchData &&
+    typeof searchData ===
+      "object" &&
+    !Array.isArray(searchData)
+      ? searchData
+      : {};
+
+  const defaultAdults =
+    source.adults ??
+    source.guests
+      ?.adults ??
+    source.occupancy
+      ?.adults;
+
+  const defaultChildren =
+    source.childAges ??
+    source.childrenAges ??
+    source.children ??
+    source.guests
+      ?.childAges ??
+    source.guests
+      ?.childrenAges ??
+    source.guests
+      ?.children ??
+    source.occupancy
+      ?.children;
+
+  const hasDefaultOccupancy =
+    defaultAdults !==
+      null &&
+    defaultAdults !==
+      undefined ||
+    Array.isArray(
+      defaultChildren
+    );
+
+  const rawRooms =
+    Array.isArray(
+      source.rooms
+    ) &&
+    source.rooms.length > 0
+      ? source.rooms
+      : hasDefaultOccupancy
+        ? [
+            {
+              adults:
+                defaultAdults,
+              childAges:
+                defaultChildren,
+            },
+          ]
+        : [];
+
+  const rooms =
+    rawRooms.map((room) => ({
+      adults:
+        Math.max(
+          1,
+          Math.round(
+            Number(
+              room?.adults
+            ) || 1
+          )
+        ),
+      childAges:
+        normalizeChildAges(
+          room?.childAges ??
+          room?.childrenAges ??
+          room?.children
+        ),
+    }));
+
+  return {
+    checkin:
+      getFirstText(
+        source,
+        [
+          ["checkin"],
+          ["checkIn"],
+          ["check_in"],
+          ["arrivalDate"],
+          ["startDate"],
+          ["dates", "checkin"],
+          ["dates", "checkIn"],
+          ["dates", "startDate"],
+        ]
+      ) ||
+      null,
+
+    checkout:
+      getFirstText(
+        source,
+        [
+          ["checkout"],
+          ["checkOut"],
+          ["check_out"],
+          ["departureDate"],
+          ["endDate"],
+          ["dates", "checkout"],
+          ["dates", "checkOut"],
+          ["dates", "endDate"],
+        ]
+      ) ||
+      null,
+
+    currency:
+      (
+        getFirstText(
+          source,
+          [
+            ["currency"],
+            ["selectedCurrency"],
+          ]
+        ) ||
+        null
+      )?.toUpperCase() ??
+      null,
+
+    rooms,
+  };
+}
+
 function getStableInternalOfferId(
   offer
 ) {
@@ -101,6 +287,9 @@ function createOfferIdentityPayload(
     ),
     normalizeIdentityText(
       source.roomName
+    ),
+    normalizeIdentityText(
+      source.mealPlan
     ),
     normalizeNumber(
       source.totalKnownCost ??
@@ -386,6 +575,11 @@ function createBookingOfferSnapshot(
         source.roomName
       ),
 
+    mealPlan:
+      normalizeIdentityText(
+        source.mealPlan
+      ),
+
     refundable:
       normalizeBoolean(
         source.refundable
@@ -444,6 +638,7 @@ module.exports = {
   PUBLIC_OFFER_ID_PATTERN,
   createPublicOfferId,
   createBookingOfferSnapshot,
+  createBookingStayContext,
   compareBookingOfferSnapshots,
   getProviderOfferReference,
   getOfferHandoffState,

@@ -223,10 +223,65 @@ function formatCancellationDeadline(
   value:
     string |
     null |
+    undefined,
+  timezone:
+    string |
+    null |
     undefined
 ) {
   if (!value) {
     return null;
+  }
+
+  const normalizedTimezone =
+    timezone
+      ?.trim()
+      .toUpperCase() ||
+    "";
+
+  const rawMatch =
+    value.match(
+      /^(\d{4})-(\d{2})-(\d{2})[ t](\d{2}):(\d{2})(?::\d{2})?$/i
+    );
+
+  if (
+    rawMatch &&
+    [
+      "GMT",
+      "UTC",
+      "ETC/UTC",
+      "ETC/GMT",
+    ].includes(
+      normalizedTimezone
+    )
+  ) {
+    const monthIndex =
+      Number(rawMatch[2]) -
+      1;
+
+    if (
+      monthIndex < 0 ||
+      monthIndex >=
+        CANCELLATION_MONTHS
+          .length
+    ) {
+      return null;
+    }
+
+    return (
+      Number(rawMatch[3]) +
+      " " +
+      CANCELLATION_MONTHS[
+        monthIndex
+      ] +
+      " " +
+      rawMatch[1] +
+      " at " +
+      rawMatch[4] +
+      ":" +
+      rawMatch[5] +
+      " GMT"
+    );
   }
 
   const date =
@@ -288,7 +343,9 @@ function getCancellationPolicyDisplay(
   const freeCancellationDeadline =
     formatCancellationDeadline(
       offer
-        .freeCancellationUntil
+        .freeCancellationUntil,
+      offer
+        .cancellationTimezone
     );
 
   if (
@@ -341,6 +398,8 @@ function getChangedFieldLabel(
       "unconfirmed taxes",
     roomName:
       "room",
+    mealPlan:
+      "meal plan",
     refundable:
       "refundability",
     freeCancellationUntil:
@@ -561,6 +620,15 @@ function getMaterialChangedFields(
   ) {
     changedFields.add(
       "roomName"
+    );
+  }
+
+  if (
+    originalOffer.mealPlan !==
+    confirmedOffer.mealPlan
+  ) {
+    changedFields.add(
+      "mealPlan"
     );
   }
 
@@ -1309,6 +1377,12 @@ function HotelDetailsPanel({
                           : "Cancellation terms not confirmed"}
                     </span>
 
+                    {offer.mealPlan && (
+                      <span className="hotel-details-panel__fact">
+                        {offer.mealPlan}
+                      </span>
+                    )}
+
                     <span className="hotel-details-panel__fact">
                       {getOfferTaxLabel(
                         offer
@@ -1399,7 +1473,7 @@ function HotelDetailsPanel({
                         </p>
 
                         <h3>
-                          Final total confirmed
+                          Checkout total verified
                         </h3>
 
                         <strong>

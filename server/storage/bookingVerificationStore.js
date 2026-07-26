@@ -61,6 +61,7 @@ function saveBookingVerification({
   hotelId,
   originalOfferId,
   confirmedOffer,
+  stayContext = null,
   sourceProvider,
   providerBookingReference = null,
   requiresUserConfirmation = false,
@@ -96,6 +97,14 @@ function saveBookingVerification({
       structuredClone(
         confirmedOffer
       ),
+    stayContext:
+      stayContext &&
+      typeof stayContext ===
+        "object"
+        ? structuredClone(
+            stayContext
+          )
+        : null,
     sourceProvider,
     providerBookingReference,
     requiresUserConfirmation:

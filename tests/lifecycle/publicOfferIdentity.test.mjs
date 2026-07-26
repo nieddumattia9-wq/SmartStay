@@ -35,6 +35,8 @@ function createOffer(
       "EUR",
     roomName:
       "Standard room",
+    mealPlan:
+      "Room only",
     refundable:
       true,
     freeCancellationUntil:
@@ -103,6 +105,15 @@ test(
       createPublicOfferId(
         second
       )
+    );
+
+    assert.notEqual(
+      firstId,
+      createPublicOfferId({
+        ...first,
+        mealPlan:
+          "Breakfast included",
+      })
     );
 
     assert.equal(
@@ -239,6 +250,12 @@ test(
           false
       ),
       true
+    );
+
+    assert.equal(
+      forward.offers[0]
+        .mealPlan,
+      first.mealPlan
     );
   }
 );

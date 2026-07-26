@@ -43,6 +43,8 @@ function createFixture() {
       0,
     roomName:
       "Standard room",
+    mealPlan:
+      "Room only",
     refundable:
       true,
     freeCancellationUntil:
@@ -71,6 +73,22 @@ function createFixture() {
   const session = {
     searchId:
       "search-1",
+    originalSearchData: {
+      checkIn:
+        "2026-08-07",
+      checkOut:
+        "2026-08-10",
+      currency:
+        "EUR",
+      rooms: [
+        {
+          adults:
+            2,
+          childAges:
+            [],
+        },
+      ],
+    },
     hotels:
       [hotel],
   };
@@ -183,6 +201,27 @@ test(
       setup.saved[0]
         .providerBookingReference,
       "private-prebook-id"
+    );
+
+    assert.deepEqual(
+      setup.saved[0]
+        .stayContext,
+      {
+        checkin:
+          "2026-08-07",
+        checkout:
+          "2026-08-10",
+        currency:
+          "EUR",
+        rooms: [
+          {
+            adults:
+              2,
+            childAges:
+              [],
+          },
+        ],
+      }
     );
 
     assert.equal(
@@ -313,6 +352,51 @@ test(
     assert.equal(
       result.offer.totalKnownCost,
       100
+    );
+  }
+);
+
+test(
+  "a changed meal plan is a material booking-condition change",
+  async () => {
+    const fixture =
+      createFixture();
+
+    const setup =
+      createService({
+        providerResult: {
+          outcome:
+            "confirmed",
+          offer: {
+            ...fixture.offer,
+            mealPlan:
+              "Breakfast included",
+          },
+          providerBookingReference:
+            "private-prebook-id",
+        },
+      });
+
+    const result =
+      await setup.service({
+        searchId:
+          "search-1",
+        hotelId:
+          setup.fixture.hotel.id,
+        offerId:
+          setup.fixture.offerId,
+      });
+
+    assert.equal(
+      result.state,
+      "changed"
+    );
+
+    assert.deepEqual(
+      result.changedFields,
+      [
+        "mealPlan",
+      ]
     );
   }
 );

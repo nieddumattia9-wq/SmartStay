@@ -22,6 +22,30 @@ function createVerification({
       "provider-a",
     providerBookingReference:
       "private-prebook-reference",
+    confirmedOffer: {
+      id:
+        "provider-a:hotel-1:offer-1",
+      totalKnownCost:
+        100,
+      currency:
+        "EUR",
+      mealPlan:
+        "Breakfast included",
+    },
+    stayContext: {
+      checkin:
+        "2026-08-07",
+      checkout:
+        "2026-08-10",
+      rooms: [
+        {
+          adults:
+            2,
+          childAges:
+            [],
+        },
+      ],
+    },
     requiresUserConfirmation,
     changedFields:
       requiresUserConfirmation
@@ -132,6 +156,20 @@ test(
       providerArguments
         .providerBookingReference,
       "private-prebook-reference"
+    );
+
+    assert.equal(
+      providerArguments
+        .confirmedOffer
+        .mealPlan,
+      "Breakfast included"
+    );
+
+    assert.equal(
+      providerArguments
+        .stayContext
+        .checkin,
+      "2026-08-07"
     );
 
     assert.equal(

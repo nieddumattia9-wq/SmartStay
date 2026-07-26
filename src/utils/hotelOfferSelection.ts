@@ -168,6 +168,10 @@ function createFingerprint(
       candidate.offer.roomName
     ),
 
+    normalizeText(
+      candidate.offer.mealPlan
+    ),
+
     candidate.amount.toFixed(2),
 
     candidate.currency,

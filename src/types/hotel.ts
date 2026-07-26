@@ -77,6 +77,8 @@ export interface HotelOffer {
 
   roomName: string | null;
 
+  mealPlan?: string | null;
+
   bookable: boolean;
 
   redirectable?: boolean;

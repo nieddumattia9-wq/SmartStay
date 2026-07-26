@@ -31,6 +31,7 @@ const {
 const {
   createPublicOfferId,
   compareBookingOfferSnapshots,
+  createBookingStayContext,
   getOfferSourceProvider,
   getProviderOfferReference,
 } = require(
@@ -252,6 +253,11 @@ function createBookingOfferRecheckService({
           originalOfferId:
             canonicalOfferId,
           confirmedOffer,
+          stayContext:
+            createBookingStayContext(
+              session
+                .originalSearchData
+            ),
           sourceProvider,
           providerBookingReference:
             providerResult

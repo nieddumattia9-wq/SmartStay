@@ -321,6 +321,11 @@ function createPublicHotelOffer(
         source.roomName
       ),
 
+    mealPlan:
+      getNullableText(
+        source.mealPlan
+      ),
+
     /*
      * A live provider rate can be commercially usable even when the
      * provider does not expose a direct redirect URL. Keep availability

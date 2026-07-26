@@ -44,6 +44,8 @@ function createOriginalOffer() {
       0,
     roomName:
       "Standard room",
+    mealPlan:
+      "Room only",
     refundable:
       true,
     cancellationPolicy:
@@ -94,6 +96,74 @@ test(
 );
 
 test(
+  "LiteAPI search keeps the public SSP while prebook uses the verified checkout retail total",
+  () => {
+    const providerRate = {
+      offerId:
+        "offer-token",
+      suggestedSellingPrice: {
+        amount:
+          120,
+        currency:
+          "EUR",
+      },
+      offerRetailRate: {
+        amount:
+          95,
+        currency:
+          "EUR",
+      },
+      roomName:
+        "Standard room",
+    };
+
+    const publicOffer =
+      createLiteApiOffer({
+        rate:
+          providerRate,
+        hotelId:
+          "hotel-1",
+        index:
+          0,
+        fallbackCurrency:
+          "EUR",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    const checkoutOffer =
+      createLiteApiOffer({
+        rate:
+          providerRate,
+        hotelId:
+          "hotel-1",
+        index:
+          0,
+        fallbackCurrency:
+          "EUR",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+        priceMode:
+          "checkout",
+      });
+
+    assert.equal(
+      publicOffer.price,
+      120
+    );
+
+    assert.equal(
+      checkoutOffer.price,
+      95
+    );
+  }
+);
+
+test(
   "LiteAPI prebook mapping keeps the original offer reference and extracts private prebook identity",
   () => {
     const originalOffer =
@@ -120,6 +190,32 @@ test(
                     currency:
                       "EUR",
                   },
+                  offerRetailRate: {
+                    amount:
+                      95,
+                    currency:
+                      "EUR",
+                  },
+                  boardName:
+                    "Breakfast included",
+                  cancellationPolicies: {
+                    refundableTag:
+                      "RFN",
+                    cancelPolicyInfos: [
+                      {
+                        cancelTime:
+                          "2026-08-04 10:00:00",
+                        amount:
+                          95,
+                        currency:
+                          "EUR",
+                        type:
+                          "amount",
+                        timezone:
+                          "GMT",
+                      },
+                    ],
+                  },
                   taxesAndFees: [
                     {
                       amount:
@@ -131,7 +227,7 @@ test(
                     },
                   ],
                   refundable:
-                    false,
+                    true,
                 },
               ],
             },
@@ -158,17 +254,104 @@ test(
 
     assert.equal(
       mapped.offer.price,
-      120
+      95
     );
 
     assert.equal(
       mapped.offer.totalKnownCost,
-      132
+      107
+    );
+
+    assert.equal(
+      mapped.offer.mealPlan,
+      "Breakfast included"
+    );
+
+    assert.equal(
+      mapped.offer
+        .freeCancellationUntil,
+      "2026-08-04T10:00:00.000Z"
     );
 
     assert.equal(
       mapped.offer.bookable,
       true
+    );
+  }
+);
+
+test(
+  "LiteAPI prebook selects the exact original provider offer instead of the first returned rate",
+  () => {
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-prebook-id",
+          roomTypes: [
+            {
+              roomName:
+                "Wrong room",
+              rates: [
+                {
+                  offerId:
+                    "wrong-offer",
+                  offerRetailRate: {
+                    amount:
+                      70,
+                    currency:
+                      "EUR",
+                  },
+                },
+              ],
+            },
+            {
+              roomName:
+                "Selected room",
+              rates: [
+                {
+                  offerId:
+                    "offer-token",
+                  offerRetailRate: {
+                    amount:
+                      95,
+                    currency:
+                      "EUR",
+                  },
+                  boardName:
+                    "Breakfast included",
+                },
+              ],
+            },
+          ],
+        },
+        originalOffer:
+          createOriginalOffer(),
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(
+      mapped
+    );
+
+    assert.equal(
+      mapped.offer.price,
+      95
+    );
+
+    assert.equal(
+      mapped.offer.roomName,
+      "Selected room"
+    );
+
+    assert.equal(
+      mapped.offer.mealPlan,
+      "Breakfast included"
     );
   }
 );

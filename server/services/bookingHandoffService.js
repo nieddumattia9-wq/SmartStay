@@ -157,6 +157,13 @@ function createBookingHandoffService(
           verificationId:
             verification
               .verificationId,
+          confirmedOffer:
+            verification
+              .confirmedOffer,
+          stayContext:
+            verification
+              .stayContext ??
+            null,
         });
     } catch (error) {
       if (
