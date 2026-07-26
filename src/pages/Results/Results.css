@@ -704,3 +704,123 @@
     gap: 10px;
   }
 }
+
+/* =========================
+   D6D DESKTOP STACKED GROUPS
+   Restores one full-width card per row on desktop.
+========================= */
+@media (min-width: 980px) {
+  .results__recommendation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .results__recommendation-card +
+  .results__recommendation-card {
+    padding-top: 14px;
+    border-top: 1px dashed
+      rgba(100, 116, 139, 0.24);
+  }
+
+  .results__recommendation-list
+    .hotel-card {
+    height: auto;
+    flex-direction: row;
+    border-radius: 26px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__image {
+    width: 320px;
+    min-width: 320px;
+    height: auto;
+    min-height: 300px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__image-placeholder {
+    min-height: 300px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__content {
+    padding: 30px;
+    gap: 26px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__main {
+    gap: 18px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__header {
+    gap: 28px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__name {
+    font-size: 1.72rem;
+  }
+
+  .results__recommendation-list
+    .hotel-card__review-panel {
+    min-width: 116px;
+    padding: 14px 14px 13px;
+    border-radius: 22px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__review-score {
+    min-width: 68px;
+    height: 58px;
+    font-size: 1.18rem;
+  }
+
+  .results__recommendation-list
+    .hotel-card__decision-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__decision-panel {
+    padding: 15px 16px;
+    border-radius: 18px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__decision-panel ul {
+    margin-top: 9px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .results__recommendation-list
+    .hotel-card__engine {
+    padding: 14px 16px;
+    border-radius: 16px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__engine-subtitle {
+    display: block;
+  }
+
+  .results__recommendation-list
+    .hotel-card__bottom {
+    gap: 24px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__price {
+    font-size: 2.05rem;
+  }
+
+  .results__recommendation-list
+    .hotel-card__button {
+    padding: 15px 30px;
+  }
+}
