@@ -248,3 +248,65 @@
 .trip-card .smart-optimizer--guided {
   margin-top: 24px;
 }
+
+/* =========================
+   D6C COMPACT DENSITY
+========================= */
+
+.trip-card {
+  margin-top: 28px;
+  padding: 26px;
+  border-radius: 20px;
+}
+
+.row {
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.trip-card__preferences-grid {
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.trip-card__preference-column {
+  gap: 12px;
+}
+
+.trip-card__submit {
+  margin-top: 24px;
+  padding: 15px;
+  font-size: 17px;
+}
+
+.trip-card .smart-optimizer--guided {
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .trip-card {
+    margin-top: 20px;
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  .row,
+  .trip-card__preferences-grid,
+  .trip-card__preference-column {
+    gap: 10px;
+  }
+
+  .row,
+  .trip-card__preferences-grid {
+    margin-top: 10px;
+  }
+
+  .trip-card__submit {
+    margin-top: 20px;
+    padding: 14px;
+  }
+
+  .trip-card .smart-optimizer--guided {
+    margin-top: 14px;
+  }
+}

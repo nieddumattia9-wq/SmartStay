@@ -450,3 +450,72 @@
     }
   
   }
+
+/* =========================
+   D6C MOBILE LOADING MOTION
+========================= */
+
+@media (
+  max-width: 640px
+) and (
+  prefers-reduced-motion:
+    no-preference
+) {
+  .loading-step--active
+    .loading-dot {
+    animation:
+      loadingDotPulse
+      1.05s
+      ease-in-out
+      infinite;
+    will-change:
+      transform,
+      opacity,
+      box-shadow;
+  }
+
+  .loading-step--active {
+    animation:
+      loadingStepPulse
+      1.45s
+      ease-in-out
+      infinite;
+  }
+}
+
+@media (max-width: 640px) {
+  .loading-screen {
+    min-height: 62vh;
+    padding: 18px 12px;
+  }
+
+  .loading-card {
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
+
+  .loading-title {
+    font-size: 34px;
+  }
+
+  .loading-subtitle {
+    margin-top: 12px;
+    font-size: 16px;
+  }
+
+  .loading-progress {
+    height: 10px;
+    margin-top: 28px;
+  }
+
+  .loading-steps {
+    min-height: 148px;
+    margin-top: 24px;
+    gap: 12px;
+  }
+
+  .loading-step {
+    gap: 11px;
+    font-size: 14px;
+  }
+}

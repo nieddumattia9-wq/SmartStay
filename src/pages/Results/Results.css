@@ -531,3 +531,176 @@
   margin: 0;
   line-height: 1.5;
 }
+
+/* =========================
+   D6C RESPONSIVE DENSITY
+========================= */
+
+.results__recommendation-group {
+  margin-top: 24px;
+  padding: 14px;
+  border-radius: 20px;
+}
+
+.results__recommendation-heading {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+.results__recommendation-summary {
+  margin-top: 4px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.results__recommendation-list {
+  gap: 12px;
+}
+
+@media (min-width: 980px) {
+  .results__recommendation-list {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .results__recommendation-list:has(
+    > .results__recommendation-card:only-child
+  ) {
+    grid-template-columns: 1fr;
+  }
+
+  .results__recommendation-card +
+  .results__recommendation-card {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .results__recommendation-list
+    .hotel-card {
+    height: 100%;
+    flex-direction: column;
+    border-radius: 20px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__image {
+    width: 100%;
+    min-width: 0;
+    height: 190px;
+    min-height: 190px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__image-placeholder {
+    min-height: 190px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__content {
+    padding: 18px;
+    gap: 16px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__main {
+    gap: 13px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__header {
+    gap: 14px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__name {
+    font-size: 1.34rem;
+  }
+
+  .results__recommendation-list
+    .hotel-card__review-panel {
+    min-width: 92px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__review-score {
+    min-width: 58px;
+    height: 48px;
+    font-size: 1rem;
+  }
+
+  .results__recommendation-list
+    .hotel-card__decision-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__decision-panel {
+    padding: 11px 12px;
+    border-radius: 13px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__decision-panel ul {
+    margin-top: 6px;
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .results__recommendation-list
+    .hotel-card__engine {
+    padding: 11px 12px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__engine-subtitle {
+    display: none;
+  }
+
+  .results__recommendation-list
+    .hotel-card__bottom {
+    gap: 14px;
+  }
+
+  .results__recommendation-list
+    .hotel-card__price {
+    font-size: 1.72rem;
+  }
+
+  .results__recommendation-list
+    .hotel-card__button {
+    padding: 13px 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .results__recommendation-group {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 17px;
+  }
+
+  .results__recommendation-heading {
+    margin-bottom: 9px;
+    padding:
+      0
+      2px
+      9px
+      8px;
+  }
+
+  .results__recommendation-summary {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .results__recommendation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+}

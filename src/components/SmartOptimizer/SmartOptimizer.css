@@ -202,3 +202,78 @@
     transition: none;
   }
 }
+
+/* =========================
+   D6C COMPACT DENSITY
+========================= */
+
+.smart-optimizer--guided {
+  padding: 13px 15px 12px;
+  border-radius: 15px;
+}
+
+.optimizer-header {
+  gap: 12px;
+}
+
+.optimizer-title {
+  font-size: 0.96rem;
+}
+
+.optimizer-explanation {
+  margin-top: 5px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.optimizer-labels {
+  margin-top: 12px;
+  margin-bottom: 5px;
+  font-size: 0.72rem;
+}
+
+.slider-container {
+  height: 28px;
+}
+
+.slider-track {
+  height: 7px;
+}
+
+.slider-thumb {
+  width: 23px;
+  height: 23px;
+  border-width: 3px;
+}
+
+.optimizer-info {
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.optimizer-info h2 {
+  font-size: 0.92rem;
+}
+
+.optimizer-info p {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .smart-optimizer--guided {
+    padding: 12px;
+  }
+
+  .optimizer-explanation {
+    font-size: 0.79rem;
+  }
+
+  .optimizer-labels {
+    margin-top: 10px;
+  }
+
+  .optimizer-info {
+    gap: 2px;
+  }
+}
