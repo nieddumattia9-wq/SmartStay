@@ -325,15 +325,17 @@
   
   .calendar-grid__day--outside {
   
-    color: #cbd5e1;
+    color: #0f172a;
   
   }
   
-  .calendar-grid__day--outside:hover {
+  .calendar-grid__day--outside:hover:not(:disabled) {
   
-    background: transparent;
+    background: #f1f5f9;
   
-    transform: none;
+    color: #0f172a;
+
+    transform: scale(1.05);
   
   }
   

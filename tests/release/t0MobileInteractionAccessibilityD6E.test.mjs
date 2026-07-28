@@ -528,3 +528,42 @@ test(
     );
   }
 );
+
+test(
+  "D6E keeps future outside-month days readable while past dates remain disabled",
+  () => {
+    const bookingCalendarCss = read(
+      "src/components/BookingCalendar/BookingCalendar.css"
+    );
+
+    const calendarGrid = read(
+      "src/components/BookingCalendar/CalendarGrid.tsx"
+    );
+
+    assert.match(
+      bookingCalendarCss,
+      /\.calendar-grid__day--outside\s*\{[\s\S]*?color:\s*#0f172a;/
+    );
+
+    assert.match(
+      bookingCalendarCss,
+      /\.calendar-grid__day--outside:hover:not\(:disabled\)\s*\{[\s\S]*?background:\s*#f1f5f9;[\s\S]*?color:\s*#0f172a;[\s\S]*?transform:\s*scale\(1\.05\);/
+    );
+
+    assert.match(
+      bookingCalendarCss,
+      /\.calendar-grid__day--disabled\s*\{[\s\S]*?color:\s*#7c8798;[\s\S]*?opacity:\s*\.55;/
+    );
+
+    assert.match(
+      calendarGrid,
+      /disabled=\{day\.isPast\}/
+    );
+
+    assert.ok(
+      !/\.calendar-grid__day--outside:hover\s*\{[\s\S]*?background:\s*transparent;/.test(
+        bookingCalendarCss
+      )
+    );
+  }
+);
