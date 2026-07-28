@@ -11,14 +11,13 @@ export interface SmartStayWeightedMarketDistributionV2 {
   source: SmartStayMarketContextSourceV2;
 }
 
-const DISTRIBUTION_FIELDS = [
-  "minimum",
-  "firstQuartile",
-  "median",
-  "thirdQuartile",
-  "ninetiethPercentile",
-  "maximum",
-] as const;
+type SmartStayMarketDistributionFieldV2 =
+  | "minimum"
+  | "firstQuartile"
+  | "median"
+  | "thirdQuartile"
+  | "ninetiethPercentile"
+  | "maximum";
 
 export const EMPTY_MARKET_DISTRIBUTION_V2:
   SmartStayMarketDistributionV2 = {
@@ -392,7 +391,7 @@ function weightedField(
   sources:
     readonly SmartStayWeightedMarketDistributionV2[],
   field:
-    (typeof DISTRIBUTION_FIELDS)[number]
+    SmartStayMarketDistributionFieldV2
 ) {
   const values =
     sources

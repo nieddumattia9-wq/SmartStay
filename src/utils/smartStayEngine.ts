@@ -2114,9 +2114,21 @@ export function rankHotelsWithSmartStayEngine(
         secondHotel.originalIndex
       );
     })
-    .map(({
-      originalIndex,
-      budgetPriority,
-      ...evaluation
-    }) => evaluation);
+    .map((rankedEvaluation) => {
+      const evaluation = {
+        ...rankedEvaluation,
+      };
+
+      Reflect.deleteProperty(
+        evaluation,
+        "originalIndex"
+      );
+
+      Reflect.deleteProperty(
+        evaluation,
+        "budgetPriority"
+      );
+
+      return evaluation;
+    });
 }

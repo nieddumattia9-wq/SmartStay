@@ -30,6 +30,10 @@ import type {
   SmartStayRiskLevelV2,
 } from "../../engine-v2/model/smartStayEvaluationV2";
 
+import {
+  buildDisplayedTradeOffsV2,
+} from "../../engine-v2/frontend/tradeOffPresentationV2";
+
 type HotelCardProps = {
   hotel: Hotel;
   smartScore?: number;
@@ -369,10 +373,14 @@ function getOfferCondition(
 ) {
   const refundable =
     displayOfferOverride
-      ?.refundable ??
-    selectedOffer
-      ?.refundable ??
-    null;
+      ?.refundable !==
+      undefined
+      ? displayOfferOverride
+          .refundable ??
+        null
+      : selectedOffer
+          ?.refundable ??
+        null;
 
   if (
     refundable ===
@@ -387,72 +395,6 @@ function getOfferCondition(
   }
 
   return null;
-}
-
-function buildTradeOffPreview({
-  tradeOffs,
-  selectedOffer,
-  displayOfferOverride,
-  riskLevel,
-  dataConfidenceLevel,
-}: {
-  tradeOffs:
-    string[];
-  selectedOffer:
-    SmartStaySelectedOfferV2 |
-    null;
-  displayOfferOverride:
-    HotelOffer |
-    null;
-  riskLevel?:
-    SmartStayRiskLevelV2;
-  dataConfidenceLevel:
-    SmartStayDataConfidenceLevelV2;
-}) {
-  const refundable =
-    displayOfferOverride
-      ?.refundable ??
-    selectedOffer
-      ?.refundable ??
-    null;
-
-  const taxStatus =
-    displayOfferOverride
-      ?.taxesIncluded ??
-    selectedOffer
-      ?.taxesIncluded ??
-    null;
-
-  return uniqueMessages([
-    refundable ===
-      false
-      ? "The selected offer is non-refundable."
-      : null,
-
-    taxStatus ===
-      null
-      ? "Some mandatory taxes or fees may still need final confirmation."
-      : null,
-
-    riskLevel ===
-      "high"
-      ? "This option has important booking trade-offs."
-      : riskLevel ===
-          "medium" &&
-        refundable !==
-          false
-        ? "Review the booking conditions before checkout."
-        : null,
-
-    dataConfidenceLevel ===
-      "low" ||
-    dataConfidenceLevel ===
-      "none"
-      ? "Some supporting accommodation data is limited."
-      : null,
-
-    ...tradeOffs,
-  ]);
 }
 
 function HotelCard({
@@ -502,7 +444,7 @@ function HotelCard({
     );
 
   const fullTradeOffs =
-    buildTradeOffPreview({
+    buildDisplayedTradeOffsV2({
       tradeOffs,
       selectedOffer,
       displayOfferOverride,

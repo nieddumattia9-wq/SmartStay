@@ -303,6 +303,26 @@
     }
   }
 
+  @keyframes guests-popup-mobile {
+    from {
+      opacity: 0;
+
+      transform:
+        translateX(-50%)
+        translateY(-8px)
+        scale(0.98);
+    }
+
+    to {
+      opacity: 1;
+
+      transform:
+        translateX(-50%)
+        translateY(0)
+        scale(1);
+    }
+  }
+
   @media (max-width: 640px) {
     .guests-selector__popup {
       left: 50%;
@@ -311,6 +331,7 @@
         min(calc(100vw - 24px), 340px);
 
       transform: translateX(-50%);
+      animation-name: guests-popup-mobile;
     }
 
     .guest-row {
@@ -330,5 +351,11 @@
 
     .child-ages__grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guests-selector__popup {
+      animation: none;
     }
   }

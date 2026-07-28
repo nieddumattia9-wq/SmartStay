@@ -37,6 +37,9 @@
 }
 
 .hotel-location-map__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   flex: 0 0 auto;
   color: #047857;
   font-size: 0.82rem;

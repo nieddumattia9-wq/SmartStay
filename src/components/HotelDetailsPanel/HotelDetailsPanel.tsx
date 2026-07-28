@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -675,6 +676,12 @@ function HotelDetailsPanel({
 
   const closeButtonRef =
     useRef<HTMLButtonElement>(null);
+
+  const descriptionId =
+    useId();
+
+  const amenitiesId =
+    useId();
 
   const [
     bookingRecheck,
@@ -1663,6 +1670,7 @@ function HotelDetailsPanel({
                   {descriptionPresentation.overview && (
                     <>
                       <p
+                        id={descriptionId}
                         className={
                           "hotel-details-panel__description" +
                           (
@@ -1682,6 +1690,9 @@ function HotelDetailsPanel({
                           className="hotel-details-panel__description-toggle"
                           aria-expanded={
                             showFullDescription
+                          }
+                          aria-controls={
+                            descriptionId
                           }
                           onClick={() =>
                             setShowFullDescription(
@@ -1781,6 +1792,9 @@ function HotelDetailsPanel({
                       aria-expanded={
                         showAllAmenities
                       }
+                      aria-controls={
+                        amenitiesId
+                      }
                     >
                       {showAllAmenities
                         ? "Hide amenities"
@@ -1789,7 +1803,10 @@ function HotelDetailsPanel({
                   )}
 
                   {showAllAmenities && (
-                    <div className="hotel-details-panel__amenity-groups">
+                    <div
+                      id={amenitiesId}
+                      className="hotel-details-panel__amenity-groups"
+                    >
                       {amenityPresentation.groups.map(
                         (group, index) => (
                           <AmenityGroupSection

@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useId,
     useRef,
     useState,
   } from "react";
@@ -121,8 +122,17 @@ import {
     disabled = false,
     className = "",
   }: GuestsSelectorProps) {
+    const generatedId =
+      useId();
+
+    const popupId =
+      `${generatedId}-guests-popup`;
+
     const rootRef =
       useRef<HTMLDivElement>(null);
+
+    const triggerRef =
+      useRef<HTMLButtonElement>(null);
 
     const [isOpen, setIsOpen] =
       useState(false);
@@ -192,8 +202,20 @@ import {
       }, [disabled]);
 
     const closeSelector =
-      useCallback(() => {
+      useCallback((
+        restoreFocus = false
+      ) => {
         setIsOpen(false);
+
+        if (!restoreFocus) {
+          return;
+        }
+
+        window.requestAnimationFrame(() => {
+          triggerRef.current?.focus({
+            preventScroll: true,
+          });
+        });
       }, []);
 
     useEffect(() => {
@@ -220,7 +242,8 @@ import {
         event: KeyboardEvent
       ) {
         if (event.key === "Escape") {
-          closeSelector();
+          event.preventDefault();
+          closeSelector(true);
         }
       }
 
@@ -268,12 +291,21 @@ import {
         }
       >
         <button
+          ref={triggerRef}
           type="button"
           className="guests-selector__input"
-          onClick={openSelector}
+          onClick={() => {
+            if (isOpen) {
+              closeSelector();
+            } else {
+              openSelector();
+            }
+          }}
           disabled={disabled}
+          aria-label={`${totalGuests} guests, ${currentValue.rooms} rooms`}
           aria-haspopup="dialog"
           aria-expanded={isOpen}
+          aria-controls={popupId}
         >
           <div className="guests-selector__left">
             <Users
@@ -297,6 +329,7 @@ import {
 
         {isOpen && (
           <div
+            id={popupId}
             className="guests-selector__popup"
             role="dialog"
             aria-label="Guests and rooms selector"
@@ -306,7 +339,7 @@ import {
                 <h4>Adults</h4>
 
                 <span>
-                  Ages 18+
+                  Ages 13+
                 </span>
               </div>
 

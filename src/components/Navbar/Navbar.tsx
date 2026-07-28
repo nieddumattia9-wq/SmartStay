@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 
+import AccountAccessControls from "../AccountAccessControls/AccountAccessControls";
+
 import "./Navbar.css";
 
 function Navbar() {
@@ -18,30 +20,7 @@ function Navbar() {
 
       </Link>
 
-      <nav
-        className="navbar__nav"
-        aria-label="Main navigation"
-      >
-
-        <button
-          type="button"
-          className="navbar__login"
-        >
-
-          Login
-
-        </button>
-
-        <button
-          type="button"
-          className="navbar__signup"
-        >
-
-          Sign up
-
-        </button>
-
-      </nav>
+      <AccountAccessControls />
 
     </header>
 

@@ -76,6 +76,11 @@ test(
         "src/components/HotelDetailsPanel/HotelDetailsPanel.tsx"
       );
 
+    const tradeOffPresentation =
+      readText(
+        "src/engine-v2/frontend/tradeOffPresentationV2.ts"
+      );
+
     assert.match(
       panel,
       /shouldShowCancellationPolicy/
@@ -105,8 +110,13 @@ test(
     );
 
     assert.match(
-      card,
+      tradeOffPresentation,
       /The selected offer is non-refundable\./
+    );
+
+    assert.match(
+      card,
+      /buildDisplayedTradeOffsV2/
     );
 
     assert.match(

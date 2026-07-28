@@ -581,8 +581,18 @@ function TripOptimizer() {
       : null;
 
   return (
-    <div className="trip-card">
+    <form
+      className="trip-card"
+      aria-label="Search stays"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSearch();
+      }}
+    >
       <DestinationAutocomplete
+        id="smartstay-destination"
+        name="destination"
         value={destination}
         onChange={setDestination}
         onSelect={
@@ -596,6 +606,7 @@ function TripOptimizer() {
 
       <div className="row">
         <BookingCalendar
+          id="smartstay-dates"
           value={dates}
           onChange={setDates}
         />
@@ -646,9 +657,8 @@ function TripOptimizer() {
       />
 
       <button
-        type="button"
+        type="submit"
         className="trip-card__submit"
-        onClick={handleSearch}
       >
         <Sparkles
           size={18}
@@ -660,7 +670,7 @@ function TripOptimizer() {
           Find my SmartStay
         </span>
       </button>
-    </div>
+    </form>
   );
 }
 

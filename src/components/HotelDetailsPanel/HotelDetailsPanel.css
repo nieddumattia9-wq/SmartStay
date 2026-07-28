@@ -290,8 +290,11 @@
 }
 
 .hotel-details-panel__description-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-top: 10px;
-  padding: 0;
+  padding: 0 2px;
 
   border: 0;
   background: transparent;
@@ -387,6 +390,7 @@
 }
 
 .hotel-details-panel__amenity-toggle {
+  min-height: 44px;
   margin-top: 18px;
   border: 1px solid #b9d9cc;
   border-radius: 12px;

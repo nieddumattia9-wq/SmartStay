@@ -78,6 +78,15 @@ function getSliderValue(
   ) * BUDGET_STEP;
 }
 
+function getSliderProgress(
+  value: number
+) {
+  return (
+    (value - BUDGET_MIN) /
+    (BUDGET_MAX - BUDGET_MIN)
+  ) * 100;
+}
+
 function formatMoney(
   amount: number,
   currency: string
@@ -116,6 +125,21 @@ function BudgetSelector({
   const hasBudget =
     parsedBudget !== null;
 
+  const sliderProgress =
+    hasBudget
+      ? getSliderProgress(
+          sliderValue
+        )
+      : 0;
+
+  const sliderStyle = {
+    "--budget-progress":
+      `${sliderProgress}%`,
+  } as React.CSSProperties & {
+    "--budget-progress":
+      string;
+  };
+
   const averagePerNight =
     parsedBudget !== null &&
     nightCount !== null &&
@@ -131,6 +155,20 @@ function BudgetSelector({
     onChange(
       event.target.value
     );
+  }
+
+  function handleSliderPointerUp(
+    event:
+      React.PointerEvent<HTMLInputElement>
+  ) {
+    if (
+      !disabled &&
+      !hasBudget
+    ) {
+      onChange(
+        event.currentTarget.value
+      );
+    }
   }
 
   function handleInputChange(
@@ -199,6 +237,12 @@ function BudgetSelector({
           step={BUDGET_STEP}
           value={sliderValue}
           disabled={disabled}
+          style={sliderStyle}
+          data-budget-state={
+            hasBudget
+              ? "set"
+              : "unset"
+          }
           className={
             hasBudget
               ? "budget-selector__range"
@@ -212,6 +256,9 @@ function BudgetSelector({
                   currency
                 )
               : "Budget not set"
+          }
+          onPointerUp={
+            handleSliderPointerUp
           }
           onChange={
             handleSliderChange
@@ -273,7 +320,9 @@ function BudgetSelector({
             )} per night for ${nightCount} ${nightCount === 1
               ? "night"
               : "nights"}`
-          : "You can still enter an exact amount above \u20ac2,000"}
+          : hasBudget
+            ? "You can still enter an exact amount above \u20ac2,000"
+            : "Use the slider or enter an exact total budget. Amounts above \u20ac2,000 can be typed."}
       </p>
     </section>
   );

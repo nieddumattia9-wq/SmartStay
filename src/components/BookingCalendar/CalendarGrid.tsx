@@ -98,7 +98,6 @@ function CalendarGrid({
 
       <div
         className="calendar-grid__days"
-        role="grid"
       >
 
         {days.map((day) => {
@@ -124,6 +123,26 @@ function CalendarGrid({
 
           const isSelected =
             isCheckIn || isCheckOut;
+
+          const selectionContext =
+            isCheckIn
+              ? ", check-in"
+              : isCheckOut
+                ? ", check-out"
+                : isInRange
+                  ? ", within selected stay"
+                  : "";
+
+          const accessibleLabel =
+            day.date.toLocaleDateString(
+              "en-GB",
+              {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              }
+            ) + selectionContext;
 
           const className = [
             "calendar-grid__day",
@@ -161,18 +180,14 @@ function CalendarGrid({
               key={day.date.getTime()}
               type="button"
               className={className}
-              role="gridcell"
               disabled={day.isPast}
-              aria-selected={isSelected}
-              aria-label={day.date.toLocaleDateString(
-                "en-GB",
-                {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                }
-              )}
+              aria-pressed={isSelected}
+              aria-current={
+                day.isToday
+                  ? "date"
+                  : undefined
+              }
+              aria-label={accessibleLabel}
               onClick={() => onSelectDay?.(day.date)}
             >
 

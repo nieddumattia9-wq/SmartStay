@@ -110,9 +110,6 @@ export type DestinationAutocompleteProps = {
 
 };
 
-export const cleanDestinationCountry =
-  normalizeDestinationCountry;
-
 function DestinationAutocomplete({
   value,
   onChange,
@@ -152,6 +149,9 @@ function DestinationAutocomplete({
   const [suggestions, setSuggestions] =
     useState<Destination[]>([]);
 
+  const [hasSelectedDestination, setHasSelectedDestination] =
+    useState(false);
+
   const selectedDestinationLabelRef =
     useRef<string | null>(
       null
@@ -181,6 +181,7 @@ function DestinationAutocomplete({
     selectedDestinationLabelRef.current =
       label;
 
+    setHasSelectedDestination(true);
     setSuggestions([]);
     setLoading(false);
 
@@ -295,7 +296,10 @@ function DestinationAutocomplete({
 
     };
 
-  }, [debouncedQuery]);
+  }, [
+    closeDropdown,
+    debouncedQuery,
+  ]);
 
   useEffect(() => {
 
@@ -377,6 +381,7 @@ function DestinationAutocomplete({
       selectedDestinationLabelRef.current =
         null;
 
+      setHasSelectedDestination(false);
       setSuggestions([]);
 
       closeDropdown();
@@ -420,6 +425,7 @@ function DestinationAutocomplete({
     selectedDestinationLabelRef.current =
       null;
 
+    setHasSelectedDestination(false);
     setSuggestions([]);
 
     onChange(nextValue);
@@ -513,8 +519,7 @@ function DestinationAutocomplete({
     isOpen &&
     suggestions.length > 0 &&
     !disabled &&
-    selectedDestinationLabelRef.current ===
-      null;
+    !hasSelectedDestination;
 
   return (
 
@@ -542,6 +547,8 @@ function DestinationAutocomplete({
           disabled={disabled}
           autoComplete="off"
           spellCheck={false}
+          aria-label="Destination"
+          aria-busy={loading}
           role="combobox"
           aria-expanded={showDropdown}
           aria-controls={
@@ -566,7 +573,12 @@ function DestinationAutocomplete({
 
       {loading && (
 
-        <div className="destination-autocomplete__loading">
+        <div
+          className="destination-autocomplete__loading"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
 
           Searching destinations...
 
@@ -623,11 +635,11 @@ function DestinationAutocomplete({
                 <span className="destination-autocomplete__country">
 
                   {highlightMatch(
-  cleanDestinationCountry(
-    destination.country
-  ),
-  debouncedQuery
-)}
+                    normalizeDestinationCountry(
+                      destination.country
+                    ),
+                    debouncedQuery
+                  )}
 
                 </span>
 

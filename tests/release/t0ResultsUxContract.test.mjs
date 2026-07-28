@@ -204,6 +204,11 @@ test(
         "src/pages/Results/Results.tsx"
       );
 
+    const tradeOffPresentation =
+      readText(
+        "src/engine-v2/frontend/tradeOffPresentationV2.ts"
+      );
+
     assert.match(
       card,
       /SmartStay fit/
@@ -225,8 +230,13 @@ test(
     );
 
     assert.match(
-      card,
+      tradeOffPresentation,
       /The selected offer is non-refundable\./
+    );
+
+    assert.match(
+      card,
+      /buildDisplayedTradeOffsV2/
     );
 
     assert.ok(

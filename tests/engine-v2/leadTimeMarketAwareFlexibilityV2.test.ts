@@ -1122,13 +1122,24 @@ test(
           "2026-08-01T10:00:00Z",
       });
 
-    const copy =
+    const evaluation =
       frontend
         .rankedHotels
-        .flatMap(
-          (evaluation) =>
-            evaluation.tradeOffs
-        )
+        .find(
+          (candidate) =>
+            candidate
+              .selectedOffer
+              ?.refundable ===
+            false
+        );
+
+    assert.ok(
+      evaluation
+    );
+
+    const copy =
+      evaluation
+        .tradeOffs
         .join(" ");
 
     assert.match(
@@ -1138,6 +1149,22 @@ test(
     assert.match(
       copy,
       /flexible alternatives are limited for these close-in dates/i
+    );
+    assert.doesNotMatch(
+      copy,
+      /booking uncertainty/i
+    );
+    assert.equal(
+      evaluation
+        .tradeOffs
+        .filter(
+          (tradeOff) =>
+            /non-refundable/i.test(
+              tradeOff
+            )
+        )
+        .length,
+      1
     );
   }
 );

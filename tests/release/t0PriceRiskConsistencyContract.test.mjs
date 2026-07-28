@@ -22,6 +22,12 @@ const cardSource =
     "utf8"
   );
 
+const tradeOffPresentationSource =
+  readFileSync(
+    "src/engine-v2/frontend/tradeOffPresentationV2.ts",
+    "utf8"
+  );
+
 const panelSource =
   readFileSync(
     "src/components/HotelDetailsPanel/HotelDetailsPanel.tsx",
@@ -47,14 +53,20 @@ test(
     );
 
     assert.ok(
-      cardSource.includes(
-        "refundable !=="
+      tradeOffPresentationSource.includes(
+        "currentRefundable !== false"
+      )
+    );
+
+    assert.ok(
+      tradeOffPresentationSource.includes(
+        "Review the booking conditions before checkout."
       )
     );
 
     assert.ok(
       cardSource.includes(
-        "Review the booking conditions before checkout."
+        "buildDisplayedTradeOffsV2"
       )
     );
 

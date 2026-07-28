@@ -1485,28 +1485,32 @@ function evaluateUnitType(
     }
   }
 
-  let score:
-    number | null = null;
+  const score = (() => {
+    if (
+      preferredUnitTypes.length === 0
+    ) {
+      return getContextualUnitTypeScore(
+        accommodation.unitType,
+        tripProfile
+      );
+    }
 
-  if (
-    preferredUnitTypes.length > 0
-  ) {
     if (
       accommodation.unitType ===
       "unknown"
     ) {
-      score =
-        null;
+      return null;
     }
-    else if (
+
+    if (
       preferredUnitTypes.includes(
         accommodation.unitType
       )
     ) {
-      score =
-        100;
+      return 100;
     }
-    else if (
+
+    if (
       preferredUnitTypes.some(
         (preferredUnitType) =>
           arePrivateRoomTypesCompatible(
@@ -1515,21 +1519,11 @@ function evaluateUnitType(
           )
       )
     ) {
-      score =
-        75;
+      return 75;
     }
-    else {
-      score =
-        25;
-    }
-  }
-  else {
-    score =
-      getContextualUnitTypeScore(
-        accommodation.unitType,
-        tripProfile
-      );
-  }
+
+    return 25;
+  })();
 
   return {
     unitType:

@@ -1864,7 +1864,7 @@ const rankedHotels =
     }
 
     return (
-      <main className="results-page">
+      <div className="results-page">
         <section className="results-page__header">
           <p className="results-page__eyebrow">
             Ranked by SmartStay Engine
@@ -2608,6 +2608,8 @@ const rankedHotels =
                       fontWeight: 800,
                       boxShadow: "0 12px 25px rgba(15, 23, 42, .18)",
                     }}
+                    aria-expanded={showFullList}
+                    aria-controls="results-full-list"
                     onClick={() => setShowFullList(true)}
                   >
                     View {remainingHotels.length} other{" "}
@@ -2620,6 +2622,7 @@ const rankedHotels =
               ) : (
                 <>
                   <div
+                    id="results-full-list"
                     style={{
                       marginBottom: "24px",
                     }}
@@ -2742,7 +2745,7 @@ const rankedHotels =
         />
       )}
 
-    </main>
+    </div>
   );
 }
 

@@ -91,16 +91,119 @@
 }
 
 .budget-selector__range {
+  --budget-progress: 0%;
+
+  box-sizing: border-box;
   width: 100%;
   height: 18px;
   margin: 0;
 
-  accent-color: #22c55e;
+  appearance: none;
+  -webkit-appearance: none;
+
+  border: 0;
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #86dba8 0,
+      #86dba8 var(--budget-progress),
+      #a3a3a3 var(--budget-progress),
+      #a3a3a3 100%
+    )
+    center / 100% 8px
+    no-repeat;
+
   cursor: pointer;
 }
 
 .budget-selector__range--unset {
-  opacity: .5;
+  background:
+    linear-gradient(
+      #cbd5e1,
+      #cbd5e1
+    )
+    center / 100% 8px
+    no-repeat;
+}
+
+.budget-selector__range::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+
+  border: 0;
+  border-radius: 999px;
+
+  background: transparent;
+}
+
+.budget-selector__range::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -5px;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  border: 3px solid #86dba8;
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .95),
+    0 2px 5px rgba(15, 23, 42, .16);
+}
+
+.budget-selector__range--unset::-webkit-slider-thumb {
+  border-color: #94a3b8;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
+}
+
+.budget-selector__range::-moz-range-track {
+  width: 100%;
+  height: 8px;
+
+  border: 0;
+  border-radius: 999px;
+
+  background: #a3a3a3;
+}
+
+.budget-selector__range::-moz-range-progress {
+  height: 8px;
+
+  border: 0;
+  border-radius: 999px;
+
+  background: #86dba8;
+}
+
+.budget-selector__range--unset::-moz-range-track,
+.budget-selector__range--unset::-moz-range-progress {
+  background: #cbd5e1;
+}
+
+.budget-selector__range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+
+  border: 3px solid #86dba8;
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .95),
+    0 2px 5px rgba(15, 23, 42, .16);
+}
+
+.budget-selector__range--unset::-moz-range-thumb {
+  border-color: #94a3b8;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
 }
 
 .budget-selector__range:disabled {
@@ -111,7 +214,6 @@
 .budget-selector__range:focus-visible {
   outline: 3px solid rgba(22, 224, 110, .18);
   outline-offset: 3px;
-  border-radius: 999px;
 }
 
 .budget-selector__scale {

@@ -381,6 +381,12 @@ test(
       "utf8"
     );
 
+    const tradeOffPresentationSource =
+      readFileSync(
+        "src/engine-v2/frontend/tradeOffPresentationV2.ts",
+        "utf8"
+      );
+
     assert.ok(
       resultsSource.includes(
         "selectedOffer={"
@@ -412,8 +418,13 @@ test(
       )
     );
     assert.ok(
-      hotelCardSource.includes(
+      tradeOffPresentationSource.includes(
         "The selected offer is non-refundable."
+      )
+    );
+    assert.ok(
+      hotelCardSource.includes(
+        "buildDisplayedTradeOffsV2"
       )
     );
     assert.ok(

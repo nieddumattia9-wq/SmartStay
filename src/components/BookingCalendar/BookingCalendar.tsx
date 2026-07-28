@@ -84,6 +84,12 @@ function BookingCalendar({
   const rootRef =
     useRef<HTMLDivElement>(null);
 
+  const inputRef =
+    useRef<HTMLInputElement>(null);
+
+  const suppressNextFocusOpenRef =
+    useRef(false);
+
   const [isOpen, setIsOpen] =
     useState(false);
 
@@ -115,13 +121,60 @@ function BookingCalendar({
 
   }, [onChange, value]);
 
-  const closeCalendar = useCallback(() => {
+  const closeCalendar = useCallback((
+    restoreFocus = false
+  ) => {
 
     setIsOpen(false);
+
+    if (!restoreFocus) {
+
+      return;
+
+    }
+
+    const input =
+      inputRef.current;
+
+    if (
+      !input ||
+      document.activeElement === input
+    ) {
+
+      return;
+
+    }
+
+    suppressNextFocusOpenRef.current =
+      true;
+
+    window.requestAnimationFrame(() => {
+
+      input.focus({
+        preventScroll: true,
+      });
+
+      window.setTimeout(() => {
+
+        suppressNextFocusOpenRef.current =
+          false;
+
+      }, 0);
+
+    });
 
   }, []);
 
   const openCalendar = useCallback(() => {
+
+    if (suppressNextFocusOpenRef.current) {
+
+      suppressNextFocusOpenRef.current =
+        false;
+
+      return;
+
+    }
 
     if (disabled) {
 
@@ -164,7 +217,7 @@ function BookingCalendar({
           checkOut: selectedDate,
         });
 
-        closeCalendar();
+        closeCalendar(true);
 
         return;
 
@@ -215,7 +268,9 @@ function BookingCalendar({
 
       if (event.key === "Escape") {
 
-        closeCalendar();
+        event.preventDefault();
+
+        closeCalendar(true);
 
       }
 
@@ -287,6 +342,7 @@ function BookingCalendar({
         />
 
         <input
+          ref={inputRef}
           id={inputId}
           type="text"
           className="booking-calendar__input"
@@ -294,11 +350,10 @@ function BookingCalendar({
           readOnly
           placeholder={placeholder}
           disabled={disabled}
+          aria-label="Check-in and check-out dates"
           aria-haspopup="dialog"
           aria-expanded={isOpen}
-          aria-controls={
-            isOpen ? popupId : undefined
-          }
+          aria-controls={popupId}
           onClick={openCalendar}
           onFocus={openCalendar}
         />
@@ -315,6 +370,12 @@ function BookingCalendar({
         >
 
           <Calendar
+            initialDate={
+              checkIn ??
+              new Date()
+            }
+            checkIn={checkIn}
+            checkOut={checkOut}
             onSelectDay={handleSelectDay}
           />
 

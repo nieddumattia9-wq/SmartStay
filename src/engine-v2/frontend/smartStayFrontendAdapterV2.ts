@@ -15,6 +15,16 @@ import type {
 } from "./constraintAwareEmptyStateV2";
 
 import {
+  getTradeOffSemanticCategoryV2,
+  hasIndependentRiskFactorsV2,
+  selectDistinctTradeOffMessagesV2,
+} from "./tradeOffPresentationV2";
+
+import type {
+  SmartStayRiskCoverageV2,
+} from "./tradeOffPresentationV2";
+
+import {
   evaluateSmartStaySearchV2,
 } from "../orchestrator/smartStayEngineV2";
 
@@ -1387,12 +1397,14 @@ function createFallbackStrengths(
 
 function createFallbackTradeOffs(
   evaluation:
-    SmartStayEvaluationV2
+    SmartStayEvaluationV2,
+  riskCoverage:
+    SmartStayRiskCoverageV2
 ) {
   const tradeOffs:
     string[] = [];
 
-  if (
+  const hasLimitedData =
     evaluation
       .dataConfidence
       .level ===
@@ -1400,14 +1412,30 @@ function createFallbackTradeOffs(
     evaluation
       .dataConfidence
       .level ===
-      "none"
-  ) {
+      "none";
+
+  if (hasLimitedData) {
     tradeOffs.push(
       "Some important information is missing or uncertain."
     );
   }
 
+  const hasIndependentRisk =
+    hasIndependentRiskFactorsV2(
+      evaluation
+        .risk
+        .factorCodes,
+      {
+        ...riskCoverage,
+        dataConfidence:
+          riskCoverage
+            .dataConfidence ||
+          hasLimitedData,
+      }
+    );
+
   if (
+    hasIndependentRisk &&
     evaluation
       .risk
       .level ===
@@ -1418,6 +1446,7 @@ function createFallbackTradeOffs(
     );
   }
   else if (
+    hasIndependentRisk &&
     evaluation
       .risk
       .level ===
@@ -1695,17 +1724,41 @@ function createExplanationSections(
         nonRefundableFactIndex
     );
 
-  const tradeOffs =
-    uniqueExplanationReasons([
+  const validRemainingTradeOffFacts =
+    remainingTradeOffFacts.filter(
+      (
+        reason
+      ): reason is string =>
+        Boolean(
+          reason
+        )
+    );
+
+  const remainingConcreteTradeOffFacts =
+    validRemainingTradeOffFacts.filter(
+      (reason) =>
+        getTradeOffSemanticCategoryV2(
+          reason
+        ) !==
+        "booking-risk"
+    );
+
+  const explicitRiskTradeOffs =
+    validRemainingTradeOffFacts.filter(
+      (reason) =>
+        getTradeOffSemanticCategoryV2(
+          reason
+        ) ===
+        "booking-risk"
+    );
+
+  const concreteTradeOffs =
+    [
       selectedOfferTaxTradeOff,
 
       selectedOfferTradeOff,
 
-      ...remainingTradeOffFacts,
-
-      ...createFallbackTradeOffs(
-        evaluation
-      ),
+      ...remainingConcreteTradeOffFacts,
     ].filter(
       (
         reason
@@ -1713,8 +1766,86 @@ function createExplanationSections(
         Boolean(
           reason
         )
-    )).slice(
-      0,
+    );
+
+  const coveredCategories =
+    new Set(
+      concreteTradeOffs
+        .map(
+          (reason) =>
+            getTradeOffSemanticCategoryV2(
+              reason
+            )
+        )
+        .filter(
+          (category) =>
+            category !==
+            null
+        )
+    );
+
+  const riskCoverage:
+    SmartStayRiskCoverageV2 = {
+      refundability:
+        coveredCategories.has(
+          "refundability"
+        ),
+      taxCompleteness:
+        coveredCategories.has(
+          "tax-completeness"
+        ),
+      dataConfidence:
+        coveredCategories.has(
+          "data-confidence"
+        ) ||
+        evaluation
+          .dataConfidence
+          .level ===
+          "low" ||
+        evaluation
+          .dataConfidence
+          .level ===
+          "none",
+      budget:
+        coveredCategories.has(
+          "budget"
+        ),
+      location:
+        coveredCategories.has(
+          "location"
+        ),
+      quality:
+        coveredCategories.has(
+          "quality"
+        ),
+      comfort:
+        coveredCategories.has(
+          "comfort"
+        ),
+    };
+
+  const hasIndependentRisk =
+    hasIndependentRiskFactorsV2(
+      evaluation
+        .risk
+        .factorCodes,
+      riskCoverage
+    );
+
+  const tradeOffs =
+    selectDistinctTradeOffMessagesV2(
+      [
+        ...concreteTradeOffs,
+
+        ...(hasIndependentRisk
+          ? explicitRiskTradeOffs
+          : []),
+
+        ...createFallbackTradeOffs(
+          evaluation,
+          riskCoverage
+        ),
+      ],
       2
     );
 
