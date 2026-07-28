@@ -128,7 +128,7 @@ function SmartOptimizer({
         <h2
           style={{
             color:
-              selectedOption.color,
+              selectedOption.textColor,
           }}
         >
           {selectedOption.title}

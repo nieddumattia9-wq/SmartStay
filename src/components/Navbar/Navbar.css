@@ -32,7 +32,7 @@
   
   .navbar__logo:hover {
   
-    color: #16e06e;
+    color: #047857;
   
   }
   
@@ -82,7 +82,7 @@
   
     padding: 12px 22px;
   
-    background: #16e06e;
+    background: #047857;
   
     color: #ffffff;
   
@@ -101,7 +101,7 @@
   
   .navbar__signup:hover {
   
-    background: #12c963;
+    background: #065f46;
   
     transform: translateY(-2px);
   

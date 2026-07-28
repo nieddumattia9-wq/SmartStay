@@ -207,7 +207,9 @@ function AccountAccessControls() {
           className="navbar__login"
           aria-haspopup="dialog"
           aria-controls={
-            ACCOUNT_DIALOG_ID
+            accountAction === "login"
+              ? ACCOUNT_DIALOG_ID
+              : undefined
           }
           aria-expanded={
             accountAction === "login"
@@ -227,7 +229,9 @@ function AccountAccessControls() {
           className="navbar__signup"
           aria-haspopup="dialog"
           aria-controls={
-            ACCOUNT_DIALOG_ID
+            accountAction === "signup"
+              ? ACCOUNT_DIALOG_ID
+              : undefined
           }
           aria-expanded={
             accountAction === "signup"

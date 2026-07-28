@@ -84,11 +84,8 @@ function BookingCalendar({
   const rootRef =
     useRef<HTMLDivElement>(null);
 
-  const inputRef =
-    useRef<HTMLInputElement>(null);
-
-  const suppressNextFocusOpenRef =
-    useRef(false);
+  const triggerRef =
+    useRef<HTMLButtonElement>(null);
 
   const [isOpen, setIsOpen] =
     useState(false);
@@ -133,48 +130,29 @@ function BookingCalendar({
 
     }
 
-    const input =
-      inputRef.current;
+    const trigger =
+      triggerRef.current;
 
     if (
-      !input ||
-      document.activeElement === input
+      !trigger ||
+      document.activeElement === trigger
     ) {
 
       return;
 
     }
 
-    suppressNextFocusOpenRef.current =
-      true;
-
     window.requestAnimationFrame(() => {
 
-      input.focus({
+      trigger.focus({
         preventScroll: true,
       });
-
-      window.setTimeout(() => {
-
-        suppressNextFocusOpenRef.current =
-          false;
-
-      }, 0);
 
     });
 
   }, []);
 
   const openCalendar = useCallback(() => {
-
-    if (suppressNextFocusOpenRef.current) {
-
-      suppressNextFocusOpenRef.current =
-        false;
-
-      return;
-
-    }
 
     if (disabled) {
 
@@ -185,6 +163,24 @@ function BookingCalendar({
     setIsOpen(true);
 
   }, [disabled]);
+
+  const toggleCalendar = useCallback(() => {
+
+    if (isOpen) {
+
+      closeCalendar();
+
+      return;
+
+    }
+
+    openCalendar();
+
+  }, [
+    closeCalendar,
+    isOpen,
+    openCalendar,
+  ]);
 
   function handleSelectDay(date: Date) {
 
@@ -312,19 +308,24 @@ function BookingCalendar({
 
   }, [closeCalendar, isOpen]);
 
-  let inputValue = "";
+  let displayValue = "";
 
   if (checkIn && checkOut) {
 
-    inputValue =
+    displayValue =
       `${formatDate(checkIn)} → ${formatDate(checkOut)}`;
 
   } else if (checkIn) {
 
-    inputValue =
+    displayValue =
       `${formatDate(checkIn)} →`;
 
   }
+
+  const accessibleLabel =
+    displayValue
+      ? `Check-in and check-out dates: ${displayValue}`
+      : "Check-in and check-out dates";
 
   return (
 
@@ -341,22 +342,31 @@ function BookingCalendar({
           className="booking-calendar__icon"
         />
 
-        <input
-          ref={inputRef}
+        <button
+          ref={triggerRef}
           id={inputId}
-          type="text"
-          className="booking-calendar__input"
-          value={inputValue}
-          readOnly
-          placeholder={placeholder}
+          type="button"
+          className={[
+            "booking-calendar__input",
+            !displayValue
+              ? "booking-calendar__input--placeholder"
+              : "",
+          ].filter(Boolean).join(" ")}
           disabled={disabled}
-          aria-label="Check-in and check-out dates"
+          aria-label={accessibleLabel}
           aria-haspopup="dialog"
           aria-expanded={isOpen}
-          aria-controls={popupId}
-          onClick={openCalendar}
-          onFocus={openCalendar}
-        />
+          aria-controls={
+            isOpen
+              ? popupId
+              : undefined
+          }
+          onClick={toggleCalendar}
+        >
+          <span>
+            {displayValue || placeholder}
+          </span>
+        </button>
 
       </div>
 

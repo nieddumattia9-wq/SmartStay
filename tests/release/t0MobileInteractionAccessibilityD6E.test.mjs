@@ -88,7 +88,7 @@ test(
 
     assert.match(
       bookingCalendar,
-      /input\.focus\(\{[\s\S]*?preventScroll:\s*true/
+      /trigger\.focus\(\{[\s\S]*?preventScroll:\s*true/
     );
 
     assert.match(
@@ -148,7 +148,7 @@ test(
 
     assert.match(
       guests,
-      /aria-controls=\{popupId\}/
+      /aria-controls=\{[\s\S]*?isOpen[\s\S]*?\? popupId[\s\S]*?: undefined/
     );
 
     assert.match(

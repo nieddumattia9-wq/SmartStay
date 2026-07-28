@@ -4,6 +4,7 @@ export type SliderOption = {
   shortLabel: string;
   description: string;
   color: string;
+  textColor: string;
 };
 
 export const sliderOptions = [
@@ -14,6 +15,7 @@ export const sliderOptions = [
     description:
       "Prioritize stronger quality, reviews and location among the options that fit your search.",
     color: "#2563EB",
+    textColor: "#2563EB",
   },
   {
     id: "comfort",
@@ -22,6 +24,7 @@ export const sliderOptions = [
     description:
       "Give more weight to quality, reviews and location while still protecting value.",
     color: "#3B82F6",
+    textColor: "#1D4ED8",
   },
   {
     id: "balanced",
@@ -30,6 +33,7 @@ export const sliderOptions = [
     description:
       "Balance total price, distance, quality and reliability.",
     color: "#16E06E",
+    textColor: "#047857",
   },
   {
     id: "savings",
@@ -38,6 +42,7 @@ export const sliderOptions = [
     description:
       "Give more weight to lower total prices while still considering quality and reliability.",
     color: "#2BBF6A",
+    textColor: "#15803D",
   },
   {
     id: "maximum-savings",
@@ -46,6 +51,7 @@ export const sliderOptions = [
     description:
       "Prioritize the lowest reliable total prices while respecting your search limits.",
     color: "#18B75A",
+    textColor: "#166534",
   },
 ] as const satisfies readonly SliderOption[];
 

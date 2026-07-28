@@ -305,7 +305,11 @@ import {
           aria-label={`${totalGuests} guests, ${currentValue.rooms} rooms`}
           aria-haspopup="dialog"
           aria-expanded={isOpen}
-          aria-controls={popupId}
+          aria-controls={
+            isOpen
+              ? popupId
+              : undefined
+          }
         >
           <div className="guests-selector__left">
             <Users

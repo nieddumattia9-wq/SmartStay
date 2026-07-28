@@ -94,7 +94,7 @@
   border: none;
   border-radius: 14px;
 
-  background: #22c55e;
+  background: #047857;
 
   color: #ffffff;
 
@@ -114,7 +114,7 @@
 
 .trip-card__submit:hover {
 
-  background: #16e06e;
+  background: #065f46;
 
   transform: translateY(-2px);
 
@@ -152,7 +152,7 @@
 
 .trip-card__submit:disabled:hover {
 
-  background: #22c55e;
+  background: #047857;
 
   transform: none;
 
