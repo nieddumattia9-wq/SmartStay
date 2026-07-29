@@ -22,7 +22,7 @@
   
     left: 16px;
   
-    color: #047857;
+    color: #159447;
   
     pointer-events: none;
   
@@ -84,10 +84,10 @@
   
   .booking-calendar__input:focus {
   
-    border-color: #047857;
+    border-color: #159447;
   
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, .12);
+      0 0 0 4px rgba(21, 148, 71, .18);
   
   }
   
@@ -369,7 +369,7 @@
     transform: scale(1.05);
   
     box-shadow:
-      0 8px 20px rgba(22, 224, 110, .28);
+      0 8px 20px rgba(4, 120, 87, .24);
   
   }
   
@@ -383,7 +383,7 @@
     font-weight: 800;
   
     box-shadow:
-      0 8px 20px rgba(22, 224, 110, .28);
+      0 8px 20px rgba(4, 120, 87, .24);
   
   }
   
@@ -419,7 +419,7 @@
     outline: none;
   
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, .18);
+      0 0 0 4px rgba(21, 148, 71, .22);
   
   }
   

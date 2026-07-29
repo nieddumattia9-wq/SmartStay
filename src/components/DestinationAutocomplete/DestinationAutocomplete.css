@@ -10,7 +10,7 @@
   
     background: transparent;
   
-    color: #16e06e;
+    color: #047857;
   
     font-weight: 700;
   
@@ -34,7 +34,7 @@
   
     left: 16px;
   
-    color: #16e06e;
+    color: #159447;
   
     pointer-events: none;
   
@@ -83,10 +83,10 @@
   
   .destination-autocomplete__input:focus {
   
-    border-color: #16e06e;
+    border-color: #159447;
   
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, .15);
+      0 0 0 4px rgba(21, 148, 71, .18);
   
   }
   

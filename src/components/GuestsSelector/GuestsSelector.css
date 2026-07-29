@@ -35,10 +35,10 @@
   }
 
   .guests-selector__input:focus-visible {
-    border-color: #16e06e;
+    border-color: #159447;
 
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, 0.12);
+      0 0 0 4px rgba(21, 148, 71, 0.18);
   }
 
   .guests-selector__input:disabled {
@@ -52,7 +52,7 @@
 
     gap: 10px;
 
-    color: #16e06e;
+    color: #159447;
   }
 
   .guests-selector__left span {
@@ -170,11 +170,11 @@
   }
 
   .counter button:hover:not(:disabled) {
-    border-color: #16e06e;
+    border-color: #159447;
 
     background: #f8fafc;
 
-    color: #16e06e;
+    color: #047857;
 
     transform: scale(1.06);
   }
@@ -185,7 +185,7 @@
 
   .counter button:focus-visible {
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, 0.14);
+      0 0 0 4px rgba(21, 148, 71, 0.20);
   }
 
   .counter button:disabled {
@@ -279,10 +279,10 @@
   }
 
   .child-age select:focus {
-    border-color: #16e06e;
+    border-color: #159447;
 
     box-shadow:
-      0 0 0 4px rgba(22, 224, 110, 0.12);
+      0 0 0 4px rgba(21, 148, 71, 0.18);
   }
 
   @keyframes guests-popup {
