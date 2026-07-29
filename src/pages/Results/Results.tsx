@@ -650,6 +650,14 @@ function getHotelDetailsFailureMessage(
   );
 }
 
+function getHotelDetailsTriggerId(
+  hotelId: string
+) {
+  return `hotel-details-trigger-${encodeURIComponent(
+    hotelId
+  )}`;
+}
+
   function Results() {
     const navigate =
       useNavigate();
@@ -753,6 +761,11 @@ function getHotelDetailsFailureMessage(
 
     const detailsRequestIdRef =
       useRef(0);
+
+    const [
+      detailsReturnFocusId,
+      setDetailsReturnFocusId,
+    ] = useState<string | null>(null);
 
     useEffect(() => {
       setVerifiedOffersByHotelId(
@@ -1428,6 +1441,12 @@ const rankedHotels =
             } |
             null
         ) => {
+          setDetailsReturnFocusId(
+            getHotelDetailsTriggerId(
+              hotel.id
+            )
+          );
+
           const analyticsContext =
             analyticsContextByHotelId.get(
               hotel.id
@@ -1884,6 +1903,9 @@ const rankedHotels =
           {rankedHotels.length > 0 && (
             <div
               className="results-search-summary__facts"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
               aria-label={`${totalSuitableStayCount} suitable stays available`}
             >
               {featuredRecommendationCount > 0 && (
@@ -2563,7 +2585,7 @@ const rankedHotels =
                 marginTop: "44px",
               }}
             >
-              {!showFullList ? (
+              {!showFullList && (
                 <div
                   style={{
                     padding: "30px",
@@ -2619,94 +2641,96 @@ const rankedHotels =
                       : "stays"}
                   </button>
                 </div>
-              ) : (
-                <>
-                  <div
-                    id="results-full-list"
-                    style={{
-                      marginBottom: "24px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: "0 0 8px",
-                        color: "#16a34a",
-                        fontSize: "0.82rem",
-                        fontWeight: 900,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                      }}
-                    >
-                      Full list
-                    </p>
-
-                    <h2
-                      style={{
-                        margin: "0",
-                        fontSize: "1.85rem",
-                        letterSpacing: "-0.04em",
-                      }}
-                    >
-                      Other suitable stays
-                    </h2>
-
-                    <p
-                      style={{
-                        marginTop: "8px",
-                        color: "#64748b",
-                      }}
-                    >
-                      These stays also match your current search and are ordered by SmartStay fit.
-                    </p>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "28px",
-                    }}
-                  >
-                    {remainingHotels.map((evaluation) => (
-                      <HotelCard
-                        key={evaluation.hotel.id}
-                        hotel={evaluation.hotel}
-                        smartScore={evaluation.smartScore}
-                        riskLevel={evaluation.riskLevel}
-                        dataConfidenceLevel={evaluation.dataConfidenceLevel}
-                        badges={evaluation.badges}
-                        strengths={evaluation.strengths}
-                        tradeOffs={evaluation.tradeOffs}
-                        selectedOffer={
-                          evaluation.selectedOffer
-                        }
-                        displayOfferOverride={
-                          verifiedOffersByHotelId[
-                            evaluation.hotel.id
-                          ] ??
-                          null
-                        }
-                        detailsLoading={
-                          hotelDetailsLoading &&
-                          activeDetailsHotelId ===
-                            evaluation.hotel.id
-                        }
-                        onExplanationToggle={(
-                          expanded
-                        ) =>
-                          handleExplanationToggle(
-                            evaluation.hotel.id,
-                            expanded
-                          )
-                        }
-                        onViewDetails={
-                          handleViewHotelDetails
-                        }
-                        />
-                    ))}
-                  </div>
-                </>
               )}
+
+              <div
+                id="results-full-list"
+                hidden={!showFullList}
+              >
+                <div
+                  style={{
+                    marginBottom: "24px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 8px",
+                      color: "#047857",
+                      fontSize: "0.82rem",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Full list
+                  </p>
+
+                  <h2
+                    style={{
+                      margin: "0",
+                      fontSize: "1.85rem",
+                      letterSpacing: "-0.04em",
+                    }}
+                  >
+                    Other suitable stays
+                  </h2>
+
+                  <p
+                    style={{
+                      marginTop: "8px",
+                      color: "#64748b",
+                    }}
+                  >
+                    These stays also match your current search and are ordered by SmartStay fit.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "28px",
+                  }}
+                >
+                  {remainingHotels.map((evaluation) => (
+                    <HotelCard
+                      key={evaluation.hotel.id}
+                      hotel={evaluation.hotel}
+                      smartScore={evaluation.smartScore}
+                      riskLevel={evaluation.riskLevel}
+                      dataConfidenceLevel={evaluation.dataConfidenceLevel}
+                      badges={evaluation.badges}
+                      strengths={evaluation.strengths}
+                      tradeOffs={evaluation.tradeOffs}
+                      selectedOffer={
+                        evaluation.selectedOffer
+                      }
+                      displayOfferOverride={
+                        verifiedOffersByHotelId[
+                          evaluation.hotel.id
+                        ] ??
+                        null
+                      }
+                      detailsLoading={
+                        hotelDetailsLoading &&
+                        activeDetailsHotelId ===
+                          evaluation.hotel.id
+                      }
+                      onExplanationToggle={(
+                        expanded
+                      ) =>
+                        handleExplanationToggle(
+                          evaluation.hotel.id,
+                          expanded
+                        )
+                      }
+                      onViewDetails={
+                        handleViewHotelDetails
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
             </section>
           )}
         </>
@@ -2740,6 +2764,9 @@ const rankedHotels =
           }
           onOfferRechecked={
             handleOfferRechecked
+          }
+          returnFocusId={
+            detailsReturnFocusId
           }
           onClose={handleCloseHotelDetails}
         />

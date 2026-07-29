@@ -82,7 +82,7 @@
 .hotel-details-panel__eyebrow,
 .hotel-details-panel__section-eyebrow {
   margin: 0 0 8px;
-  color: #059669;
+  color: #047857;
   font-size: 0.75rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -247,7 +247,7 @@
   border: 0;
   border-radius: 16px;
   padding: 15px 20px;
-  background: #059669;
+  background: #047857;
   color: #ffffff;
   cursor: pointer;
   font: inherit;
@@ -260,7 +260,7 @@
 }
 
 .hotel-details-panel__booking:hover {
-  background: #047857;
+  background: #065f46;
   transform: translateY(-1px);
 }
 

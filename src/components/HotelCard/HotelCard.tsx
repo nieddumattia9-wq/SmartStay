@@ -397,6 +397,14 @@ function getOfferCondition(
   return null;
 }
 
+function getHotelDetailsTriggerId(
+  hotelId: string
+) {
+  return `hotel-details-trigger-${encodeURIComponent(
+    hotelId
+  )}`;
+}
+
 function HotelCard({
   hotel,
   smartScore,
@@ -706,52 +714,51 @@ function HotelCard({
                 </span>
               </button>
 
-              {explanationExpanded && (
-                <div
-                  id={explanationId}
-                  className="hotel-card__explanation-groups"
-                >
-                  {strengths.length >
-                    0 && (
-                    <div className="hotel-card__explanation-group">
-                      <p className="hotel-card__explanation-label">
-                        Why it stands out
-                      </p>
+              <div
+                id={explanationId}
+                className="hotel-card__explanation-groups"
+                hidden={!explanationExpanded}
+              >
+                {strengths.length >
+                  0 && (
+                  <div className="hotel-card__explanation-group">
+                    <p className="hotel-card__explanation-label">
+                      Why it stands out
+                    </p>
 
-                      <ul className="hotel-card__reasons">
-                        {uniqueMessages(
-                          strengths
-                        ).map(
-                          (strength) => (
-                            <li key={strength}>
-                              {strength}
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </div>
-                  )}
+                    <ul className="hotel-card__reasons">
+                      {uniqueMessages(
+                        strengths
+                      ).map(
+                        (strength) => (
+                          <li key={strength}>
+                            {strength}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
 
-                  {fullTradeOffs.length >
-                    0 && (
-                    <div className="hotel-card__explanation-group">
-                      <p className="hotel-card__explanation-label">
-                        What to know
-                      </p>
+                {fullTradeOffs.length >
+                  0 && (
+                  <div className="hotel-card__explanation-group">
+                    <p className="hotel-card__explanation-label">
+                      What to know
+                    </p>
 
-                      <ul className="hotel-card__reasons">
-                        {fullTradeOffs.map(
-                          (tradeOff) => (
-                            <li key={tradeOff}>
-                              {tradeOff}
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+                    <ul className="hotel-card__reasons">
+                      {fullTradeOffs.map(
+                        (tradeOff) => (
+                          <li key={tradeOff}>
+                            {tradeOff}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </section>
           )}
         </div>
@@ -785,6 +792,7 @@ function HotelCard({
           <div className="hotel-card__actions">
             <button
               type="button"
+              id={getHotelDetailsTriggerId(hotel.id)}
               className="hotel-card__button"
               onClick={() => {
                 onViewDetails(

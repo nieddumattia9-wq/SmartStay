@@ -66,6 +66,7 @@ type HotelDetailsPanelProps = {
     hotelId: string,
     offer: HotelOffer
   ) => void;
+  returnFocusId?: string | null;
   onClose: () => void;
 };
 
@@ -669,6 +670,7 @@ function HotelDetailsPanel({
   distanceFromSelectedPointKm =
     null,
   onOfferRechecked,
+  returnFocusId = null,
   onClose,
 }: HotelDetailsPanelProps) {
   const panelRef =
@@ -1109,16 +1111,29 @@ function HotelDetailsPanel({
         handleKeyDown
       );
 
-      if (
-        previousActiveElement &&
-        document.contains(
-          previousActiveElement
-        )
-      ) {
-        previousActiveElement.focus();
-      }
+      window.requestAnimationFrame(() => {
+        const currentReturnTarget =
+          (
+            returnFocusId
+              ? document.getElementById(
+                  returnFocusId
+                )
+              : null
+          ) ??
+          previousActiveElement;
+
+        if (
+          currentReturnTarget instanceof
+            HTMLElement &&
+          document.contains(
+            currentReturnTarget
+          )
+        ) {
+          currentReturnTarget.focus();
+        }
+      });
     };
-  }, [onClose]);
+  }, [onClose, returnFocusId]);
 
   const location =
     details
