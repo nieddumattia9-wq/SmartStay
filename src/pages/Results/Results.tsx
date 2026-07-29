@@ -1809,11 +1809,16 @@ const rankedHotels =
     if (loading) {
       return (
         <div
-          className="results-state results-state--loading"
-          role="status"
-          aria-live="polite"
+          className="results-page results-page--pending"
+          aria-busy="true"
         >
-          Loading hotels...
+          <div
+            className="results-state results-state--loading"
+            role="status"
+            aria-live="polite"
+          >
+            Loading hotels...
+          </div>
         </div>
       );
     }
@@ -1825,11 +1830,16 @@ const rankedHotels =
     ) {
       return (
         <div
-          className="results-state results-state--loading"
-          role="status"
-          aria-live="polite"
+          className="results-page results-page--pending"
+          aria-busy="true"
         >
-          SmartStay Engine V2 is ranking your stays...
+          <div
+            className="results-state results-state--loading"
+            role="status"
+            aria-live="polite"
+          >
+            SmartStay Engine V2 is ranking your stays...
+          </div>
         </div>
       );
     }

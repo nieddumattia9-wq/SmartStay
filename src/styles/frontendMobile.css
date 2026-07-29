@@ -64,8 +64,7 @@ body,
 }
 
 .results-page {
-  align-self: stretch;
-  width: auto;
+  width: 100%;
   min-width: 0;
   max-width: 1300px;
   margin: clamp(24px, 4vw, 40px) auto;
