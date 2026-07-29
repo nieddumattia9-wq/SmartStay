@@ -48,6 +48,9 @@ function clampPreferenceIndex(
   );
 }
 
+const EXTREME_BUDGET_PER_ROOM_NIGHT_MAX =
+  40;
+
 function getBudgetPreferenceIndex(
   budgetPerRoomNight: number
 ) {
@@ -72,9 +75,17 @@ function getBudgetPreferenceIndex(
 
 function getDistanceAdjustment(
   budgetPreferenceIndex: number,
+  budgetPerRoomNight: number,
   maxDistanceKm: number | null
 ) {
   if (budgetPreferenceIndex !== 4) {
+    return 0;
+  }
+
+  if (
+    budgetPerRoomNight <=
+    EXTREME_BUDGET_PER_ROOM_NIGHT_MAX
+  ) {
     return 0;
   }
 
@@ -225,6 +236,7 @@ export function calculateAutomaticPreferenceBalance(
       budgetPreferenceIndex +
       getDistanceAdjustment(
         budgetPreferenceIndex,
+        budgetPerRoomNight,
         maxDistanceKm
       )
     );

@@ -376,6 +376,10 @@
     margin: 16px 0 0 40px;
   }
 
+  .hotel-card__explanation-groups[hidden] {
+    display: none;
+  }
+
   .hotel-card__explanation-group {
     min-width: 0;
   }
