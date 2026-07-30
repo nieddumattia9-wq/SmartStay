@@ -700,6 +700,55 @@ test(
     assert.equal(result.bestChoiceHotelId, "luxury-best");
     assert.equal(saving?.hotelId, "luxury-saving");
     assert.notEqual(saving?.hotelId, "cheap-good");
+
+    const selectedSavingTrace = result.savingDecisionTrace.find(
+      (trace) => trace.hotelId === "luxury-saving"
+    );
+    const rejectedCheapTrace = result.savingDecisionTrace.find(
+      (trace) => trace.hotelId === "cheap-good"
+    );
+
+    assert.equal(selectedSavingTrace?.outcome, "selected");
+    assert.equal(
+      selectedSavingTrace?.finalRole,
+      "best-sensible-saving"
+    );
+    assert.ok(
+      selectedSavingTrace?.reasonCodes.includes(
+        "recommendation-saving-selected"
+      )
+    );
+    assert.equal(rejectedCheapTrace?.outcome, "rejected");
+    assert.ok(
+      rejectedCheapTrace?.reasonCodes.includes(
+        "recommendation-saving-rejected-experience-tier"
+      )
+    );
+    assert.ok(
+      rejectedCheapTrace?.reasonCodes.includes(
+        "recommendation-saving-rejected-experience-loss"
+      )
+    );
+    assert.equal(
+      rejectedCheapTrace?.metrics.savingRequiresExperienceParity,
+      true
+    );
+    assert.equal(
+      rejectedCheapTrace?.metrics.candidateExperienceTier,
+      "standard"
+    );
+    assert.equal(
+      rejectedCheapTrace?.metrics.bestChoiceExperienceTier,
+      "luxury"
+    );
+    assert.ok(
+      (rejectedCheapTrace?.metrics.experienceTierLoss ?? 0) > 0
+    );
+    assert.equal(
+      typeof rejectedCheapTrace?.metrics.candidateMarketPositionPercentile,
+      "number"
+    );
+    assert.ok((rejectedCheapTrace?.metrics.savingAmount ?? 0) > 0);
   }
 );
 
@@ -907,5 +956,12 @@ test(
 
     assert.deepEqual(first.budgetIntent, second.budgetIntent);
     assert.deepEqual(firstRoles, secondRoles);
+    assert.equal(firstRoles.savingDecisionTrace.length, candidates.length);
+    assert.deepEqual(
+      firstRoles.savingDecisionTrace.map((trace) => trace.hotelId),
+      [...candidates]
+        .map((candidate) => candidate.hotelId)
+        .sort()
+    );
   }
 );

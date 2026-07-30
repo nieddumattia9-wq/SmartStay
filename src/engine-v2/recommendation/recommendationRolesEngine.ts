@@ -45,6 +45,24 @@ import {
   type SmartStayUpgradeCurvePointV2,
 } from "../upgrade/smartUpgradeCurveEngine";
 
+import {
+  createSavingDecisionTraceV2,
+} from "./savingDecisionTraceV2";
+
+import type {
+  SmartStaySavingDecisionMetricsV2,
+  SmartStaySavingDecisionOutcomeV2,
+  SmartStaySavingDecisionTraceV2,
+  SmartStaySavingOfferConditionModeV2,
+} from "./savingDecisionTraceV2";
+
+export type {
+  SmartStaySavingDecisionMetricsV2,
+  SmartStaySavingDecisionOutcomeV2,
+  SmartStaySavingDecisionTraceV2,
+  SmartStaySavingOfferConditionModeV2,
+} from "./savingDecisionTraceV2";
+
 export type SmartStayPrimaryRecommendationRoleV2 = Exclude<
   SmartStayRecommendationRoleV2,
   "unassigned" | "best-location"
@@ -191,6 +209,7 @@ export interface SmartStayRecommendationRolesEvaluationV2 {
   groups: SmartStayRecommendationRoleGroupV2[];
   picks: SmartStayRecommendationPickV2[];
   evaluations: SmartStayRecommendationEvaluationV2[];
+  savingDecisionTrace: SmartStaySavingDecisionTraceV2[];
 }
 
 type ComparableCost = {
@@ -251,10 +270,6 @@ type SmartStayBestChoiceAnchorSelectionV2 = {
     | "fallback"
     | "material-advantage";
 };
-
-type SmartStaySavingOfferConditionModeV2 =
-  | "comparable"
-  | "less-flexibility";
 
 type SmartStaySavingFlexibilityPolicyV2 = {
   allowLessFlexible: boolean;
@@ -2295,6 +2310,257 @@ function selectSavingGroup(
   };
 }
 
+function createSavingDecisionMetrics(
+  candidate: NormalizedCandidate,
+  bestChoice: NormalizedCandidate | null,
+  options: ResolvedOptions
+): SmartStaySavingDecisionMetricsV2 {
+  const candidateCost = candidate.cost;
+  const bestCost = bestChoice?.cost ?? null;
+  const comparableCosts =
+    candidateCost !== null &&
+    bestCost !== null &&
+    candidateCost.currency === bestCost.currency;
+  const savingAmount = comparableCosts
+    ? bestCost.amount - candidateCost.amount
+    : null;
+  const savingRatio =
+    savingAmount !== null &&
+    bestCost !== null &&
+    bestCost.amount > 0
+      ? savingAmount / bestCost.amount
+      : null;
+  const minimumSavingAmount =
+    bestCost === null
+      ? null
+      : Math.max(
+          options.minimumSavingAmount,
+          bestCost.amount * options.minimumSavingRatio
+        );
+  const utilityLoss =
+    bestChoice === null ||
+    candidate.utilityScore === null ||
+    bestChoice.utilityScore === null
+      ? null
+      : bestChoice.utilityScore - candidate.utilityScore;
+  const locationLoss =
+    bestChoice?.location === null ||
+    bestChoice?.location === undefined ||
+    candidate.location === null
+      ? null
+      : Math.max(
+          bestChoice.location.score - candidate.location.score,
+          0
+        );
+  const comfortLoss =
+    bestChoice?.comfort === null ||
+    bestChoice?.comfort === undefined ||
+    candidate.comfort === null
+      ? null
+      : Math.max(
+          bestChoice.comfort.score - candidate.comfort.score,
+          0
+        );
+  const candidateIntent = candidate.budgetIntent;
+  const bestChoiceIntent = bestChoice?.budgetIntent ?? null;
+  const experienceTierLoss =
+    candidateIntent !== null &&
+    bestChoiceIntent !== null
+      ? Math.max(
+          bestChoiceIntent.experienceTierRank -
+            candidateIntent.experienceTierRank,
+          0
+        )
+      : null;
+  const experienceScoreLoss =
+    typeof candidateIntent?.experienceScore === "number" &&
+    Number.isFinite(candidateIntent.experienceScore) &&
+    typeof bestChoiceIntent?.experienceScore === "number" &&
+    Number.isFinite(bestChoiceIntent.experienceScore)
+      ? Math.max(
+          bestChoiceIntent.experienceScore -
+            candidateIntent.experienceScore,
+          0
+        )
+      : null;
+  const candidateOffer =
+    candidate.offerSelection?.selectedOffer ?? null;
+  const bestChoiceOffer =
+    bestChoice?.offerSelection?.selectedOffer ?? null;
+  const offerComparison =
+    bestChoice === null
+      ? null
+      : compareSelectedOffersV2(
+          candidate.offerSelection,
+          bestChoice.offerSelection
+        );
+
+  return {
+    roleEligible: candidate.roleEligible,
+    paretoStatus: candidate.source.pareto.status,
+    smartScore: candidate.smartScore,
+    recommendationScore: candidate.recommendationScore,
+    utilityScore: candidate.utilityScore,
+    bestChoiceUtilityScore: bestChoice?.utilityScore ?? null,
+    minimumAlternativeUtilityScore:
+      options.minimumAlternativeUtilityScore,
+    riskScore: candidate.riskScore,
+    verifiedWithinBudget: hasVerifiedWithinBudget(candidate),
+    totalCost: candidateCost?.amount ?? null,
+    currency: candidateCost?.currency ?? null,
+    bestChoiceTotalCost: bestCost?.amount ?? null,
+    bestChoiceCurrency: bestCost?.currency ?? null,
+    savingAmount:
+      savingAmount === null ? null : round(savingAmount, 4),
+    minimumSavingAmount:
+      minimumSavingAmount === null
+        ? null
+        : round(minimumSavingAmount, 4),
+    savingRatio:
+      savingRatio === null ? null : round(savingRatio, 6),
+    minimumSavingRatio: round(options.minimumSavingRatio, 6),
+    utilityLoss:
+      utilityLoss === null ? null : round(utilityLoss, 4),
+    maximumUtilityLoss: options.maximumSavingUtilityLoss,
+    locationScore: candidate.location?.score ?? null,
+    bestChoiceLocationScore: bestChoice?.location?.score ?? null,
+    distanceKm: candidate.location?.distanceKm ?? null,
+    bestChoiceDistanceKm: bestChoice?.location?.distanceKm ?? null,
+    locationLoss:
+      locationLoss === null ? null : round(locationLoss, 4),
+    maximumLocationLoss: options.maximumAlternativeLocationLoss,
+    comfortScore: candidate.comfort?.score ?? null,
+    bestChoiceComfortScore: bestChoice?.comfort?.score ?? null,
+    comfortLoss:
+      comfortLoss === null ? null : round(comfortLoss, 4),
+    preferenceId: candidate.source.utility.preference.id,
+    intentLevel: candidateIntent?.intentLevel ?? null,
+    candidateExperienceTier: candidateIntent?.experienceTier ?? null,
+    bestChoiceExperienceTier: bestChoiceIntent?.experienceTier ?? null,
+    candidateExperienceTierRank:
+      candidateIntent?.experienceTierRank ?? null,
+    bestChoiceExperienceTierRank:
+      bestChoiceIntent?.experienceTierRank ?? null,
+    minimumSavingTierRank:
+      bestChoiceIntent?.minimumSavingTierRank ?? null,
+    experienceTierLoss:
+      experienceTierLoss === null
+        ? null
+        : round(experienceTierLoss, 4),
+    candidateExperienceScore: candidateIntent?.experienceScore ?? null,
+    bestChoiceExperienceScore: bestChoiceIntent?.experienceScore ?? null,
+    experienceScoreLoss:
+      experienceScoreLoss === null
+        ? null
+        : round(experienceScoreLoss, 4),
+    maximumSavingExperienceLoss:
+      bestChoiceIntent?.maximumSavingExperienceLoss ?? null,
+    candidateMarketPositionPercentile:
+      candidateIntent?.marketPositionPercentile ?? null,
+    bestChoiceMarketPositionPercentile:
+      bestChoiceIntent?.marketPositionPercentile ?? null,
+    savingRequiresExperienceParity:
+      bestChoiceIntent?.savingRequiresExperienceParity === true,
+    candidateSavingEligible:
+      candidateIntent?.savingEligible ?? null,
+    candidateRefundable: candidateOffer?.refundable ?? null,
+    bestChoiceRefundable: bestChoiceOffer?.refundable ?? null,
+    candidateCostCompleteness: candidateOffer?.completeness ?? null,
+    bestChoiceCostCompleteness: bestChoiceOffer?.completeness ?? null,
+    candidateUnknownTaxes: candidateOffer?.unknownTaxes ?? null,
+    bestChoiceUnknownTaxes: bestChoiceOffer?.unknownTaxes ?? null,
+    candidateRoomTierRank: candidateOffer?.roomTierRank ?? null,
+    bestChoiceRoomTierRank: bestChoiceOffer?.roomTierRank ?? null,
+    offerComparable: offerComparison?.comparable ?? null,
+    offerConditionMode: null,
+  };
+}
+
+function createSavingDecisionTraceForCandidate(
+  candidate: NormalizedCandidate,
+  bestChoice: NormalizedCandidate,
+  assignedHotelIds: Set<string>,
+  options: ResolvedOptions,
+  eligibleAlternativesByHotelId: Map<string, SavingAlternative>,
+  selectedHotelIds: Set<string>,
+  finalRolesByHotelId: Map<string, SmartStayRecommendationRoleV2>
+) {
+  const eligibleAlternative =
+    eligibleAlternativesByHotelId.get(candidate.hotelId) ?? null;
+  const metrics = createSavingDecisionMetrics(
+    candidate,
+    bestChoice,
+    options
+  );
+  const offerCondition =
+    metrics.savingAmount === null ||
+    metrics.savingRatio === null
+      ? null
+      : resolveSavingOfferCondition(
+          candidate,
+          bestChoice,
+          compareSelectedOffersV2(
+            candidate.offerSelection,
+            bestChoice.offerSelection
+          ),
+          metrics.savingAmount,
+          metrics.savingRatio,
+          options
+        );
+  const outcome: SmartStaySavingDecisionOutcomeV2 =
+    assignedHotelIds.has(candidate.hotelId)
+      ? "not-applicable"
+      : eligibleAlternative !== null
+        ? selectedHotelIds.has(candidate.hotelId)
+          ? "selected"
+          : "eligible-not-selected"
+        : "rejected";
+
+  return createSavingDecisionTraceV2({
+    hotelId: candidate.hotelId,
+    finalRole: finalRolesByHotelId.get(candidate.hotelId) ?? "unassigned",
+    comparisonTargetHotelId: bestChoice.hotelId,
+    outcome,
+    alreadyAssigned: assignedHotelIds.has(candidate.hotelId),
+    offerConditionCompatible: offerCondition !== null,
+    offerConditionMode:
+      eligibleAlternative?.offerConditionMode ??
+      offerCondition?.mode ??
+      null,
+    selectedReasonCodes:
+      eligibleAlternative === null
+        ? []
+        : [
+            ...eligibleAlternative.offerConditionReasonCodes,
+            ...eligibleAlternative.offerComparison.reasonCodes,
+          ],
+    metrics,
+  });
+}
+
+function createSavingDecisionTraceWithoutBestChoice(
+  candidates: NormalizedCandidate[],
+  options: ResolvedOptions
+) {
+  return candidates.map((candidate) =>
+    createSavingDecisionTraceV2({
+      hotelId: candidate.hotelId,
+      finalRole: "unassigned",
+      comparisonTargetHotelId: null,
+      outcome: "not-applicable",
+      alreadyAssigned: false,
+      offerConditionCompatible: false,
+      offerConditionMode: null,
+      selectedReasonCodes: [],
+      metrics: createSavingDecisionMetrics(
+        candidate,
+        null,
+        options
+      ),
+    })
+  );
+}
+
 function createUpgradeCurveCandidates(
   candidates: NormalizedCandidate[]
 ): SmartStayUpgradeCurveCandidateV2[] {
@@ -2579,6 +2845,11 @@ export function evaluateRecommendationRolesV2(
         primaryInGroup: false,
         metrics: createBaseMetrics(candidate),
       })),
+      savingDecisionTrace:
+        createSavingDecisionTraceWithoutBestChoice(
+          normalizedCandidates,
+          resolvedOptions
+        ),
     };
   }
 
@@ -2591,12 +2862,19 @@ export function evaluateRecommendationRolesV2(
   const assignedHotelIds = new Set(
     bestChoiceSelection.members.map((candidate) => candidate.hotelId)
   );
+  const savingAssignedHotelIds = new Set(assignedHotelIds);
   const bestChoice = bestChoiceSelection.anchor;
+  const savingAlternatives = buildSavingAlternatives(
+    normalizedCandidates,
+    bestChoice,
+    savingAssignedHotelIds,
+    resolvedOptions
+  );
 
   const savingSelection = selectSavingGroup(
     normalizedCandidates,
     bestChoice,
-    assignedHotelIds,
+    savingAssignedHotelIds,
     resolvedOptions
   );
   if (savingSelection) {
@@ -2634,6 +2912,34 @@ export function evaluateRecommendationRolesV2(
 
   const picksByHotelId = new Map(
     picks.map((pick) => [pick.hotelId, pick] as const)
+  );
+  const eligibleSavingAlternativesByHotelId = new Map(
+    savingAlternatives.map(
+      (alternative) => [
+        alternative.candidate.hotelId,
+        alternative,
+      ] as const
+    )
+  );
+  const selectedSavingHotelIds = new Set(
+    savingSelection?.members.map(
+      (candidate) => candidate.hotelId
+    ) ?? []
+  );
+  const finalRolesByHotelId = new Map(
+    picks.map((pick) => [pick.hotelId, pick.role] as const)
+  );
+  const savingDecisionTrace = normalizedCandidates.map(
+    (candidate) =>
+      createSavingDecisionTraceForCandidate(
+        candidate,
+        bestChoice,
+        savingAssignedHotelIds,
+        resolvedOptions,
+        eligibleSavingAlternativesByHotelId,
+        selectedSavingHotelIds,
+        finalRolesByHotelId
+      )
   );
 
   const evaluations = normalizedCandidates.map(
@@ -2707,5 +3013,6 @@ export function evaluateRecommendationRolesV2(
     groups,
     picks,
     evaluations,
+    savingDecisionTrace,
   };
 }
