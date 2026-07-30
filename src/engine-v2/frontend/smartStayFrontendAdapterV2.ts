@@ -52,8 +52,17 @@ import type {
 } from "../offers/intentAwareOfferSelectionV2";
 
 import type {
+  SmartStayMarketContextObservationV2,
   SmartStayMarketContextSnapshotV2,
 } from "../market-context/marketContextModel";
+
+import {
+  resolveMarketRelativeAutomaticPreferenceV2,
+} from "../intent/marketRelativePreferenceV2";
+
+import type {
+  SmartStayMarketRelativePreferenceResolutionV2,
+} from "../intent/marketRelativePreferenceV2";
 
 export type SmartStayFrontendBadgeV2 =
   | "Smart Pick"
@@ -203,6 +212,9 @@ export interface SmartStayFrontendViewV2 {
   marketContext:
     SmartStayMarketContextSnapshotV2;
 
+  preferenceResolution?:
+    SmartStayMarketRelativePreferenceResolutionV2;
+
   rankedHotels:
     SmartStayFrontendEvaluationV2[];
 
@@ -328,6 +340,13 @@ export interface SmartStayFrontendInputV2 {
     SmartStayEngineV2SearchInput[
       "marketContextObservations"
     ];
+
+  marketRelativeAutomaticBalance?:
+    boolean;
+
+  fallbackBalanceExplanation?:
+    string |
+    null;
 
   previousRankingHotelIds?:
     string[];
@@ -3379,15 +3398,234 @@ function applyBudgetVisibilityPolicy(
   };
 }
 
-export function buildSmartStayFrontendViewV2(
+function createFrontendEngineInput(
+  input:
+    SmartStayFrontendInputV2,
+  overrides:
+    Partial<
+      SmartStayEngineV2SearchInput
+    > = {}
+): SmartStayEngineV2SearchInput {
+  return {
+    hotels:
+      input.hotels,
+
+    preferenceId:
+      input.preferenceId,
+
+    selectedIndex:
+      input.selectedIndex,
+
+    preferenceSource:
+      input.preferenceSource,
+
+    totalBudget:
+      input.totalBudget,
+
+    maximumDistanceKm:
+      input.maximumDistanceKm,
+
+    selectedLocation:
+      input.selectedLocation,
+
+    nights:
+      input.nights,
+
+    adults:
+      input.adults,
+
+    children:
+      input.children,
+
+    rooms:
+      input.rooms,
+
+    destinationKey:
+      input.destinationKey,
+
+    currency:
+      input.currency,
+
+    checkIn:
+      input.checkIn,
+
+    bookingReferenceAt:
+      input.bookingReferenceAt,
+
+    checkOut:
+      input.checkOut,
+
+    marketContextMode:
+      input.marketContextMode,
+
+    marketContextObservations:
+      input.marketContextObservations,
+
+    previousRankingHotelIds:
+      input
+        .previousRankingHotelIds,
+
+    maximumVisibleResults:
+      input
+        .maximumVisibleResults ??
+      Math.max(
+        input.hotels.length,
+        1
+      ),
+
+    capturedAt:
+      null,
+
+    ...overrides,
+  };
+}
+
+function deduplicateMarketObservations(
+  observations:
+    readonly SmartStayMarketContextObservationV2[]
+) {
+  const observationsById =
+    new Map<
+      string,
+      SmartStayMarketContextObservationV2
+    >();
+
+  for (const observation of observations) {
+    if (
+      typeof observation.id !==
+        "string" ||
+      !observation.id.trim()
+    ) {
+      continue;
+    }
+
+    observationsById.set(
+      observation.id,
+      observation
+    );
+  }
+
+  return [
+    ...observationsById.values(),
+  ].sort(
+    (first, second) =>
+      first.id.localeCompare(
+        second.id
+      )
+  );
+}
+
+function createFrozenMarketObservations(
+  input:
+    SmartStayFrontendInputV2,
+  currentSearchObservations:
+    readonly SmartStayMarketContextObservationV2[]
+) {
+  const mode =
+    input.marketContextMode ??
+    "hybrid";
+
+  const includeLocal =
+    mode === "local-only" ||
+    mode === "hybrid";
+
+  const includeCurrent =
+    mode === "current-search" ||
+    mode === "hybrid";
+
+  return deduplicateMarketObservations([
+    ...(
+      includeLocal
+        ? input.marketContextObservations ??
+          []
+        : []
+    ),
+
+    ...(
+      includeCurrent
+        ? currentSearchObservations
+        : []
+    ),
+  ]);
+}
+
+function evaluateFrontendEngineForView(
   input:
     SmartStayFrontendInputV2
-): SmartStayFrontendViewV2 {
-  const result =
-    evaluateSmartStaySearchV2({
-      hotels:
-        input.hotels,
+) {
+  const requestedEngineInput =
+    createFrontendEngineInput(
+      input
+    );
 
+  if (
+    input.marketRelativeAutomaticBalance !==
+    true
+  ) {
+    return {
+      result:
+        evaluateSmartStaySearchV2(
+          requestedEngineInput
+        ),
+
+      preferenceResolution:
+        null,
+    };
+  }
+
+  if (
+    input.preferenceSource ===
+      "manual" ||
+    input.hotels.length ===
+      0
+  ) {
+    const result =
+      evaluateSmartStaySearchV2(
+        requestedEngineInput
+      );
+
+    return {
+      result,
+
+      preferenceResolution:
+        resolveMarketRelativeAutomaticPreferenceV2({
+          preferenceId:
+            input.preferenceId,
+
+          selectedIndex:
+            input.selectedIndex,
+
+          preferenceSource:
+            input.preferenceSource,
+
+          budgetIntent:
+            result.budgetIntent,
+
+          fallbackExplanation:
+            input.fallbackBalanceExplanation,
+        }),
+    };
+  }
+
+  const preliminaryResult =
+    evaluateSmartStaySearchV2(
+      createFrontendEngineInput(
+        input,
+        {
+          preferenceId:
+            "balanced",
+
+          selectedIndex:
+            2,
+
+          preferenceSource:
+            "automatic",
+        }
+      )
+    );
+
+  const preferenceResolution =
+    resolveMarketRelativeAutomaticPreferenceV2({
       preferenceId:
         input.preferenceId,
 
@@ -3397,63 +3635,98 @@ export function buildSmartStayFrontendViewV2(
       preferenceSource:
         input.preferenceSource,
 
-      totalBudget:
-        input.totalBudget,
+      budgetIntent:
+        preliminaryResult
+          .budgetIntent,
 
-      maximumDistanceKm:
-        input.maximumDistanceKm,
-
-      selectedLocation:
-        input.selectedLocation,
-
-      nights:
-        input.nights,
-
-      adults:
-        input.adults,
-
-      children:
-        input.children,
-
-      rooms:
-        input.rooms,
-
-      destinationKey:
-        input.destinationKey,
-
-      currency:
-        input.currency,
-
-      checkIn:
-        input.checkIn,
-
-      bookingReferenceAt:
-        input.bookingReferenceAt,
-
-      checkOut:
-        input.checkOut,
-
-      marketContextMode:
-        input.marketContextMode,
-
-      marketContextObservations:
-        input.marketContextObservations,
-
-      previousRankingHotelIds:
-        input
-          .previousRankingHotelIds,
-
-      maximumVisibleResults:
-        input
-          .maximumVisibleResults ??
-        Math.max(
-          input.hotels.length,
-          1
-        ),
-
-      capturedAt:
-        null,
+      fallbackExplanation:
+        input.fallbackBalanceExplanation,
     });
+
+  if (
+    preferenceResolution.source ===
+      "absolute-fallback"
+  ) {
+    const requestedIsBalanced =
+      preferenceResolution
+        .requestedSelectedIndex ===
+        2;
+
+    return {
+      result:
+        requestedIsBalanced
+          ? preliminaryResult
+          : evaluateSmartStaySearchV2(
+              requestedEngineInput
+            ),
+
+      preferenceResolution,
+    };
+  }
+
+  if (
+    preferenceResolution
+      .effectiveSelectedIndex ===
+      2
+  ) {
+    return {
+      result:
+        preliminaryResult,
+
+      preferenceResolution,
+    };
+  }
+
+  const frozenObservations =
+    createFrozenMarketObservations(
+      input,
+      preliminaryResult
+        .marketContext
+        .generatedObservations
+    );
+
+  const result =
+    evaluateSmartStaySearchV2(
+      createFrontendEngineInput(
+        input,
+        {
+          preferenceId:
+            preferenceResolution
+              .effectivePreferenceId,
+
+          selectedIndex:
+            preferenceResolution
+              .effectiveSelectedIndex,
+
+          preferenceSource:
+            "automatic",
+
+          marketContextMode:
+            "local-only",
+
+          marketContextObservations:
+            frozenObservations,
+        }
+      )
+    );
+
+  return {
+    result,
+    preferenceResolution,
+  };
+}
+
+export function buildSmartStayFrontendViewV2(
+  input:
+    SmartStayFrontendInputV2
+): SmartStayFrontendViewV2 {
+  const engineRun =
+    evaluateFrontendEngineForView(
+      input
+    );
+
+  const result =
+    engineRun.result;
 
   const hotelNames =
     new Map(
@@ -3879,6 +4152,15 @@ export function buildSmartStayFrontendViewV2(
 
     marketContext:
       result.marketContext,
+
+    ...(
+      engineRun.preferenceResolution
+        ? {
+            preferenceResolution:
+              engineRun.preferenceResolution,
+          }
+        : {}
+    ),
 
     rankedHotels,
 

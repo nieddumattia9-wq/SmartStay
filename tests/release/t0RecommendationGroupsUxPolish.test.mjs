@@ -176,16 +176,18 @@ test(
       /shown first/
     );
 
-    assert.ok(
-      !results.includes(
-        "Automatic"
-      ),
-      "Automatic preference selection must not consume a visible badge."
+    const visibleAutomaticCopy =
+      />\s*Automatic\s*<|\{\s*["\']Automatic["\']\s*\}/;
+
+    assert.doesNotMatch(
+      results,
+      visibleAutomaticCopy,
+      "Automatic preference selection must not consume visible copy."
     );
 
     assert.match(
       results,
-      /\{selectedPreference\.title\} for this trip/
+      /\{effectivePreference\.title\} for this trip/
     );
 
     assert.match(

@@ -781,20 +781,30 @@ function getHotelDetailsTriggerId(
       );
     }, [searchId]);
 
-    const selectedPreferenceIndex =
+    const requestedPreferenceIndex =
       useMemo(() => {
         return getSelectedPreferenceIndex(
           searchMeta
         );
       }, [searchMeta]);
 
-    const selectedPreference =
-      sliderOptions[selectedPreferenceIndex] ??
+    const requestedPreference =
+      sliderOptions[requestedPreferenceIndex] ??
       sliderOptions[DEFAULT_PREFERENCE_INDEX];
 
     const smartStayProfile =
       searchMeta?.smartStayProfile ??
       null;
+
+    const effectivePreferenceIndex =
+      engineView
+        ?.preferenceResolution
+        ?.effectiveSelectedIndex ??
+      requestedPreferenceIndex;
+
+    const effectivePreference =
+      sliderOptions[effectivePreferenceIndex] ??
+      sliderOptions[DEFAULT_PREFERENCE_INDEX];
 
     const displayDestinationLabel =
       useMemo(
@@ -844,10 +854,13 @@ function getHotelDetailsTriggerId(
       budgetRecoveryActive;
 
     const balanceExplanation =
+      engineView
+        ?.preferenceResolution
+        ?.explanation ||
       smartStayProfile
         ?.explanation ||
       getPreferenceSummary(
-        selectedPreference.id
+        effectivePreference.id
       );
 
 const rankedHotels =
@@ -1254,10 +1267,10 @@ const rankedHotels =
                 hotels,
 
                 preferenceId:
-                  selectedPreference.id,
+                  requestedPreference.id,
 
                 selectedIndex:
-                  selectedPreferenceIndex,
+                  requestedPreferenceIndex,
 
                 preferenceSource:
                   smartStayProfile
@@ -1318,6 +1331,14 @@ const rankedHotels =
                 marketContextMode:
                   "hybrid",
 
+                marketRelativeAutomaticBalance:
+                  true,
+
+                fallbackBalanceExplanation:
+                  smartStayProfile
+                    ?.explanation ??
+                  null,
+
                 previousRankingHotelIds,
 
                 maximumVisibleResults:
@@ -1376,10 +1397,12 @@ const rankedHotels =
     }, [
       hotels,
       searchId,
-      selectedPreference.id,
-      selectedPreferenceIndex,
+      requestedPreference.id,
+      requestedPreferenceIndex,
       smartStayProfile
         ?.preferenceSource,
+      smartStayProfile
+        ?.explanation,
       effectiveTotalBudget,
       effectiveMaximumDistanceKm,
       recoveryActive,
@@ -1998,20 +2021,31 @@ const rankedHotels =
             </div>
           )}
 
-          <div className="results-balance-card">
+          <div
+            className="results-balance-card"
+            data-balance-source={
+              engineView
+                ?.preferenceResolution
+                ?.source ??
+              "absolute-fallback"
+            }
+            data-balance-preference={
+              effectivePreference.id
+            }
+          >
             <div className="results-balance-card__header">
               <div className="results-balance-card__title-row">
                 <span
                   className="results-balance-card__dot"
                   style={{
                     background:
-                      selectedPreference.color,
+                      effectivePreference.color,
                   }}
                   aria-hidden="true"
                 />
 
                 <strong>
-                  {selectedPreference.title} for this trip
+                  {effectivePreference.title} for this trip
                 </strong>
               </div>
 
