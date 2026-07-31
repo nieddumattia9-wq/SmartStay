@@ -571,7 +571,7 @@ function resolveIntentLevel(
   if (
     budgetPerRoomNight <
     market.firstQuartile *
-      0.9
+      0.8
   ) {
     return "constrained";
   }
@@ -579,7 +579,7 @@ function resolveIntentLevel(
   if (
     budgetPerRoomNight <
     market.median *
-      0.95
+      0.8
   ) {
     return "value";
   }
@@ -587,7 +587,7 @@ function resolveIntentLevel(
   if (
     budgetPerRoomNight <
     market.thirdQuartile *
-      1.1
+      0.95
   ) {
     return "balanced";
   }
@@ -597,7 +597,7 @@ function resolveIntentLevel(
       market.budgetPercentile ??
       0
     ) >=
-    95;
+    85;
 
   const luxuryByMedian =
     (
@@ -609,7 +609,7 @@ function resolveIntentLevel(
   const luxuryByUpperMarket =
     budgetPerRoomNight >=
     market.ninetiethPercentile *
-      1.15;
+      1;
 
   return (
     luxuryByPercentile ||

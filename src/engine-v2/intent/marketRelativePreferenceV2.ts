@@ -399,44 +399,6 @@ export function resolveMarketRelativeAutomaticPreferenceV2(
     };
   }
 
-  if (
-    budgetIntent.budgetPerRoomNight !==
-      null &&
-    budgetIntent.budgetPerRoomNight <=
-      EXTREME_BUDGET_PER_ROOM_NIGHT_MAX
-  ) {
-    return {
-      ...base,
-
-      effectivePreferenceId:
-        getPreferenceId(
-          MAXIMUM_SAVINGS_INDEX
-        ),
-
-      effectiveSelectedIndex:
-        MAXIMUM_SAVINGS_INDEX,
-
-      source:
-        "absolute-extreme-budget",
-
-      wasAdjusted:
-        requested.selectedIndex !==
-        MAXIMUM_SAVINGS_INDEX,
-
-      explanation:
-        createExtremeBudgetExplanation(),
-
-      reasonCodes:
-        uniqueSorted([
-          "market-relative-balance:absolute-extreme-budget-guard",
-          requested.selectedIndex ===
-            MAXIMUM_SAVINGS_INDEX
-            ? "market-relative-balance:requested-already-coherent"
-            : "market-relative-balance:preference-adjusted",
-        ]),
-    };
-  }
-
   const marketIsUsable =
     budgetIntent.status !==
       "unavailable" &&
@@ -450,6 +412,44 @@ export function resolveMarketRelativeAutomaticPreferenceV2(
       null;
 
   if (!marketIsUsable) {
+    if (
+      budgetIntent.budgetPerRoomNight !==
+        null &&
+      budgetIntent.budgetPerRoomNight <=
+        EXTREME_BUDGET_PER_ROOM_NIGHT_MAX
+    ) {
+      return {
+        ...base,
+
+        effectivePreferenceId:
+          getPreferenceId(
+            MAXIMUM_SAVINGS_INDEX
+          ),
+
+        effectiveSelectedIndex:
+          MAXIMUM_SAVINGS_INDEX,
+
+        source:
+          "absolute-extreme-budget",
+
+        wasAdjusted:
+          requested.selectedIndex !==
+          MAXIMUM_SAVINGS_INDEX,
+
+        explanation:
+          createExtremeBudgetExplanation(),
+
+        reasonCodes:
+          uniqueSorted([
+            "market-relative-balance:absolute-extreme-budget-fallback",
+            requested.selectedIndex ===
+              MAXIMUM_SAVINGS_INDEX
+              ? "market-relative-balance:requested-already-coherent"
+              : "market-relative-balance:preference-adjusted",
+          ]),
+      };
+    }
+
     return {
       ...base,
 

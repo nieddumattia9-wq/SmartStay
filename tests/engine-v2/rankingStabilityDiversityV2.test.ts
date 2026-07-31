@@ -994,6 +994,54 @@ test(
 );
 
 test(
+  "Ranking V2 never restores canonical-property duplicates merely to fill visible slots",
+  () => {
+    const scenario =
+      getScenario(
+        "turin-near-duplicate-providers"
+      );
+
+    const evaluation =
+      evaluateRankingStabilityDiversityV2(
+        {
+          candidates:
+            scenario.candidates.map(
+              (candidate) =>
+                createRankingCandidate(
+                  scenario,
+                  candidate
+                )
+            ),
+        },
+        {
+          maximumVisibleResults:
+            scenario.candidates.length,
+        }
+      );
+
+    assert.deepEqual(
+      evaluation.visibleHotelIds,
+      scenario.expectations.visibleHotelIds
+    );
+
+    assert.deepEqual(
+      evaluation
+        .nearDuplicateGroups[0]
+        ?.suppressedHotelIds,
+      [
+        "turin-grand-route",
+      ]
+    );
+
+    assert.ok(
+      !evaluation.visibleHotelIds.includes(
+        "turin-grand-route"
+      )
+    );
+  }
+);
+
+test(
   "Ranking V2 preserves previous order only inside a real equivalence band",
   () => {
     const scenario =

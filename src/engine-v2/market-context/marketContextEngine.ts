@@ -32,6 +32,182 @@ type CurrentSegmentValues = {
   values: number[];
 };
 
+function normalizePropertyIdentityKey(
+  value:
+    unknown
+) {
+  return typeof value ===
+      "string" &&
+    value.trim()
+      ? value.trim()
+      : null;
+}
+
+function deduplicateCurrentCandidates(
+  candidates:
+    SmartStayMarketContextCandidateV2[]
+) {
+  const byIdentity =
+    new Map<
+      string,
+      SmartStayMarketContextCandidateV2
+    >();
+
+  for (const candidate of candidates) {
+    const propertyIdentityKey =
+      normalizePropertyIdentityKey(
+        candidate.propertyIdentityKey
+      );
+
+    const identityKey =
+      propertyIdentityKey === null
+        ? `hotel:${candidate.hotelId}`
+        : [
+            "property",
+            propertyIdentityKey,
+            normalizeMarketCurrencyV2(
+              candidate.currency
+            ) ??
+              "unknown-currency",
+          ].join(
+            ":"
+          );
+
+    const existing =
+      byIdentity.get(
+        identityKey
+      );
+
+    if (!existing) {
+      byIdentity.set(
+        identityKey,
+        candidate
+      );
+      continue;
+    }
+
+    const candidateCost =
+      normalizePositiveMarketNumberV2(
+        candidate.totalCost
+      ) ??
+      Number.POSITIVE_INFINITY;
+
+    const existingCost =
+      normalizePositiveMarketNumberV2(
+        existing.totalCost
+      ) ??
+      Number.POSITIVE_INFINITY;
+
+    const candidateIsPreferred =
+      (
+        candidate
+          .eligibleForPrimaryRanking ===
+          true &&
+        existing
+          .eligibleForPrimaryRanking !==
+          true
+      ) ||
+      (
+        candidate
+          .eligibleForPrimaryRanking ===
+          existing
+            .eligibleForPrimaryRanking &&
+        (
+          candidateCost <
+            existingCost ||
+          (
+            candidateCost ===
+              existingCost &&
+            candidate.hotelId.localeCompare(
+              existing.hotelId
+            ) < 0
+          )
+        )
+      );
+
+    if (candidateIsPreferred) {
+      byIdentity.set(
+        identityKey,
+        candidate
+      );
+    }
+  }
+
+  return [
+    ...byIdentity.values(),
+  ].sort(
+    (first, second) =>
+      first.hotelId.localeCompare(
+        second.hotelId
+      )
+  );
+}
+
+function filterExtremeCurrentMarketValues(
+  values:
+    readonly number[]
+) {
+  const normalized =
+    values
+      .filter(
+        (value) =>
+          Number.isFinite(value) &&
+          value > 0
+      )
+      .sort(
+        (first, second) =>
+          first - second
+      );
+
+  if (normalized.length < 8) {
+    return normalized;
+  }
+
+  const distribution =
+    createMarketDistributionV2(
+      normalized
+    );
+
+  if (
+    distribution.firstQuartile ===
+      null ||
+    distribution.thirdQuartile ===
+      null
+  ) {
+    return normalized;
+  }
+
+  const interquartileRange =
+    distribution.thirdQuartile -
+    distribution.firstQuartile;
+
+  if (interquartileRange <= 0) {
+    return normalized;
+  }
+
+  const lowerFence =
+    Math.max(
+      distribution.firstQuartile -
+        interquartileRange * 3,
+      0
+    );
+
+  const upperFence =
+    distribution.thirdQuartile +
+    interquartileRange * 3;
+
+  const filtered =
+    normalized.filter(
+      (value) =>
+        value >= lowerFence &&
+        value <= upperFence
+    );
+
+  return filtered.length >= 3
+    ? filtered
+    : normalized;
+}
+
 function uniqueSorted(
   values:
     string[]
@@ -452,6 +628,13 @@ function createCurrentSegments(
           perRoomNight
         );
     }
+  }
+
+  for (const segment of segmentValues.values()) {
+    segment.values =
+      filterExtremeCurrentMarketValues(
+        segment.values
+      );
   }
 
   return segmentValues;
@@ -922,12 +1105,17 @@ export function evaluateMarketContextV2(
       ),
     ];
 
+  const currentCandidates =
+    deduplicateCurrentCandidates(
+      input.candidates
+    );
+
   const currency =
     normalizeMarketCurrencyV2(
       input.currency
     ) ??
     resolveCandidateCurrency(
-      input.candidates
+      currentCandidates
     ) ??
     resolveObservationCurrency(
       observations,
@@ -937,7 +1125,7 @@ export function evaluateMarketContextV2(
 
   const currentSegments =
     createCurrentSegments(
-      input.candidates,
+      currentCandidates,
       currency,
       nights,
       rooms

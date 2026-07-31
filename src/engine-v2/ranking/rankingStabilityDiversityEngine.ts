@@ -1298,9 +1298,18 @@ function calculateDiversitySelection(
       options
         .maximumVisiblePerNearDuplicateGroup;
 
+  const isPropertyDuplicate =
+    candidate.nearDuplicateKey
+      ?.startsWith(
+        "property:"
+      ) === true;
+
   if (
     exceedsNearDuplicateLimit &&
-    !allowNearDuplicateFallback
+    (
+      isPropertyDuplicate ||
+      !allowNearDuplicateFallback
+    )
   ) {
     return null;
   }
@@ -1649,9 +1658,39 @@ function diversifyCandidates(
       ) &&
     remaining.length > 0
   ) {
+    const selectableRemaining =
+      remaining.filter(
+        (candidate) => {
+          if (
+            candidate.nearDuplicateKey
+              ?.startsWith(
+                "property:"
+              ) !== true
+          ) {
+            return true;
+          }
+
+          return (
+            nearDuplicateCounts.get(
+              candidate.nearDuplicateKey
+            ) ??
+            0
+          ) <
+            options
+              .maximumVisiblePerNearDuplicateGroup;
+        }
+      );
+
+    if (
+      selectableRemaining.length ===
+      0
+    ) {
+      break;
+    }
+
     const highestRemainingScore =
       Math.max(
-        ...remaining.map(
+        ...selectableRemaining.map(
           (candidate) =>
             candidate.score ??
             -1
@@ -1659,7 +1698,7 @@ function diversifyCandidates(
       );
 
     const qualityWindow =
-      remaining.filter(
+      selectableRemaining.filter(
         (candidate) =>
           (
             candidate.score ??

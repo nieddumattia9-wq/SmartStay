@@ -494,3 +494,153 @@ test(
     );
   }
 );
+
+test(
+  "Current-search Market Context counts each canonical property once",
+  () => {
+    const canonicalCandidates =
+      [
+        100,
+        120,
+        140,
+        160,
+        180,
+        200,
+        220,
+        240,
+      ].map(
+        (totalCost, index) => ({
+          ...candidate(
+            `canonical-${index}`,
+            totalCost
+          ),
+          propertyIdentityKey:
+            `property-${index}`,
+        })
+      );
+
+    const baseline =
+      evaluateMarketContextV2({
+        candidates:
+          canonicalCandidates,
+        nights: 1,
+        rooms: 1,
+        destinationKey:
+          "Florence Italy",
+        currency: "EUR",
+        checkIn: "2026-05-15",
+        mode: "current-search",
+      });
+
+    const mirrored =
+      evaluateMarketContextV2({
+        candidates: [
+          ...canonicalCandidates,
+          ...canonicalCandidates.map(
+            (entry, index) => ({
+              ...entry,
+              hotelId:
+                `${entry.hotelId}-mirror`,
+              totalCost:
+                (entry.totalCost ?? 0) +
+                5 +
+                index,
+            })
+          ),
+        ],
+        nights: 1,
+        rooms: 1,
+        destinationKey:
+          "Florence Italy",
+        currency: "EUR",
+        checkIn: "2026-05-15",
+        mode: "current-search",
+      });
+
+    assert.equal(
+      mirrored.currentSearchSampleSize,
+      canonicalCandidates.length
+    );
+
+    assert.deepEqual(
+      mirrored.distribution,
+      baseline.distribution
+    );
+
+    assert.equal(
+      mirrored.confidence,
+      baseline.confidence
+    );
+  }
+);
+
+test(
+  "Current-search Market Context rejects one extreme price without moving the comparable distribution",
+  () => {
+    const baselineCandidates =
+      [
+        50.4,
+        69.6,
+        86.4,
+        105.6,
+        117.6,
+        129.6,
+        148.8,
+        177.6,
+        222,
+        294,
+      ].map(
+        (totalCost, index) => ({
+          ...candidate(
+            `robust-${index}`,
+            totalCost
+          ),
+          propertyIdentityKey:
+            `robust-property-${index}`,
+        })
+      );
+
+    const sharedInput = {
+      nights: 1,
+      rooms: 1,
+      destinationKey:
+        "Florence Italy",
+      currency: "EUR",
+      checkIn: "2026-05-15",
+      mode: "current-search" as const,
+    };
+
+    const baseline =
+      evaluateMarketContextV2({
+        ...sharedInput,
+        candidates:
+          baselineCandidates,
+      });
+
+    const withOutlier =
+      evaluateMarketContextV2({
+        ...sharedInput,
+        candidates: [
+          ...baselineCandidates,
+          {
+            ...candidate(
+              "extreme-outlier",
+              12_000
+            ),
+            propertyIdentityKey:
+              "extreme-outlier-property",
+          },
+        ],
+      });
+
+    assert.deepEqual(
+      withOutlier.distribution,
+      baseline.distribution
+    );
+
+    assert.equal(
+      withOutlier.currentSearchSampleSize,
+      baselineCandidates.length
+    );
+  }
+);

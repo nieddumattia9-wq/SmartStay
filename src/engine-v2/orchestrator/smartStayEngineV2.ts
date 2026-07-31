@@ -1442,6 +1442,11 @@ function createPropertyIdentityKey(
       hotel.country
     );
 
+  const address =
+    normalizeIdentityText(
+      hotel.address
+    );
+
   const hasCoordinates =
     typeof hotel.latitude ===
       "number" &&
@@ -1472,11 +1477,22 @@ function createPropertyIdentityKey(
         ].join(",")
       : "";
 
+  const locationIdentity =
+    coordinateKey
+      ? `coordinates:${coordinateKey}`
+      : address
+        ? `address:${address}`
+        : "";
+
+  if (!locationIdentity) {
+    return null;
+  }
+
   const identityParts = [
     name,
     city,
     country,
-    coordinateKey,
+    locationIdentity,
   ].filter(Boolean);
 
   return identityParts.length >=
@@ -2102,6 +2118,11 @@ export function evaluateSmartStaySearchV2(
           (candidate) => ({
             hotelId:
               candidate.hotel.id,
+
+            propertyIdentityKey:
+              createPropertyIdentityKey(
+                candidate.hotel
+              ),
 
             eligibleForPrimaryRanking:
               candidate

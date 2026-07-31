@@ -56,6 +56,7 @@ export interface SmartStayMarketSegmentSnapshotV2
 
 export interface SmartStayMarketContextCandidateV2 {
   hotelId: string;
+  propertyIdentityKey?: string | null;
   eligibleForPrimaryRanking: boolean;
   totalCost: number | null;
   currency: string | null;

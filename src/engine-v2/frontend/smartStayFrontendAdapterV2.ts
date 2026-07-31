@@ -2550,6 +2550,88 @@ function prioritizeBestChoiceGroup(
     );
 }
 
+function reconcileBestChoiceGroup(
+  bestChoiceGroup:
+    SmartStayBestChoiceGroupV2 |
+    null,
+  visibleHotelIds:
+    ReadonlySet<string>
+) {
+  if (!bestChoiceGroup) {
+    return null;
+  }
+
+  const allEquivalentHotelIds =
+    bestChoiceGroup
+      .allEquivalentHotelIds
+      .filter(
+        (hotelId) =>
+          visibleHotelIds.has(
+            hotelId
+          )
+      );
+
+  if (
+    allEquivalentHotelIds.length ===
+    0
+  ) {
+    return null;
+  }
+
+  const primaryHotelId =
+    visibleHotelIds.has(
+      bestChoiceGroup
+        .primaryHotelId
+    )
+      ? bestChoiceGroup
+          .primaryHotelId
+      : allEquivalentHotelIds[0];
+
+  const initiallyVisible =
+    bestChoiceGroup
+      .visibleHotelIds
+      .filter(
+        (hotelId) =>
+          visibleHotelIds.has(
+            hotelId
+          )
+      );
+
+  const visibleGroupHotelIds =
+    uniqueStable([
+      primaryHotelId,
+      ...initiallyVisible,
+      ...allEquivalentHotelIds,
+    ]).slice(
+      0,
+      Math.min(
+        bestChoiceGroup
+          .visibleHotelIds.length,
+        4
+      )
+    );
+
+  const visibleGroupSet =
+    new Set(
+      visibleGroupHotelIds
+    );
+
+  return {
+    ...bestChoiceGroup,
+    primaryHotelId,
+    visibleHotelIds:
+      visibleGroupHotelIds,
+    additionalEquivalentHotelIds:
+      allEquivalentHotelIds.filter(
+        (hotelId) =>
+          !visibleGroupSet.has(
+            hotelId
+          )
+      ),
+    allEquivalentHotelIds,
+  };
+}
+
 const MAXIMUM_NEAR_BUDGET_RESULTS =
   4;
 
@@ -3929,6 +4011,14 @@ export function buildSmartStayFrontendViewV2(
         )
     );
 
+  const bestChoiceGroup =
+    reconcileBestChoiceGroup(
+      result
+        .recommendationRoles
+        .bestChoiceGroup,
+      visibleHotelIds
+    );
+
   const distanceExceededCount =
     frontendEvaluations.filter(
       (evaluation) =>
@@ -4167,9 +4257,7 @@ export function buildSmartStayFrontendViewV2(
     recommendationPicks,
 
     bestChoiceGroup:
-      result
-        .recommendationRoles
-        .bestChoiceGroup,
+      bestChoiceGroup,
 
     budgetPolicy:
       budgetVisibility

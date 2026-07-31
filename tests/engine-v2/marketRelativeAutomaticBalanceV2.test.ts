@@ -379,7 +379,7 @@ test(
 );
 
 test(
-  "The existing extreme budget guard remains Maximum Savings even in a cheap destination",
+  "Reliable cheap-market evidence interprets a low absolute budget contextually",
   () => {
     const result =
       resolveMarketRelativeAutomaticPreferenceV2({
@@ -401,6 +401,46 @@ test(
               99,
             budgetToMedianRatio:
               2.08,
+          }),
+      });
+
+    assert.equal(
+      result.effectivePreferenceId,
+      "maximum-comfort"
+    );
+
+    assert.equal(
+      result.source,
+      "market-strong-data"
+    );
+  }
+);
+
+test(
+  "The extreme budget guard remains a conservative fallback without usable market evidence",
+  () => {
+    const result =
+      resolveMarketRelativeAutomaticPreferenceV2({
+        preferenceId:
+          "balanced",
+        selectedIndex:
+          2,
+        preferenceSource:
+          "automatic",
+        budgetIntent:
+          budgetIntent({
+            status:
+              "unavailable",
+            level:
+              "balanced",
+            budgetPerRoomNight:
+              25,
+            marketMedian:
+              null,
+            marketSampleSize:
+              0,
+            marketConfidence:
+              0,
           }),
       });
 

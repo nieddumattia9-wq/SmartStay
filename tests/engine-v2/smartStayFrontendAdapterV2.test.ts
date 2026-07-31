@@ -749,6 +749,112 @@ function buildView(
 }
 
 test(
+  "Frontend consolidates canonical-property duplicates across market context, ranking and Best Choice group",
+  () => {
+    const original =
+      HOTELS[0];
+
+    assert.ok(original);
+
+    const mirrored: Hotel = {
+      ...original,
+      id:
+        "best-mirror",
+      dataSources: [
+        "RouteStack",
+      ],
+      provider:
+        "RouteStack",
+      offers: [
+        createOffer(
+          "offer-99",
+          "RouteStack",
+          original.totalKnownCost ??
+            original.price
+        ),
+      ],
+    };
+
+    const view =
+      buildView([
+        ...HOTELS,
+        mirrored,
+      ]);
+
+    const rankedSemanticKeys =
+      view.rankedHotels.map(
+        (evaluation) => [
+          evaluation.hotel.name,
+          evaluation.hotel.address,
+          evaluation.hotel.city,
+        ].join("|")
+      );
+
+    assert.equal(
+      new Set(
+        rankedSemanticKeys
+      ).size,
+      rankedSemanticKeys.length
+    );
+
+    assert.equal(
+      view.marketContext
+        .currentSearchSampleSize,
+      3
+    );
+
+    assert.equal(
+      view.suppressedHotelIds.length,
+      1
+    );
+
+    assert.ok(
+      [
+        "best",
+        "best-mirror",
+      ].includes(
+        view.suppressedHotelIds[0] ??
+          ""
+      )
+    );
+
+    const rankedIds =
+      new Set(
+        view.rankedHotels.map(
+          (evaluation) =>
+            evaluation.hotel.id
+        )
+      );
+
+    assert.equal(
+      [
+        "best",
+        "best-mirror",
+      ].filter(
+        (hotelId) =>
+          rankedIds.has(
+            hotelId
+          )
+      ).length,
+      1
+    );
+
+    assert.ok(
+      view.bestChoiceGroup
+    );
+
+    assert.ok(
+      view.bestChoiceGroup.visibleHotelIds.every(
+        (hotelId) =>
+          rankedIds.has(
+            hotelId
+          )
+      )
+    );
+  }
+);
+
+test(
   "Budget visibility hides far-over-budget stays from the main list",
   () => {
     const view =
