@@ -80,10 +80,25 @@ function createBudgetIntent({
   median,
   budgetPerRoomNight =
     166.67,
+  status =
+    "strong-data",
+  source =
+    "current-search",
+  confidence =
+    0.76,
+  sampleSize =
+    10,
 }) {
+  const hasMedian =
+    typeof median ===
+      "number" &&
+    Number.isFinite(
+      median
+    );
+
   return {
     status:
-      "strong-data",
+      status,
     preferenceId:
       "balanced",
     level,
@@ -98,33 +113,46 @@ function createBudgetIntent({
       basis:
         "per-room-night",
       source:
-        "current-search",
+        source,
       confidence:
-        0.76,
+        confidence,
       seasonalIndex:
         null,
       currency:
         "EUR",
       sampleSize:
-        10,
+        sampleSize,
       minimum:
-        median * 0.5,
+        hasMedian
+          ? median * 0.5
+          : null,
       firstQuartile:
-        median * 0.75,
+        hasMedian
+          ? median * 0.75
+          : null,
       median,
       thirdQuartile:
-        median * 1.25,
+        hasMedian
+          ? median * 1.25
+          : null,
       ninetiethPercentile:
-        median * 1.7,
+        hasMedian
+          ? median * 1.7
+          : null,
       maximum:
-        median * 2,
+        hasMedian
+          ? median * 2
+          : null,
       budgetPercentile:
         level === "constrained"
           ? 10
           : 95,
       budgetToMedianRatio:
-        budgetPerRoomNight /
-        median,
+        hasMedian &&
+        median > 0
+          ? budgetPerRoomNight /
+            median
+          : null,
       budgetToUpperQuartileRatio:
         null,
     },
@@ -222,7 +250,7 @@ test(
 );
 
 test(
-  "R5B preserves manual preferences and the extreme absolute budget guard",
+  "R5B preserves manual preferences and uses the extreme absolute guard only without usable market evidence",
   async () => {
     const {
       module,
@@ -262,11 +290,19 @@ test(
           budgetIntent:
             createBudgetIntent({
               level:
-                "luxury",
+                "balanced",
               median:
-                12,
+                null,
               budgetPerRoomNight:
                 25,
+              status:
+                "unavailable",
+              source:
+                "unavailable",
+              confidence:
+                0,
+              sampleSize:
+                0,
             }),
         });
 

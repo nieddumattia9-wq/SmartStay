@@ -72,6 +72,12 @@ services:
         name: X-Frame-Options
         value: DENY
       - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-src https://www.google.com https://maps.google.com; upgrade-insecure-requests"
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+      - path: /*
         name: X-Robots-Tag
         value: noindex, nofollow, noarchive, nosnippet
     routes:

@@ -102,6 +102,20 @@ function createLiteApiSearchInput(
 const LITEAPI_HOTEL_METADATA_BATCH_SIZE =
   40;
 
+const MAX_LITEAPI_HOTELS_PER_SEARCH =
+  80;
+
+function limitLiteApiHotels(
+  hotels
+) {
+  return Array.isArray(hotels)
+    ? hotels.slice(
+        0,
+        MAX_LITEAPI_HOTELS_PER_SEARCH
+      )
+    : [];
+}
+
 function normalizeLiteApiMetadataHotelId(
   value
 ) {
@@ -560,7 +574,8 @@ function createLiteApiAdapter(
 
           currency,
 
-          rawData,
+          rawData:
+            null,
 
           message:
             "LiteAPI returned no hotel availability for this search.",
@@ -579,12 +594,24 @@ function createLiteApiAdapter(
         mapLiteApiHotelResponse(
           rawData,
           currency,
-          searchLocation
+          searchLocation,
+          null,
+          {
+            maximumRecords:
+              MAX_LITEAPI_HOTELS_PER_SEARCH,
+          }
+        );
+
+      const preliminaryHotels =
+        limitLiteApiHotels(
+          mergeHotels(
+            preliminaryMappedHotels
+          )
         );
 
       const providerHotelIds =
         collectLiteApiMetadataHotelIds(
-          preliminaryMappedHotels
+          preliminaryHotels
         );
 
       const hotelMetadata =
@@ -605,13 +632,19 @@ function createLiteApiAdapter(
               rawData,
               currency,
               searchLocation,
-              hotelMetadata
+              hotelMetadata,
+              {
+                maximumRecords:
+                  MAX_LITEAPI_HOTELS_PER_SEARCH,
+              }
             )
           : preliminaryMappedHotels;
 
       const hotels =
-        mergeHotels(
-          mappedHotels
+        limitLiteApiHotels(
+          mergeHotels(
+            mappedHotels
+          )
         );
 
       operationalLogger.info(
@@ -635,7 +668,8 @@ function createLiteApiAdapter(
 
           currency,
 
-          rawData,
+          rawData:
+            null,
 
           message:
             "LiteAPI returned no usable hotels for this search.",
@@ -643,15 +677,16 @@ function createLiteApiAdapter(
       }
 
       return createProviderSuccessResult({
-        providerId:
-          PROVIDER_ID,
+          providerId:
+            PROVIDER_ID,
 
-        currency,
+          currency,
 
-        hotels,
+          hotels,
 
-        rawData,
-      });
+          rawData:
+            null,
+        });
     },
 
     async recheckOffer({
@@ -905,7 +940,9 @@ async function loadLiteApiAdapter() {
 
 module.exports = {
   PROVIDER_ID,
+  MAX_LITEAPI_HOTELS_PER_SEARCH,
   createLiteApiSearchInput,
   createLiteApiAdapter,
+  limitLiteApiHotels,
   loadLiteApiAdapter,
 };

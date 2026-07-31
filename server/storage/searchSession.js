@@ -3,6 +3,9 @@ const crypto = require("crypto");
 const SEARCH_SESSION_TTL_MS =
   30 * 60 * 1000;
 
+const MAX_SEARCH_SESSIONS =
+  500;
+
 const EXPIRED_SEARCH_ID_RETENTION_MS =
   SEARCH_SESSION_TTL_MS;
 
@@ -181,6 +184,29 @@ function saveSearchSession(session) {
     sessionSnapshot.searchId ||
     createSearchId();
 
+  if (
+    !sessions.has(searchId) &&
+    sessions.size >=
+      MAX_SEARCH_SESSIONS
+  ) {
+    throw createSearchSessionError({
+      code:
+        "SEARCH_SESSION_CAPACITY_REACHED",
+
+      message:
+        "Hotel search capacity is temporarily full. Please try again shortly.",
+
+      status:
+        503,
+
+      retryable:
+        true,
+
+      retryAfterMs:
+        1_000,
+    });
+  }
+
   expiredSearchIds.delete(
     searchId
   );
@@ -356,6 +382,8 @@ function createSearchSessionError({
   code,
   message,
   status,
+  retryable = false,
+  retryAfterMs = null,
 }) {
 
   const error =
@@ -368,6 +396,17 @@ function createSearchSessionError({
 
   error.status =
     status;
+
+  error.retryable =
+    retryable;
+
+  error.retryAfterMs =
+    Number.isFinite(
+      Number(retryAfterMs)
+    ) &&
+    Number(retryAfterMs) >= 0
+      ? Number(retryAfterMs)
+      : null;
 
   return error;
 
@@ -828,6 +867,7 @@ function getSearchSessionCount() {
 
 module.exports = {
   SEARCH_SESSION_TTL_MS,
+  MAX_SEARCH_SESSIONS,
   EXPIRED_SEARCH_ID_RETENTION_MS,
   CONTINUATION_LOCK_TTL_MS,
   SEARCH_SESSION_ID_VERSION,

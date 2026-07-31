@@ -54,6 +54,53 @@ const {
     "./app"
   );
 
+const HTTP_SERVER_CAPACITY_LIMITS =
+  Object.freeze({
+    requestTimeoutMs:
+      60_000,
+
+    headersTimeoutMs:
+      15_000,
+
+    keepAliveTimeoutMs:
+      5_000,
+
+    maxRequestsPerSocket:
+      100,
+  });
+
+function configureHttpServerCapacity(
+  server
+) {
+  if (
+    !server ||
+    typeof server !==
+      "object"
+  ) {
+    throw new TypeError(
+      "A valid HTTP server is required."
+    );
+  }
+
+  server.requestTimeout =
+    HTTP_SERVER_CAPACITY_LIMITS
+      .requestTimeoutMs;
+
+  server.headersTimeout =
+    HTTP_SERVER_CAPACITY_LIMITS
+      .headersTimeoutMs;
+
+  server.keepAliveTimeout =
+    HTTP_SERVER_CAPACITY_LIMITS
+      .keepAliveTimeoutMs;
+
+  server.maxRequestsPerSocket =
+    HTTP_SERVER_CAPACITY_LIMITS
+      .maxRequestsPerSocket;
+
+  return server;
+}
+
 function normalizeExitCode(
   value,
   fallback =
@@ -144,6 +191,10 @@ function startServer({
         );
       }
     );
+
+  configureHttpServerCapacity(
+    server
+  );
 
   let stopping =
     false;
@@ -327,6 +378,8 @@ if (
 }
 
 module.exports = {
+  HTTP_SERVER_CAPACITY_LIMITS,
+  configureHttpServerCapacity,
   createApp,
   createRuntimeState,
   normalizeExitCode,

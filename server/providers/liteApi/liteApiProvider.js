@@ -763,9 +763,19 @@ function createLiteApiOfferFromMapper(
     );
   }
   
-  function createHotelDataIndex(data) {
+  function createHotelDataIndex(
+    data,
+    maximumRecords =
+      Number.POSITIVE_INFINITY
+  ) {
     const index = new Map();
-    const records = extractHotelDataRecords(data);
+    const records =
+      extractHotelDataRecords(
+        data
+      ).slice(
+        0,
+        maximumRecords
+      );
   
     for (const record of records) {
       const hotel = getHotelObject(record);
@@ -1796,17 +1806,38 @@ function createLiteApiOfferFromMapper(
       data,
       fallbackCurrency = "EUR",
       searchLocation = null,
-      hotelMetadata = null
+      hotelMetadata = null,
+      {
+        maximumRecords =
+          Number.POSITIVE_INFINITY,
+      } = {}
     ) {
-      const records = extractRecords(data);
+      const normalizedMaximumRecords =
+        Number.isInteger(
+          maximumRecords
+        ) &&
+        maximumRecords > 0
+          ? maximumRecords
+          : Number.POSITIVE_INFINITY;
+
+      const records =
+        extractRecords(
+          data
+        ).slice(
+          0,
+          normalizedMaximumRecords
+        );
+
       const hotelDataIndex =
         createHotelDataIndex(
-          data
+          data,
+          normalizedMaximumRecords
         );
 
       const metadataHotelDataIndex =
         createHotelDataIndex(
-          hotelMetadata
+          hotelMetadata,
+          normalizedMaximumRecords
         );
 
       for (

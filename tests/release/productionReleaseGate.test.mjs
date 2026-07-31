@@ -846,7 +846,7 @@ test(
 
     assert.match(
       workflow,
-      /actions\/upload-artifact@v4/
+      /actions\/upload-artifact@[0-9a-f]{40}/i
     );
 
     assert.doesNotMatch(

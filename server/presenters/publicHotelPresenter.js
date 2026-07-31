@@ -146,9 +146,10 @@ function getSafeHttpUrl(
 
     if (
       url.protocol !==
-        "https:" &&
-      url.protocol !==
-        "http:"
+        "https:" ||
+      !url.hostname ||
+      url.username ||
+      url.password
     ) {
 
       return null;

@@ -4,7 +4,10 @@ const SEARCH_IDEMPOTENCY_TTL_MS =
   25 * 60 * 1000;
 
 const MAX_SEARCH_IDEMPOTENCY_RECORDS =
-  2_000;
+  250;
+
+const MAX_SEARCH_IDEMPOTENCY_BYTES =
+  64 * 1024 * 1024;
 
 const IDEMPOTENCY_KEY_MIN_LENGTH =
   16;
@@ -17,6 +20,9 @@ const IDEMPOTENCY_KEY_PATTERN =
 
 const records =
   new Map();
+
+let storedResponseBytes =
+  0;
 
 function createIdempotencyError({
   code,
@@ -228,6 +234,52 @@ function cloneResponse(
   }
 }
 
+function getResponseByteLength(
+  value
+) {
+  try {
+    return Buffer.byteLength(
+      JSON.stringify(value),
+      "utf8"
+    );
+  }
+  catch {
+    return null;
+  }
+}
+
+function deleteRecord(
+  key
+) {
+  const record =
+    records.get(key);
+
+  if (!record) {
+    return false;
+  }
+
+  records.delete(key);
+
+  storedResponseBytes =
+    Math.max(
+      0,
+      storedResponseBytes -
+        (
+          Number.isFinite(
+            Number(
+              record.responseBytes
+            )
+          )
+            ? Number(
+                record.responseBytes
+              )
+            : 0
+        )
+    );
+
+  return true;
+}
+
 function removeExpiredRecords() {
   const now =
     Date.now();
@@ -241,14 +293,14 @@ function removeExpiredRecords() {
     if (
       record.expiresAt <= now
     ) {
-      records.delete(
-        key
-      );
+      deleteRecord(key);
     }
   }
 }
 
-function removeOldestCompletedRecord() {
+function removeOldestCompletedRecord(
+  excludedKey = null
+) {
   for (
     const [
       key,
@@ -256,18 +308,49 @@ function removeOldestCompletedRecord() {
     ] of records.entries()
   ) {
     if (
+      key !== excludedKey &&
       record.state ===
         "fulfilled"
     ) {
-      records.delete(
-        key
-      );
+      deleteRecord(key);
 
       return true;
     }
   }
 
   return false;
+}
+
+function reserveResponseByteCapacity({
+  key,
+  responseBytes,
+}) {
+  if (
+    !Number.isInteger(
+      responseBytes
+    ) ||
+    responseBytes < 0 ||
+    responseBytes >
+      MAX_SEARCH_IDEMPOTENCY_BYTES
+  ) {
+    return false;
+  }
+
+  while (
+    storedResponseBytes +
+      responseBytes >
+    MAX_SEARCH_IDEMPOTENCY_BYTES
+  ) {
+    if (
+      !removeOldestCompletedRecord(
+        key
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function reserveCapacity() {
@@ -403,6 +486,9 @@ async function executeInitialSearchIdempotently({
 
     response:
       null,
+
+    responseBytes:
+      0,
   };
 
   const promise =
@@ -420,24 +506,51 @@ async function executeInitialSearchIdempotently({
           responseSnapshot.searchId
             .trim();
 
-        if (hasStableSearchId) {
-          record.state =
-            "fulfilled";
+        if (
+          hasStableSearchId &&
+          records.get(key) ===
+            record
+        ) {
+          const responseBytes =
+            getResponseByteLength(
+              responseSnapshot
+            );
 
-          record.response =
-            responseSnapshot;
+          const canStoreResponse =
+            reserveResponseByteCapacity({
+              key,
+              responseBytes,
+            });
 
-          record.expiresAt =
-            Date.now() +
-            SEARCH_IDEMPOTENCY_TTL_MS;
+          if (canStoreResponse) {
+            record.state =
+              "fulfilled";
+
+            record.response =
+              responseSnapshot;
+
+            record.responseBytes =
+              responseBytes;
+
+            storedResponseBytes +=
+              responseBytes;
+
+            record.expiresAt =
+              Date.now() +
+              SEARCH_IDEMPOTENCY_TTL_MS;
+          }
+          else if (
+            records.get(key) ===
+              record
+          ) {
+            deleteRecord(key);
+          }
         }
         else if (
           records.get(key) ===
             record
         ) {
-          records.delete(
-            key
-          );
+          deleteRecord(key);
         }
 
         return responseSnapshot;
@@ -447,9 +560,7 @@ async function executeInitialSearchIdempotently({
           records.get(key) ===
             record
         ) {
-          records.delete(
-            key
-          );
+          deleteRecord(key);
         }
 
         throw error;
@@ -482,6 +593,9 @@ async function executeInitialSearchIdempotently({
 
 function clearSearchIdempotencyRecords() {
   records.clear();
+
+  storedResponseBytes =
+    0;
 }
 
 function getSearchIdempotencyRecordCount() {
@@ -490,9 +604,16 @@ function getSearchIdempotencyRecordCount() {
   return records.size;
 }
 
+function getSearchIdempotencyStoredResponseBytes() {
+  removeExpiredRecords();
+
+  return storedResponseBytes;
+}
+
 module.exports = {
   SEARCH_IDEMPOTENCY_TTL_MS,
   MAX_SEARCH_IDEMPOTENCY_RECORDS,
+  MAX_SEARCH_IDEMPOTENCY_BYTES,
   normalizeIdempotencyKey,
   validateIdempotencyKey,
   createSearchPayloadFingerprint,
@@ -500,4 +621,5 @@ module.exports = {
   executeInitialSearchIdempotently,
   clearSearchIdempotencyRecords,
   getSearchIdempotencyRecordCount,
+  getSearchIdempotencyStoredResponseBytes,
 };

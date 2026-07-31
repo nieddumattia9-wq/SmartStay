@@ -409,8 +409,6 @@ function getSafeBookingUrl(
 
     if (
       url.protocol !==
-        "http:" &&
-      url.protocol !==
         "https:"
     ) {
       return null;

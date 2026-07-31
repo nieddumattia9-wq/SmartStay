@@ -1521,9 +1521,24 @@ async function createBookingHandoffWithProvider({
     );
 
   return validateProviderBookingHandoffResult(
-    await createBookingHandoff({
-      providerBookingReference,
-      verificationId,
+    await executeProviderOperationWithTimeout({
+      providerId:
+        provider.id,
+
+      methodName:
+        "createBookingHandoff",
+
+      operation:
+        createBookingHandoff,
+
+      timeoutMs:
+        provider.operationTimeouts
+          ?.createBookingHandoff,
+
+      operationArguments: {
+        providerBookingReference,
+        verificationId,
+      },
     })
   );
 }
