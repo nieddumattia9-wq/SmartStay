@@ -1,16 +1,23 @@
+const {
+  getOperationalState,
+} = require(
+  "../state/operationalState"
+);
+
 function loadDefaultDependencies() {
   const {
+    bookingVerificationStore,
+    bookingHandoffStore,
+  } = getOperationalState();
+
+  const {
     requireBookingVerification,
-  } = require(
-    "../storage/bookingVerificationStore"
-  );
+  } = bookingVerificationStore;
 
   const {
     saveBookingHandoff,
     requireBookingHandoff,
-  } = require(
-    "../storage/bookingHandoffStore"
-  );
+  } = bookingHandoffStore;
 
   const {
     getAccommodationProviderById,

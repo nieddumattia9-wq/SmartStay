@@ -5,6 +5,12 @@ const {
 );
 
 const {
+  getOperationalState,
+} = require(
+  "../state/operationalState"
+);
+
+const {
     searchDestinationsAcrossProviders,
     searchHotelsAcrossProviders,
     continueHotelSearchForProvider,
@@ -23,13 +29,21 @@ const {
   );
 
   const {
+    searchSessionStore,
+    continuationLeaseStore,
+  } = getOperationalState();
+
+  const {
     saveSearchSession,
     requireSearchSession,
-    tryAcquireSearchContinuation,
-    releaseSearchContinuation,
     updateSearchSession,
     appendHotelsToSearchSession,
-  } = require("../storage/searchSession");
+  } = searchSessionStore;
+
+  const {
+    tryAcquireSearchContinuation,
+    releaseSearchContinuation,
+  } = continuationLeaseStore;
 
   const {
     createProviderExecutionStates,

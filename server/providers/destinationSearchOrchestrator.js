@@ -4,6 +4,12 @@ const {
   "../observability/operationalLogger"
 );
 
+const {
+  getOperationalState,
+} = require(
+  "../state/operationalState"
+);
+
 ﻿const {
   DESTINATION_PROVIDER_CAPABILITIES,
   getDestinationProvidersByCapability,
@@ -35,9 +41,8 @@ const {
   beginProviderAttempt,
   recordProviderHealthyResponse,
   recordProviderFailure,
-} = require(
-  "./common/providerHealthService"
-);
+} = getOperationalState()
+  .providerHealthStore;
 
 const {
   PROVIDER_SEARCH_OUTCOMES,

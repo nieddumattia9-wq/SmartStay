@@ -44,12 +44,21 @@ const {
   );
 
 const {
+  getOperationalState,
+} =
+  require(
+    "./state/operationalState"
+  );
+
+const {
+  endpointRateLimitStoreFactory,
+} = getOperationalState();
+
+const {
   createEndpointRateLimiters,
   createRateLimitHandler,
 } =
-  require(
-    "./middleware/endpointRateLimits"
-  );
+  endpointRateLimitStoreFactory;
 
 const {
   createInMemoryAnalyticsEventStore,

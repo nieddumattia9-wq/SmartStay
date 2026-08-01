@@ -1,6 +1,13 @@
 const {
+  getOperationalState,
+} = require(
+  "../state/operationalState"
+);
+
+const {
   requireSearchSession,
-} = require("../storage/searchSession");
+} = getOperationalState()
+  .searchSessionStore;
 
 const {
   getOfferHandoffState,

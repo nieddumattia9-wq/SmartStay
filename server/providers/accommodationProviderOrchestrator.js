@@ -5,6 +5,12 @@ const {
 );
 
 const {
+  getOperationalState,
+} = require(
+  "../state/operationalState"
+);
+
+const {
   getEnabledAccommodationProviders,
   getAccommodationProviderById,
   getPrimaryEnabledAccommodationProvider,
@@ -44,9 +50,8 @@ const {
   beginProviderAttempt,
   recordProviderHealthyResponse,
   recordProviderFailure,
-} = require(
-  "./common/providerHealthService"
-);
+} = getOperationalState()
+  .providerHealthStore;
 
 const {
   PROVIDER_SEARCH_OUTCOMES,

@@ -9,13 +9,24 @@ const express = require("express");
 const router = express.Router();
 
 const {
+  getOperationalState,
+} = require(
+  "../state/operationalState"
+);
+
+const {
+  searchSessionStore,
+  initialSearchIdempotencyStore,
+} = getOperationalState();
+
+const {
   requireSearchSession,
-} = require("../storage/searchSession");
+} = searchSessionStore;
 
 const {
   executeInitialSearchIdempotently,
   isSearchIdempotencyError,
-} = require("../storage/searchIdempotency");
+} = initialSearchIdempotencyStore;
 
 const {
   createPublicHotelDetails,

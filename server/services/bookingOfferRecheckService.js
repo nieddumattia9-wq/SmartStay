@@ -1,14 +1,21 @@
 const {
-  requireSearchSession,
+  getOperationalState,
 } = require(
-  "../storage/searchSession"
+  "../state/operationalState"
 );
 
 const {
+  searchSessionStore,
+  bookingVerificationStore,
+} = getOperationalState();
+
+const {
+  requireSearchSession,
+} = searchSessionStore;
+
+const {
   saveBookingVerification,
-} = require(
-  "../storage/bookingVerificationStore"
-);
+} = bookingVerificationStore;
 
 const {
   getAccommodationProviderById,
