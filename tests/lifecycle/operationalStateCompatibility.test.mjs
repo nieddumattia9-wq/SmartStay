@@ -293,6 +293,111 @@ test(
 );
 
 test(
+  "in-memory continuation writes enforce active ownership and monotonic fencing",
+  () => {
+    const {
+      searchSessionStore,
+      continuationLeaseStore,
+    } = getOperationalState();
+    const session =
+      searchSessionStore
+        .saveSearchSession({
+          hotels: [],
+        });
+
+    try {
+      const first =
+        continuationLeaseStore
+          .tryAcquireSearchContinuation(
+            session.searchId
+          );
+
+      assert.throws(
+        () =>
+          searchSessionStore
+            .updateSearchSession(
+              session.searchId,
+              { marker: "unowned" }
+            ),
+        (error) =>
+          error?.code ===
+          "SEARCH_CONTINUATION_IN_PROGRESS"
+      );
+
+      searchSessionStore.updateSearchSession(
+        session.searchId,
+        {
+          continuationLockExpiresAt:
+            Date.now() - 1,
+        },
+        {
+          lockToken: first.lockToken,
+          fencingNumber:
+            first.fencingNumber,
+        }
+      );
+
+      assert.equal(
+        continuationLeaseStore
+          .renewSearchContinuation(
+            session.searchId,
+            first.lockToken,
+            first.fencingNumber
+          ).renewed,
+        false
+      );
+
+      const second =
+        continuationLeaseStore
+          .tryAcquireSearchContinuation(
+            session.searchId
+          );
+
+      assert.ok(
+        second.fencingNumber >
+          first.fencingNumber
+      );
+      assert.throws(
+        () =>
+          searchSessionStore
+            .updateSearchSession(
+              session.searchId,
+              { marker: "stale" },
+              {
+                lockToken:
+                  first.lockToken,
+                fencingNumber:
+                  first.fencingNumber,
+              }
+            ),
+        (error) =>
+          error?.code ===
+          "SEARCH_CONTINUATION_LEASE_STALE"
+      );
+
+      assert.equal(
+        continuationLeaseStore
+          .releaseSearchContinuation(
+            session.searchId,
+            second.lockToken,
+            { marker: "fresh" },
+            {
+              fencingNumber:
+                second.fencingNumber,
+            }
+          ).released,
+        true
+      );
+    } finally {
+      searchSessionStore
+        .clearSearchSession(
+          session.searchId
+        );
+    }
+  }
+);
+
+test(
   "partial legacy test doubles are validated only for accessed capabilities",
   () => {
     const requireSearchSession =
@@ -497,7 +602,7 @@ test(
 );
 
 test(
-  "4C1 adds no distributed dependency and keeps Engine V2 infrastructure-neutral",
+  "4C2 confines the Redis-compatible dependency to shared-state adapters and keeps Engine V2 infrastructure-neutral",
   () => {
     const packageJson =
       JSON.parse(
@@ -530,13 +635,50 @@ test(
         ...serverPackageJson.devDependencies,
       });
 
-    assert.equal(
-      dependencyNames.some(
+    assert.deepEqual(
+      dependencyNames.filter(
         (name) =>
           /^(bullmq|ioredis|redis|valkey)$/i
             .test(name)
       ),
-      false
+      [
+        "redis",
+      ]
+    );
+
+    assert.equal(
+      serverPackageJson
+        .dependencies.redis,
+      "6.2.0"
+    );
+
+    const redisImportFindings =
+      listJavaScriptFiles(
+        path.join(root, "server")
+      )
+        .filter((filePath) =>
+          /require\(["']redis["']\)/
+            .test(
+              fs.readFileSync(
+                filePath,
+                "utf8"
+              )
+            )
+        )
+        .map((filePath) =>
+          path
+            .relative(
+              path.join(root, "server"),
+              filePath
+            )
+            .replaceAll(path.sep, "/")
+        );
+
+    assert.deepEqual(
+      redisImportFindings,
+      [
+        "state/valkey/valkeyShared.js",
+      ]
     );
 
     const engineRoot =

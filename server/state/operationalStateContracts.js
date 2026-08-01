@@ -4,6 +4,9 @@ const OPERATIONAL_STATE_MODES =
   Object.freeze({
     IN_MEMORY_SINGLE_INSTANCE:
       "in-memory-single-instance",
+
+    VALKEY_DISTRIBUTED:
+      "valkey-distributed",
   });
 
 function createPortContract({
@@ -48,6 +51,7 @@ const OPERATIONAL_STATE_PORT_CONTRACTS =
           "ContinuationLeaseStore",
         methods: [
           "tryAcquireSearchContinuation",
+          "renewSearchContinuation",
           "releaseSearchContinuation",
         ],
       }),

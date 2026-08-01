@@ -42,10 +42,12 @@ const {
 
   const {
     tryAcquireSearchContinuation,
+    renewSearchContinuation,
     releaseSearchContinuation,
   } = continuationLeaseStore;
 
   const {
+    PROVIDER_EXECUTION_STATES,
     createProviderExecutionStates,
     normalizeProviderExecutionStates,
     getRunnableProviderExecutions,
@@ -894,7 +896,7 @@ const {
           searchData.currency ?? "USD",
       });
 
-    function saveEmptySearchSession({
+    async function saveEmptySearchSession({
       providerId = null,
       providerExecutions = [],
       currency = searchData.currency ?? "USD",
@@ -903,7 +905,7 @@ const {
     } = {}) {
 
       const emptySession =
-        saveSearchSession({
+        await saveSearchSession({
           originalSearchData:
             searchData,
 
@@ -1087,7 +1089,7 @@ const {
       );
 
     const savedSession =
-      saveSearchSession({
+      await saveSearchSession({
         originalSearchData:
           searchData,
 
@@ -1383,10 +1385,30 @@ const {
 
   }
 
+  function recoverStaleProviderExecutions(
+    providerExecutions
+  ) {
+    return normalizeProviderExecutionStates(
+      providerExecutions
+    ).map((execution) => (
+      execution.state ===
+        PROVIDER_EXECUTION_STATES.RUNNING
+        ? {
+            ...execution,
+            state:
+              PROVIDER_EXECUTION_STATES.PENDING,
+            retryable: false,
+            retryAfterMs: null,
+            nextAttemptAt: null,
+          }
+        : execution
+    ));
+  }
+
   async function continueHotelSearch(searchId) {
 
     let session =
-      requireSearchSession(
+      await requireSearchSession(
         searchId
       );
 
@@ -1395,7 +1417,42 @@ const {
         session
       );
 
+    const continuationLeaseIsActive =
+      session.isContinuing === true &&
+      typeof session
+        .continuationLock === "string" &&
+      session.continuationLock.length > 0 &&
+      Number.isFinite(
+        Number(
+          session
+            .continuationLockExpiresAt
+        )
+      ) &&
+      Number(
+        session
+          .continuationLockExpiresAt
+      ) > Date.now();
+
+    if (continuationLeaseIsActive) {
+
+      return createContinuingSearchResponse(
+        session
+      );
+
+    }
+
+    const staleContinuationDetected =
+      session.isContinuing === true;
+
+    if (staleContinuationDetected) {
+      providerExecutions =
+        recoverStaleProviderExecutions(
+          providerExecutions
+        );
+    }
+
     if (
+      staleContinuationDetected ||
       !Array.isArray(
         session.providerExecutions
       )
@@ -1408,7 +1465,7 @@ const {
         );
 
       session =
-        updateSearchSession(
+        await updateSearchSession(
           searchId,
           {
             providerExecutions,
@@ -1421,16 +1478,17 @@ const {
 
             providerContext:
               legacySnapshot.providerContext,
+
+            isContinuing:
+              false,
+
+            continuationLock:
+              null,
+
+            continuationLockExpiresAt:
+              null,
           }
         );
-
-    }
-
-    if (session.isContinuing) {
-
-      return createContinuingSearchResponse(
-        session
-      );
 
     }
 
@@ -1451,7 +1509,7 @@ const {
         );
 
       const completedSession =
-        updateSearchSession(
+        await updateSearchSession(
           searchId,
           {
             providerExecutions,
@@ -1510,7 +1568,7 @@ const {
     ) {
 
       const waitingSession =
-        updateSearchSession(
+        await updateSearchSession(
           searchId,
           {
             providerExecutions,
@@ -1552,7 +1610,7 @@ const {
     }
 
     const continuationLock =
-      tryAcquireSearchContinuation(
+      await tryAcquireSearchContinuation(
         searchId
       );
 
@@ -1568,6 +1626,38 @@ const {
 
     const lockToken =
       continuationLock.lockToken;
+
+    const fencingNumber =
+      continuationLock
+        .fencingNumber;
+
+    const continuationLease = {
+      lockToken,
+      fencingNumber,
+    };
+
+    async function assertContinuationLease() {
+      const renewal =
+        await renewSearchContinuation(
+          searchId,
+          lockToken,
+          fencingNumber
+        );
+
+      if (!renewal.renewed) {
+        const error = new Error(
+          "Continuation lock ownership was lost."
+        );
+
+        error.code =
+          "SEARCH_CONTINUATION_LOCK_LOST";
+        error.status = 409;
+        error.retryable = true;
+        error.retryAfterMs = 250;
+
+        throw error;
+      }
+    }
 
     session =
       continuationLock.session;
@@ -1610,7 +1700,7 @@ const {
         );
 
       session =
-        updateSearchSession(
+        await updateSearchSession(
           searchId,
           {
             providerExecutions,
@@ -1641,8 +1731,11 @@ const {
 
             retryAfterMs:
               null,
-          }
+          },
+          continuationLease
         );
+
+      await assertContinuationLease();
 
       /*
        * Providers advance independently.
@@ -1718,6 +1811,8 @@ const {
             }
           )
         );
+
+      await assertContinuationLease();
 
       for (
         const continuationResult of
@@ -1830,9 +1925,10 @@ const {
                 .providerContext ??
               null;
 
-            appendHotelsToSearchSession(
+            await appendHotelsToSearchSession(
               searchId,
-              providerResult.hotels
+              providerResult.hotels,
+              continuationLease
             );
 
             providerExecutions =
@@ -1856,7 +1952,7 @@ const {
               );
 
             session =
-              requireSearchSession(
+              await requireSearchSession(
                 searchId
               );
 
@@ -1865,12 +1961,13 @@ const {
             ) {
 
               session =
-                updateSearchSession(
+                await updateSearchSession(
                   searchId,
                   {
                     currency:
                       providerResult.currency,
-                  }
+                  },
+                  continuationLease
                 );
 
             }
@@ -1886,7 +1983,7 @@ const {
           );
 
         session =
-          updateSearchSession(
+          await updateSearchSession(
             searchId,
             {
               providerExecutions,
@@ -1908,7 +2005,8 @@ const {
 
               retryAfterMs:
                 null,
-            }
+            },
+            continuationLease
           );
 
       }
@@ -1925,7 +2023,7 @@ const {
         );
 
       const releaseResult =
-        releaseSearchContinuation(
+        await releaseSearchContinuation(
           searchId,
           lockToken,
           {
@@ -1954,6 +2052,9 @@ const {
 
             retryAfterMs:
               outcome.retryAfterMs,
+          },
+          {
+            fencingNumber,
           }
         );
 
@@ -1978,12 +2079,15 @@ const {
 
     } catch (error) {
 
-      releaseSearchContinuation(
+      await releaseSearchContinuation(
         searchId,
         lockToken,
         {
           lastError:
             error.message,
+        },
+        {
+          fencingNumber,
         }
       );
 
@@ -2003,7 +2107,7 @@ const {
       offerId = null
     ) {
       const session =
-        requireSearchSession(
+        await requireSearchSession(
           searchId
         );
 
@@ -2104,7 +2208,7 @@ const {
     async function getSearchStatus(searchId) {
 
       const session =
-        requireSearchSession(searchId);
+        await requireSearchSession(searchId);
 return {
         success:
           true,

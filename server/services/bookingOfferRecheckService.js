@@ -135,7 +135,7 @@ function createBookingOfferRecheckService({
     offerId,
   } = {}) {
     const session =
-      requireSession(
+      await requireSession(
         searchId
       );
 
@@ -251,7 +251,7 @@ function createBookingOfferRecheckService({
         );
 
       const verification =
-        saveVerification({
+        await saveVerification({
           searchId:
             session.searchId ??
             searchId,

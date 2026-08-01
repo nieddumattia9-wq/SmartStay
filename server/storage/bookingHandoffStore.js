@@ -183,6 +183,10 @@ function requireBookingHandoff(
     });
   }
 
+  handoffs.delete(
+    normalized
+  );
+
   return structuredClone(
     handoff
   );

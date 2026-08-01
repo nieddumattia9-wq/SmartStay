@@ -246,12 +246,157 @@ function createInMemoryOperationalState(
   return Object.freeze(state);
 }
 
+function createValkeyOperationalState(
+  options = {}
+) {
+  const {
+    createValkeyOperationalStateResources,
+  } = require(
+    "./valkey/createValkeyOperationalState"
+  );
+  const resources =
+    createValkeyOperationalStateResources(
+      options
+    );
+  const deferred =
+    createInMemoryOperationalState(
+      options.deferredOverrides ?? {}
+    );
+
+  const state = {
+    mode:
+      OPERATIONAL_STATE_MODES
+        .VALKEY_DISTRIBUTED,
+    distributed:
+      true,
+    productionReady:
+      false,
+    deferredStages:
+      Object.freeze({
+        endpointRateLimitStoreFactory:
+          "39C25A.4C3",
+        providerCapacityCoordinator:
+          "39C25A.4C3",
+        providerHealthStore:
+          "39C25A.4C3",
+        searchQueueAdmission:
+          "39C25A.4C4",
+      }),
+    close:
+      resources.close,
+    ping:
+      resources.ping,
+  };
+
+  for (const portName of [
+    "searchSessionStore",
+    "continuationLeaseStore",
+    "initialSearchIdempotencyStore",
+    "bookingVerificationStore",
+    "bookingHandoffStore",
+  ]) {
+    state[portName] =
+      createOperationalStatePort(
+        portName,
+        resources[portName],
+        {
+          implementation:
+            "valkey-distributed",
+        }
+      );
+  }
+
+  for (const portName of [
+    "endpointRateLimitStoreFactory",
+    "providerCapacityCoordinator",
+    "providerHealthStore",
+    "searchQueueAdmission",
+  ]) {
+    state[portName] =
+      createOperationalStatePort(
+        portName,
+        deferred[portName],
+        {
+          implementation:
+            "in-memory-deferred",
+        }
+      );
+  }
+
+  return Object.freeze(state);
+}
+
+let distributedOperationalState = null;
+
 function getOperationalState() {
-  return createInMemoryOperationalState();
+  const requestedMode =
+    typeof process.env
+      .SMARTSTAY_OPERATIONAL_STATE_MODE ===
+      "string"
+      ? process.env
+          .SMARTSTAY_OPERATIONAL_STATE_MODE
+          .trim()
+      : "";
+  const mode =
+    requestedMode ||
+    OPERATIONAL_STATE_MODES
+      .IN_MEMORY_SINGLE_INSTANCE;
+
+  if (
+    mode ===
+    OPERATIONAL_STATE_MODES
+      .IN_MEMORY_SINGLE_INSTANCE
+  ) {
+    return createInMemoryOperationalState();
+  }
+
+  if (
+    mode !==
+    OPERATIONAL_STATE_MODES
+      .VALKEY_DISTRIBUTED
+  ) {
+    const error = new Error(
+      `Unsupported operational state mode "${mode}".`
+    );
+
+    error.code =
+      "OPERATIONAL_STATE_MODE_INVALID";
+    error.status = 500;
+
+    throw error;
+  }
+
+  if (!distributedOperationalState) {
+    const {
+      getValkeyOperationalStateConfig,
+    } = require(
+      "./valkey/createValkeyOperationalState"
+    );
+
+    distributedOperationalState =
+      createValkeyOperationalState(
+        getValkeyOperationalStateConfig()
+      );
+  }
+
+  return distributedOperationalState;
+}
+
+async function closeOperationalState() {
+  const current =
+    distributedOperationalState;
+
+  distributedOperationalState = null;
+
+  if (current?.close) {
+    await current.close();
+  }
 }
 
 module.exports = {
   createSearchQueueDisabledError,
   createInMemoryOperationalState,
+  createValkeyOperationalState,
   getOperationalState,
+  closeOperationalState,
 };

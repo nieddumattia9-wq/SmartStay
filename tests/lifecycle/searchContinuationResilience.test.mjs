@@ -656,3 +656,138 @@ test(
     }
   }
 );
+
+test(
+  "an expired continuation lease recovers a crashed running provider with a newer fence",
+  async () => {
+    let providerCalls = 0;
+    const restoreOrchestrator =
+      installMock(
+        orchestratorPath,
+        {
+          searchDestinationsAcrossProviders:
+            async () => [],
+          searchHotelsAcrossProviders:
+            async () => ({}),
+          searchHotelsWithPrimaryProvider:
+            async () => ({}),
+          getHotelDetailsFromProvider:
+            async () => ({}),
+          async continueHotelSearchForProvider({
+            providerId,
+          }) {
+            providerCalls += 1;
+
+            return createSuccessResult({
+              providerId,
+              hotelId:
+                "recovered-provider-hotel",
+            });
+          },
+        }
+      );
+    const previousService =
+      require.cache[servicePath];
+
+    delete require.cache[servicePath];
+
+    const [providerExecution] =
+      createProviderExecutionStates([
+        {
+          providerId:
+            "provider-recovery",
+          supportsContinuation:
+            true,
+          continuation: {
+            providerId:
+              "provider-recovery",
+            cursor:
+              "recovery-cursor",
+          },
+          providerContext: {
+            opaque:
+              "recovery-context",
+          },
+        },
+      ]);
+    const session =
+      searchSession.saveSearchSession({
+        originalSearchData: {
+          destinationId: "rome",
+          checkIn: "2026-09-01",
+          checkOut: "2026-09-04",
+          currency: "EUR",
+        },
+        providerId:
+          providerExecution.providerId,
+        providerExecutions: [
+          {
+            ...providerExecution,
+            state: "running",
+          },
+        ],
+        continuation:
+          providerExecution.continuation,
+        providerContext:
+          providerExecution.providerContext,
+        status: "InProgress",
+        searchIncomplete: true,
+        isContinuing: true,
+        continuationLock:
+          "crashed-worker-token",
+        continuationLockExpiresAt:
+          Date.now() - 1,
+        continuationFencingNumber: 7,
+        currency: "EUR",
+        hotels: [],
+      });
+
+    try {
+      const service = require(servicePath);
+      const result =
+        await service.continueHotelSearch(
+          session.searchId
+        );
+
+      assert.equal(providerCalls, 1);
+      assert.equal(result.status, "Completed");
+      assert.equal(
+        result.searchIncomplete,
+        false
+      );
+      assert.deepEqual(
+        result.hotels.map(
+          (hotel) => hotel.id
+        ),
+        ["recovered-provider-hotel"]
+      );
+
+      const stored =
+        searchSession.requireSearchSession(
+          session.searchId
+        );
+
+      assert.equal(stored.isContinuing, false);
+      assert.equal(
+        stored.continuationLock,
+        null
+      );
+      assert.ok(
+        stored.continuationFencingNumber >
+          7
+      );
+    } finally {
+      searchSession.clearSearchSession(
+        session.searchId
+      );
+      restoreOrchestrator();
+
+      if (previousService) {
+        require.cache[servicePath] =
+          previousService;
+      } else {
+        delete require.cache[servicePath];
+      }
+    }
+  }
+);

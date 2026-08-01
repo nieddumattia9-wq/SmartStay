@@ -91,7 +91,7 @@ function createBookingHandoffService(
     acceptChanges = false,
   } = {}) {
     const verification =
-      requireVerification(
+      await requireVerification(
         verificationId
       );
 
@@ -193,7 +193,7 @@ function createBookingHandoffService(
     }
 
     const handoff =
-      saveHandoff({
+      await saveHandoff({
         verificationId:
           verification
             .verificationId,
@@ -221,11 +221,11 @@ function createBookingHandoffService(
     };
   }
 
-  function resolveBookingHandoff({
+  async function resolveBookingHandoff({
     handoffId,
   } = {}) {
     const handoff =
-      requireHandoff(
+      await requireHandoff(
         handoffId
       );
 
@@ -250,10 +250,10 @@ async function prepareBookingHandoff(
     );
 }
 
-function resolveBookingHandoff(
+async function resolveBookingHandoff(
   options
 ) {
-  return createBookingHandoffService()
+  return await createBookingHandoffService()
     .resolveBookingHandoff(
       options
     );

@@ -663,7 +663,7 @@ router.post("/booking-handoff", async (req, res) => {
 // Open Booking Handoff
 // =========================
 
-router.get("/booking-handoff/open", (req, res) => {
+router.get("/booking-handoff/open", async (req, res) => {
   try {
     const {
       handoffId,
@@ -675,7 +675,7 @@ router.get("/booking-handoff/open", (req, res) => {
     const {
       redirectUrl,
     } =
-      resolvePreparedBookingHandoff({
+      await resolvePreparedBookingHandoff({
         handoffId,
       });
 
@@ -706,7 +706,7 @@ router.get("/booking-handoff/open", (req, res) => {
 // Booking Redirect
 // =========================
 
-router.get("/booking-redirect", (req, res) => {
+router.get("/booking-redirect", async (req, res) => {
 
   try {
 
@@ -721,7 +721,7 @@ router.get("/booking-redirect", (req, res) => {
 
     const {
       redirectUrl,
-    } = resolveBookingRedirect({
+    } = await resolveBookingRedirect({
       searchId,
       hotelId,
       offerId,
@@ -863,7 +863,7 @@ router.get("/search-status", async (req, res) => {
 // Search Session
 // =========================
 
-router.get("/search-session", (req, res) => {
+router.get("/search-session", async (req, res) => {
 
   try {
 
@@ -875,7 +875,7 @@ router.get("/search-session", (req, res) => {
       );
 
     const session =
-      requireSearchSession(
+      await requireSearchSession(
         searchId
       );
 

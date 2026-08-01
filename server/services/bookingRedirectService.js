@@ -172,13 +172,13 @@ function resolveBookingOffer({
   };
 }
 
-function resolveBookingRedirect({
+async function resolveBookingRedirect({
   searchId,
   hotelId,
   offerId,
 } = {}) {
   const session =
-    requireSearchSession(
+    await requireSearchSession(
       searchId
     );
 

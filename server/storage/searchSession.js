@@ -43,6 +43,9 @@ const sessions = new Map();
 const expiredSearchIds =
   new Map();
 
+let continuationFencingNumber =
+  0;
+
 function cloneSearchSessionData(
   value
 ) {
@@ -262,6 +265,23 @@ function saveSearchSession(session) {
           )
         : null,
 
+    continuationFencingNumber:
+      Number.isSafeInteger(
+        Number(
+          sessionSnapshot
+            .continuationFencingNumber
+        )
+      ) &&
+      Number(
+        sessionSnapshot
+          .continuationFencingNumber
+      ) > 0
+        ? Number(
+            sessionSnapshot
+              .continuationFencingNumber
+          )
+        : null,
+
     lastError:
       sessionSnapshot.lastError ??
       null,
@@ -412,6 +432,119 @@ function createSearchSessionError({
 
 }
 
+function getContinuationLeaseContext(
+  options = {}
+) {
+  const source =
+    options?.continuationLease ??
+    options;
+  const lockToken =
+    typeof source?.lockToken ===
+      "string"
+      ? source.lockToken
+      : "";
+  const fencingNumber =
+    Number(source?.fencingNumber);
+
+  if (
+    !lockToken ||
+    !Number.isSafeInteger(
+      fencingNumber
+    ) ||
+    fencingNumber <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    lockToken,
+    fencingNumber,
+  };
+}
+
+function hasActiveContinuationLease(
+  session,
+  now = Date.now()
+) {
+  return (
+    session?.isContinuing === true &&
+    typeof session
+      .continuationLock === "string" &&
+    session.continuationLock.length > 0 &&
+    Number.isFinite(
+      Number(
+        session.continuationLockExpiresAt
+      )
+    ) &&
+    Number(
+      session.continuationLockExpiresAt
+    ) > now &&
+    Number.isSafeInteger(
+      Number(
+        session.continuationFencingNumber
+      )
+    ) &&
+    Number(
+      session.continuationFencingNumber
+    ) > 0
+  );
+}
+
+function assertContinuationWriteAllowed(
+  session,
+  options = {}
+) {
+  const lease =
+    getContinuationLeaseContext(
+      options
+    );
+  const active =
+    hasActiveContinuationLease(
+      session
+    );
+
+  if (!lease) {
+    if (!active) {
+      return;
+    }
+
+    throw createSearchSessionError({
+      code:
+        "SEARCH_CONTINUATION_IN_PROGRESS",
+      message:
+        "This search continuation is already being processed.",
+      status:
+        409,
+      retryable:
+        true,
+      retryAfterMs:
+        250,
+    });
+  }
+
+  if (
+    !active ||
+    session.continuationLock !==
+      lease.lockToken ||
+    Number(
+      session.continuationFencingNumber
+    ) !== lease.fencingNumber
+  ) {
+    throw createSearchSessionError({
+      code:
+        "SEARCH_CONTINUATION_LEASE_STALE",
+      message:
+        "This search continuation is already being processed.",
+      status:
+        409,
+      retryable:
+        true,
+      retryAfterMs:
+        250,
+    });
+  }
+}
+
 function getSearchSession(searchId) {
 
   const normalizedSearchId =
@@ -535,23 +668,10 @@ function tryAcquireSearchContinuation(
     Date.now();
 
   const hasActiveLock =
-    currentSession.isContinuing ===
-      true &&
-    typeof currentSession
-      .continuationLock ===
-      "string" &&
-    currentSession
-      .continuationLock.length > 0 &&
-    Number.isFinite(
-      Number(
-        currentSession
-          .continuationLockExpiresAt
-      )
-    ) &&
-    Number(
-      currentSession
-        .continuationLockExpiresAt
-    ) > now;
+    hasActiveContinuationLease(
+      currentSession,
+      now
+    );
 
   if (hasActiveLock) {
     return {
@@ -561,6 +681,9 @@ function tryAcquireSearchContinuation(
       lockToken:
         null,
 
+      fencingNumber:
+        null,
+
       session:
         currentSession,
     };
@@ -568,6 +691,18 @@ function tryAcquireSearchContinuation(
 
   const lockToken =
     crypto.randomUUID();
+
+  continuationFencingNumber =
+    Math.max(
+      continuationFencingNumber,
+      Number(
+        currentSession
+          .continuationFencingNumber
+      ) || 0
+    ) + 1;
+
+  const fencingNumber =
+    continuationFencingNumber;
 
   const internalSession =
     sessions.get(
@@ -586,6 +721,9 @@ function tryAcquireSearchContinuation(
     continuationLockExpiresAt:
       now +
       CONTINUATION_LOCK_TTL_MS,
+
+    continuationFencingNumber:
+      fencingNumber,
 
     lastError:
       null,
@@ -609,6 +747,8 @@ function tryAcquireSearchContinuation(
 
     lockToken,
 
+    fencingNumber,
+
     session:
       cloneSearchSessionData(
         lockedSession
@@ -616,10 +756,84 @@ function tryAcquireSearchContinuation(
   };
 }
 
+function renewSearchContinuation(
+  searchId,
+  lockToken,
+  fencingNumber = null
+) {
+  const normalizedSearchId =
+    normalizeSearchId(searchId);
+
+  removeExpiredSessions();
+
+  const currentSession =
+    sessions.get(normalizedSearchId);
+
+  const hasMatchingFence =
+    fencingNumber === null ||
+    fencingNumber === undefined ||
+    Number(fencingNumber) ===
+      Number(
+        currentSession
+          ?.continuationFencingNumber
+      );
+
+  if (
+    !currentSession ||
+    typeof lockToken !== "string" ||
+    !lockToken ||
+    currentSession.continuationLock !==
+      lockToken ||
+    !hasActiveContinuationLease(
+      currentSession
+    ) ||
+    !hasMatchingFence
+  ) {
+    return {
+      renewed:
+        false,
+      session:
+        currentSession
+          ? cloneSearchSessionData(
+              currentSession
+            )
+          : null,
+    };
+  }
+
+  const now = Date.now();
+  const renewedSession = {
+    ...currentSession,
+    isContinuing:
+      true,
+    continuationLockExpiresAt:
+      now + CONTINUATION_LOCK_TTL_MS,
+    updatedAt:
+      now,
+    expiresAt:
+      now + SEARCH_SESSION_TTL_MS,
+  };
+
+  sessions.set(
+    normalizedSearchId,
+    renewedSession
+  );
+
+  return {
+    renewed:
+      true,
+    session:
+      cloneSearchSessionData(
+        renewedSession
+      ),
+  };
+}
+
 function releaseSearchContinuation(
   searchId,
   lockToken,
-  updates = {}
+  updates = {},
+  options = {}
 ) {
   const normalizedSearchId =
     normalizeSearchId(
@@ -662,7 +876,23 @@ function releaseSearchContinuation(
   if (
     currentSession
       .continuationLock !==
-    lockToken
+    lockToken ||
+    !hasActiveContinuationLease(
+      currentSession
+    ) ||
+    (
+      options?.fencingNumber !==
+        undefined &&
+      options?.fencingNumber !==
+        null &&
+      Number(
+        currentSession
+          .continuationFencingNumber
+      ) !==
+        Number(
+          options.fencingNumber
+        )
+    )
   ) {
     return {
       released:
@@ -726,7 +956,11 @@ function releaseSearchContinuation(
   };
 }
 
-function updateSearchSession(searchId, updates = {}) {
+function updateSearchSession(
+  searchId,
+  updates = {},
+  options = {}
+) {
 
   if (!searchId) {
 
@@ -746,6 +980,11 @@ function updateSearchSession(searchId, updates = {}) {
     return null;
 
   }
+
+  assertContinuationWriteAllowed(
+    currentSession,
+    options
+  );
 
   const now = Date.now();
 
@@ -784,7 +1023,8 @@ function updateSearchSession(searchId, updates = {}) {
 
 function appendHotelsToSearchSession(
   searchId,
-  hotels = []
+  hotels = [],
+  options = {}
 ) {
 
   if (!Array.isArray(hotels)) {
@@ -830,7 +1070,7 @@ function appendHotelsToSearchSession(
   return updateSearchSession(searchId, {
     hotels: mergedHotels,
     totalHotels: mergedHotels.length,
-  });
+  }, options);
 
 }
 
@@ -877,6 +1117,7 @@ module.exports = {
   getSearchSessionState,
   requireSearchSession,
   tryAcquireSearchContinuation,
+  renewSearchContinuation,
   releaseSearchContinuation,
   updateSearchSession,
   appendHotelsToSearchSession,
