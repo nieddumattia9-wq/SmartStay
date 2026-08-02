@@ -213,6 +213,8 @@ function createValkeyKeyspace({
   return Object.freeze({
     environment: safeEnvironment,
     prefix,
+    stateSchemaVersion:
+      `${prefix}:meta:schema-version`,
     session(searchId) {
       return opaque("search-session", searchId);
     },

@@ -499,6 +499,35 @@ function createQueuedSearchProcessor({
   };
 }
 
+function calculatePercentile(
+  values,
+  percentile
+) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [
+    ...values,
+  ].sort(
+    (left, right) =>
+      left - right
+  );
+  const index =
+    Math.min(
+      sorted.length - 1,
+      Math.max(
+        0,
+        Math.ceil(
+          percentile *
+            sorted.length
+        ) - 1
+      )
+    );
+
+  return sorted[index];
+}
+
 function createSearchQueueWorker({
   config =
     getSearchQueueConfig(),
@@ -532,10 +561,59 @@ function createSearchQueueWorker({
       config,
       operationalState,
     });
+  let activeExecutions =
+    0;
+  const inactiveWaiters =
+    new Set();
+  const queueWaitSamples =
+    [];
+  let completedTotal =
+    0;
+  let failedTotal =
+    0;
+  let stalledTotal =
+    0;
+
+  function resolveInactiveWaiters() {
+    if (activeExecutions !== 0) {
+      return;
+    }
+
+    for (const waiter of inactiveWaiters) {
+      clearTimeout(
+        waiter.timeoutHandle
+      );
+      waiter.resolve(true);
+    }
+
+    inactiveWaiters.clear();
+  }
+
+  async function trackedProcessor(
+    ...argumentsList
+  ) {
+    activeExecutions +=
+      1;
+
+    try {
+      return await effectiveProcessor(
+        ...argumentsList
+      );
+    }
+    finally {
+      activeExecutions =
+        Math.max(
+          0,
+          activeExecutions - 1
+        );
+      resolveInactiveWaiters();
+    }
+  }
+
   const worker =
     new WorkerClass(
       config.queueName,
-      effectiveProcessor,
+      trackedProcessor,
       {
         connection:
           createNodeRedisClient(
@@ -550,6 +628,36 @@ function createSearchQueueWorker({
         ...workerOptions,
       }
     );
+
+  worker.on(
+    "active",
+    (job) => {
+      const queuedAt =
+        Number(job?.timestamp);
+
+      if (
+        Number.isFinite(
+          queuedAt
+        ) &&
+        queuedAt > 0
+      ) {
+        queueWaitSamples.push(
+          Math.max(
+            0,
+            Date.now() -
+              queuedAt
+          )
+        );
+
+        if (
+          queueWaitSamples.length >
+          512
+        ) {
+          queueWaitSamples.shift();
+        }
+      }
+    }
+  );
 
   worker.on(
     "error",
@@ -568,6 +676,9 @@ function createSearchQueueWorker({
   worker.on(
     "completed",
     (job) => {
+      completedTotal +=
+        1;
+
       operationalLogger.info(
         "search.queue.job.completed",
         {
@@ -582,6 +693,9 @@ function createSearchQueueWorker({
   worker.on(
     "failed",
     (job, error) => {
+      failedTotal +=
+        1;
+
       operationalLogger.error(
         "search.queue.job.failed",
         {
@@ -596,29 +710,196 @@ function createSearchQueueWorker({
     }
   );
 
+  worker.on(
+    "stalled",
+    () => {
+      stalledTotal +=
+        1;
+
+      operationalLogger.warn(
+        "search.queue.job.stalled",
+        {
+          stalledTotal,
+        }
+      );
+    }
+  );
+
   let closed =
     false;
+  let closePromise =
+    null;
+  let drainPromise =
+    null;
 
-  async function close() {
-    if (closed) {
-      return;
+  function waitUntilInactive(
+    timeoutMs
+  ) {
+    if (activeExecutions === 0) {
+      return Promise.resolve(
+        true
+      );
+    }
+
+    return new Promise(
+      (resolve) => {
+        const waiter = {
+          resolve,
+          timeoutHandle:
+            null,
+        };
+
+        waiter.timeoutHandle =
+          setTimeout(
+            () => {
+              inactiveWaiters.delete(
+                waiter
+              );
+              resolve(false);
+            },
+            timeoutMs
+          );
+
+        inactiveWaiters.add(
+          waiter
+        );
+      }
+    );
+  }
+
+  async function closeWorker(
+    force = false
+  ) {
+    if (closePromise) {
+      return closePromise;
     }
 
     closed = true;
-
-    try {
-      await worker.close();
-    }
-    finally {
-      if (rawClient.isOpen) {
+    closePromise =
+      (async () => {
         try {
-          await rawClient.quit();
+          await worker.close(
+            force
+          );
         }
-        catch {
-          rawClient.disconnect();
+        finally {
+          if (rawClient.isOpen) {
+            try {
+              await rawClient.quit();
+            }
+            catch {
+              rawClient.disconnect();
+            }
+          }
         }
-      }
+      })();
+
+    return closePromise;
+  }
+
+  async function close() {
+    if (closed) {
+      return closePromise;
     }
+
+    return closeWorker(
+      false
+    );
+  }
+
+  async function drain({
+    timeoutMs =
+      config.workerDrainTimeoutMs,
+  } = {}) {
+    if (drainPromise) {
+      return drainPromise;
+    }
+
+    const safeTimeoutMs =
+      Number.isSafeInteger(
+        Number(timeoutMs)
+      ) &&
+      Number(timeoutMs) >= 1
+        ? Number(timeoutMs)
+        : config
+            .workerDrainTimeoutMs;
+
+    drainPromise =
+      (async () => {
+        const startedAt =
+          Date.now();
+
+        if (closed) {
+          await closePromise;
+
+          return Object.freeze({
+            drained:
+              activeExecutions ===
+              0,
+            forced:
+              false,
+            activeAtTimeout:
+              activeExecutions,
+            durationMs:
+              0,
+          });
+        }
+
+        await worker.pause(
+          true
+        );
+
+        const drained =
+          await waitUntilInactive(
+            safeTimeoutMs
+          );
+        const activeAtTimeout =
+          activeExecutions;
+
+        await closeWorker(
+          !drained
+        );
+
+        return Object.freeze({
+          drained,
+          forced:
+            !drained,
+          activeAtTimeout,
+          durationMs:
+            Math.max(
+              0,
+              Date.now() -
+                startedAt
+            ),
+        });
+      })();
+
+    return drainPromise;
+  }
+
+  function getWorkerMetricsSnapshot() {
+    return Object.freeze({
+      active:
+        activeExecutions,
+      completedTotal,
+      failedTotal,
+      stalledTotal,
+      queueWaitP50Ms:
+        calculatePercentile(
+          queueWaitSamples,
+          0.5
+        ),
+      queueWaitP95Ms:
+        calculatePercentile(
+          queueWaitSamples,
+          0.95
+        ),
+      queueWaitP99Ms:
+        calculatePercentile(
+          queueWaitSamples,
+          0.99
+        ),
+    });
   }
 
   return Object.freeze({
@@ -626,6 +907,14 @@ function createSearchQueueWorker({
     waitUntilReady:
       () => worker
         .waitUntilReady(),
+    pauseAcquisition:
+      () => worker.pause(
+        true
+      ),
+    resumeAcquisition:
+      () => worker.resume(),
+    drain,
+    getWorkerMetricsSnapshot,
     close,
   });
 }

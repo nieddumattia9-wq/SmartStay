@@ -459,6 +459,28 @@ test(
           0,
         waiting:
           0,
+        delayed:
+          0,
+        failed:
+          0,
+        oldestJobAgeMs:
+          0,
+        maximumAdmitted:
+          0,
+        schemaCompatible:
+          true,
+        expectedSchemaVersion:
+          "1",
+        observedSchemaVersion:
+          "1",
+        readyWorkers:
+          0,
+        drainingWorkers:
+          0,
+        degradedWorkers:
+          0,
+        lastReadyWorkerHeartbeatAgeMs:
+          null,
       }
     );
 

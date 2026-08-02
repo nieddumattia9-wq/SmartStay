@@ -54,6 +54,18 @@ const disabledSearchQueueAdmission =
       return false;
     },
 
+    writeSearchWorkerHeartbeat() {
+      return Promise.reject(
+        createSearchQueueDisabledError()
+      );
+    },
+
+    removeSearchWorkerHeartbeat() {
+      return Promise.resolve(
+        false
+      );
+    },
+
     getSearchQueueAdmissionSnapshot() {
       return Object.freeze({
         enabled:
@@ -66,6 +78,28 @@ const disabledSearchQueueAdmission =
           0,
         waiting:
           0,
+        delayed:
+          0,
+        failed:
+          0,
+        oldestJobAgeMs:
+          0,
+        maximumAdmitted:
+          0,
+        schemaCompatible:
+          true,
+        expectedSchemaVersion:
+          "1",
+        observedSchemaVersion:
+          "1",
+        readyWorkers:
+          0,
+        drainingWorkers:
+          0,
+        degradedWorkers:
+          0,
+        lastReadyWorkerHeartbeatAgeMs:
+          null,
       });
     },
   });
@@ -137,6 +171,29 @@ function createInMemoryOperationalState(
         .IN_MEMORY_SINGLE_INSTANCE,
     distributed:
       false,
+    productionReady:
+      false,
+    ping() {
+      return Promise.resolve(
+        "PONG"
+      );
+    },
+    getReadinessSnapshot() {
+      return Object.freeze({
+        ready:
+          true,
+        mode:
+          OPERATIONAL_STATE_MODES
+            .IN_MEMORY_SINGLE_INSTANCE,
+        expectedSchemaVersion:
+          "v1",
+        observedSchemaVersion:
+          "v1",
+      });
+    },
+    close() {
+      return Promise.resolve();
+    },
   };
 
   defineLazyPort({
@@ -333,6 +390,9 @@ function createValkeyOperationalState(
       closeResources,
     ping:
       resources.ping,
+    getReadinessSnapshot:
+      resources
+        .getReadinessSnapshot,
   };
 
   for (const portName of [

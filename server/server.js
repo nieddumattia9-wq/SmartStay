@@ -40,6 +40,14 @@ const {
   );
 
 const {
+  closeOperationalState,
+  getOperationalState,
+} =
+  require(
+    "./state/operationalState"
+  );
+
+const {
   installProcessSafetyHandlers,
 } =
   require(
@@ -149,6 +157,9 @@ function startServer({
   const runtimeState =
     createRuntimeState();
 
+  const operationalState =
+    getOperationalState();
+
   const {
     app,
   } =
@@ -156,6 +167,7 @@ function startServer({
       config,
       logger,
       runtimeState,
+      operationalState,
     });
 
   const server =
@@ -241,9 +253,7 @@ function startServer({
     stopping =
       true;
 
-    runtimeState.setReady(
-      false
-    );
+    runtimeState.beginDrain();
 
     logger.info(
       "service.stopping",
@@ -310,17 +320,6 @@ function startServer({
 
     server.close(
       (error) => {
-        if (
-          forceShutdownTimer
-        ) {
-          clearTimeoutFn(
-            forceShutdownTimer
-          );
-
-          forceShutdownTimer =
-            null;
-        }
-
         if (error) {
           updateExitCode(
             1
@@ -337,15 +336,45 @@ function startServer({
           return;
         }
 
-        logger.info(
-          "service.stopped",
-          {
-            signal,
+        void closeOperationalState()
+          .then(() => {
+            if (
+              forceShutdownTimer
+            ) {
+              clearTimeoutFn(
+                forceShutdownTimer
+              );
 
-            exitCode:
-              processObject.exitCode,
-          }
-        );
+              forceShutdownTimer =
+                null;
+            }
+
+            logger.info(
+              "service.stopped",
+              {
+                signal,
+
+                exitCode:
+                  processObject.exitCode,
+              }
+            );
+          })
+          .catch(
+            (closeError) => {
+              updateExitCode(
+                1
+              );
+
+              logger.error(
+                "service.state-close-failed",
+                {
+                  signal,
+                  error:
+                    closeError,
+                }
+              );
+            }
+          );
       }
     );
 

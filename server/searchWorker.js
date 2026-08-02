@@ -44,6 +44,12 @@ const {
   "./queue/searchQueueWorker"
 );
 
+const {
+  createSearchWorkerRuntime,
+} = require(
+  "./queue/searchWorkerRuntime"
+);
+
 async function startSearchWorker({
   environment =
     process.env,
@@ -72,12 +78,21 @@ async function startSearchWorker({
       config,
       operationalState,
     });
+  const workerRuntime =
+    createSearchWorkerRuntime({
+      config,
+      operationalState,
+      searchWorker,
+      logger,
+    });
   let stopping =
     false;
+  let stopPromise =
+    null;
 
   async function stop(signal) {
     if (stopping) {
-      return;
+      return stopPromise;
     }
 
     stopping =
@@ -90,49 +105,91 @@ async function startSearchWorker({
       }
     );
 
-    try {
-      await searchWorker.close();
-      await closeOperationalState();
+    stopPromise =
+      (async () => {
+        try {
+          const drainResult =
+            await workerRuntime
+              .stop(signal);
 
-      logger.info(
-        "search.worker.stopped",
-        {
-          signal,
-        }
-      );
-    }
-    catch (error) {
-      processObject.exitCode =
-        1;
+          await closeOperationalState();
 
-      logger.error(
-        "search.worker.stop-failed",
-        {
-          signal,
-          code:
-            error?.code ??
-            null,
+          logger.info(
+            "search.worker.stopped",
+            {
+              signal,
+              drained:
+                drainResult.drained,
+              forced:
+                drainResult.forced,
+              activeAtTimeout:
+                drainResult
+                  .activeAtTimeout,
+              drainDurationMs:
+                drainResult.durationMs,
+            }
+          );
+
+          return drainResult;
         }
-      );
-    }
+        catch (error) {
+          processObject.exitCode =
+            1;
+
+          try {
+            await closeOperationalState();
+          }
+          catch {
+            // The original stop failure remains authoritative.
+          }
+
+          logger.error(
+            "search.worker.stop-failed",
+            {
+              signal,
+              code:
+                error?.code ??
+                null,
+            }
+          );
+
+          throw error;
+        }
+      })();
+
+    return stopPromise;
   }
 
   processObject.once(
     "SIGINT",
     () => {
-      void stop("SIGINT");
+      void stop("SIGINT")
+        .catch(() => {});
     }
   );
 
   processObject.once(
     "SIGTERM",
     () => {
-      void stop("SIGTERM");
+      void stop("SIGTERM")
+        .catch(() => {});
     }
   );
 
-  await searchWorker
-    .waitUntilReady();
+  try {
+    await workerRuntime.start();
+  }
+  catch (error) {
+    try {
+      await searchWorker.close();
+      await closeOperationalState();
+    }
+    catch {
+      // Startup reports the first authoritative failure.
+    }
+
+    throw error;
+  }
 
   logger.info(
     "search.worker.started",
@@ -141,11 +198,21 @@ async function startSearchWorker({
         config.queueName,
       concurrency:
         config.workerConcurrency,
+      heartbeatIntervalMs:
+        config
+          .workerHeartbeatIntervalMs,
+      heartbeatTtlMs:
+        config
+          .workerHeartbeatTtlMs,
+      drainTimeoutMs:
+        config
+          .workerDrainTimeoutMs,
     }
   );
 
   return Object.freeze({
     searchWorker,
+    workerRuntime,
     stop,
   });
 }

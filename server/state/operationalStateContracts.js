@@ -148,6 +148,8 @@ const OPERATIONAL_STATE_PORT_CONTRACTS =
           "beginSearchExecution",
           "renewSearchAdmission",
           "releaseSearchAdmission",
+          "writeSearchWorkerHeartbeat",
+          "removeSearchWorkerHeartbeat",
           "getSearchQueueAdmissionSnapshot",
         ],
         values: [

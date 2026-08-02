@@ -6,6 +6,9 @@ const SEARCH_QUEUE_FEATURE_FLAG =
 const SEARCH_QUEUE_NAME =
   "smartstay-searches";
 
+const SEARCH_QUEUE_SCHEMA_VERSION =
+  "1";
+
 const SEARCH_QUEUE_JOB_NAMES =
   Object.freeze({
     INITIAL_SEARCH:
@@ -46,6 +49,12 @@ const DEFAULT_JOB_PAYLOAD_MAX_BYTES =
   64 * 1_024;
 const DEFAULT_WORKER_CONCURRENCY =
   2;
+const DEFAULT_WORKER_HEARTBEAT_INTERVAL_MS =
+  5_000;
+const DEFAULT_WORKER_HEARTBEAT_TTL_MS =
+  20_000;
+const DEFAULT_WORKER_DRAIN_TIMEOUT_MS =
+  30_000;
 
 const ENVIRONMENT_PATTERN =
   /^[a-z0-9][a-z0-9_-]{0,31}$/;
@@ -228,6 +237,8 @@ function getSearchQueueConfig(
         SEARCH_QUEUE_FEATURE_FLAG,
       queueName:
         SEARCH_QUEUE_NAME,
+      schemaVersion:
+        SEARCH_QUEUE_SCHEMA_VERSION,
       jobNames:
         SEARCH_QUEUE_JOB_NAMES,
       priorities:
@@ -242,6 +253,39 @@ function getSearchQueueConfig(
       environmentVariables
         .SMARTSTAY_STATE_ENVIRONMENT
     );
+  const workerHeartbeatIntervalMs =
+    normalizePositiveInteger(
+      environmentVariables
+        .SMARTSTAY_SEARCH_WORKER_HEARTBEAT_INTERVAL_MS,
+      DEFAULT_WORKER_HEARTBEAT_INTERVAL_MS,
+      {
+        minimum:
+          250,
+        maximum:
+          60_000,
+      }
+    );
+  const workerHeartbeatTtlMs =
+    normalizePositiveInteger(
+      environmentVariables
+        .SMARTSTAY_SEARCH_WORKER_HEARTBEAT_TTL_MS,
+      DEFAULT_WORKER_HEARTBEAT_TTL_MS,
+      {
+        minimum:
+          1_000,
+        maximum:
+          5 * 60 * 1_000,
+      }
+    );
+
+  if (
+    workerHeartbeatTtlMs <
+      workerHeartbeatIntervalMs * 2
+  ) {
+    throw createSearchQueueConfigurationError(
+      "SMARTSTAY_SEARCH_WORKER_HEARTBEAT_TTL_MS must be at least twice the heartbeat interval."
+    );
+  }
 
   return Object.freeze({
     enabled:
@@ -264,10 +308,14 @@ function getSearchQueueConfig(
       ),
     queueName:
       SEARCH_QUEUE_NAME,
+    schemaVersion:
+      SEARCH_QUEUE_SCHEMA_VERSION,
     prefix:
       `ss:v1:${queueEnvironment}:bullmq`,
     admissionPrefix:
       `ss:v1:${queueEnvironment}:search-queue-admission`,
+    runtimePrefix:
+      `ss:v1:${queueEnvironment}:search-queue-runtime`,
     jobNames:
       SEARCH_QUEUE_JOB_NAMES,
     priorities:
@@ -380,15 +428,33 @@ function getSearchQueueConfig(
             32,
         }
       ),
+    workerHeartbeatIntervalMs,
+    workerHeartbeatTtlMs,
+    workerDrainTimeoutMs:
+      normalizePositiveInteger(
+        environmentVariables
+          .SMARTSTAY_SEARCH_WORKER_DRAIN_TIMEOUT_MS,
+        DEFAULT_WORKER_DRAIN_TIMEOUT_MS,
+        {
+          minimum:
+            1_000,
+          maximum:
+            2 * 60 * 1_000,
+        }
+      ),
   });
 }
 
 module.exports = {
   SEARCH_QUEUE_FEATURE_FLAG,
   SEARCH_QUEUE_NAME,
+  SEARCH_QUEUE_SCHEMA_VERSION,
   SEARCH_QUEUE_JOB_NAMES,
   SEARCH_QUEUE_PRIORITIES,
   DEFAULT_MAX_ADMITTED_JOBS,
+  DEFAULT_WORKER_HEARTBEAT_INTERVAL_MS,
+  DEFAULT_WORKER_HEARTBEAT_TTL_MS,
+  DEFAULT_WORKER_DRAIN_TIMEOUT_MS,
   createSearchQueueConfigurationError,
   getSearchQueueConfig,
 };

@@ -51,14 +51,11 @@ const {
   );
 
 const {
-  endpointRateLimitStoreFactory,
-} = getOperationalState();
-
-const {
-  createEndpointRateLimiters,
-  createRateLimitHandler,
+  createOperationalReadinessProbe,
 } =
-  endpointRateLimitStoreFactory;
+  require(
+    "./observability/operationalReadiness"
+  );
 
 const {
   createInMemoryAnalyticsEventStore,
@@ -86,20 +83,132 @@ const {
 function createRuntimeState() {
   let ready =
     true;
+  let draining =
+    false;
 
   return Object.freeze({
     isReady() {
-      return ready;
+      return ready &&
+        !draining;
+    },
+
+    isAcceptingWork() {
+      return !draining;
+    },
+
+    isDraining() {
+      return draining;
     },
 
     setReady(
       value
     ) {
+      if (draining) {
+        return false;
+      }
+
       ready =
         value ===
         true;
+
+      return ready;
+    },
+
+    beginDrain() {
+      draining =
+        true;
+      ready =
+        false;
+
+      return true;
     },
   });
+}
+
+function createRateLimitHandler(
+  options
+) {
+  return getOperationalState()
+    .endpointRateLimitStoreFactory
+    .createRateLimitHandler(
+      options
+    );
+}
+
+function isWorkAdmittingRequest(
+  req
+) {
+  if (
+    req.method !== "GET" &&
+    req.method !== "HEAD" &&
+    req.method !== "OPTIONS"
+  ) {
+    return true;
+  }
+
+  return (
+    req.method === "GET" ||
+    req.method === "HEAD"
+  ) &&
+    (
+      req.path ===
+        "/api/booking-handoff/open" ||
+      req.path ===
+        "/api/booking-redirect"
+    );
+}
+
+function createDrainGuard(
+  runtimeState
+) {
+  return function guardDrain(
+    req,
+    res,
+    next
+  ) {
+    if (
+      runtimeState
+        .isAcceptingWork() ||
+      !isWorkAdmittingRequest(
+        req
+      )
+    ) {
+      next();
+
+      return;
+    }
+
+    res.set(
+      "Retry-After",
+      "1"
+    );
+
+    req.log?.warn(
+      "http.request.rejected-during-drain",
+      {
+        method:
+          req.method,
+        path:
+          req.path,
+      }
+    );
+
+    res.status(
+      503
+    ).json({
+      success:
+        false,
+      code:
+        "SERVICE_DRAINING",
+      message:
+        "Service is temporarily unavailable.",
+      retryAfterMs:
+        1_000,
+      requestId:
+        req.requestId ??
+        null,
+    });
+  };
 }
 
 function createCorsOriginHandler(
@@ -156,6 +265,12 @@ function createApp({
   runtimeState =
     createRuntimeState(),
 
+  operationalState =
+    getOperationalState(),
+
+  readinessProbe =
+    null,
+
   searchRoutes =
     require(
       "./routes/search"
@@ -173,6 +288,18 @@ function createApp({
       maxEvents:
         config.analyticsStoreMaxEvents,
     });
+
+  const effectiveReadinessProbe =
+    readinessProbe ??
+    createOperationalReadinessProbe({
+      operationalState,
+    });
+
+  const {
+    createEndpointRateLimiters,
+  } =
+    operationalState
+      .endpointRateLimitStoreFactory;
 
   configureOperationalLogger({
     logger,
@@ -244,6 +371,12 @@ function createApp({
       adminToken:
         config.analyticsAdminToken,
     });
+
+  app.use(
+    createDrainGuard(
+      runtimeState
+    )
+  );
 
   app.use(
     endpointRateLimiters.api
@@ -411,12 +544,21 @@ function createApp({
 
   app.get(
     "/health/ready",
-    (
+    async (
       req,
       res
     ) => {
-      const ready =
+      const locallyReady =
         runtimeState.isReady();
+      const readiness =
+        locallyReady
+          ? await effectiveReadinessProbe
+              .check()
+          : null;
+      const ready =
+        locallyReady &&
+        readiness?.ready ===
+          true;
 
       res.status(
         ready
@@ -446,12 +588,21 @@ function createApp({
 
   app.get(
     "/health",
-    (
+    async (
       req,
       res
     ) => {
-      const ready =
+      const locallyReady =
         runtimeState.isReady();
+      const readiness =
+        locallyReady
+          ? await effectiveReadinessProbe
+              .check()
+          : null;
+      const ready =
+        locallyReady &&
+        readiness?.ready ===
+          true;
 
       res.status(
         ready
@@ -717,6 +868,8 @@ function createApp({
 module.exports = {
   createApp,
   createCorsOriginHandler,
+  createDrainGuard,
   createRateLimitHandler,
   createRuntimeState,
+  isWorkAdmittingRequest,
 };

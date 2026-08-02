@@ -194,6 +194,142 @@ redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now)
 return redis.call('ZCARD', KEYS[1])
 `;
 
+const WRITE_WORKER_HEARTBEAT_SCRIPT =
+  String.raw`
+local expected_schema = ARGV[1]
+local observed_schema = redis.call('GET', KEYS[1])
+
+if not observed_schema then
+  redis.call('SET', KEYS[1], expected_schema, 'NX')
+  observed_schema = redis.call('GET', KEYS[1])
+end
+
+if observed_schema ~= expected_schema then
+  return {'schema-mismatch', observed_schema or ''}
+end
+
+local worker_id = ARGV[2]
+local heartbeat_token = ARGV[3]
+local worker_state = ARGV[4]
+local now = tonumber(ARGV[5])
+local expires_at = now + tonumber(ARGV[6])
+local started_at = tonumber(ARGV[7])
+local expired = redis.call('ZRANGEBYSCORE', KEYS[2], '-inf', now)
+
+for _, expired_worker_id in ipairs(expired) do
+  redis.call('HDEL', KEYS[3], expired_worker_id)
+end
+
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now)
+
+local current_raw = redis.call('HGET', KEYS[3], worker_id)
+if current_raw then
+  local current = cjson.decode(current_raw)
+  if current.heartbeatToken ~= heartbeat_token then
+    return {'stale'}
+  end
+end
+
+local record = cjson.encode({
+  schemaVersion = 1,
+  heartbeatToken = heartbeat_token,
+  state = worker_state,
+  startedAt = started_at,
+  lastHeartbeatAt = now,
+  expiresAt = expires_at
+})
+
+redis.call('HSET', KEYS[3], worker_id, record)
+redis.call('ZADD', KEYS[2], expires_at, worker_id)
+return {'ok'}
+`;
+
+const REMOVE_WORKER_HEARTBEAT_SCRIPT =
+  String.raw`
+local worker_id = ARGV[1]
+local heartbeat_token = ARGV[2]
+local current_raw = redis.call('HGET', KEYS[2], worker_id)
+
+if not current_raw then
+  redis.call('ZREM', KEYS[1], worker_id)
+  return 1
+end
+
+local current = cjson.decode(current_raw)
+if current.heartbeatToken ~= heartbeat_token then
+  return 0
+end
+
+redis.call('HDEL', KEYS[2], worker_id)
+redis.call('ZREM', KEYS[1], worker_id)
+return 1
+`;
+
+const WORKER_READINESS_SNAPSHOT_SCRIPT =
+  String.raw`
+local expected_schema = ARGV[1]
+local now = tonumber(ARGV[2])
+local observed_schema = redis.call('GET', KEYS[1])
+local expired = redis.call('ZRANGEBYSCORE', KEYS[2], '-inf', now)
+
+for _, expired_worker_id in ipairs(expired) do
+  redis.call('HDEL', KEYS[3], expired_worker_id)
+end
+
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now)
+
+local ready = 0
+local draining = 0
+local degraded = 0
+local latest_ready_heartbeat = 0
+local records = redis.call('HVALS', KEYS[3])
+
+for _, record_raw in ipairs(records) do
+  local record = cjson.decode(record_raw)
+  if tonumber(record.schemaVersion or 0) == 1 then
+    if record.state == 'ready' then
+      ready = ready + 1
+      latest_ready_heartbeat = math.max(
+        latest_ready_heartbeat,
+        tonumber(record.lastHeartbeatAt or 0)
+      )
+    elseif record.state == 'draining' then
+      draining = draining + 1
+    else
+      degraded = degraded + 1
+    end
+  else
+    degraded = degraded + 1
+  end
+end
+
+local schema_status = 'missing'
+if observed_schema == expected_schema then
+  schema_status = 'compatible'
+elseif observed_schema then
+  schema_status = 'incompatible'
+end
+
+return {
+  schema_status,
+  observed_schema or '',
+  tostring(ready),
+  tostring(draining),
+  tostring(degraded),
+  tostring(latest_ready_heartbeat)
+}
+`;
+
+const WORKER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const SEARCH_WORKER_STATES =
+  new Set([
+    "ready",
+    "draining",
+    "degraded",
+  ]);
+
 function createSearchQueueError({
   code,
   message,
@@ -251,6 +387,115 @@ function normalizeText(value) {
   return typeof value === "string"
     ? value.trim()
     : "";
+}
+
+function createSearchQueueSchemaError() {
+  return createSearchQueueError({
+    code:
+      "SEARCH_QUEUE_SCHEMA_INCOMPATIBLE",
+    message:
+      "The search queue schema is not compatible with this release.",
+    status:
+      503,
+    retryable:
+      false,
+  });
+}
+
+function normalizeWorkerHeartbeat({
+  workerId,
+  heartbeatToken,
+  state,
+  startedAt,
+} = {}) {
+  const normalizedWorkerId =
+    normalizeText(workerId);
+  const normalizedHeartbeatToken =
+    normalizeText(
+      heartbeatToken
+    );
+  const normalizedState =
+    normalizeText(state)
+      .toLowerCase();
+  const normalizedStartedAt =
+    Number(startedAt);
+
+  if (
+    !WORKER_ID_PATTERN.test(
+      normalizedWorkerId
+    ) ||
+    !WORKER_ID_PATTERN.test(
+      normalizedHeartbeatToken
+    ) ||
+    !SEARCH_WORKER_STATES.has(
+      normalizedState
+    ) ||
+    !Number.isSafeInteger(
+      normalizedStartedAt
+    ) ||
+    normalizedStartedAt <= 0
+  ) {
+    throw createSearchQueueError({
+      code:
+        "SEARCH_WORKER_HEARTBEAT_INVALID",
+      message:
+        "The search worker heartbeat is invalid.",
+      status:
+        400,
+      retryable:
+        false,
+    });
+  }
+
+  return Object.freeze({
+    workerId:
+      normalizedWorkerId,
+    heartbeatToken:
+      normalizedHeartbeatToken,
+    state:
+      normalizedState,
+    startedAt:
+      normalizedStartedAt,
+  });
+}
+
+function normalizeWorkerIdentity({
+  workerId,
+  heartbeatToken,
+} = {}) {
+  const normalizedWorkerId =
+    normalizeText(workerId);
+  const normalizedHeartbeatToken =
+    normalizeText(
+      heartbeatToken
+    );
+
+  if (
+    !WORKER_ID_PATTERN.test(
+      normalizedWorkerId
+    ) ||
+    !WORKER_ID_PATTERN.test(
+      normalizedHeartbeatToken
+    )
+  ) {
+    throw createSearchQueueError({
+      code:
+        "SEARCH_WORKER_HEARTBEAT_INVALID",
+      message:
+        "The search worker heartbeat identity is invalid.",
+      status:
+        400,
+      retryable:
+        false,
+    });
+  }
+
+  return Object.freeze({
+    workerId:
+      normalizedWorkerId,
+    heartbeatToken:
+      normalizedHeartbeatToken,
+  });
 }
 
 function createSearchJobId({
@@ -432,6 +677,15 @@ function createBullMqSearchQueueAdmission({
       `${config.admissionPrefix}:records`,
       `${config.admissionPrefix}:fences`,
     ]);
+  const runtimeKeys =
+    Object.freeze({
+      schema:
+        `${config.runtimePrefix}:schema-version`,
+      workerExpiry:
+        `${config.runtimePrefix}:worker-expiry`,
+      workerRecords:
+        `${config.runtimePrefix}:worker-records`,
+    });
 
   let closed =
     false;
@@ -1136,12 +1390,106 @@ function createBullMqSearchQueueAdmission({
     });
   }
 
+  async function writeSearchWorkerHeartbeat(
+    heartbeat
+  ) {
+    const normalized =
+      normalizeWorkerHeartbeat(
+        heartbeat
+      );
+
+    return executeQueueCommand(
+      async () => {
+        const result =
+          await rawClient.eval(
+            WRITE_WORKER_HEARTBEAT_SCRIPT,
+            {
+              keys: [
+                runtimeKeys.schema,
+                runtimeKeys
+                  .workerExpiry,
+                runtimeKeys
+                  .workerRecords,
+              ],
+              arguments: [
+                config.schemaVersion,
+                normalized.workerId,
+                normalized
+                  .heartbeatToken,
+                normalized.state,
+                String(Date.now()),
+                String(
+                  config
+                    .workerHeartbeatTtlMs
+                ),
+                String(
+                  normalized.startedAt
+                ),
+              ],
+            }
+          );
+        const outcome =
+          String(
+            result?.[0] ??
+            ""
+          );
+
+        if (
+          outcome ===
+          "schema-mismatch"
+        ) {
+          throw createSearchQueueSchemaError();
+        }
+
+        return outcome ===
+          "ok";
+      }
+    );
+  }
+
+  async function removeSearchWorkerHeartbeat(
+    identity
+  ) {
+    const normalized =
+      normalizeWorkerIdentity(
+        identity
+      );
+
+    return executeQueueCommand(
+      async () => {
+        const result =
+          await rawClient.eval(
+            REMOVE_WORKER_HEARTBEAT_SCRIPT,
+            {
+              keys: [
+                runtimeKeys
+                  .workerExpiry,
+                runtimeKeys
+                  .workerRecords,
+              ],
+              arguments: [
+                normalized.workerId,
+                normalized
+                  .heartbeatToken,
+              ],
+            }
+          );
+
+        return Number(result) === 1;
+      }
+    );
+  }
+
   async function getSearchQueueAdmissionSnapshot() {
     return executeQueueCommand(
       async () => {
+        const now =
+          Date.now();
         const [
           admitted,
           jobCounts,
+          workerSnapshot,
+          oldestJobs,
         ] = await Promise.all([
           rawClient.eval(
             ADMISSION_SNAPSHOT_SCRIPT,
@@ -1149,7 +1497,7 @@ function createBullMqSearchQueueAdmission({
               keys:
                 admissionKeys,
               arguments: [
-                String(Date.now()),
+                String(now),
               ],
             }
           ),
@@ -1157,9 +1505,71 @@ function createBullMqSearchQueueAdmission({
             "wait",
             "active",
             "delayed",
-            "prioritized"
+            "prioritized",
+            "failed"
+          ),
+          rawClient.eval(
+            WORKER_READINESS_SNAPSHOT_SCRIPT,
+            {
+              keys: [
+                runtimeKeys.schema,
+                runtimeKeys
+                  .workerExpiry,
+                runtimeKeys
+                  .workerRecords,
+              ],
+              arguments: [
+                config.schemaVersion,
+                String(now),
+              ],
+            }
+          ),
+          queue.getJobs(
+            [
+              "waiting",
+              "prioritized",
+              "delayed",
+              "active",
+            ],
+            0,
+            0,
+            true
           ),
         ]);
+        const oldestTimestamp =
+          oldestJobs
+            .map(
+              (job) =>
+                Number(
+                  job?.timestamp
+                )
+            )
+            .filter(
+              (timestamp) =>
+                Number.isFinite(
+                  timestamp
+                ) &&
+                timestamp > 0
+            )
+            .reduce(
+              (oldest, timestamp) =>
+                oldest === null
+                  ? timestamp
+                  : Math.min(
+                      oldest,
+                      timestamp
+                    ),
+              null
+            );
+        const latestReadyHeartbeatAt =
+          Number(
+            workerSnapshot?.[5]
+          );
+        const schemaStatus =
+          String(
+            workerSnapshot?.[0] ??
+            "missing"
+          );
 
         return Object.freeze({
           enabled:
@@ -1187,8 +1597,54 @@ function createBullMqSearchQueueAdmission({
             Number(
               jobCounts.delayed
             ) || 0,
+          failed:
+            Number(
+              jobCounts.failed
+            ) || 0,
+          oldestJobAgeMs:
+            oldestTimestamp ===
+              null
+              ? 0
+              : Math.max(
+                  0,
+                  now -
+                    oldestTimestamp
+                ),
           maximumAdmitted:
             config.maxAdmittedJobs,
+          schemaCompatible:
+            schemaStatus ===
+            "compatible",
+          expectedSchemaVersion:
+            config.schemaVersion,
+          observedSchemaVersion:
+            String(
+              workerSnapshot?.[1] ??
+              ""
+            ) || null,
+          readyWorkers:
+            Number(
+              workerSnapshot?.[2]
+            ) || 0,
+          drainingWorkers:
+            Number(
+              workerSnapshot?.[3]
+            ) || 0,
+          degradedWorkers:
+            Number(
+              workerSnapshot?.[4]
+            ) || 0,
+          lastReadyWorkerHeartbeatAgeMs:
+            Number.isFinite(
+              latestReadyHeartbeatAt
+            ) &&
+            latestReadyHeartbeatAt > 0
+              ? Math.max(
+                  0,
+                  now -
+                    latestReadyHeartbeatAt
+                )
+              : null,
         });
       }
     );
@@ -1229,6 +1685,8 @@ function createBullMqSearchQueueAdmission({
     beginSearchExecution,
     renewSearchAdmission,
     releaseSearchAdmission,
+    writeSearchWorkerHeartbeat,
+    removeSearchWorkerHeartbeat,
     getSearchQueueAdmissionSnapshot,
     ping,
     close,

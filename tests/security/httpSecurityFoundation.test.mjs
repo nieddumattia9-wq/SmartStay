@@ -63,6 +63,8 @@ async function startTestServer({
     {},
   runtimeState =
     createRuntimeState(),
+  operationalState,
+  readinessProbe,
 } = {}) {
   const logLines =
     [];
@@ -128,6 +130,8 @@ async function startTestServer({
       config,
       logger,
       runtimeState,
+      operationalState,
+      readinessProbe,
       searchRoutes:
         router ??
         fallbackRouter,
@@ -494,9 +498,7 @@ test(
         200
       );
 
-      runtimeState.setReady(
-        false
-      );
+      runtimeState.beginDrain();
 
       const liveness =
         await fetch(
@@ -526,6 +528,210 @@ test(
       assert.equal(
         payload.status,
         "not-ready"
+      );
+    }
+    finally {
+      await harness.close();
+    }
+  }
+);
+
+test(
+  "dependency readiness fails closed without changing liveness or exposing operational details",
+  async () => {
+    let checks =
+      0;
+    const readinessProbe = {
+      async check() {
+        checks +=
+          1;
+
+        return {
+          ready:
+            false,
+          code:
+            "SEARCH_WORKER_HEARTBEAT_MISSING",
+          metrics: {
+            privateProviderId:
+              "must-not-be-public",
+          },
+        };
+      },
+    };
+    const harness =
+      await startTestServer({
+        readinessProbe,
+      });
+
+    try {
+      const readiness =
+        await fetch(
+          `${harness.origin}/health/ready`
+        );
+      const liveness =
+        await fetch(
+          `${harness.origin}/health/live`
+        );
+
+      assert.equal(
+        readiness.status,
+        503
+      );
+      assert.equal(
+        liveness.status,
+        200
+      );
+      assert.equal(
+        checks,
+        1
+      );
+
+      const payload =
+        await readJson(
+          readiness
+        );
+      const serialized =
+        JSON.stringify(
+          payload
+        );
+
+      assert.equal(
+        payload.status,
+        "not-ready"
+      );
+      assert.equal(
+        serialized.includes(
+          "SEARCH_WORKER_HEARTBEAT_MISSING"
+        ),
+        false
+      );
+      assert.equal(
+        serialized.includes(
+          "must-not-be-public"
+        ),
+        false
+      );
+    }
+    finally {
+      await harness.close();
+    }
+  }
+);
+
+test(
+  "graceful drain rejects new work while safe reads remain available",
+  async () => {
+    const router =
+      express.Router();
+
+    router.post(
+      "/work",
+      (
+        req,
+        res
+      ) => {
+        res.status(201).json({
+          success:
+            true,
+        });
+      }
+    );
+    router.get(
+      "/status",
+      (
+        req,
+        res
+      ) => {
+        res.json({
+          success:
+            true,
+        });
+      }
+    );
+
+    const runtimeState =
+      createRuntimeState();
+    const harness =
+      await startTestServer({
+        router,
+        runtimeState,
+      });
+
+    try {
+      const admitted =
+        await fetch(
+          `${harness.origin}/api/work`,
+          {
+            method:
+              "POST",
+          }
+        );
+
+      assert.equal(
+        admitted.status,
+        201
+      );
+
+      runtimeState.beginDrain();
+
+      const rejected =
+        await fetch(
+          `${harness.origin}/api/work`,
+          {
+            method:
+              "POST",
+          }
+        );
+      const safeRead =
+        await fetch(
+          `${harness.origin}/api/status`
+        );
+      const redirect =
+        await fetch(
+          `${harness.origin}/api/booking-redirect`,
+          {
+            redirect:
+              "manual",
+          }
+        );
+
+      assert.equal(
+        rejected.status,
+        503
+      );
+      assert.equal(
+        rejected.headers.get(
+          "retry-after"
+        ),
+        "1"
+      );
+      assert.equal(
+        safeRead.status,
+        200
+      );
+      assert.equal(
+        redirect.status,
+        503
+      );
+
+      const payload =
+        await readJson(
+          rejected
+        );
+
+      assert.deepEqual(
+        {
+          code:
+            payload.code,
+          retryAfterMs:
+            payload.retryAfterMs,
+        },
+        {
+          code:
+            "SERVICE_DRAINING",
+          retryAfterMs:
+            1_000,
+        }
       );
     }
     finally {

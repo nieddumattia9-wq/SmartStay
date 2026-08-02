@@ -1,6 +1,7 @@
 "use strict";
 
 const {
+  VALKEY_KEYSPACE_VERSION,
   createValkeyKeyspace,
   createValkeyCommandExecutor,
   normalizePositiveInteger,
@@ -182,6 +183,40 @@ function createValkeyOperationalStateResources({
     endpointRateLimitStoreFactory,
     providerCapacityCoordinator,
     providerHealthStore,
+    async getReadinessSnapshot() {
+      const observedSchemaVersion =
+        await executor.execute(
+          async (client) => {
+            await client.set(
+              keyspace
+                .stateSchemaVersion,
+              VALKEY_KEYSPACE_VERSION,
+              {
+                NX:
+                  true,
+              }
+            );
+
+            return client.get(
+              keyspace
+                .stateSchemaVersion
+            );
+          }
+        );
+
+      return Object.freeze({
+        ready:
+          observedSchemaVersion ===
+          VALKEY_KEYSPACE_VERSION,
+        mode:
+          "valkey-distributed",
+        expectedSchemaVersion:
+          VALKEY_KEYSPACE_VERSION,
+        observedSchemaVersion:
+          observedSchemaVersion ??
+          null,
+      });
+    },
     async ping() {
       return executor.execute(
         (client) => client.ping()
