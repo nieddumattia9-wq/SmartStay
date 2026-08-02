@@ -283,7 +283,8 @@ test(
       nights: 1,
       rooms: 1,
       maximumVisibleResults: 3,
-      capturedAt: null,
+      bookingReferenceAt: "2026-08-01T12:00:00Z",
+      capturedAt: "2026-08-01T12:00:00Z",
     };
 
     const result = evaluateSmartStaySearchV2(input);

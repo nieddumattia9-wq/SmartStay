@@ -507,7 +507,7 @@ async function executeProviderOperation({
     Date.now();
 
   const permission =
-    beginProviderAttempt(
+    await beginProviderAttempt(
       provider.id
     );
 
@@ -596,15 +596,19 @@ async function executeProviderOperation({
         result.outcome
       )
     ) {
-      recordProviderHealthyResponse(
-        provider.id
+      await recordProviderHealthyResponse(
+        provider.id,
+        {
+          attemptToken:
+            permission.attemptToken,
+        }
       );
     } else if (
       shouldCountProviderFailure(
         result.outcome
       )
     ) {
-      recordProviderFailure(
+      await recordProviderFailure(
         provider.id,
         {
           errorType:
@@ -637,6 +641,10 @@ async function executeProviderOperation({
             result.failedResponse
               ?.retryAfterMs !==
               undefined,
+        },
+        {
+          attemptToken:
+            permission.attemptToken,
         }
       );
     }
@@ -754,9 +762,13 @@ async function executeProviderOperation({
       );
 
     const health =
-      recordProviderFailure(
+      await recordProviderFailure(
         provider.id,
-        failureDetails
+        failureDetails,
+        {
+          attemptToken:
+            permission.attemptToken,
+        }
       );
 
     operationalLogger.error(
@@ -1261,7 +1273,7 @@ async function getHotelDetailsFromProvider({
   }
 
   const permission =
-    beginProviderAttempt(
+    await beginProviderAttempt(
       provider.id
     );
 
@@ -1314,17 +1326,25 @@ async function getHotelDetailsFromProvider({
         },
       });
 
-    recordProviderHealthyResponse(
-      provider.id
+    await recordProviderHealthyResponse(
+      provider.id,
+      {
+        attemptToken:
+          permission.attemptToken,
+      }
     );
 
     return details;
   } catch (error) {
-    recordProviderFailure(
+    await recordProviderFailure(
       provider.id,
       createProviderFailureDetails(
         error
-      )
+      ),
+      {
+        attemptToken:
+          permission.attemptToken,
+      }
     );
 
     throw error;
@@ -1382,7 +1402,7 @@ async function recheckOfferWithProvider({
   }
 
   const permission =
-    beginProviderAttempt(
+    await beginProviderAttempt(
       provider.id
     );
 
@@ -1446,17 +1466,25 @@ async function recheckOfferWithProvider({
         })
       );
 
-    recordProviderHealthyResponse(
-      provider.id
+    await recordProviderHealthyResponse(
+      provider.id,
+      {
+        attemptToken:
+          permission.attemptToken,
+      }
     );
 
     return result;
   } catch (error) {
-    recordProviderFailure(
+    await recordProviderFailure(
       provider.id,
       createProviderFailureDetails(
         error
-      )
+      ),
+      {
+        attemptToken:
+          permission.attemptToken,
+      }
     );
 
     throw error;

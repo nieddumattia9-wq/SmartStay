@@ -171,7 +171,7 @@ async function executeDestinationProvider({
     Date.now();
 
   const permission =
-    beginProviderAttempt(
+    await beginProviderAttempt(
       provider.id
     );
 
@@ -282,19 +282,27 @@ async function executeDestinationProvider({
         result.outcome
       )
     ) {
-      recordProviderHealthyResponse(
-        provider.id
+      await recordProviderHealthyResponse(
+        provider.id,
+        {
+          attemptToken:
+            permission.attemptToken,
+        }
       );
     } else if (
       shouldCountProviderFailure(
         result.outcome
       )
     ) {
-      recordProviderFailure(
+      await recordProviderFailure(
         provider.id,
         createFailureDetailsFromResult(
           result
-        )
+        ),
+        {
+          attemptToken:
+            permission.attemptToken,
+        }
       );
     }
 
@@ -359,9 +367,13 @@ async function executeDestinationProvider({
         error
       );
 
-    recordProviderFailure(
+    await recordProviderFailure(
       provider.id,
-      failureDetails
+      failureDetails,
+      {
+        attemptToken:
+          permission.attemptToken,
+      }
     );
 
     operationalLogger.error(

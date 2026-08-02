@@ -33,6 +33,13 @@ const DEFAULT_GLOBAL_TIMEOUT_MS =
     30_000
   );
 
+const PROVIDER_CAPACITY_LEASE_GRACE_MS =
+  parsePositiveInteger(
+    process.env
+      .PROVIDER_CAPACITY_LEASE_GRACE_MS,
+    10_000
+  );
+
 const DEFAULT_PROVIDER_OPERATION_TIMEOUTS_MS =
   Object.freeze({
     searchDestinations:
@@ -287,6 +294,8 @@ async function executeProviderOperationWithTimeout({
     null;
   let abortListener =
     null;
+  let capacityLeaseLossObserver =
+    null;
 
   const timeoutError =
     createProviderOperationTimeoutError({
@@ -318,7 +327,36 @@ async function executeProviderOperationWithTimeout({
             normalizedMethodName,
           signal:
             controller.signal,
+          leaseTtlMs:
+            resolvedTimeoutMs +
+            PROVIDER_CAPACITY_LEASE_GRACE_MS,
         });
+
+    if (
+      releaseCapacity?.lost &&
+      typeof releaseCapacity
+        .lost.then === "function"
+    ) {
+      capacityLeaseLossObserver =
+        releaseCapacity.lost
+          .then((error) => {
+            if (
+              error &&
+              !controller.signal
+                .aborted
+            ) {
+              controller.abort(error);
+            }
+          })
+          .catch((error) => {
+            if (
+              !controller.signal
+                .aborted
+            ) {
+              controller.abort(error);
+            }
+          });
+    }
 
     if (controller.signal.aborted) {
       throw getAbortReason(
@@ -383,7 +421,9 @@ async function executeProviderOperationWithTimeout({
       );
     }
 
-    releaseCapacity?.();
+    await releaseCapacity?.();
+
+    void capacityLeaseLossObserver;
   }
 }
 

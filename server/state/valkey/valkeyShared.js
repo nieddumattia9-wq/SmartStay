@@ -181,6 +181,35 @@ function createValkeyKeyspace({
     return `${prefix}:${component}:${digest}`;
   }
 
+  function scopedHmac(
+    component,
+    scope,
+    value
+  ) {
+    const normalizedScope =
+      typeof scope === "string"
+        ? scope.trim().toLowerCase()
+        : "";
+
+    if (
+      !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(
+        normalizedScope
+      )
+    ) {
+      throw createOperationalStateError({
+        code: "OPERATIONAL_STATE_KEY_INVALID",
+        message:
+          "The shared operational-state scope is invalid.",
+        status: 400,
+      });
+    }
+
+    return hmac(
+      `${component}:${normalizedScope}`,
+      value
+    );
+  }
+
   return Object.freeze({
     environment: safeEnvironment,
     prefix,
@@ -238,6 +267,43 @@ function createValkeyKeyspace({
       `${prefix}:meta:booking-verification-expiry`,
     bookingHandoffExpiryIndex:
       `${prefix}:meta:booking-handoff-expiry`,
+    endpointRateLimit(scope, clientIdentity) {
+      return scopedHmac(
+        "endpoint-rate-limit",
+        scope,
+        clientIdentity
+      );
+    },
+    providerCapacityGlobal:
+      `${prefix}:provider-capacity:global`,
+    providerCapacity(providerId) {
+      return hmac(
+        "provider-capacity",
+        providerId
+      );
+    },
+    providerCapacityWaitersGlobal:
+      `${prefix}:provider-capacity-waiters:global`,
+    providerCapacityWaiters(providerId) {
+      return hmac(
+        "provider-capacity-waiters",
+        providerId
+      );
+    },
+    providerAccountRate(providerId) {
+      return hmac(
+        "provider-account-rate",
+        providerId
+      );
+    },
+    providerCircuit(providerId) {
+      return hmac(
+        "provider-circuit",
+        providerId
+      );
+    },
+    providerCircuitIndex:
+      `${prefix}:meta:provider-circuit-index`,
   });
 }
 

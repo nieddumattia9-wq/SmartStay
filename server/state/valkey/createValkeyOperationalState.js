@@ -22,6 +22,24 @@ const {
   createValkeyBookingStores,
 } = require("./valkeyBookingStores");
 
+const {
+  createValkeyEndpointRateLimitStoreFactory,
+} = require(
+  "./valkeyEndpointRateLimitStore"
+);
+
+const {
+  createValkeyProviderCapacityCoordinator,
+} = require(
+  "./valkeyProviderCapacityCoordinator"
+);
+
+const {
+  createValkeyProviderHealthStore,
+} = require(
+  "./valkeyProviderHealthStore"
+);
+
 function createValkeyOperationalStateResources({
   url,
   environment,
@@ -45,6 +63,19 @@ function createValkeyOperationalStateResources({
   handoffTtlMs,
   maxBookingVerifications,
   maxBookingHandoffs,
+  providerGlobalActiveLimit,
+  providerPerProviderActiveLimit,
+  providerGlobalQueuedLimit,
+  providerPerProviderQueuedLimit,
+  providerLeaseTtlMs,
+  providerAcquirePollMs,
+  providerAccountRateLimits,
+  providerAccountRateLimitsRequired,
+  providerLeaseRenewalEnabled,
+  providerCircuitFailureThreshold,
+  providerCircuitCooldownMs,
+  providerCircuitRecordTtlMs,
+  providerHalfOpenProbeLeaseMs,
   createClient,
 } = {}) {
   const keyspace = createValkeyKeyspace({
@@ -94,6 +125,46 @@ function createValkeyOperationalStateResources({
     maxBookingVerifications,
     maxBookingHandoffs,
   });
+  const endpointRateLimitStoreFactory =
+    createValkeyEndpointRateLimitStoreFactory({
+      executor,
+      keyspace,
+    });
+  const providerCapacityCoordinator =
+    createValkeyProviderCapacityCoordinator({
+      executor,
+      keyspace,
+      globalActiveLimit:
+        providerGlobalActiveLimit,
+      perProviderActiveLimit:
+        providerPerProviderActiveLimit,
+      globalQueuedLimit:
+        providerGlobalQueuedLimit,
+      perProviderQueuedLimit:
+        providerPerProviderQueuedLimit,
+      leaseTtlMs:
+        providerLeaseTtlMs,
+      acquirePollMs:
+        providerAcquirePollMs,
+      providerAccountRateLimits,
+      accountRateLimitsRequired:
+        providerAccountRateLimitsRequired,
+      leaseRenewalEnabled:
+        providerLeaseRenewalEnabled,
+    });
+  const providerHealthStore =
+    createValkeyProviderHealthStore({
+      executor,
+      keyspace,
+      failureThreshold:
+        providerCircuitFailureThreshold,
+      cooldownMs:
+        providerCircuitCooldownMs,
+      recordTtlMs:
+        providerCircuitRecordTtlMs,
+      halfOpenProbeLeaseMs:
+        providerHalfOpenProbeLeaseMs,
+    });
 
   return Object.freeze({
     keyspace,
@@ -108,6 +179,9 @@ function createValkeyOperationalStateResources({
       booking.bookingVerificationStore,
     bookingHandoffStore:
       booking.bookingHandoffStore,
+    endpointRateLimitStoreFactory,
+    providerCapacityCoordinator,
+    providerHealthStore,
     async ping() {
       return executor.execute(
         (client) => client.ping()
@@ -120,6 +194,16 @@ function createValkeyOperationalStateResources({
 function getValkeyOperationalStateConfig(
   environmentVariables = process.env
 ) {
+  const deploymentEnvironment =
+    String(
+      environmentVariables
+        .DEPLOYMENT_ENV ??
+      environmentVariables.NODE_ENV ??
+      "development"
+    )
+      .trim()
+      .toLowerCase();
+
   return Object.freeze({
     url:
       environmentVariables
@@ -154,6 +238,44 @@ function getValkeyOperationalStateConfig(
           maximum: 8 * 1024 * 1024 * 1024,
         }
       ),
+    providerGlobalActiveLimit:
+      environmentVariables
+        .PROVIDER_MAX_CONCURRENT_OPERATIONS,
+    providerPerProviderActiveLimit:
+      environmentVariables
+        .PROVIDER_MAX_CONCURRENT_OPERATIONS_PER_PROVIDER,
+    providerGlobalQueuedLimit:
+      environmentVariables
+        .PROVIDER_MAX_QUEUED_OPERATIONS,
+    providerPerProviderQueuedLimit:
+      environmentVariables
+        .PROVIDER_MAX_QUEUED_OPERATIONS_PER_PROVIDER,
+    providerLeaseTtlMs:
+      environmentVariables
+        .PROVIDER_CAPACITY_LEASE_TTL_MS,
+    providerAcquirePollMs:
+      environmentVariables
+        .PROVIDER_CAPACITY_ACQUIRE_POLL_MS,
+    providerAccountRateLimits:
+      environmentVariables
+        .PROVIDER_ACCOUNT_RATE_LIMITS_JSON,
+    providerAccountRateLimitsRequired:
+      deploymentEnvironment ===
+        "staging" ||
+      deploymentEnvironment ===
+        "production",
+    providerCircuitFailureThreshold:
+      environmentVariables
+        .PROVIDER_CIRCUIT_FAILURE_THRESHOLD,
+    providerCircuitCooldownMs:
+      environmentVariables
+        .PROVIDER_CIRCUIT_COOLDOWN_MS,
+    providerCircuitRecordTtlMs:
+      environmentVariables
+        .PROVIDER_CIRCUIT_RECORD_TTL_MS,
+    providerHalfOpenProbeLeaseMs:
+      environmentVariables
+        .PROVIDER_HALF_OPEN_PROBE_LEASE_MS,
   });
 }
 

@@ -273,12 +273,6 @@ function createValkeyOperationalState(
       false,
     deferredStages:
       Object.freeze({
-        endpointRateLimitStoreFactory:
-          "39C25A.4C3",
-        providerCapacityCoordinator:
-          "39C25A.4C3",
-        providerHealthStore:
-          "39C25A.4C3",
         searchQueueAdmission:
           "39C25A.4C4",
       }),
@@ -294,6 +288,9 @@ function createValkeyOperationalState(
     "initialSearchIdempotencyStore",
     "bookingVerificationStore",
     "bookingHandoffStore",
+    "endpointRateLimitStoreFactory",
+    "providerCapacityCoordinator",
+    "providerHealthStore",
   ]) {
     state[portName] =
       createOperationalStatePort(
@@ -307,9 +304,6 @@ function createValkeyOperationalState(
   }
 
   for (const portName of [
-    "endpointRateLimitStoreFactory",
-    "providerCapacityCoordinator",
-    "providerHealthStore",
     "searchQueueAdmission",
   ]) {
     state[portName] =
