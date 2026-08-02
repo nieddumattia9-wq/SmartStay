@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "worker:search": "node searchWorker.js"
   },
   "keywords": [
     "smartstay",
@@ -22,14 +23,21 @@
   },
   "dependencies": {
     "axios": "^1.18.1",
+    "bullmq": "6.0.5",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
+    "ioredis": "5.11.1",
     "redis": "6.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "overrides": {
+    "bullmq": {
+      "cron-parser": "5.7.0"
+    }
   }
 }

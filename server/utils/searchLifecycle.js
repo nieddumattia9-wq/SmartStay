@@ -14,6 +14,8 @@ const SEARCH_LIFECYCLE_OUTCOMES =
     PROVIDER_ERROR: "provider-error",
     TIMEOUT: "timeout",
     RATE_LIMITED: "rate-limited",
+    CAPACITY_UNAVAILABLE:
+      "capacity-unavailable",
     SESSION_EXPIRED: "session-expired",
     SESSION_MISSING: "session-missing",
     CANCELLED: "cancelled",
@@ -29,6 +31,10 @@ const SEARCH_PUBLIC_CODES =
     PROVIDER_UNAVAILABLE: "SEARCH_PROVIDER_UNAVAILABLE",
     TIMEOUT: "SEARCH_TIMEOUT",
     RATE_LIMITED: "SEARCH_RATE_LIMITED",
+    CAPACITY_UNAVAILABLE:
+      "SEARCH_CAPACITY_TEMPORARILY_EXHAUSTED",
+    QUEUE_UNAVAILABLE:
+      "SEARCH_QUEUE_UNAVAILABLE",
     ID_REQUIRED: "SEARCH_ID_REQUIRED",
     SESSION_EXPIRED: "SEARCH_SESSION_EXPIRED",
     SESSION_MISSING: "SEARCH_SESSION_MISSING",
@@ -54,6 +60,12 @@ const PUBLIC_MESSAGES =
 
     [SEARCH_PUBLIC_CODES.RATE_LIMITED]:
       "Search is temporarily rate limited. Please try again shortly.",
+
+    [SEARCH_PUBLIC_CODES.CAPACITY_UNAVAILABLE]:
+      "Hotel search capacity is temporarily full. Please try again shortly.",
+
+    [SEARCH_PUBLIC_CODES.QUEUE_UNAVAILABLE]:
+      "Hotel search is temporarily unavailable. Please try again shortly.",
 
     [SEARCH_PUBLIC_CODES.ID_REQUIRED]:
       "A searchId is required. Please start a new search.",
@@ -333,6 +345,33 @@ function deriveSearchLifecycle(
       !failed
     );
 
+  const isCapacityUnavailable =
+    code ===
+      "SEARCH_CAPACITY_TEMPORARILY_EXHAUSTED" ||
+    code ===
+      "SEARCH_QUEUE_UNAVAILABLE";
+
+  if (failed && isCapacityUnavailable) {
+    return createLifecycle({
+      phase:
+        SEARCH_LIFECYCLE_PHASES
+          .COMPLETE,
+      outcome:
+        SEARCH_LIFECYCLE_OUTCOMES
+          .CAPACITY_UNAVAILABLE,
+      retryable:
+        true,
+      publicCode:
+        code ===
+          "SEARCH_QUEUE_UNAVAILABLE"
+          ? SEARCH_PUBLIC_CODES
+              .QUEUE_UNAVAILABLE
+          : SEARCH_PUBLIC_CODES
+              .CAPACITY_UNAVAILABLE,
+      retryAfterMs,
+    });
+  }
+
   if (isNoResults) {
     return createLifecycle({
       phase:
@@ -586,6 +625,8 @@ function isLifecycleFailure(
       .TIMEOUT,
     SEARCH_LIFECYCLE_OUTCOMES
       .RATE_LIMITED,
+    SEARCH_LIFECYCLE_OUTCOMES
+      .CAPACITY_UNAVAILABLE,
     SEARCH_LIFECYCLE_OUTCOMES
       .SESSION_EXPIRED,
     SEARCH_LIFECYCLE_OUTCOMES

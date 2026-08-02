@@ -275,6 +275,7 @@ export type SearchLifecycleOutcome =
   | "provider-error"
   | "timeout"
   | "rate-limited"
+  | "capacity-unavailable"
   | "session-expired"
   | "session-missing"
   | "cancelled";
@@ -303,6 +304,8 @@ export interface SearchHotelsResponse {
 
   isContinuing?: boolean;
 
+  initialSearchStage?: string | null;
+
   nextResultsKey: string | null;
 
   currency: string;
@@ -326,6 +329,8 @@ export interface SearchSession {
   searchIncomplete: boolean;
 
   isContinuing: boolean;
+
+  initialSearchStage?: string | null;
 
   currency: string | null;
 

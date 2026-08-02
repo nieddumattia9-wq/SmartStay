@@ -122,6 +122,8 @@ import type {
 
     isContinuing?: boolean;
 
+    initialSearchStage?: string | null;
+
     totalHotels?: number;
 
     nextResultsKey?: string | null;
@@ -1012,6 +1014,35 @@ import type {
               throw new Error(
                 SEARCH_TIMEOUT_MESSAGE
               );
+            }
+
+            const initialSearchStage =
+              statusResponse
+                .initialSearchStage
+                ?.trim()
+                .toLowerCase() ??
+              "";
+
+            if (
+              [
+                "queued",
+                "running",
+                "retrying",
+              ].includes(
+                initialSearchStage
+              )
+            ) {
+              await delay(
+                getSearchPollingDelayMs(
+                  statusResponse,
+                  {
+                    defaultDelayMs:
+                      POLLING_DELAY_MS,
+                  }
+                )
+              );
+
+              continue;
             }
 
             const statusPollingDelayMs =

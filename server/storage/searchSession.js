@@ -545,6 +545,63 @@ function assertContinuationWriteAllowed(
   }
 }
 
+function getInitialSearchExecutionContext(
+  options = {}
+) {
+  const source =
+    options?.initialSearchExecution ??
+    options;
+  const executionToken =
+    typeof source?.executionToken ===
+      "string"
+      ? source.executionToken
+          .trim()
+      : "";
+  const fencingNumber =
+    Number(
+      source?.fencingNumber
+    );
+
+  if (
+    !executionToken ||
+    !Number.isSafeInteger(
+      fencingNumber
+    ) ||
+    fencingNumber <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    executionToken,
+    fencingNumber,
+  };
+}
+
+function createStaleInitialSearchError() {
+  return createSearchSessionError({
+    code:
+      "SEARCH_INITIAL_EXECUTION_STALE",
+    message:
+      "This queued search attempt is no longer current.",
+    status:
+      409,
+    retryable:
+      false,
+  });
+}
+
+function isInitialSearchTerminal(
+  session
+) {
+  return [
+    "complete",
+    "failed",
+  ].includes(
+    session?.initialSearchStage
+  );
+}
+
 function getSearchSession(searchId) {
 
   const normalizedSearchId =
@@ -956,6 +1013,160 @@ function releaseSearchContinuation(
   };
 }
 
+function claimInitialSearchExecution(
+  searchId,
+  execution
+) {
+  const normalizedSearchId =
+    normalizeSearchId(searchId);
+  const context =
+    getInitialSearchExecutionContext(
+      execution
+    );
+
+  if (!context) {
+    throw createStaleInitialSearchError();
+  }
+
+  const currentSession =
+    requireSearchSession(
+      normalizedSearchId
+    );
+
+  if (
+    isInitialSearchTerminal(
+      currentSession
+    )
+  ) {
+    return {
+      claimed:
+        false,
+      terminal:
+        true,
+      session:
+        currentSession,
+    };
+  }
+
+  const currentFence =
+    Number(
+      currentSession
+        .initialSearchFencingNumber
+    ) || 0;
+
+  if (
+    context.fencingNumber <=
+      currentFence
+  ) {
+    return {
+      claimed:
+        false,
+      terminal:
+        false,
+      session:
+        currentSession,
+    };
+  }
+
+  const now =
+    Date.now();
+  const claimedSession = {
+    ...currentSession,
+    initialSearchStage:
+      "running",
+    initialSearchExecutionToken:
+      context.executionToken,
+    initialSearchFencingNumber:
+      context.fencingNumber,
+    status:
+      "Running",
+    searchIncomplete:
+      true,
+    isContinuing:
+      false,
+    lastError:
+      null,
+    retryable:
+      false,
+    retryAfterMs:
+      2_000,
+    updatedAt:
+      now,
+    expiresAt:
+      now +
+      SEARCH_SESSION_TTL_MS,
+  };
+
+  sessions.set(
+    normalizedSearchId,
+    claimedSession
+  );
+
+  return {
+    claimed:
+      true,
+    terminal:
+      false,
+    session:
+      cloneSearchSessionData(
+        claimedSession
+      ),
+  };
+}
+
+function updateInitialSearchExecution(
+  searchId,
+  updates = {},
+  execution
+) {
+  const normalizedSearchId =
+    normalizeSearchId(searchId);
+  const context =
+    getInitialSearchExecutionContext(
+      execution
+    );
+  const currentSession =
+    requireSearchSession(
+      normalizedSearchId
+    );
+
+  if (
+    !context ||
+    !currentSession ||
+    currentSession
+      .initialSearchExecutionToken !==
+      context.executionToken ||
+    Number(
+      currentSession
+        .initialSearchFencingNumber
+    ) !== context.fencingNumber
+  ) {
+    throw createStaleInitialSearchError();
+  }
+
+  const nextUpdates =
+    cloneSearchSessionData(
+      updates
+    );
+
+  if (
+    ["complete", "failed"]
+      .includes(
+        nextUpdates
+          .initialSearchStage
+      )
+  ) {
+    nextUpdates
+      .initialSearchExecutionToken =
+        null;
+  }
+
+  return updateSearchSession(
+    normalizedSearchId,
+    nextUpdates
+  );
+}
+
 function updateSearchSession(
   searchId,
   updates = {},
@@ -1116,6 +1327,8 @@ module.exports = {
   getSearchSession,
   getSearchSessionState,
   requireSearchSession,
+  claimInitialSearchExecution,
+  updateInitialSearchExecution,
   tryAcquireSearchContinuation,
   renewSearchContinuation,
   releaseSearchContinuation,

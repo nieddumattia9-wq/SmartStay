@@ -38,6 +38,18 @@ const disabledSearchQueueAdmission =
       );
     },
 
+    beginSearchExecution() {
+      return Promise.reject(
+        createSearchQueueDisabledError()
+      );
+    },
+
+    renewSearchAdmission() {
+      return Promise.resolve(
+        false
+      );
+    },
+
     releaseSearchAdmission() {
       return false;
     },
@@ -262,6 +274,43 @@ function createValkeyOperationalState(
     createInMemoryOperationalState(
       options.deferredOverrides ?? {}
     );
+  const searchQueueConfig =
+    options.searchQueueConfig ??
+    Object.freeze({
+      enabled:
+        false,
+    });
+  const searchQueueResource =
+    searchQueueConfig.enabled
+      ? require(
+          "../queue/searchQueueAdmission"
+        )
+          .createBullMqSearchQueueAdmission({
+            config:
+              searchQueueConfig,
+          })
+      : deferred
+          .searchQueueAdmission;
+
+  async function closeResources() {
+    const operations = [
+      resources.close(),
+    ];
+
+    if (
+      searchQueueConfig.enabled &&
+      typeof searchQueueResource
+        .close === "function"
+    ) {
+      operations.push(
+        searchQueueResource.close()
+      );
+    }
+
+    await Promise.all(
+      operations
+    );
+  }
 
   const state = {
     mode:
@@ -272,12 +321,16 @@ function createValkeyOperationalState(
     productionReady:
       false,
     deferredStages:
-      Object.freeze({
-        searchQueueAdmission:
-          "39C25A.4C4",
-      }),
+      Object.freeze(
+        searchQueueConfig.enabled
+          ? {}
+          : {
+              searchQueueAdmission:
+                "39C25A.4C4",
+            }
+      ),
     close:
-      resources.close,
+      closeResources,
     ping:
       resources.ping,
   };
@@ -303,19 +356,17 @@ function createValkeyOperationalState(
       );
   }
 
-  for (const portName of [
-    "searchQueueAdmission",
-  ]) {
-    state[portName] =
-      createOperationalStatePort(
-        portName,
-        deferred[portName],
-        {
-          implementation:
-            "in-memory-deferred",
-        }
-      );
-  }
+  state.searchQueueAdmission =
+    createOperationalStatePort(
+      "searchQueueAdmission",
+      searchQueueResource,
+      {
+        implementation:
+          searchQueueConfig.enabled
+            ? "bullmq-distributed"
+            : "in-memory-deferred",
+      }
+    );
 
   return Object.freeze(state);
 }
@@ -336,11 +387,33 @@ function getOperationalState() {
     OPERATIONAL_STATE_MODES
       .IN_MEMORY_SINGLE_INSTANCE;
 
+  const {
+    getSearchQueueConfig,
+  } = require(
+    "../queue/searchQueueConfig"
+  );
+  const searchQueueConfig =
+    getSearchQueueConfig();
+
   if (
     mode ===
     OPERATIONAL_STATE_MODES
       .IN_MEMORY_SINGLE_INSTANCE
   ) {
+    if (searchQueueConfig.enabled) {
+      const error =
+        new Error(
+          "The asynchronous search queue requires valkey-distributed operational state."
+        );
+
+      error.code =
+        "SEARCH_QUEUE_CONFIGURATION_INVALID";
+      error.status =
+        500;
+
+      throw error;
+    }
+
     return createInMemoryOperationalState();
   }
 
@@ -369,7 +442,10 @@ function getOperationalState() {
 
     distributedOperationalState =
       createValkeyOperationalState(
-        getValkeyOperationalStateConfig()
+        {
+          ...getValkeyOperationalStateConfig(),
+          searchQueueConfig,
+        }
       );
   }
 

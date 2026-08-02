@@ -193,6 +193,26 @@ export function getSearchRecoveryDecision(
   }
 
   if (
+    code ===
+      "SEARCH_CAPACITY_TEMPORARILY_EXHAUSTED" ||
+    code ===
+      "SEARCH_QUEUE_UNAVAILABLE"
+  ) {
+    return {
+      kind:
+        "temporarily-unavailable",
+      message:
+        "Hotel search is temporarily at capacity. Try again shortly.",
+      retryable:
+        true,
+      clearStoredSearchState:
+        false,
+      recognized:
+        true,
+    };
+  }
+
+  if (
     status !== null &&
     status >= 500 &&
     status <= 599

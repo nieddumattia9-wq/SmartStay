@@ -602,7 +602,7 @@ test(
 );
 
 test(
-  "4C2 confines the Redis-compatible dependency to shared-state adapters and keeps Engine V2 infrastructure-neutral",
+  "4C4 confines Redis and BullMQ dependencies to state or queue adapters and keeps Engine V2 infrastructure-neutral",
   () => {
     const packageJson =
       JSON.parse(
@@ -642,6 +642,8 @@ test(
             .test(name)
       ),
       [
+        "bullmq",
+        "ioredis",
         "redis",
       ]
     );
@@ -652,10 +654,28 @@ test(
       "6.2.0"
     );
 
+    assert.equal(
+      serverPackageJson
+        .dependencies.bullmq,
+      "6.0.5"
+    );
+
+    assert.equal(
+      serverPackageJson
+        .dependencies.ioredis,
+      "5.11.1"
+    );
+
     const redisImportFindings =
       listJavaScriptFiles(
         path.join(root, "server")
       )
+        .filter(
+          (filePath) =>
+            !filePath.includes(
+              `${path.sep}node_modules${path.sep}`
+            )
+        )
         .filter((filePath) =>
           /require\(["']redis["']\)/
             .test(
@@ -677,7 +697,44 @@ test(
     assert.deepEqual(
       redisImportFindings,
       [
+        "queue/searchQueueAdmission.js",
         "state/valkey/valkeyShared.js",
+      ]
+    );
+
+    const bullMqImportFindings =
+      listJavaScriptFiles(
+        path.join(root, "server")
+      )
+        .filter(
+          (filePath) =>
+            !filePath.includes(
+              `${path.sep}node_modules${path.sep}`
+            )
+        )
+        .filter((filePath) =>
+          /require\(["'](?:bullmq|ioredis)["']\)/
+            .test(
+              fs.readFileSync(
+                filePath,
+                "utf8"
+              )
+            )
+        )
+        .map((filePath) =>
+          path
+            .relative(
+              path.join(root, "server"),
+              filePath
+            )
+            .replaceAll(path.sep, "/")
+        );
+
+    assert.deepEqual(
+      bullMqImportFindings,
+      [
+        "queue/searchQueueAdmission.js",
+        "queue/searchQueueWorker.js",
       ]
     );
 

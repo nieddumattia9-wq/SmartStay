@@ -38,6 +38,8 @@ const OPERATIONAL_STATE_PORT_CONTRACTS =
           "getSearchSession",
           "getSearchSessionState",
           "requireSearchSession",
+          "claimInitialSearchExecution",
+          "updateInitialSearchExecution",
           "updateSearchSession",
           "appendHotelsToSearchSession",
           "clearSearchSession",
@@ -143,6 +145,8 @@ const OPERATIONAL_STATE_PORT_CONTRACTS =
           "SearchQueueAdmission",
         methods: [
           "admitSearch",
+          "beginSearchExecution",
+          "renewSearchAdmission",
           "releaseSearchAdmission",
           "getSearchQueueAdmissionSnapshot",
         ],

@@ -11,6 +11,7 @@ export type SearchLifecycleOutcome =
   | "provider-error"
   | "timeout"
   | "rate-limited"
+  | "capacity-unavailable"
   | "session-expired"
   | "session-missing"
   | "cancelled";
@@ -42,6 +43,7 @@ const FAILURE_OUTCOMES =
     "provider-error",
     "timeout",
     "rate-limited",
+    "capacity-unavailable",
     "session-expired",
     "session-missing",
     "cancelled",
@@ -111,6 +113,9 @@ export function getSearchLifecycleLabel(
 
     case "rate-limited":
       return "Temporarily rate limited";
+
+    case "capacity-unavailable":
+      return "Temporarily at capacity";
 
     case "timeout":
       return "Timed out";

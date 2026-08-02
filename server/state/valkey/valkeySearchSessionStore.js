@@ -49,6 +49,8 @@ local lock_token = ARGV[11]
 local fencing_number = tonumber(ARGV[12])
 local lease_action = ARGV[13]
 local lease_ttl = tonumber(ARGV[14])
+local initial_execution_token = ARGV[15]
+local initial_fencing_number = tonumber(ARGV[16])
 
 local total = tonumber(redis.call('GET', KEYS[5]) or '0')
 local expired = redis.call('ZRANGEBYSCORE', KEYS[3], '-inf', now)
@@ -63,6 +65,7 @@ end
 redis.call('ZREMRANGEBYSCORE', KEYS[3], '-inf', now)
 
 local current = redis.call('GET', KEYS[1])
+local decoded = nil
 if expected_revision == -1 then
   if current then
     return {'exists'}
@@ -78,9 +81,29 @@ else
     return {'missing'}
   end
 
-  local decoded = cjson.decode(current)
+  decoded = cjson.decode(current)
   if tonumber(decoded.revision) ~= expected_revision then
     return {'conflict', tostring(decoded.revision)}
+  end
+end
+
+if lock_mode == 'initial-claim' then
+  local current_stage = tostring(decoded.session.initialSearchStage or '')
+  if current_stage == 'complete' or current_stage == 'failed' then
+    return {'initial-terminal'}
+  end
+
+  local current_fence = tonumber(decoded.session.initialSearchFencingNumber or '0')
+  if initial_fencing_number <= current_fence then
+    return {'stale-initial-search'}
+  end
+end
+
+if lock_mode == 'initial-owned' then
+  local current_token = tostring(decoded.session.initialSearchExecutionToken or '')
+  local current_fence = tonumber(decoded.session.initialSearchFencingNumber or '0')
+  if current_token ~= initial_execution_token or current_fence ~= initial_fencing_number then
+    return {'stale-initial-search'}
   end
 end
 
@@ -250,6 +273,35 @@ function getLeaseContext(options = {}) {
 
   return Object.freeze({
     lockToken,
+    fencingNumber,
+  });
+}
+
+function getInitialSearchExecutionContext(
+  options = {}
+) {
+  const source =
+    options?.initialSearchExecution ??
+    options;
+  const executionToken =
+    typeof source?.executionToken ===
+      "string"
+      ? source.executionToken.trim()
+      : "";
+  const fencingNumber = Number(
+    source?.fencingNumber
+  );
+
+  if (
+    !executionToken ||
+    !Number.isSafeInteger(fencingNumber) ||
+    fencingNumber <= 0
+  ) {
+    return null;
+  }
+
+  return Object.freeze({
+    executionToken,
     fencingNumber,
   });
 }
@@ -438,6 +490,7 @@ function createValkeySearchSessionAdapters({
     lockMode = "unlocked",
     leaseContext = null,
     leaseAction = "keep",
+    initialSearchExecution = null,
   }) {
     const envelope = {
       schemaVersion: 1,
@@ -480,6 +533,12 @@ function createValkeySearchSessionAdapters({
             ),
             leaseAction,
             String(safeContinuationLeaseTtlMs),
+            initialSearchExecution
+              ?.executionToken ?? "",
+            String(
+              initialSearchExecution
+                ?.fencingNumber ?? 0
+            ),
           ],
         }
       )
@@ -530,6 +589,22 @@ function createValkeySearchSessionAdapters({
         status: 409,
         retryable: true,
         retryAfterMs: 250,
+      });
+    }
+
+    if (
+      outcome ===
+        "stale-initial-search"
+    ) {
+      throw createSearchSessionError({
+        code:
+          "SEARCH_INITIAL_EXECUTION_STALE",
+        message:
+          "This queued search attempt is no longer current.",
+        status:
+          409,
+        retryable:
+          false,
       });
     }
 
@@ -722,9 +797,16 @@ function createValkeySearchSessionAdapters({
     }
 
     const leaseContext = getLeaseContext(options);
-    const lockMode = leaseContext
-      ? "owned"
-      : "unlocked";
+    const initialSearchExecution =
+      getInitialSearchExecutionContext(
+        options
+      );
+    const lockMode =
+      initialSearchExecution
+        ? "initial-owned"
+        : leaseContext
+          ? "owned"
+          : "unlocked";
 
     for (
       let attempt = 0;
@@ -763,6 +845,7 @@ function createValkeySearchSessionAdapters({
         expectedRevision: current.revision,
         lockMode,
         leaseContext,
+        initialSearchExecution,
       });
 
       if (write.outcome === "ok") {
@@ -792,6 +875,222 @@ function createValkeySearchSessionAdapters({
       searchId,
       () => cloneSession(updates),
       options
+    );
+  }
+
+  async function claimInitialSearchExecution(
+    searchId,
+    execution
+  ) {
+    const normalized =
+      normalizeSearchId(searchId);
+    const initialSearchExecution =
+      getInitialSearchExecutionContext(
+        execution
+      );
+
+    if (!initialSearchExecution) {
+      throwWriteFailure(
+        "stale-initial-search"
+      );
+    }
+
+    for (
+      let attempt = 0;
+      attempt < safeCasRetries;
+      attempt += 1
+    ) {
+      const current =
+        await readEnvelope(
+          normalized
+        );
+
+      if (!current) {
+        return requireSearchSession(
+          normalized
+        );
+      }
+
+      if (
+        ["complete", "failed"]
+          .includes(
+            current.session
+              .initialSearchStage
+          )
+      ) {
+        return {
+          claimed:
+            false,
+          terminal:
+            true,
+          session:
+            cloneSession(
+              current.session
+            ),
+        };
+      }
+
+      const currentFence =
+        Number(
+          current.session
+            .initialSearchFencingNumber
+        ) || 0;
+
+      if (
+        initialSearchExecution
+          .fencingNumber <=
+          currentFence
+      ) {
+        return {
+          claimed:
+            false,
+          terminal:
+            false,
+          session:
+            cloneSession(
+              current.session
+            ),
+        };
+      }
+
+      const now = Date.now();
+      const claimedSession = {
+        ...current.session,
+        initialSearchStage:
+          "running",
+        initialSearchExecutionToken:
+          initialSearchExecution
+            .executionToken,
+        initialSearchFencingNumber:
+          initialSearchExecution
+            .fencingNumber,
+        status:
+          "Running",
+        searchIncomplete:
+          true,
+        isContinuing:
+          false,
+        lastError:
+          null,
+        retryable:
+          false,
+        retryAfterMs:
+          2_000,
+        updatedAt:
+          now,
+        expiresAt:
+          now + safeSessionTtlMs,
+      };
+      const write =
+        await writeEnvelope({
+          searchId:
+            normalized,
+          session:
+            claimedSession,
+          expectedRevision:
+            current.revision,
+          lockMode:
+            "initial-claim",
+          initialSearchExecution,
+        });
+
+      if (write.outcome === "ok") {
+        return {
+          claimed:
+            true,
+          terminal:
+            false,
+          session:
+            cloneSession(
+              claimedSession
+            ),
+        };
+      }
+
+      if (write.outcome === "conflict") {
+        continue;
+      }
+
+      if (
+        write.outcome ===
+          "initial-terminal"
+      ) {
+        const terminalSession =
+          await requireSearchSession(
+            normalized
+          );
+
+        return {
+          claimed:
+            false,
+          terminal:
+            true,
+          session:
+            terminalSession,
+        };
+      }
+
+      if (
+        write.outcome ===
+          "stale-initial-search"
+      ) {
+        return {
+          claimed:
+            false,
+          terminal:
+            false,
+          session:
+            await requireSearchSession(
+              normalized
+            ),
+        };
+      }
+
+      throwWriteFailure(
+        write.outcome
+      );
+    }
+
+    throwWriteFailure("conflict");
+  }
+
+  async function updateInitialSearchExecution(
+    searchId,
+    updates = {},
+    execution
+  ) {
+    const initialSearchExecution =
+      getInitialSearchExecutionContext(
+        execution
+      );
+
+    if (!initialSearchExecution) {
+      throwWriteFailure(
+        "stale-initial-search"
+      );
+    }
+
+    const nextUpdates =
+      cloneSession(updates);
+
+    if (
+      ["complete", "failed"]
+        .includes(
+          nextUpdates
+            .initialSearchStage
+        )
+    ) {
+      nextUpdates
+        .initialSearchExecutionToken =
+          null;
+    }
+
+    return mutateSession(
+      searchId,
+      () => nextUpdates,
+      {
+        initialSearchExecution,
+      }
     );
   }
 
@@ -1181,6 +1480,8 @@ function createValkeySearchSessionAdapters({
     getSearchSession,
     getSearchSessionState,
     requireSearchSession,
+    claimInitialSearchExecution,
+    updateInitialSearchExecution,
     updateSearchSession,
     appendHotelsToSearchSession,
     clearSearchSession,

@@ -17,6 +17,7 @@ const {
 const {
   searchSessionStore,
   initialSearchIdempotencyStore,
+  searchQueueAdmission,
 } = getOperationalState();
 
 const {
@@ -25,6 +26,7 @@ const {
 
 const {
   executeInitialSearchIdempotently,
+  createSearchPayloadFingerprint,
   isSearchIdempotencyError,
 } = initialSearchIdempotencyStore;
 
@@ -53,6 +55,7 @@ const {
 const {
   searchDestinations,
   searchHotels,
+  createQueuedHotelSearch,
   continueHotelSearch,
   getHotelDetails,
   getSearchStatus,
@@ -129,6 +132,9 @@ const PUBLIC_ROUTE_ERROR_CODES =
     "IDEMPOTENCY_PAYLOAD_INVALID",
     "IDEMPOTENCY_KEY_CONFLICT",
     "IDEMPOTENCY_CAPACITY_REACHED",
+    "SEARCH_CAPACITY_TEMPORARILY_EXHAUSTED",
+    "SEARCH_QUEUE_UNAVAILABLE",
+    "SEARCH_QUEUE_PAYLOAD_INVALID",
     "PROVIDER_CAPACITY_EXCEEDED",
     "HOTEL_ID_REQUIRED",
     "HOTEL_ID_INVALID",
@@ -412,6 +418,80 @@ router.post("/search-hotels", async (req, res) => {
 
         execute:
           async () => {
+            if (
+              searchQueueAdmission
+                .enabled
+            ) {
+              const queuedSession =
+                await createQueuedHotelSearch(
+                  payload
+                );
+
+              try {
+                const admission =
+                  await searchQueueAdmission
+                    .admitSearch({
+                      idempotencyKey:
+                        req.get(
+                          "Idempotency-Key"
+                        ),
+                      searchId:
+                        queuedSession
+                          .searchId,
+                      payload,
+                      payloadFingerprint:
+                        createSearchPayloadFingerprint(
+                          payload
+                        ),
+                    });
+
+                if (
+                  admission.searchId !==
+                    queuedSession.searchId
+                ) {
+                  await searchSessionStore
+                    .clearSearchSession(
+                    queuedSession
+                      .searchId
+                  );
+                }
+
+                return createPublicSearchPayload({
+                  success:
+                    true,
+                  searchId:
+                    admission.searchId,
+                  status:
+                    "Queued",
+                  initialSearchStage:
+                    "queued",
+                  searchIncomplete:
+                    true,
+                  isContinuing:
+                    false,
+                  currency:
+                    payload.currency ??
+                    "USD",
+                  totalHotels:
+                    0,
+                  hotels:
+                    [],
+                  retryable:
+                    true,
+                  retryAfterMs:
+                    2_000,
+                });
+              }
+              catch (error) {
+                await searchSessionStore
+                  .clearSearchSession(
+                  queuedSession.searchId
+                );
+
+                throw error;
+              }
+            }
+
             const results =
               await searchHotels(
                 payload
@@ -442,9 +522,15 @@ router.post("/search-hotels", async (req, res) => {
       "no-store"
     );
 
-    return res.json(
-      idempotencyResult.response
-    );
+    return res
+      .status(
+        searchQueueAdmission.enabled
+          ? 202
+          : 200
+      )
+      .json(
+        idempotencyResult.response
+      );
 
   } catch (error) {
 

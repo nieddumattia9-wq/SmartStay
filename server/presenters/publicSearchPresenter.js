@@ -154,6 +154,11 @@ function createPublicSearchPayload(
         false
       ),
 
+    initialSearchStage:
+      normalizeNullableText(
+        source.initialSearchStage
+      ),
+
     nextResultsKey:
       normalizeNullableText(
         source.nextResultsKey
@@ -196,6 +201,9 @@ function createPublicSearchSession(
 
     isContinuing:
       payload.isContinuing,
+
+    initialSearchStage:
+      payload.initialSearchStage,
 
     currency:
       payload.currency,
@@ -268,6 +276,10 @@ function createPublicSearchStatus(
 
     isContinuing:
       publicPayload.isContinuing,
+
+    initialSearchStage:
+      publicPayload
+        .initialSearchStage,
 
     totalHotels:
       publicPayload.totalHotels,

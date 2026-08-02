@@ -883,7 +883,52 @@ const {
   // Initial Hotel Search
   // =========================
 
-  async function searchHotels(searchData) {
+  async function searchHotels(
+    searchData,
+    {
+      searchId = null,
+      initialSearchExecution = null,
+      assertInitialSearchOwnership =
+        null,
+    } = {}
+  ) {
+
+    const queuedSearchId =
+      typeof searchId === "string"
+        ? searchId.trim()
+        : "";
+
+    async function persistInitialSession(
+      session
+    ) {
+      if (!queuedSearchId) {
+        return saveSearchSession(
+          session
+        );
+      }
+
+      if (
+        typeof assertInitialSearchOwnership ===
+          "function"
+      ) {
+        await assertInitialSearchOwnership();
+      }
+
+      return searchSessionStore
+        .updateInitialSearchExecution(
+        queuedSearchId,
+        {
+          ...session,
+          searchId:
+            queuedSearchId,
+          initialSearchStage:
+            "complete",
+          initialSearchExecutionToken:
+            null,
+        },
+        initialSearchExecution
+      );
+    }
 
     const providerResult =
       await searchHotelsAcrossProviders({
@@ -905,7 +950,7 @@ const {
     } = {}) {
 
       const emptySession =
-        await saveSearchSession({
+        await persistInitialSession({
           originalSearchData:
             searchData,
 
@@ -1089,7 +1134,7 @@ const {
       );
 
     const savedSession =
-      await saveSearchSession({
+      await persistInitialSession({
         originalSearchData:
           searchData,
 
@@ -1150,6 +1195,225 @@ const {
       initialOutcome
     );
 
+  }
+
+  async function createQueuedHotelSearch(
+    searchData
+  ) {
+    return saveSearchSession({
+      originalSearchData:
+        searchData,
+      providerId:
+        null,
+      providerExecutions:
+        [],
+      status:
+        "Queued",
+      searchIncomplete:
+        true,
+      continuation:
+        null,
+      providerContext:
+        null,
+      currency:
+        searchData?.currency ??
+        "USD",
+      totalHotels:
+        0,
+      hotels:
+        [],
+      isContinuing:
+        false,
+      initialSearchStage:
+        "queued",
+      initialSearchExecutionToken:
+        null,
+      initialSearchFencingNumber:
+        0,
+      lastError:
+        null,
+      failureCode:
+        null,
+      retryable:
+        true,
+      retryAfterMs:
+        2_000,
+    });
+  }
+
+  function createQueuedSearchFailure(
+    failure
+  ) {
+    const error =
+      new Error(
+        "Queued accommodation search failed."
+      );
+
+    error.name =
+      "QueuedSearchFailure";
+    error.code =
+      typeof failure?.code ===
+        "string"
+        ? failure.code
+        : "PROVIDER_UNAVAILABLE";
+    error.status =
+      Number.isInteger(
+        Number(failure?.status)
+      )
+        ? Number(failure.status)
+        : 503;
+    error.retryable =
+      failure?.retryable === true;
+    error.retryAfterMs =
+      normalizeRetryAfterMs(
+        failure?.retryAfterMs
+      );
+
+    return error;
+  }
+
+  async function executeQueuedHotelSearch({
+    searchId,
+    searchData,
+    initialSearchExecution,
+    assertInitialSearchOwnership =
+      null,
+  } = {}) {
+    const claim =
+      await searchSessionStore
+        .claimInitialSearchExecution(
+        searchId,
+        initialSearchExecution
+      );
+
+    if (!claim?.claimed) {
+      if (claim?.terminal) {
+        return createSearchSessionResponse(
+          claim.session,
+          {
+            success:
+              claim.session?.status !==
+              "Failed",
+            code:
+              claim.session
+                ?.failureCode ??
+              null,
+            retryable:
+              claim.session
+                ?.retryable === true,
+            retryAfterMs:
+              claim.session
+                ?.retryAfterMs ??
+              null,
+          }
+        );
+      }
+
+      const staleError =
+        new Error(
+          "This queued search attempt is no longer current."
+        );
+
+      staleError.code =
+        "SEARCH_INITIAL_EXECUTION_STALE";
+      staleError.status =
+        409;
+      staleError.retryable =
+        false;
+
+      throw staleError;
+    }
+
+    const result =
+      await searchHotels(
+        searchData,
+        {
+          searchId,
+          initialSearchExecution,
+          assertInitialSearchOwnership,
+        }
+      );
+
+    if (
+      result?.success !== true
+    ) {
+      throw createQueuedSearchFailure(
+        result
+      );
+    }
+
+    return result;
+  }
+
+  async function markQueuedHotelSearchRetry({
+    searchId,
+    initialSearchExecution,
+    retryAfterMs = 1_000,
+  } = {}) {
+    return searchSessionStore
+      .updateInitialSearchExecution(
+      searchId,
+      {
+        initialSearchStage:
+          "retrying",
+        status:
+          "Queued",
+        searchIncomplete:
+          true,
+        isContinuing:
+          false,
+        lastError:
+          null,
+        failureCode:
+          null,
+        retryable:
+          true,
+        retryAfterMs:
+          normalizeRetryAfterMs(
+            retryAfterMs
+          ) ?? 1_000,
+      },
+      initialSearchExecution
+    );
+  }
+
+  async function markQueuedHotelSearchFailed({
+    searchId,
+    initialSearchExecution,
+    code =
+      "PROVIDER_UNAVAILABLE",
+    retryable = false,
+    retryAfterMs = null,
+  } = {}) {
+    return searchSessionStore
+      .updateInitialSearchExecution(
+      searchId,
+      {
+        initialSearchStage:
+          "failed",
+        initialSearchExecutionToken:
+          null,
+        status:
+          "Failed",
+        searchIncomplete:
+          false,
+        isContinuing:
+          false,
+        lastError:
+          "Accommodation search could not be completed.",
+        failureCode:
+          typeof code === "string"
+            ? code
+            : "PROVIDER_UNAVAILABLE",
+        retryable:
+          retryable === true,
+        retryAfterMs:
+          normalizeRetryAfterMs(
+            retryAfterMs
+          ),
+      },
+      initialSearchExecution
+    );
   }
 
   // =========================
@@ -2246,6 +2510,14 @@ return {
             session.retryAfterMs
           ),
 
+        code:
+          session.failureCode ??
+          null,
+
+        initialSearchStage:
+          session.initialSearchStage ??
+          null,
+
         updatedAt:
           session.updatedAt ?? null,
 
@@ -2258,6 +2530,10 @@ return {
     module.exports = {
       searchDestinations,
       searchHotels,
+      createQueuedHotelSearch,
+      executeQueuedHotelSearch,
+      markQueuedHotelSearchRetry,
+      markQueuedHotelSearchFailed,
       continueHotelSearch,
       getHotelDetails,
       getSearchStatus,
