@@ -2,6 +2,12 @@
 
 ## Deployment shape
 
+The source profile below is stored in
+`deploy/render-staging-distributed.candidate.yaml`. The connected
+`render.yaml` intentionally remains the single-instance safety profile until
+4E2 receives explicit approval and the Blueprint path is changed manually with
+Auto Sync set to `No`.
+
 The canonical staging release contains:
 
 1. one static Vite frontend;

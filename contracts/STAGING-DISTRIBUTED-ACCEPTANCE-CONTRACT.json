@@ -12,6 +12,16 @@
     "liveProviderJourneyRequiresSeparateApproval": true,
     "productionDeploymentAllowed": false
   },
+  "sourceBlueprintBoundary": {
+    "connectedBlueprintPath": "render.yaml",
+    "connectedBlueprintProfile": "single-instance-safe",
+    "connectedBlueprintMayDeclarePaidDistributedResources": false,
+    "distributedCandidatePath": "deploy/render-staging-distributed.candidate.yaml",
+    "distributedCandidateConnectedToRender": false,
+    "blueprintAutoSyncRequired": false,
+    "blueprintPathChangeRequiresExplicitApproval": true,
+    "manualSyncRequiresExplicitApproval": true
+  },
   "topology": {
     "frontendStaticSites": 1,
     "apiInstances": 2,
@@ -50,7 +60,8 @@
   },
   "sourceReadinessChecks": [
     "exact-baseline-and-clean-worktree",
-    "render-blueprint-contract",
+    "connected-blueprint-single-instance-safety-contract",
+    "unconnected-distributed-candidate-contract",
     "api-release-environment-fail-closed",
     "worker-release-environment-fail-closed",
     "release-candidate-distributed-constraints",

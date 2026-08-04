@@ -192,11 +192,11 @@ test(
 );
 
 test(
-  "distributed staging keeps process-local beta analytics explicitly disabled",
+  "distributed staging candidate keeps process-local beta analytics explicitly disabled",
   () => {
     const render =
       readText(
-        "render.yaml"
+        "deploy/render-staging-distributed.candidate.yaml"
       );
 
     const operations =

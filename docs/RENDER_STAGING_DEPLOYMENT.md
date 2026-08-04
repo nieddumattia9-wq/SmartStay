@@ -4,9 +4,15 @@
 
 This document defines 39C25A.4E staging only. It does not authorize production deployment or a public beta.
 
-Committing this source configuration does not create Render resources. A
-Blueprint sync provisions paid resources, so it requires separate explicit
-cost approval. No script in the repository performs that sync.
+The connected Render Blueprint path is `render.yaml`. That file deliberately
+contains only the previously approved single-instance API and static frontend.
+It must not declare workers, Key Value or a second API instance.
+
+The paid distributed profile is isolated at
+`deploy/render-staging-distributed.candidate.yaml`. It is not a connected
+Blueprint and a source commit cannot activate it. Changing the Blueprint path,
+enabling Auto Sync or pressing Manual Sync are platform mutations that require
+separate explicit cost approval. Auto Sync must remain `No` throughout 4E.
 
 The approved staging topology is deliberately fixed:
 
@@ -135,17 +141,21 @@ provider account quota.
 
 1. Confirm `main`, `origin/main` and the reviewed release SHA are identical.
 2. Confirm the complete local release gate passed for that SHA.
-3. Record the existing staging service IDs and last known-good release.
-4. Add new Dashboard-only values required by the existing Blueprint update.
-5. Use Manual sync on the existing Blueprint. Do not create a duplicate
-   Blueprint or duplicate services.
-6. Confirm one private persistent Key Value, two API instances and two worker
+3. Confirm the Blueprint path is still `render.yaml` and Auto Sync is `No`.
+4. Record the existing staging service IDs, instance counts and last known-good
+   release.
+5. Obtain explicit cost approval and confirm the real provider account quota.
+6. Add every new Dashboard-only value before any deploy.
+7. Change the existing Blueprint path to
+   `deploy/render-staging-distributed.candidate.yaml`, review the complete diff,
+   then use Manual Sync. Do not create a duplicate Blueprint or services.
+8. Confirm one private persistent Key Value, two API instances and two worker
    instances exist in Frankfurt on Starter plans.
-7. Enable Key Value internal authentication in the Dashboard.
-8. Use Manual sync again so both `fromService.connectionString` values include
+9. Enable Key Value internal authentication in the Dashboard.
+10. Use Manual Sync again so both `fromService.connectionString` values include
    the authenticated internal URL, then redeploy the exact reviewed SHA.
-9. Confirm automatic deploys and autoscaling remain off.
-10. Keep all beta invitations and provider traffic stopped.
+11. Confirm automatic deploys, Auto Sync and autoscaling remain off.
+12. Keep all beta invitations and provider traffic stopped.
 
 The first sync can leave new processes not-ready until manual values and the
 authenticated connection string are complete. This is an expected fail-closed
@@ -178,10 +188,13 @@ is unsafe. If 4E fails:
 
 1. stop provider traffic and preserve evidence;
 2. scale the API back to exactly one instance;
-3. stop both search-worker instances;
-4. redeploy the previous validated single-instance commit;
-5. verify release SHA, liveness, readiness and CORS;
-6. retain the Key Value instance without exposing or deleting it until the
+3. suspend the search-worker service;
+4. suspend, but do not delete, the Key Value instance;
+5. restore the Blueprint path to `render.yaml` with Auto Sync still `No`;
+6. redeploy the previous validated single-instance commit only if the retained
+   instance is not already serving it;
+7. verify release SHA, liveness, readiness and CORS;
+8. retain the suspended Key Value instance without exposing or deleting it until the
    incident is reviewed.
 
 Do not delete persistent state as an automatic rollback step.

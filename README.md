@@ -101,6 +101,11 @@ the isolated local smoke retain the in-memory compatibility profile. See
 [`docs/STAGING_DISTRIBUTED_ACCEPTANCE.md`](docs/STAGING_DISTRIBUTED_ACCEPTANCE.md)
 for the source/deployment authorization boundary.
 
+The Render-connected [`render.yaml`](render.yaml) remains the safe
+single-instance profile. The paid distributed topology is retained only as
+[`deploy/render-staging-distributed.candidate.yaml`](deploy/render-staging-distributed.candidate.yaml)
+until 39C25A.4E2 is explicitly authorized.
+
 ## Security
 
 - secrets stay in backend environment variables;

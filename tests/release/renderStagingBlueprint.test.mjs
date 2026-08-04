@@ -4,6 +4,12 @@ import {
 } from "node:fs";
 import test from "node:test";
 
+const CONNECTED_BLUEPRINT_PATH =
+  "render.yaml";
+
+const DISTRIBUTED_CANDIDATE_PATH =
+  "deploy/render-staging-distributed.candidate.yaml";
+
 function readText(path) {
   return readFileSync(
     path,
@@ -144,12 +150,85 @@ function assertKeyValueReference(
 }
 
 test(
-  "Render staging Blueprint defines the bounded 4E distributed topology",
+  "connected Render Blueprint stays on the approved single-instance safety profile",
   () => {
     const yaml =
       readText(
-        "render.yaml"
+        CONNECTED_BLUEPRINT_PATH
       );
+    const backend =
+      serviceBlock(
+        yaml,
+        "web",
+        "smartstay-staging-api"
+      );
+    const frontend =
+      serviceBlock(
+        yaml,
+        "web",
+        "smartstay-staging-web"
+      );
+
+    assertContains(
+      yaml,
+      "# CONNECTED BLUEPRINT SAFETY PROFILE.\n",
+      "connected Blueprint warning"
+    );
+    assertContains(
+      backend,
+      "    numInstances: 1\n",
+      "single API instance"
+    );
+    assertLiteralEnv(
+      backend,
+      "RUNTIME_STATE_MODE",
+      "in-memory-single-instance"
+    );
+    assertContains(
+      backend,
+      "    autoDeployTrigger: off\n",
+      "API deploy control"
+    );
+    assertContains(
+      frontend,
+      "    autoDeployTrigger: off\n",
+      "frontend deploy control"
+    );
+
+    for (
+      const forbidden of
+      [
+        "  - type: keyvalue\n",
+        "  - type: worker\n",
+        "    numInstances: 2\n",
+        "fromGroup:",
+        "SMARTSTAY_STATE_REDIS_URL",
+        "SMARTSTAY_QUEUE_REDIS_URL",
+      ]
+    ) {
+      assert.ok(
+        !yaml.includes(
+          forbidden
+        ),
+        `Connected Blueprint must not declare paid distributed capacity: ${forbidden}`
+      );
+    }
+  }
+);
+
+test(
+  "unconnected Render candidate defines the bounded 4E distributed topology",
+  () => {
+    const yaml =
+      readText(
+        DISTRIBUTED_CANDIDATE_PATH
+      );
+
+    assertContains(
+      yaml,
+      "# UNCONNECTED PAID INFRASTRUCTURE CANDIDATE.\n",
+      "distributed candidate warning"
+    );
     const keyValue =
       serviceBlock(
         yaml,
@@ -431,7 +510,7 @@ test(
   () => {
     const yaml =
       readText(
-        "render.yaml"
+        DISTRIBUTED_CANDIDATE_PATH
       );
 
     assert.equal(
@@ -495,7 +574,9 @@ test(
         "Do not add RouteStack credentials",
         "zero live provider calls",
         "production remains blocked",
-        "Use Manual sync on the existing Blueprint",
+        "deploy/render-staging-distributed.candidate.yaml",
+        "Auto Sync must remain `No`",
+        "Change the existing Blueprint path",
       ]
     ) {
       assert.ok(

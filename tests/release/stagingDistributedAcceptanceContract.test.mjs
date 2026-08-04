@@ -70,6 +70,29 @@ test(
         .sourceReadinessPassCloses4E,
       false
     );
+
+    assert.deepEqual(
+      contract
+        .sourceBlueprintBoundary,
+      {
+        connectedBlueprintPath:
+          "render.yaml",
+        connectedBlueprintProfile:
+          "single-instance-safe",
+        connectedBlueprintMayDeclarePaidDistributedResources:
+          false,
+        distributedCandidatePath:
+          "deploy/render-staging-distributed.candidate.yaml",
+        distributedCandidateConnectedToRender:
+          false,
+        blueprintAutoSyncRequired:
+          false,
+        blueprintPathChangeRequiresExplicitApproval:
+          true,
+        manualSyncRequiresExplicitApproval:
+          true,
+      }
+    );
   }
 );
 
@@ -191,6 +214,9 @@ test(
         "zero live provider calls",
         "It is not a load test",
         "scale API to one and stop workers",
+        "render-staging-distributed.candidate.yaml",
+        "Auto Sync is `No`",
+        "Git push is not permitted",
       ]
     ) {
       assert.ok(

@@ -20,9 +20,17 @@ The controlled runner may contact the npm registry only to install the exact
 lockfile and obtain the current advisory report. All test, build and smoke
 stages run with non-loopback networking blocked.
 
-E1 passes only when the exact baseline receives the reviewed Blueprint,
-release validators, candidate constraints, documentation and permanent tests;
-the full local gate then passes and the commit is pushed transactionally.
+E1 passes only when the exact baseline receives both source profiles:
+
+- `render.yaml`, the connected single-instance safety profile that cannot
+  declare workers, Key Value or multi-instance paid capacity;
+- `deploy/render-staging-distributed.candidate.yaml`, the reviewed distributed
+  candidate that is not connected to the Render Blueprint.
+
+The release validators, candidate constraints, documentation and permanent
+tests must prove that separation before the commit is pushed transactionally.
+Changing the Render Blueprint path to the distributed candidate is an E2
+platform mutation, not an E1 source action.
 
 ### 39C25A.4E2 — remote infrastructure acceptance
 
@@ -55,6 +63,11 @@ actions and zero cloud resources created; npm registry activity is declared
 separately. E2 evidence must state zero live provider calls. E3 must state
 exact bounded provider call counts without exposing provider-private payloads.
 
+The E1 evidence must also record that the connected Blueprint path remains
+`render.yaml`, that Auto Sync is `No`, and that the paid distributed candidate
+is not the connected path. A Git push is not permitted to be the mechanism
+that authorizes or triggers E2.
+
 ## Fail-closed rules
 
 The API and worker may not become ready if:
@@ -76,6 +89,8 @@ No operator may bypass readiness to complete the gate.
 A pre-4E release expects one in-memory API and no worker. Before deploying such
 a target, scale API to one and stop workers. Persistent Key Value data is
 retained for investigation and never automatically deleted by rollback.
+Suspension is preferred to deletion while the incident or acceptance evidence
+is under review.
 
 The machine-readable contract is
 `contracts/STAGING-DISTRIBUTED-ACCEPTANCE-CONTRACT.json`.
