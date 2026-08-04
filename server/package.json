@@ -38,6 +38,7 @@
   "overrides": {
     "bullmq": {
       "cron-parser": "5.7.0"
-    }
+    },
+    "ip-address": "10.3.1"
   }
 }

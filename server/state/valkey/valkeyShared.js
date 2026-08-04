@@ -5,6 +5,8 @@ const crypto = require("crypto");
 const VALKEY_KEYSPACE_VERSION = "v1";
 const DEFAULT_CONNECT_TIMEOUT_MS = 2_000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 3_000;
+const DEFAULT_COMMAND_POOL_SIZE = 4;
+const MAX_COMMAND_POOL_SIZE = 8;
 const DEFAULT_RETRY_AFTER_MS = 500;
 
 const ENVIRONMENT_PATTERN =
@@ -388,6 +390,8 @@ function createValkeyCommandExecutor({
     DEFAULT_CONNECT_TIMEOUT_MS,
   commandTimeoutMs =
     DEFAULT_COMMAND_TIMEOUT_MS,
+  commandPoolSize =
+    DEFAULT_COMMAND_POOL_SIZE,
   createClient: createClientOverride = null,
 } = {}) {
   const safeUrl = validateValkeyUrl(url);
@@ -409,36 +413,58 @@ function createValkeyCommandExecutor({
         maximum: 30_000,
       }
     );
+  const safeCommandPoolSize =
+    normalizePositiveInteger(
+      commandPoolSize,
+      DEFAULT_COMMAND_POOL_SIZE,
+      {
+        minimum: 1,
+        maximum: MAX_COMMAND_POOL_SIZE,
+      }
+    );
 
   const createClient =
     createClientOverride ??
     require("redis").createClient;
 
-  const client = createClient({
-    url: safeUrl,
-    disableOfflineQueue: true,
-    socket: {
-      connectTimeout: safeConnectTimeoutMs,
-      reconnectStrategy(retries) {
-        if (retries >= 3) {
-          return new Error(
-            "Shared operational state reconnect budget exhausted."
-          );
-        }
-
-        return Math.min(
-          100 * 2 ** retries,
-          750
-        );
-      },
+  const clients = Array.from(
+    {
+      length: safeCommandPoolSize,
     },
-  });
+    (_, index) => {
+      const client = createClient({
+        url: safeUrl,
+        disableOfflineQueue: true,
+        socket: {
+          connectTimeout: safeConnectTimeoutMs,
+          reconnectStrategy(retries) {
+            if (retries >= 3) {
+              return new Error(
+                "Shared operational state reconnect budget exhausted."
+              );
+            }
 
-  client.on("error", () => {
-    // Errors are converted to one provider-neutral public failure below.
-  });
+            return Math.min(
+              100 * 2 ** retries,
+              750
+            );
+          },
+        },
+      });
 
-  let connectPromise = null;
+      client.on("error", () => {
+        // Errors are converted to one provider-neutral public failure below.
+      });
+
+      return {
+        index,
+        client,
+        connectPromise: null,
+        inFlight: 0,
+      };
+    }
+  );
+  let selectionCursor = 0;
 
   async function withTimeout(promise) {
     let timeoutHandle;
@@ -463,21 +489,23 @@ function createValkeyCommandExecutor({
     }
   }
 
-  async function ensureReady() {
+  async function ensureReady(entry) {
+    const { client } = entry;
+
     if (client.isReady) {
       return client;
     }
 
-    if (!client.isOpen) {
-      if (!connectPromise) {
-        connectPromise = client
-          .connect()
-          .finally(() => {
-            connectPromise = null;
-          });
-      }
+    if (entry.connectPromise) {
+      await withTimeout(entry.connectPromise);
+    } else if (!client.isOpen) {
+      entry.connectPromise = client
+        .connect()
+        .finally(() => {
+          entry.connectPromise = null;
+        });
 
-      await withTimeout(connectPromise);
+      await withTimeout(entry.connectPromise);
     }
 
     if (!client.isReady) {
@@ -487,9 +515,42 @@ function createValkeyCommandExecutor({
     return client;
   }
 
+  function selectClientEntry() {
+    let selected = null;
+
+    for (
+      let offset = 0;
+      offset < clients.length;
+      offset += 1
+    ) {
+      const index =
+        (selectionCursor + offset) %
+        clients.length;
+      const candidate = clients[index];
+
+      if (
+        !selected ||
+        candidate.inFlight <
+          selected.inFlight
+      ) {
+        selected = candidate;
+      }
+    }
+
+    selectionCursor =
+      (selected.index + 1) %
+      clients.length;
+    selected.inFlight += 1;
+
+    return selected;
+  }
+
   async function execute(operation) {
+    const entry = selectClientEntry();
+
     try {
-      const readyClient = await ensureReady();
+      const readyClient =
+        await ensureReady(entry);
 
       return await withTimeout(
         Promise.resolve().then(
@@ -502,24 +563,35 @@ function createValkeyCommandExecutor({
       }
 
       throw createOperationalStateUnavailableError();
+    } finally {
+      entry.inFlight = Math.max(
+        0,
+        entry.inFlight - 1
+      );
     }
   }
 
   async function close() {
-    try {
-      if (client.isOpen) {
-        client.destroy();
+    for (const { client } of clients) {
+      try {
+        if (client.isOpen) {
+          client.destroy();
+        }
+      } catch {
+        // Closing is best effort and never changes a completed request result.
       }
-    } catch {
-      // Closing is best effort and never changes a completed request result.
     }
   }
 
   return Object.freeze({
     execute,
     close,
+    commandPoolSize: safeCommandPoolSize,
     get isReady() {
-      return client.isReady === true;
+      return clients.some(
+        ({ client }) =>
+          client.isReady === true
+      );
     },
   });
 }
@@ -535,6 +607,8 @@ module.exports = {
   VALKEY_KEYSPACE_VERSION,
   DEFAULT_CONNECT_TIMEOUT_MS,
   DEFAULT_COMMAND_TIMEOUT_MS,
+  DEFAULT_COMMAND_POOL_SIZE,
+  MAX_COMMAND_POOL_SIZE,
   createOperationalStateError,
   createOperationalStateUnavailableError,
   isOperationalStateError,

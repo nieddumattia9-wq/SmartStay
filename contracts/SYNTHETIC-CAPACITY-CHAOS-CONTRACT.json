@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "smartstay-synthetic-capacity-chaos-v1",
+  "contractId": "39C25A.4D",
+  "baselineCommit": "67d293077eda6fc3a1ee666b2de4a563fac4312e",
+  "scenarioVersion": "smartstay-capacity-chaos-v1",
+  "providerMode": "deterministic-loopback-stub",
+  "externalNetworkAllowed": false,
+  "massProviderCallsAllowed": 0,
+  "massBookingCallsAllowed": 0,
+  "externalAnalyticsCallsAllowed": 0,
+  "sharedStore": {
+    "commandPoolSizePerProcess": 4,
+    "commandPoolMaximum": 8,
+    "scheduling": "least-inflight-round-robin",
+    "offlineQueueEnabled": false
+  },
+  "activeSessions": {
+    "target": 1000,
+    "writeConcurrency": 16,
+    "readConcurrency": 32,
+    "lostAllowed": 0,
+    "crossSessionLeakageAllowed": 0,
+    "hardSerializedBytesPerSession": 1048576,
+    "p95SerializedBytesMaximum": 358400,
+    "p99SerializedBytesMaximum": 524288,
+    "sharedStoreReadP95MsMaximum": 25,
+    "sharedStoreWriteP95MsMaximum": 35
+  },
+  "burstAdmission": {
+    "requests": 100,
+    "windowMsMaximum": 10000,
+    "acknowledgementP95MsMaximum": 500,
+    "acknowledgementP99MsMaximum": 1000,
+    "searchStatusP95MsMaximum": 250,
+    "stubSearchCompletionP95MsMaximum": 15000,
+    "unexpected5xxRateMaximum": 0.01
+  },
+  "exceptionalOverload": {
+    "prefillJobs": 100,
+    "attemptedRequests": 1000,
+    "hardAdmittedJobMaximum": 1000,
+    "allowedStatuses": [
+      202,
+      503
+    ],
+    "requiredCapacityCode": "SEARCH_CAPACITY_TEMPORARILY_EXHAUSTED",
+    "retryAfterRequired": true,
+    "crashesAllowed": 0,
+    "unboundedMemoryGrowthAllowed": false
+  },
+  "multiProcess": {
+    "minimumWebProcesses": 2,
+    "minimumWorkerProcesses": 2,
+    "workerQueueConnectionDriver": "ioredis",
+    "globalProviderActiveLimit": 8,
+    "maximumObservedAggregateProviderActive": 8,
+    "duplicateVisibleCompletionsAllowed": 0,
+    "staleFencingWritesAllowed": 0
+  },
+  "chaos": {
+    "webHardRestartRequired": true,
+    "workerHardRestartRequired": true,
+    "valkeyInterruptionRequired": true,
+    "acceptedJobLossAllowed": 0,
+    "staleLockScenarioRequired": true,
+    "duplicateDeliveryScenarioRequired": true,
+    "sameClientReconnectRequired": true
+  },
+  "harness": {
+    "processReadyTimeoutMs": 45000,
+    "workerStartupTimeoutMs": 20000,
+    "processReadyMaximumAttempts": 2,
+    "processReadyRetryDelayMs": 500,
+    "httpRequestTimeoutMs": 15000,
+    "controlledRunnerStageTimeoutMs": 720000,
+    "activeSessionScenarioTimeoutMs": 180000,
+    "multiProcessScenarioTimeoutMs": 240000,
+    "overloadScenarioTimeoutMs": 240000,
+    "cleanupOperationTimeoutMs": 10000,
+    "processCleanupTimeoutMs": 35000,
+    "serverCloseTimeoutMs": 5000,
+    "initialStartupOrder": "web-before-worker",
+    "replacementWorkerStartupOrder": "sequential",
+    "fatalMessageFailFastRequired": true,
+    "roleSpecificTimeoutEvidenceRequired": true,
+    "capacityJournalRequired": true,
+    "workerConnectionJournalRequired": true,
+    "workerInitialReconnectRequired": true,
+    "workerLazyConnectionAllowed": false,
+    "windowsProcessTreeKillFallbackRequired": true,
+    "failureExitImmediateRequired": true,
+    "progressEverySessions": 100
+  },
+  "dependencySecurity": {
+    "auditLevel": "high",
+    "advisoryExceptionsAllowed": 0,
+    "ipAddressVersion": "10.3.1",
+    "ipAddressMaximumAffectedVersion": "10.3.0",
+    "exactVersionCheckRequired": true
+  },
+  "resources": {
+    "eventLoopLagP95MsMaximum": 50,
+    "webProcessBudgetBytes": 536870912,
+    "workerProcessBudgetBytes": 805306368,
+    "burstMemoryMaximumRatio": 0.8,
+    "webRssGrowthMaximumBytes": 134217728,
+    "workerRssGrowthMaximumBytes": 268435456,
+    "valkeySizingHeadroomRatio": 0.65
+  },
+  "evidence": {
+    "recordNodeVersion": true,
+    "recordPlatform": true,
+    "recordScenarioVersion": true,
+    "recordProcessMetrics": true,
+    "recordValkeyMemory": true,
+    "rawTravelPayloadLoggingAllowed": false,
+    "rawJobIdentityLoggingAllowed": false,
+    "repositoryMustBeCleanBeforeAndAfter": true
+  }
+}

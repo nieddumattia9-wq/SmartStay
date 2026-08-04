@@ -689,6 +689,8 @@ function createBullMqSearchQueueAdmission({
 
   let closed =
     false;
+  let closePromise =
+    null;
 
   async function withTimeout(
     operation
@@ -1656,26 +1658,125 @@ function createBullMqSearchQueueAdmission({
     );
   }
 
-  async function close() {
-    if (closed) {
+  function forceDisconnect() {
+    try {
+      Promise.resolve(
+        queue.disconnect()
+      ).catch(() => {});
+    }
+    catch {
+      // The owned raw client is still destroyed below.
+    }
+
+    if (!rawClient.isOpen) {
       return;
     }
 
-    closed = true;
-
     try {
-      await queue.close();
-    }
-    finally {
-      if (rawClient.isOpen) {
-        try {
-          await rawClient.quit();
-        }
-        catch {
-          rawClient.disconnect();
-        }
+      if (
+        typeof rawClient.destroy ===
+          "function"
+      ) {
+        rawClient.destroy();
+      }
+      else {
+        rawClient.disconnect();
       }
     }
+    catch {
+      // A concurrently completed graceful close already owns the connection.
+    }
+  }
+
+  async function close() {
+    if (closePromise) {
+      return closePromise;
+    }
+
+    closed = true;
+    closePromise =
+      (async () => {
+        let timeoutHandle;
+        const gracefulClose =
+          (async () => {
+            await queue.close();
+
+            if (rawClient.isOpen) {
+              try {
+                await rawClient.quit();
+              }
+              catch {
+                forceDisconnect();
+              }
+            }
+
+            return Object.freeze({
+              closed:
+                true,
+              forced:
+                false,
+            });
+          })()
+            .then(
+              (result) => ({
+                status:
+                  "closed",
+                result,
+              }),
+              (error) => ({
+                status:
+                  "error",
+                error,
+              })
+            );
+        const timeout =
+          new Promise(
+            (resolveTimeout) => {
+              timeoutHandle =
+                setTimeout(
+                  () => resolveTimeout({
+                    status:
+                      "timeout",
+                  }),
+                  config.commandTimeoutMs
+                );
+            }
+          );
+        const outcome =
+          await Promise.race([
+            gracefulClose,
+            timeout,
+          ]);
+
+        clearTimeout(
+          timeoutHandle
+        );
+
+        if (
+          outcome.status ===
+          "closed"
+        ) {
+          return outcome.result;
+        }
+
+        forceDisconnect();
+
+        if (
+          outcome.status ===
+          "error"
+        ) {
+          throw outcome.error;
+        }
+
+        return Object.freeze({
+          closed:
+            true,
+          forced:
+            true,
+        });
+      })();
+
+    return closePromise;
   }
 
   return Object.freeze({

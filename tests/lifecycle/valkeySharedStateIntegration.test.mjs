@@ -337,6 +337,50 @@ test(
 );
 
 test(
+  "concurrent cold-start commands share the bounded Valkey pool without duplicate state",
+  {
+    skip: !integrationEnabled,
+    timeout: 15_000,
+  },
+  async () => {
+    await cleanupNamespace();
+
+    const state = createState({
+      maxSessions: 64,
+      aggregateSessionBytes: 2 * 1024 * 1024,
+    });
+
+    try {
+      const sessions = await Promise.all(
+        Array.from(
+          {
+            length: 32,
+          },
+          (_, index) =>
+            state.searchSessionStore.saveSearchSession({
+              marker: `cold-start-${index}`,
+              hotels: [],
+            })
+        )
+      );
+
+      assert.equal(sessions.length, 32);
+      assert.equal(
+        await state.searchSessionStore.getSearchSessionCount(),
+        32
+      );
+      assert.equal(
+        new Set(sessions.map((session) => session.searchId)).size,
+        32
+      );
+    } finally {
+      await state.close();
+      await cleanupNamespace();
+    }
+  }
+);
+
+test(
   "real Valkey shares verification state and atomically consumes one handoff once",
   {
     skip: !integrationEnabled,

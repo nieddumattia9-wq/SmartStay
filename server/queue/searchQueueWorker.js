@@ -6,8 +6,10 @@ const crypto =
 const {
   UnrecoverableError,
   Worker,
-  createNodeRedisClient,
 } = require("bullmq");
+
+const IORedis =
+  require("ioredis");
 
 const {
   operationalLogger,
@@ -26,12 +28,6 @@ const {
   getSearchQueueConfig,
 } = require(
   "./searchQueueConfig"
-);
-
-const {
-  createRawQueueClient,
-} = require(
-  "./searchQueueAdmission"
 );
 
 const JOB_ID_PATTERN =
@@ -57,6 +53,31 @@ function createWorkerContractError(
     400;
   error.retryable =
     false;
+
+  return error;
+}
+
+function createWorkerStartupTimeoutError(
+  timeoutMs
+) {
+  const error =
+    new Error(
+      "The search queue worker did not become ready before its startup deadline."
+    );
+
+  error.name =
+    "SearchQueueWorkerStartupError";
+  error.code =
+    "SEARCH_WORKER_START_TIMEOUT";
+  error.status =
+    503;
+  error.retryable =
+    true;
+  error.retryAfterMs =
+    Math.max(
+      1_000,
+      Number(timeoutMs) || 1_000
+    );
 
   return error;
 }
@@ -528,6 +549,60 @@ function calculatePercentile(
   return sorted[index];
 }
 
+function createIoredisWorkerClient(
+  config
+) {
+  return new IORedis(
+    config.url,
+    {
+      connectTimeout:
+        config.connectTimeoutMs,
+      enableOfflineQueue:
+        true,
+      enableReadyCheck:
+        true,
+      // BullMQ must observe reconnect events instead of a rejected lazy connect promise.
+      lazyConnect:
+        false,
+      maxRetriesPerRequest:
+        null,
+      retryStrategy(
+        retries
+      ) {
+        return Math.min(
+          100 *
+            2 ** Math.min(
+              retries,
+              5
+            ),
+          3_000
+        );
+      },
+    }
+  );
+}
+
+function isWorkerClientOpen(
+  client
+) {
+  if (
+    typeof client?.isOpen ===
+      "boolean"
+  ) {
+    return client.isOpen;
+  }
+
+  return ![
+    "close",
+    "closed",
+    "end",
+  ].includes(
+    String(
+      client?.status ?? ""
+    ).toLowerCase()
+  );
+}
+
 function createSearchQueueWorker({
   config =
     getSearchQueueConfig(),
@@ -536,7 +611,7 @@ function createSearchQueueWorker({
   processor =
     null,
   createClientOverride =
-    createRawQueueClient,
+    createIoredisWorkerClient,
   WorkerClass =
     Worker,
   workerOptions = {},
@@ -555,6 +630,10 @@ function createSearchQueueWorker({
           true,
       }
     );
+  const workerConnectionDriver =
+    rawClient instanceof IORedis
+      ? "ioredis"
+      : "custom";
   const effectiveProcessor =
     processor ??
     createQueuedSearchProcessor({
@@ -616,9 +695,7 @@ function createSearchQueueWorker({
       trackedProcessor,
       {
         connection:
-          createNodeRedisClient(
-            rawClient
-          ),
+          rawClient,
         prefix:
           config.prefix,
         concurrency:
@@ -731,6 +808,35 @@ function createSearchQueueWorker({
     null;
   let drainPromise =
     null;
+  let readyPromise =
+    null;
+  const workerStartTimeoutMs =
+    Number.isSafeInteger(
+      Number(
+        config
+          .workerStartTimeoutMs
+      )
+    ) &&
+    Number(
+      config
+        .workerStartTimeoutMs
+    ) >= 1_000
+      ? Number(
+          config
+            .workerStartTimeoutMs
+        )
+      : 30_000;
+  const workerCloseTimeoutMs =
+    Math.max(
+      1_000,
+      Math.min(
+        30_000,
+        Number(
+          config
+            .commandTimeoutMs
+        ) || 3_000
+      )
+    );
 
   function waitUntilInactive(
     timeoutMs
@@ -767,6 +873,117 @@ function createSearchQueueWorker({
     );
   }
 
+  function forceDisconnectWorker() {
+    try {
+      Promise.resolve(
+        worker.disconnect?.()
+      ).catch(() => {});
+    }
+    catch {
+      // The owned raw connection is still destroyed below.
+    }
+
+    if (
+      !isWorkerClientOpen(
+        rawClient
+      )
+    ) {
+      return;
+    }
+
+    try {
+      if (
+        typeof rawClient.disconnect ===
+          "function"
+      ) {
+        rawClient.disconnect();
+      }
+      else if (
+        typeof rawClient.destroy ===
+          "function"
+      ) {
+        rawClient.destroy();
+      }
+    }
+    catch {
+      // A concurrent worker close already owns the connection.
+    }
+  }
+
+  async function waitUntilReady() {
+    if (readyPromise) {
+      return readyPromise;
+    }
+
+    readyPromise =
+      (async () => {
+        let timeoutHandle;
+        const readiness =
+          Promise.resolve()
+            .then(
+              () =>
+                worker
+                  .waitUntilReady()
+            )
+            .then(
+              (result) => ({
+                status:
+                  "ready",
+                result,
+              }),
+              (error) => ({
+                status:
+                  "error",
+                error,
+              })
+            );
+        const timeout =
+          new Promise(
+            (resolveTimeout) => {
+              timeoutHandle =
+                setTimeout(
+                  () => resolveTimeout({
+                    status:
+                      "timeout",
+                  }),
+                  workerStartTimeoutMs
+                );
+            }
+          );
+        const outcome =
+          await Promise.race([
+            readiness,
+            timeout,
+          ]);
+
+        clearTimeout(
+          timeoutHandle
+        );
+
+        if (
+          outcome.status ===
+            "ready"
+        ) {
+          return outcome.result;
+        }
+
+        forceDisconnectWorker();
+
+        if (
+          outcome.status ===
+            "error"
+        ) {
+          throw outcome.error;
+        }
+
+        throw createWorkerStartupTimeoutError(
+          workerStartTimeoutMs
+        );
+      })();
+
+    return readyPromise;
+  }
+
   async function closeWorker(
     force = false
   ) {
@@ -777,21 +994,85 @@ function createSearchQueueWorker({
     closed = true;
     closePromise =
       (async () => {
-        try {
-          await worker.close(
-            force
+        let timeoutHandle;
+        const gracefulClose =
+          Promise.resolve()
+            .then(
+              () =>
+                worker.close(
+                  force
+                )
+            )
+            .then(
+              () => ({
+                status:
+                  "closed",
+              }),
+              (error) => ({
+                status:
+                  "error",
+                error,
+              })
+            );
+        const timeout =
+          new Promise(
+            (resolveTimeout) => {
+              timeoutHandle =
+                setTimeout(
+                  () => resolveTimeout({
+                    status:
+                      "timeout",
+                  }),
+                  workerCloseTimeoutMs
+                );
+            }
           );
+        const outcome =
+          await Promise.race([
+            gracefulClose,
+            timeout,
+          ]);
+
+        clearTimeout(
+          timeoutHandle
+        );
+
+        if (
+          outcome.status !==
+            "closed"
+        ) {
+          forceDisconnectWorker();
+
+          if (
+            outcome.status ===
+              "error"
+          ) {
+            throw outcome.error;
+          }
+
+          return Object.freeze({
+            forced:
+              true,
+          });
         }
-        finally {
-          if (rawClient.isOpen) {
-            try {
-              await rawClient.quit();
-            }
-            catch {
-              rawClient.disconnect();
-            }
+
+        if (
+          isWorkerClientOpen(
+            rawClient
+          )
+        ) {
+          try {
+            await rawClient.quit();
+          }
+          catch {
+            forceDisconnectWorker();
           }
         }
+
+        return Object.freeze({
+          forced:
+            Boolean(force),
+        });
       })();
 
     return closePromise;
@@ -830,14 +1111,17 @@ function createSearchQueueWorker({
           Date.now();
 
         if (closed) {
-          await closePromise;
+          const closeResult =
+            await closePromise;
 
           return Object.freeze({
             drained:
               activeExecutions ===
               0,
             forced:
-              false,
+              closeResult
+                ?.forced ===
+                true,
             activeAtTimeout:
               activeExecutions,
             durationMs:
@@ -856,14 +1140,18 @@ function createSearchQueueWorker({
         const activeAtTimeout =
           activeExecutions;
 
-        await closeWorker(
-          !drained
-        );
+        const closeResult =
+          await closeWorker(
+            !drained
+          );
 
         return Object.freeze({
           drained,
           forced:
-            !drained,
+            !drained ||
+            closeResult
+              ?.forced ===
+              true,
           activeAtTimeout,
           durationMs:
             Math.max(
@@ -902,11 +1190,33 @@ function createSearchQueueWorker({
     });
   }
 
+  function getConnectionDiagnostics() {
+    return Object.freeze({
+      driver:
+        workerConnectionDriver,
+      lazyConnect:
+        rawClient?.options
+          ?.lazyConnect === true,
+      status:
+        typeof rawClient?.status ===
+          "string"
+          ? rawClient.status
+          : rawClient?.isReady
+            ? "ready"
+            : rawClient?.isOpen
+              ? "open"
+              : "closed",
+      open:
+        isWorkerClientOpen(
+          rawClient
+        ),
+    });
+  }
+
   return Object.freeze({
     worker,
     waitUntilReady:
-      () => worker
-        .waitUntilReady(),
+      waitUntilReady,
     pauseAcquisition:
       () => worker.pause(
         true
@@ -915,6 +1225,7 @@ function createSearchQueueWorker({
       () => worker.resume(),
     drain,
     getWorkerMetricsSnapshot,
+    getConnectionDiagnostics,
     close,
   });
 }
@@ -922,5 +1233,6 @@ function createSearchQueueWorker({
 module.exports = {
   validateQueuedSearchJob,
   createQueuedSearchProcessor,
+  createIoredisWorkerClient,
   createSearchQueueWorker,
 };

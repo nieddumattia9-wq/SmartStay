@@ -49,6 +49,8 @@ const DEFAULT_JOB_PAYLOAD_MAX_BYTES =
   64 * 1_024;
 const DEFAULT_WORKER_CONCURRENCY =
   2;
+const DEFAULT_WORKER_START_TIMEOUT_MS =
+  30_000;
 const DEFAULT_WORKER_HEARTBEAT_INTERVAL_MS =
   5_000;
 const DEFAULT_WORKER_HEARTBEAT_TTL_MS =
@@ -428,6 +430,18 @@ function getSearchQueueConfig(
             32,
         }
       ),
+    workerStartTimeoutMs:
+      normalizePositiveInteger(
+        environmentVariables
+          .SMARTSTAY_SEARCH_WORKER_START_TIMEOUT_MS,
+        DEFAULT_WORKER_START_TIMEOUT_MS,
+        {
+          minimum:
+            1_000,
+          maximum:
+            2 * 60 * 1_000,
+        }
+      ),
     workerHeartbeatIntervalMs,
     workerHeartbeatTtlMs,
     workerDrainTimeoutMs:
@@ -452,6 +466,7 @@ module.exports = {
   SEARCH_QUEUE_JOB_NAMES,
   SEARCH_QUEUE_PRIORITIES,
   DEFAULT_MAX_ADMITTED_JOBS,
+  DEFAULT_WORKER_START_TIMEOUT_MS,
   DEFAULT_WORKER_HEARTBEAT_INTERVAL_MS,
   DEFAULT_WORKER_HEARTBEAT_TTL_MS,
   DEFAULT_WORKER_DRAIN_TIMEOUT_MS,

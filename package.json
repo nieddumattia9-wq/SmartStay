@@ -11,7 +11,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "npm run test:engine-v2 && npm run test:lifecycle && npm run test:security && npm run test:release && npm run test:analytics && npm run test:beta",
+    "test": "npm run test:engine-v2 && npm run test:lifecycle && npm run test:security && npm run test:release && npm run test:analytics && npm run test:capacity-contract && npm run test:beta",
     "test:engine-v2": "node scripts/run-engine-v2-tests.mjs",
     "test:golden": "node scripts/run-engine-v2-tests.mjs --golden",
     "test:calibration": "node scripts/run-engine-v2-tests.mjs --calibration",
@@ -20,6 +20,7 @@
     "test:security": "node --test tests/security/*.test.mjs",
     "test:release": "node --test tests/release/*.test.mjs",
     "test:analytics": "node --test tests/analytics/*.test.mjs",
+    "test:capacity-contract": "node --test tests/capacity/*Contract.test.mjs",
     "test:beta": "node --test tests/beta/*.test.mjs",
     "validate:analytics": "node scripts/validate-analytics-contract.mjs",
     "audit:security": "node scripts/run-security-dependency-audit.mjs",
@@ -32,7 +33,8 @@
     "release:verify": "node scripts/verify-release-candidate.mjs",
     "release:evidence": "node scripts/verify-production-release-evidence.mjs",
     "rollback:verify": "node scripts/verify-rollback-target.mjs",
-    "gate:analytics-beta": "node scripts/run-analytics-beta-measurement-gate.mjs"
+    "gate:analytics-beta": "node scripts/run-analytics-beta-measurement-gate.mjs",
+    "gate:capacity-chaos": "node scripts/run-synthetic-capacity-chaos-gate.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

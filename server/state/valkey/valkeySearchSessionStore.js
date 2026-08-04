@@ -421,6 +421,45 @@ function createValkeySearchSessionAdapters({
     return parseEnvelope(raw);
   }
 
+  function getLocalSearchSessionState(searchId) {
+    if (!searchId) {
+      return SEARCH_SESSION_STATES.MISSING;
+    }
+
+    if (!SEARCH_SESSION_ID_PATTERN.test(searchId)) {
+      return searchId.startsWith("ss1.")
+        ? SEARCH_SESSION_STATES.EXPIRED
+        : SEARCH_SESSION_STATES.NOT_FOUND;
+    }
+
+    return null;
+  }
+
+  async function readSearchSessionSnapshot(searchId) {
+    const [sessionValue, tombstoneValue] =
+      await executor.execute(
+        (client) => client.mGet([
+          keyspace.session(searchId),
+          keyspace.tombstone(searchId),
+        ])
+      );
+
+    if (sessionValue !== null) {
+      return {
+        state: SEARCH_SESSION_STATES.ACTIVE,
+        sessionValue,
+      };
+    }
+
+    return {
+      state:
+        tombstoneValue !== null
+          ? SEARCH_SESSION_STATES.EXPIRED
+          : SEARCH_SESSION_STATES.NOT_FOUND,
+      sessionValue: null,
+    };
+  }
+
   function buildSavedSession(
     session,
     searchId,
@@ -698,47 +737,40 @@ function createValkeySearchSessionAdapters({
 
   async function getSearchSessionState(searchId) {
     const normalized = normalizeSearchId(searchId);
+    const localState =
+      getLocalSearchSessionState(normalized);
 
-    if (!normalized) {
-      return SEARCH_SESSION_STATES.MISSING;
+    if (localState) {
+      return localState;
     }
 
-    if (!SEARCH_SESSION_ID_PATTERN.test(normalized)) {
-      return normalized.startsWith("ss1.")
-        ? SEARCH_SESSION_STATES.EXPIRED
-        : SEARCH_SESSION_STATES.NOT_FOUND;
-    }
-
-    const [sessionValue, tombstoneValue] =
-      await executor.execute(
-        (client) => client.mGet([
-          keyspace.session(normalized),
-          keyspace.tombstone(normalized),
-        ])
-      );
-
-    if (sessionValue !== null) {
-      return SEARCH_SESSION_STATES.ACTIVE;
-    }
-
-    if (tombstoneValue !== null) {
-      return SEARCH_SESSION_STATES.EXPIRED;
-    }
-
-    return SEARCH_SESSION_STATES.NOT_FOUND;
+    return (
+      await readSearchSessionSnapshot(normalized)
+    ).state;
   }
 
   async function getSearchSession(searchId) {
     const normalized = normalizeSearchId(searchId);
+    const localState =
+      getLocalSearchSessionState(normalized);
+
+    if (localState) {
+      return null;
+    }
+
+    const snapshot =
+      await readSearchSessionSnapshot(normalized);
 
     if (
-      await getSearchSessionState(normalized) !==
+      snapshot.state !==
       SEARCH_SESSION_STATES.ACTIVE
     ) {
       return null;
     }
 
-    const envelope = await readEnvelope(normalized);
+    const envelope = parseEnvelope(
+      snapshot.sessionValue
+    );
 
     return envelope
       ? cloneSession(envelope.session)
@@ -747,8 +779,17 @@ function createValkeySearchSessionAdapters({
 
   async function requireSearchSession(searchId) {
     const normalized = normalizeSearchId(searchId);
-    const state =
-      await getSearchSessionState(normalized);
+    const localState =
+      getLocalSearchSessionState(normalized);
+    const snapshot = localState
+      ? {
+          state: localState,
+          sessionValue: null,
+        }
+      : await readSearchSessionSnapshot(
+          normalized
+        );
+    const { state } = snapshot;
 
     if (state === SEARCH_SESSION_STATES.MISSING) {
       throw createSearchSessionError({
@@ -776,7 +817,9 @@ function createValkeySearchSessionAdapters({
       });
     }
 
-    const envelope = await readEnvelope(normalized);
+    const envelope = parseEnvelope(
+      snapshot.sessionValue
+    );
 
     if (!envelope) {
       return requireSearchSession(normalized);

@@ -2,6 +2,8 @@
 
 const {
   VALKEY_KEYSPACE_VERSION,
+  DEFAULT_COMMAND_POOL_SIZE,
+  MAX_COMMAND_POOL_SIZE,
   createValkeyKeyspace,
   createValkeyCommandExecutor,
   normalizePositiveInteger,
@@ -47,6 +49,7 @@ function createValkeyOperationalStateResources({
   hmacSecret,
   connectTimeoutMs,
   commandTimeoutMs,
+  commandPoolSize,
   sessionTtlMs,
   tombstoneRetentionMs,
   continuationLeaseTtlMs,
@@ -88,6 +91,7 @@ function createValkeyOperationalStateResources({
       url,
       connectTimeoutMs,
       commandTimeoutMs,
+      commandPoolSize,
       createClient,
     });
   const search =
@@ -262,6 +266,26 @@ function getValkeyOperationalStateConfig(
           .SMARTSTAY_STATE_COMMAND_TIMEOUT_MS,
         undefined,
         { minimum: 100, maximum: 30_000 }
+      ),
+    commandPoolSize:
+      normalizePositiveInteger(
+        environmentVariables
+          .SMARTSTAY_STATE_COMMAND_POOL_SIZE,
+        DEFAULT_COMMAND_POOL_SIZE,
+        {
+          minimum: 1,
+          maximum: MAX_COMMAND_POOL_SIZE,
+        }
+      ),
+    maxSessions:
+      normalizePositiveInteger(
+        environmentVariables
+          .SMARTSTAY_STATE_MAX_SESSIONS,
+        undefined,
+        {
+          minimum: 1,
+          maximum: 100_000,
+        }
       ),
     aggregateSessionBytes:
       normalizePositiveInteger(
