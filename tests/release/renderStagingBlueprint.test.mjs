@@ -16,11 +16,11 @@ function readText(path) {
 
 function serviceBlock(
   yaml,
+  serviceType,
   serviceName
 ) {
   const marker =
-    `  - type: web\n    name: ${serviceName}\n`;
-
+    `  - type: ${serviceType}\n    name: ${serviceName}\n`;
   const start =
     yaml.indexOf(
       marker
@@ -32,17 +32,61 @@ function serviceBlock(
     `Missing Render service ${serviceName}.`
   );
 
-  const next =
+  const nextService =
     yaml.indexOf(
-      "\n  - type: web\n",
+      "\n  - type: ",
       start + marker.length
     );
+  const nextRootSection =
+    yaml.indexOf(
+      "\nenvVarGroups:\n",
+      start + marker.length
+    );
+  const candidates =
+    [
+      nextService,
+      nextRootSection,
+    ].filter(
+      (value) =>
+        value !== -1
+    );
+  const end =
+    candidates.length > 0
+      ? Math.min(
+          ...candidates
+        )
+      : yaml.length;
 
   return yaml.slice(
     start,
-    next === -1
-      ? yaml.length
-      : next
+    end
+  );
+}
+
+function environmentGroupBlock(
+  yaml,
+  groupName
+) {
+  const marker =
+    `  - name: ${groupName}\n`;
+  const root =
+    yaml.indexOf(
+      "\nenvVarGroups:\n"
+    );
+  const start =
+    yaml.indexOf(
+      marker,
+      root
+    );
+
+  assert.notEqual(
+    start,
+    -1,
+    `Missing Render environment group ${groupName}.`
+  );
+
+  return yaml.slice(
+    start
   );
 }
 
@@ -84,166 +128,165 @@ function assertLiteralEnv(
   );
 }
 
+function assertKeyValueReference(
+  block,
+  key
+) {
+  assertContains(
+    block,
+    `      - key: ${key}\n` +
+      "        fromService:\n" +
+      "          type: keyvalue\n" +
+      "          name: smartstay-staging-valkey\n" +
+      "          property: connectionString\n",
+    key
+  );
+}
+
 test(
-  "Render staging Blueprint preserves SmartStay runtime boundaries",
+  "Render staging Blueprint defines the bounded 4E distributed topology",
   () => {
     const yaml =
       readText(
         "render.yaml"
       );
-
+    const keyValue =
+      serviceBlock(
+        yaml,
+        "keyvalue",
+        "smartstay-staging-valkey"
+      );
     const backend =
       serviceBlock(
         yaml,
+        "web",
         "smartstay-staging-api"
       );
-
+    const worker =
+      serviceBlock(
+        yaml,
+        "worker",
+        "smartstay-staging-search-worker"
+      );
     const frontend =
       serviceBlock(
         yaml,
+        "web",
         "smartstay-staging-web"
       );
+    const sharedRuntime =
+      environmentGroupBlock(
+        yaml,
+        "smartstay-staging-distributed-runtime"
+      );
 
-    assertContains(
-      backend,
-      "    runtime: node\n",
-      "backend runtime"
-    );
+    for (
+      const expected of
+      [
+        "    region: frankfurt\n",
+        "    plan: starter\n",
+        "    ipAllowList: []\n",
+        "    maxmemoryPolicy: noeviction\n",
+        "    persistenceMode: journal-snapshot\n",
+      ]
+    ) {
+      assertContains(
+        keyValue,
+        expected,
+        "private persistent Valkey"
+      );
+    }
 
-    assertContains(
-      backend,
-      "    branch: main\n",
-      "backend branch"
-    );
+    for (
+      const [
+        block,
+        label,
+      ] of
+      [
+        [
+          backend,
+          "API",
+        ],
+        [
+          worker,
+          "worker",
+        ],
+      ]
+    ) {
+      for (
+        const expected of
+        [
+          "    runtime: node\n",
+          "    branch: main\n",
+          "    region: frankfurt\n",
+          "    plan: starter\n",
+          "    numInstances: 2\n",
+          "    autoDeployTrigger: off\n",
+          "    rootDir: server\n",
+          "    buildCommand: npm ci --omit=dev\n",
+          "    maxShutdownDelaySeconds: 45\n",
+          "      - fromGroup: smartstay-staging-distributed-runtime\n",
+        ]
+      ) {
+        assertContains(
+          block,
+          expected,
+          label
+        );
+      }
 
-    assertContains(
-      backend,
-      "    region: frankfurt\n",
-      "backend region"
-    );
-
-    assertContains(
-      backend,
-      "    plan: starter\n",
-      "backend plan"
-    );
-
-    assertContains(
-      backend,
-      "    numInstances: 1\n",
-      "backend instance count"
-    );
-
-    assertContains(
-      backend,
-      "    autoDeployTrigger: off\n",
-      "backend deploy control"
-    );
-
-    assertContains(
-      backend,
-      "    rootDir: server\n",
-      "backend root"
-    );
-
-    assertContains(
-      backend,
-      "    buildCommand: npm ci --omit=dev\n",
-      "backend build"
-    );
+      assertKeyValueReference(
+        block,
+        "SMARTSTAY_STATE_REDIS_URL"
+      );
+      assertKeyValueReference(
+        block,
+        "SMARTSTAY_QUEUE_REDIS_URL"
+      );
+      assertPromptedEnv(
+        block,
+        "LITEAPI_API_KEY"
+      );
+      assertPromptedEnv(
+        block,
+        "PROVIDER_ACCOUNT_RATE_LIMITS_JSON"
+      );
+      assert.ok(
+        !block.includes(
+          "    scaling:"
+        ),
+        `${label} autoscaling must stay disabled.`
+      );
+      assert.ok(
+        !block.includes(
+          "    disk:"
+        ),
+        `${label} must not use process-local persistence.`
+      );
+    }
 
     assertContains(
       backend,
       "    startCommand: RELEASE_SHA=$RENDER_GIT_COMMIT npm start\n",
-      "backend release SHA start mapping"
+      "API start"
     );
-
     assertContains(
       backend,
       "    healthCheckPath: /health/ready\n",
-      "backend health"
+      "API readiness"
     );
-
-    assert.ok(
-      !backend.includes(
-        "    scaling:"
-      ),
-      "Backend autoscaling must stay disabled."
-    );
-
-    assert.ok(
-      !backend.includes(
-        "    disk:"
-      ),
-      "The current in-memory backend must not pretend to use persistence."
-    );
-
-    assertLiteralEnv(
-      backend,
-      "NODE_VERSION",
-      "24.18.0"
-    );
-
-    assertLiteralEnv(
-      backend,
-      "NODE_ENV",
-      "production"
-    );
-
-    assertLiteralEnv(
-      backend,
-      "DEPLOYMENT_ENV",
-      "staging"
-    );
-
-    assertLiteralEnv(
-      backend,
-      "RUNTIME_STATE_MODE",
-      "in-memory-single-instance"
-    );
-
-    assertLiteralEnv(
-      backend,
-      "TRUST_PROXY",
-      '"1"'
-    );
-
-    assertLiteralEnv(
-      backend,
-      "ANALYTICS_ENABLED",
-      '"true"'
-    );
-
-    assertLiteralEnv(
-      backend,
-      "VITE_ANALYTICS_ENABLED",
-      '"true"'
-    );
-
-    assertPromptedEnv(
-      backend,
-      "ANALYTICS_ADMIN_TOKEN"
-    );
-
-    assertLiteralEnv(
-      backend,
-      "ANALYTICS_STORAGE_MODE",
-      "in-memory-single-instance"
-    );
-
-    assertLiteralEnv(
-      backend,
-      "ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED",
-      '"true"'
+    assertContains(
+      worker,
+      "    startCommand: RELEASE_SHA=$RENDER_GIT_COMMIT npm run worker:search\n",
+      "worker start"
     );
 
     for (
-      const key
-      of [
+      const key of
+      [
         "CLIENT_ORIGINS",
         "VITE_API_URL",
         "GEOAPIFY_API_KEY",
-        "LITEAPI_API_KEY",
         "LITEAPI_WHITELABEL_BASE_URL",
       ]
     ) {
@@ -253,126 +296,138 @@ test(
       );
     }
 
+    assertLiteralEnv(
+      backend,
+      "ANALYTICS_ENABLED",
+      '"false"'
+    );
+    assertLiteralEnv(
+      backend,
+      "VITE_ANALYTICS_ENABLED",
+      '"false"'
+    );
     assert.ok(
       !backend.includes(
-        "      - key: RELEASE_SHA\n"
+        "ANALYTICS_ADMIN_TOKEN"
       ),
-      "RELEASE_SHA must not be created through Blueprint envVars."
+      "Process-local analytics admin access must not be enabled for 4E."
     );
 
-    assert.ok(
-      !backend.includes(
-        "envVarKey: RENDER_GIT_COMMIT"
-      ),
-      "Render default variables cannot be referenced with fromService.envVarKey."
-    );
+    for (
+      const [
+        key,
+        value,
+      ] of
+      [
+        [
+          "RUNTIME_STATE_MODE",
+          "valkey-distributed",
+        ],
+        [
+          "SMARTSTAY_OPERATIONAL_STATE_MODE",
+          "valkey-distributed",
+        ],
+        [
+          "SMARTSTAY_STATE_ENVIRONMENT",
+          "staging",
+        ],
+        [
+          "SMARTSTAY_STATE_MAX_SESSIONS",
+          '"1000"',
+        ],
+        [
+          "SMARTSTAY_STATE_SESSION_AGGREGATE_MAX_BYTES",
+          '"134217728"',
+        ],
+        [
+          "SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED",
+          '"true"',
+        ],
+        [
+          "SMARTSTAY_QUEUE_ENVIRONMENT",
+          "staging",
+        ],
+        [
+          "SMARTSTAY_SEARCH_QUEUE_MAX_ADMITTED",
+          '"1000"',
+        ],
+        [
+          "SMARTSTAY_SEARCH_WORKER_CONCURRENCY",
+          '"4"',
+        ],
+        [
+          "PROVIDER_MAX_CONCURRENT_OPERATIONS",
+          '"8"',
+        ],
+      ]
+    ) {
+      assertLiteralEnv(
+        sharedRuntime,
+        key,
+        value
+      );
+    }
 
-    assert.ok(
-      !/ROUTESTACK/i.test(
-        backend
-      ),
-      "Frozen RouteStack credentials must not be requested."
-    );
+    for (
+      const key of
+      [
+        "SMARTSTAY_STATE_KEY_SECRET",
+        "SMARTSTAY_QUEUE_KEY_SECRET",
+      ]
+    ) {
+      assertContains(
+        sharedRuntime,
+        `      - key: ${key}\n        generateValue: true\n`,
+        key
+      );
+    }
 
     assertContains(
       frontend,
       "    runtime: static\n",
       "frontend runtime"
     );
-
-    assertContains(
-      frontend,
-      "    branch: main\n",
-      "frontend branch"
-    );
-
     assertContains(
       frontend,
       "    autoDeployTrigger: off\n",
       "frontend deploy control"
     );
-
     assertContains(
       frontend,
       "    buildCommand: npm ci && RELEASE_SHA=$RENDER_GIT_COMMIT npm run build\n",
-      "frontend release SHA build mapping"
+      "frontend build"
     );
-
-    assertContains(
-      frontend,
-      "    staticPublishPath: ./dist\n",
-      "frontend publish path"
-    );
-
-    assertLiteralEnv(
-      frontend,
-      "NODE_VERSION",
-      "24.18.0"
-    );
-
     assertLiteralEnv(
       frontend,
       "VITE_ANALYTICS_ENABLED",
-      '"true"'
+      '"false"'
     );
-
     assertPromptedEnv(
       frontend,
       "VITE_API_URL"
     );
-
     assertPromptedEnv(
       frontend,
       "VITE_GOOGLE_MAPS_EMBED_KEY"
     );
 
     assert.ok(
-      !frontend.includes(
-        "      - key: RELEASE_SHA\n"
+      !/ROUTESTACK/i.test(
+        yaml
       ),
-      "Frontend RELEASE_SHA must be injected at build time."
+      "Frozen RouteStack credentials must not be requested."
     );
-
-    assert.ok(
-      !frontend.includes(
-        "envVarKey: RENDER_GIT_COMMIT"
-      ),
-      "Frontend must not reference Render default variables through fromService."
-    );
-
-    assertContains(
-      frontend,
-      "    routes:\n" +
-        "      - type: rewrite\n" +
-        "        source: /*\n" +
-        "        destination: /index.html\n",
-      "SPA rewrite"
-    );
-
     assert.ok(
       !yaml.includes(
         "plan: free"
       ),
-      "The stateful staging backend must not use a sleeping Free instance."
-    );
-
-    assert.match(
-      backend,
-      /      - key: ANALYTICS_ADMIN_TOKEN\n        sync: false(?:\n|$)/,
-      "The beta analytics admin token must be prompted and never committed."
-    );
-
-    assert.ok(
-      !/ANALYTICS_ADMIN_TOKEN\n\s+value:/.test(
-        backend
-      ),
-      "The analytics admin token value must never be committed."
+      "Stateful staging resources must not use sleeping Free instances."
     );
   }
 );
 
 test(
-  "Render release SHA uses default variables directly and never fromService",
+  "Render release identity and shared datastore references cannot drift",
   () => {
     const yaml =
       readText(
@@ -385,20 +440,18 @@ test(
           /RENDER_GIT_COMMIT/g
         ) ?? []
       ).length,
-      2,
-      "Exactly backend start and frontend build should use RENDER_GIT_COMMIT."
+      3,
+      "API, worker and frontend must use the Render commit identity."
     );
-
     assert.equal(
       (
         yaml.match(
-          /fromService:/g
+          /property: connectionString/g
         ) ?? []
       ).length,
-      0,
-      "The Blueprint must not use fromService for Render default variables."
+      4,
+      "API and worker must each share state and queue connection strings."
     );
-
     assert.equal(
       (
         yaml.match(
@@ -406,13 +459,22 @@ test(
         ) ?? []
       ).length,
       0,
-      "The Blueprint must not declare RELEASE_SHA as an envVar."
+      "RELEASE_SHA must be mapped directly from RENDER_GIT_COMMIT."
+    );
+    assert.equal(
+      (
+        yaml.match(
+          /- fromGroup: smartstay-staging-distributed-runtime/g
+        ) ?? []
+      ).length,
+      2,
+      "API and worker must use one reviewed distributed runtime group."
     );
   }
 );
 
 test(
-  "Render staging guide blocks beta and invented operational values",
+  "4E staging guide keeps deployment, cost and live traffic behind explicit approval",
   () => {
     const guide =
       readText(
@@ -420,20 +482,20 @@ test(
       );
 
     for (
-      const requiredText
-      of [
+      const requiredText of
+      [
         "does not authorize production deployment or a public beta",
-        "exactly one backend instance",
-        "Do not enable horizontal scaling",
-        "Do not invent a domain",
+        "two API instances",
+        "two search-worker instances",
+        "one private persistent Key Value instance",
+        "Do not invent a provider quota",
+        "explicit cost approval",
+        "external access remains disabled",
+        "Analytics stay disabled",
         "Do not add RouteStack credentials",
-        "Controlled-beta analytics are enabled",
-        "`ANALYTICS_ADMIN_TOKEN` must be added manually",
-        "The current analytics store is volatile",
-        "Run exactly one bounded journey",
+        "zero live provider calls",
         "production remains blocked",
-        "Do not add `RELEASE_SHA` with `fromService.envVarKey`",
-        "use Manual sync on the existing Blueprint",
+        "Use Manual sync on the existing Blueprint",
       ]
     ) {
       assert.ok(

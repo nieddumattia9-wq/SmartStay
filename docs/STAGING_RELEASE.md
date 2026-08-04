@@ -1,66 +1,74 @@
-# SmartStay staging and release contract
+# SmartStay distributed staging release contract
 
 ## Deployment shape
 
-SmartStay is deployed as two independently built services:
+The canonical staging release contains:
 
-1. **Frontend:** static Vite build from `dist/`.
-2. **Backend:** Node/Express process started from `server/` with `npm start`.
+1. one static Vite frontend;
+2. two Node/Express API instances;
+3. two dedicated BullMQ search-worker instances;
+4. one private persistent Valkey-compatible datastore shared by state and
+   queue.
 
-The release contract is hosting-provider neutral. A platform-specific manifest must not become part of the domain or provider architecture.
+This topology is a hosting configuration, not a domain dependency. SmartStay
+continues to depend on the operational-state and queue ports rather than on
+Render-specific APIs.
 
-## Runtime constraint
+## Runtime contract
 
-Search sessions, idempotency records, booking verifications, and booking handoffs are currently stored in process memory.
-
-Until persistent shared storage is introduced:
-
-- run exactly **one backend instance**;
-- disable horizontal autoscaling;
-- do not use rolling overlap between two backend instances;
-- expect active sessions to expire whenever the backend restarts;
-- use `RUNTIME_STATE_MODE=in-memory-single-instance`.
-
-This is acceptable for staging and a controlled beta, but not for multi-instance production.
-
-## Frontend configuration
-
-Set `VITE_API_URL` when building the frontend.
-
-Same-origin reverse proxy:
-
-```text
-VITE_API_URL=/api
-```
-
-Separate backend origin:
-
-```text
-VITE_API_URL=https://api-staging.example.com/api
-```
-
-Release URLs must use HTTPS. Local HTTP is allowed only during development.
-
-## Backend release variables
-
-Required for staging and production:
+Every release API and worker must use:
 
 ```text
 NODE_ENV=production
-DEPLOYMENT_ENV=staging | production
-CLIENT_ORIGINS=https://frontend-origin.example
-TRUST_PROXY=1
-VITE_API_URL=/api | https://api-origin.example/api
-GEOAPIFY_API_KEY=<secret>
-LITEAPI_API_KEY=<secret>
-LITEAPI_WHITELABEL_BASE_URL=<approved HTTPS checkout origin>
+DEPLOYMENT_ENV=staging
 RELEASE_SHA=<deployed Git commit>
-RUNTIME_STATE_MODE=in-memory-single-instance
+RUNTIME_STATE_MODE=valkey-distributed
+SMARTSTAY_OPERATIONAL_STATE_MODE=valkey-distributed
+SMARTSTAY_STATE_REDIS_URL=<private authenticated redis/rediss URL>
+SMARTSTAY_STATE_ENVIRONMENT=staging
+SMARTSTAY_STATE_KEY_SECRET=<32+ byte secret>
+SMARTSTAY_STATE_COMMAND_POOL_SIZE=4
+SMARTSTAY_STATE_MAX_SESSIONS=1000
+SMARTSTAY_STATE_SESSION_AGGREGATE_MAX_BYTES=134217728
+SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED=true
+SMARTSTAY_QUEUE_REDIS_URL=<same private authenticated URL>
+SMARTSTAY_QUEUE_ENVIRONMENT=staging
+SMARTSTAY_QUEUE_KEY_SECRET=<32+ byte secret>
+SMARTSTAY_SEARCH_QUEUE_MAX_ADMITTED=1000
+SMARTSTAY_SEARCH_WORKER_CONCURRENCY=4
+PROVIDER_MAX_CONCURRENT_OPERATIONS=8
+PROVIDER_ACCOUNT_RATE_LIMITS_JSON=<confirmed account policy>
 ```
 
-RouteStack remains disabled and its credentials are not release requirements.
+The API additionally requires exact HTTPS/CORS, Geoapify, LiteAPI and approved
+white-label values. The worker needs the same LiteAPI account. RouteStack
+remains disabled.
 
-## Build and install
+The release validator rejects:
+
+- process-local state in production;
+- a distributed API/worker with different state and queue URLs;
+- namespaces that do not match `DEPLOYMENT_ENV`;
+- a disabled asynchronous queue;
+- weak or absent key secrets;
+- fewer than 1,000 staging session/job slots;
+- provider concurrency above eight;
+- missing, malformed or LiteAPI-free account-rate policies;
+- process-local analytics in a distributed release.
+
+## Analytics boundary
+
+Set both flags to false for 39C25A.4E:
+
+```text
+ANALYTICS_ENABLED=false
+VITE_ANALYTICS_ENABLED=false
+```
+
+The current in-memory analytics adapter remains valid for local contract tests,
+but not for multi-instance staging measurement.
+
+## Build and local verification
 
 ```text
 npm ci
@@ -68,118 +76,38 @@ npm ci --prefix server
 npm run release:ci
 ```
 
-Backend production install may omit development dependencies:
+`smoke:staging:local` remains an isolated, process-local CI compatibility
+smoke. It does not claim that the distributed remote topology exists.
 
-```text
-npm ci --prefix server --omit=dev
-```
-
-Frontend artifact:
-
-```text
-dist/
-```
-
-Backend start command:
-
-```text
-cd server
-npm start
-```
-
-## Environment validation
-
-Run with the same environment that will be used by the deployment:
-
-```text
-npm run check:release-env
-```
-
-The command reports only field names and validation errors. It never prints secret values.
-
-Full local/CI release gate:
-
-```text
-npm run release:gate
-```
-
-## Health checks
-
-Liveness:
-
-```text
-GET /health/live
-```
-
-Readiness:
-
-```text
-GET /health/ready
-```
-
-A release is eligible for traffic only when readiness returns HTTP 200 and the expected `RELEASE_SHA` appears as `version`.
-
-## Staging runtime smoke test
-
-The permanent smoke runner supports two modes.
-
-Local production-like backend process:
-
-```text
-npm run smoke:staging:local
-```
-
-This mode starts the real Node backend with controlled staging variables on an isolated local port. It verifies release identity, liveness, readiness, CORS, preflight, security headers, canonical public errors, request-ID propagation, structured logs, secret redaction, controlled shutdown, and zero provider calls.
-
-Public staging endpoints:
-
-```text
-STAGING_FRONTEND_URL=https://staging.example.com
-STAGING_BACKEND_URL=https://api-staging.example.com
-EXPECTED_RELEASE_SHA=<deployed Git commit>
-npm run smoke:staging
-```
-
-Remote mode verifies that the frontend loads through HTTPS and repeats the safe backend checks without issuing a valid provider-triggering search. It therefore proves deployment/runtime integrity, not live inventory correctness.
-
-The full release smoke in 39C22C must additionally verify:
-
-- one controlled live destination search;
-- one controlled live hotel search;
-- partial/complete lifecycle;
-- details for the Engine-selected offer;
-- offer recheck;
-- secure handoff using the approved white-label domain;
-- no secret or provider-private data in browser responses;
-- rollback to the previously validated artifact.
-
-## Rollback
-
-Rollback means deploying the previously validated Git commit/artifact, not editing the live server.
-
-Because runtime state is in-memory, rollback or restart invalidates active search and booking verification IDs. The frontend must recover through the existing session-expired flow.
-
-Record for every release:
-
-```text
-Git commit
-frontend artifact
-backend artifact
-environment name
-deployment timestamp
-smoke-test report
-rollback commit/artifact
-```
-
-## Immutable release candidates
-
-After `npm run release:ci`, create and verify the immutable candidate evidence:
+Create and verify the immutable candidate only after the full gate passes:
 
 ```text
 npm run release:candidate -- --expected-sha <git-sha> --output .smartstay-release
 npm run release:verify -- --manifest .smartstay-release/release-manifest.json --expected-sha <git-sha> --root .
 ```
 
-The generated directory is ignored by Git. GitHub Actions retains it as a workflow artifact for pushes to `main` and manual workflow runs.
+The candidate records the distributed 2 API + 2 worker constraint.
 
-Production promotion and rollback rules are defined in [`PRODUCTION_RELEASE.md`](PRODUCTION_RELEASE.md).
+## Remote acceptance sequence
+
+Remote 4E acceptance is split into two reports:
+
+1. infrastructure correctness with zero provider calls;
+2. one separately approved bounded live journey inside the confirmed account
+   quota.
+
+The infrastructure report must prove release identity, instance counts,
+worker readiness, shared session/queue behavior, restart survival, overload
+fail-closed behavior, HTTPS/CORS and rollback readiness.
+
+The live report must never be reused as a capacity test.
+
+## Rollback
+
+Rollback means returning both code and topology to a compatible state. Before
+deploying a pre-4E single-instance candidate, scale API to one, stop workers,
+then deploy and smoke the retained candidate. Never run process-local state on
+two API instances.
+
+Render provisioning, spend and live provider traffic always require explicit
+human approval outside the source gate.

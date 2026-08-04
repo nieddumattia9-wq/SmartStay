@@ -1,80 +1,84 @@
-# SmartStay Render staging deployment
+# SmartStay Render distributed staging deployment
 
-## Status
+## Status and authorization boundary
 
-This document defines the first public staging deployment only.
+This document defines 39C25A.4E staging only. It does not authorize production deployment or a public beta.
 
-It does not authorize production deployment or a public beta.
+Committing this source configuration does not create Render resources. A
+Blueprint sync provisions paid resources, so it requires separate explicit
+cost approval. No script in the repository performs that sync.
 
-The staging architecture is:
+The approved staging topology is deliberately fixed:
 
 ```text
 Render Static Site
   smartstay-staging-web
 
-Render Node Web Service
+Render Web Service
   smartstay-staging-api
-  Frankfurt
-  Starter plan
-  exactly one instance
+  Frankfurt / Starter / two API instances
+
+Render Background Worker
+  smartstay-staging-search-worker
+  Frankfurt / Starter / two search-worker instances
+
+Render Key Value
+  smartstay-staging-valkey
+  Frankfurt / Starter / one private persistent Key Value instance
 ```
 
-SmartStay must run exactly one backend instance because search sessions,
-idempotency records, booking verifications, handoffs, and analytics are
-currently stored in memory.
+Manual instance counts are used. Autoscaling and automatic deploys stay off.
 
-Do not enable horizontal scaling, autoscaling, rolling overlap, or a second
-backend instance.
+## Capacity basis and safety boundaries
 
-## Why the backend is not Free
+39C25A.4D proved 1,000 active sessions with two API processes, two workers and
+a global provider concurrency cap of eight against real Valkey and a local
+deterministic provider. Peak Valkey usage was approximately 54 MB; the 4E
+contract reserves 128 MiB for serialized session aggregates inside a 256 MB
+Starter Key Value plan.
 
-A sleeping backend is incompatible with the current in-memory lifecycle and
-with deterministic remote smoke expectations.
+This sizing supports the bounded staging acceptance test. It is not evidence
+for 1,000 simultaneous live-provider searches and must not be described as
+such.
 
-The backend therefore uses the Starter plan. The frontend remains a static
-site.
-
-## Deployment control
-
-Both services use:
+Key Value uses:
 
 ```text
-autoDeployTrigger: off
+ipAllowList: []
+maxmemoryPolicy: noeviction
+persistenceMode: journal-snapshot
 ```
 
-Deploy only a reviewed commit whose release gate has passed. Do not enable
-automatic deployment from every push.
+Therefore external access remains disabled, queue/state writes fail closed at
+the memory ceiling, and paid persistence is enabled. API and worker reference
+the same private `connectionString`; no public datastore endpoint belongs in
+SmartStay configuration.
 
-The Blueprint pins Node to:
+## Shared runtime contract
 
-```text
-24.18.0
-```
+Both API and worker receive the same reviewed environment group. It fixes:
 
-Render exposes `RENDER_GIT_COMMIT` automatically at build time and runtime.
+- `RUNTIME_STATE_MODE=valkey-distributed`;
+- `SMARTSTAY_OPERATIONAL_STATE_MODE=valkey-distributed`;
+- state and queue namespaces to `staging`;
+- 1,000 admitted sessions/jobs;
+- a state command pool of four;
+- worker concurrency of four per process;
+- provider global concurrency at eight across all processes;
+- bounded queues and graceful worker drain.
 
-SmartStay maps it to the canonical `RELEASE_SHA` without creating a Blueprint
-environment-variable reference:
+Render generates separate 256-bit state and queue key secrets. Their values
+must never be copied into evidence, logs, documentation or chat.
 
-```text
-Backend start:
-RELEASE_SHA=$RENDER_GIT_COMMIT npm start
+The API and worker fail startup if their datastore URLs, namespaces, queue
+mode, secrets, capacity limits or account-rate policy are missing or
+inconsistent.
 
-Frontend build:
-RELEASE_SHA=$RENDER_GIT_COMMIT npm run build
-```
+## Values that remain manual
 
-Do not add `RELEASE_SHA` with `fromService.envVarKey`. Render default
-environment variables are not Blueprint-defined service environment
-variables.
+Do not add RouteStack credentials. RouteStack remains disabled and frozen.
 
-## Values to enter in Render
-
-Never commit secrets and never paste their values into project documentation.
-
-### Backend: smartstay-staging-api
-
-Set these prompted values in the Render Dashboard:
+The API retains these Dashboard-only values:
 
 ```text
 CLIENT_ORIGINS
@@ -82,149 +86,108 @@ VITE_API_URL
 GEOAPIFY_API_KEY
 LITEAPI_API_KEY
 LITEAPI_WHITELABEL_BASE_URL
+PROVIDER_ACCOUNT_RATE_LIMITS_JSON
 ```
 
-Use the exact deployed origins:
+The worker requires the exact same `LITEAPI_API_KEY` account and the exact same
+`PROVIDER_ACCOUNT_RATE_LIMITS_JSON` value as the API.
 
-```text
-CLIENT_ORIGINS=https://<actual-frontend-host>
-VITE_API_URL=https://<actual-backend-host>/api
+Do not invent a provider quota. Confirm the real LiteAPI account limit first,
+then encode it using the runtime schema, for example structurally:
+
+```json
+{
+  "liteapi": {
+    "maxRequests": 1,
+    "windowMs": 1000
+  }
+}
 ```
 
-`LITEAPI_WHITELABEL_BASE_URL` must be the real HTTPS white-label checkout
-origin approved for the SmartStay integration. Do not invent a domain.
+The numbers above demonstrate the schema only; they are not an approved quota.
 
-Do not add RouteStack credentials. RouteStack remains disabled and frozen.
+Render prompts for `sync: false` values only when a Blueprint is first
+created. On an existing Blueprint, add every new manual value in the Dashboard
+before deploying and verify the API/worker values match without placing them
+in evidence.
 
-### Frontend: smartstay-staging-web
-
-Set:
+The frontend retains:
 
 ```text
 VITE_API_URL=https://<actual-backend-host>/api
 VITE_GOOGLE_MAPS_EMBED_KEY=<restricted-browser-key>
 ```
 
-Both values are embedded at frontend build time. After changing either value,
-redeploy the frontend.
+## Analytics during 4E
 
-The Google Maps key is intentionally a browser key, not a backend secret.
-Restrict it to the SmartStay frontend origins and to the Maps Embed API only.
-The details modal falls back to a normal Google Maps link when the embed key is
-not configured.
+Analytics stay disabled on both backend and frontend. The current analytics
+adapter is process-local; enabling it on two API instances would make its
+aggregates incomplete and instance-dependent.
 
-## Analytics during the controlled beta
+The first-party analytics code and its local privacy gate remain in the
+repository. Remote beta measurement stays blocked until a shared analytics
+adapter is implemented and separately approved.
 
-The first infrastructure smoke and provider journey were completed with
-analytics disabled.
+## Controlled provisioning sequence
 
-Controlled-beta analytics are enabled only after 39C24A passes:
+Do not start this sequence without explicit cost approval and a confirmed
+provider account quota.
 
-```text
-ANALYTICS_ENABLED=true
-VITE_ANALYTICS_ENABLED=true
-ANALYTICS_STORAGE_MODE=in-memory-single-instance
-ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED=true
-```
+1. Confirm `main`, `origin/main` and the reviewed release SHA are identical.
+2. Confirm the complete local release gate passed for that SHA.
+3. Record the existing staging service IDs and last known-good release.
+4. Add new Dashboard-only values required by the existing Blueprint update.
+5. Use Manual sync on the existing Blueprint. Do not create a duplicate
+   Blueprint or duplicate services.
+6. Confirm one private persistent Key Value, two API instances and two worker
+   instances exist in Frankfurt on Starter plans.
+7. Enable Key Value internal authentication in the Dashboard.
+8. Use Manual sync again so both `fromService.connectionString` values include
+   the authenticated internal URL, then redeploy the exact reviewed SHA.
+9. Confirm automatic deploys and autoscaling remain off.
+10. Keep all beta invitations and provider traffic stopped.
 
-`ANALYTICS_ADMIN_TOKEN` must be added manually in the Render backend
-environment before the Blueprint is synchronized. The token value must never be
-committed, placed in `render.yaml`, or shared with testers.
+The first sync can leave new processes not-ready until manual values and the
+authenticated connection string are complete. This is an expected fail-closed
+state, not permission to bypass validation.
 
-The current analytics store is volatile. Deploys, restarts, and service
-replacement can erase raw events and aggregates. Capture the aggregate report
-regularly and avoid unnecessary deploys during the controlled beta.
+## Zero-provider infrastructure acceptance
 
-Analytics remain first-party, cookie-free, and disabled for browsers that send
-Do Not Track or Global Privacy Control.
+The first remote acceptance stage must declare zero live provider calls. It
+must verify:
 
-## Blueprint creation and recovery
+- exact release SHA on frontend, API and workers;
+- two healthy API instances and two ready worker heartbeats;
+- private authenticated Valkey connectivity;
+- shared queue/schema readiness;
+- search-session continuity across an API instance restart;
+- queued-job survival across a worker restart;
+- bounded overload returning canonical `503` responses;
+- graceful shutdown and worker drain;
+- CORS, HTTPS, security headers and public redaction;
+- no external datastore access and no analytics traffic.
 
-1. Confirm `main` is clean and aligned with `origin/main`.
-2. Confirm `npm run release:ci` passed for the exact commit.
-3. Open Render and create or sync the Blueprint from the SmartStay repository.
-4. Use the root `render.yaml`.
-5. Enter the prompted values without committing them.
-6. Confirm the backend is in Frankfurt, uses Starter, and has one instance.
-7. Confirm automatic deploys remain off.
-8. Deploy the reviewed commit manually.
-9. Record the exact frontend URL, backend URL, service IDs, and deployed SHA.
-
-If a Blueprint sync fails before deployment, correct `render.yaml`, validate
-and commit the correction, then use Manual sync on the existing Blueprint. Do
-not create duplicate services.
-
-If a requested service name is unavailable, stop. Update the names in
-`render.yaml`, validate the repository again, then update the exact deployed
-origins in `CLIENT_ORIGINS` and `VITE_API_URL`.
-
-## Required checks before provider traffic
-
-Verify over HTTPS:
-
-```text
-GET <backend>/health/live
-GET <backend>/health/ready
-GET <backend>/health
-```
-
-The readiness response must identify the exact deployed `RELEASE_SHA`.
-
-Then run the existing remote staging smoke with:
-
-```text
-STAGING_FRONTEND_URL
-STAGING_BACKEND_URL
-EXPECTED_RELEASE_SHA
-```
-
-The frontend URL must load the SPA directly and on a nested route refresh.
-
-## Controlled live journey
-
-A provider journey is separate from infrastructure smoke.
-
-Run exactly one bounded journey only after:
-
-- health and readiness pass;
-- frontend and backend report the expected release;
-- CORS is correct;
-- HTTPS is correct;
-- the white-label checkout origin is real;
-- no unexpected analytics traffic is observed.
-
-Record provider calls honestly.
+Only after that report passes may a separate tiny live-provider journey be
+considered. It must remain inside the confirmed account quota. A live provider
+load test is forbidden in 4E.
 
 ## Rollback
 
-Before any live journey, retain the previous valid release candidate and its
-manifest.
+Rolling back to a pre-distributed commit while two API instances remain active
+is unsafe. If 4E fails:
 
-If remote smoke fails:
+1. stop provider traffic and preserve evidence;
+2. scale the API back to exactly one instance;
+3. stop both search-worker instances;
+4. redeploy the previous validated single-instance commit;
+5. verify release SHA, liveness, readiness and CORS;
+6. retain the Key Value instance without exposing or deleting it until the
+   incident is reviewed.
 
-1. stop provider tests;
-2. preserve logs and smoke evidence;
-3. roll back both services to the previous successful deploy;
-4. verify health and release SHA after rollback;
-5. do not open the beta.
+Do not delete persistent state as an automatic rollback step.
 
-Render rollback capability does not replace SmartStay's own candidate and
-evidence gates.
+## Exit criteria for 39C25A.4E
 
-## Exit criteria for 39C22D
-
-39C22D is closed only when all of the following are proven:
-
-- public frontend and backend staging URLs exist;
-- both services run the same approved commit;
-- backend is one paid instance in Frankfurt;
-- remote HTTPS smoke passes;
-- release SHA matches;
-- CORS and trust proxy behave correctly;
-- one bounded provider journey passes;
-- booking recheck and handoff are verified;
-- rollback target is known and verified;
-- controlled-beta analytics use the reviewed first-party contract;
-- the admin token is configured outside the repository;
-- evidence ZIP is produced;
-- production remains blocked.
+39C25A.4E closes only after source readiness, paid topology review, remote
+zero-provider acceptance, restart/rollback proof and the separately authorized
+bounded live journey all pass; production remains blocked until 39C25A.4F.

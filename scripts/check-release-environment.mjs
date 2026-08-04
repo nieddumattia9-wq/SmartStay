@@ -9,6 +9,8 @@ const require =
 
 const {
   CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS,
+  DISTRIBUTED_RELEASE_ENVIRONMENT_KEYS,
+  DISTRIBUTED_RUNTIME_STATE_MODE,
   REQUIRED_RELEASE_ENVIRONMENT_KEYS,
   assertReleaseEnvironment,
 } =
@@ -100,6 +102,12 @@ try {
         conditionalAnalyticsKeys:
           result.analyticsEnabled
             ? CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS
+            : [],
+
+        conditionalDistributedKeys:
+          result.runtimeStateMode ===
+            DISTRIBUTED_RUNTIME_STATE_MODE
+            ? DISTRIBUTED_RELEASE_ENVIRONMENT_KEYS
             : [],
       },
       null,

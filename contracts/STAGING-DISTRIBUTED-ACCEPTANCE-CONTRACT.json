@@ -1,0 +1,96 @@
+{
+  "reportVersion": "39C25A.4E-distributed-staging-acceptance-v1",
+  "phase": "39C25A.4E",
+  "sourceReadinessStage": "39C25A.4E1",
+  "name": "Distributed staging source readiness and remote acceptance",
+  "authorizationBoundary": {
+    "sourceCommitMayDeploy": false,
+    "sourceCommitMayProvisionResources": false,
+    "sourceCommitMayGenerateCost": false,
+    "sourceCommitMayCallLiveProviders": false,
+    "renderSyncRequiresExplicitApproval": true,
+    "liveProviderJourneyRequiresSeparateApproval": true,
+    "productionDeploymentAllowed": false
+  },
+  "topology": {
+    "frontendStaticSites": 1,
+    "apiInstances": 2,
+    "searchWorkerInstances": 2,
+    "keyValueInstances": 1,
+    "region": "frankfurt",
+    "automaticDeploy": false,
+    "autoscaling": false
+  },
+  "keyValue": {
+    "sharedByStateAndQueue": true,
+    "externalAccessAllowed": false,
+    "internalAuthenticationRequiredBeforeTraffic": true,
+    "persistenceMode": "journal-snapshot",
+    "maxmemoryPolicy": "noeviction",
+    "minimumPlanMemoryBytes": 268435456
+  },
+  "runtime": {
+    "stateMode": "valkey-distributed",
+    "queueEnabled": true,
+    "stateEnvironment": "staging",
+    "queueEnvironment": "staging",
+    "maximumActiveSessions": 1000,
+    "maximumAdmittedSearchJobs": 1000,
+    "sessionAggregateMaximumBytes": 134217728,
+    "stateCommandPoolSize": 4,
+    "workerConcurrencyPerProcess": 4,
+    "globalProviderConcurrencyMaximum": 8,
+    "providerAccountRateLimitsRequired": true,
+    "providerAccountQuotaMayBeInvented": false
+  },
+  "analytics": {
+    "backendEnabled": false,
+    "frontendEnabled": false,
+    "reason": "The current analytics adapter is process-local and cannot produce a complete multi-instance aggregate."
+  },
+  "sourceReadinessChecks": [
+    "exact-baseline-and-clean-worktree",
+    "render-blueprint-contract",
+    "api-release-environment-fail-closed",
+    "worker-release-environment-fail-closed",
+    "release-candidate-distributed-constraints",
+    "complete-permanent-test-suite",
+    "typecheck-build-lint-audit-local-smoke",
+    "zero-deploy-zero-live-provider-calls"
+  ],
+  "remoteInfrastructureChecks": [
+    "exact-release-sha",
+    "two-api-instances",
+    "two-ready-worker-heartbeats",
+    "private-authenticated-key-value",
+    "shared-state-and-queue-schema",
+    "session-survives-api-instance-restart",
+    "queued-job-survives-worker-instance-restart",
+    "bounded-overload-fails-closed",
+    "graceful-api-shutdown-and-worker-drain",
+    "https-cors-security-headers-and-redaction",
+    "external-datastore-access-disabled",
+    "zero-analytics-traffic",
+    "zero-live-provider-calls"
+  ],
+  "liveJourney": {
+    "blockedUntilRemoteInfrastructurePass": true,
+    "confirmedProviderQuotaRequired": true,
+    "boundedJourneyOnly": true,
+    "capacityOrLoadTestAllowed": false
+  },
+  "rollback": {
+    "providerTrafficStoppedFirst": true,
+    "preDistributedTargetRequiresApiInstances": 1,
+    "preDistributedTargetRequiresWorkersStopped": true,
+    "persistentStateAutomaticDeletionAllowed": false,
+    "previousCandidateAndReleaseShaRequired": true
+  },
+  "exit": {
+    "sourceReadinessPassCloses4E": false,
+    "remoteInfrastructurePassRequired": true,
+    "boundedLiveJourneyPassRequired": true,
+    "rollbackProofRequired": true,
+    "productionPhaseUnblockedOnPass": "39C25A.4F"
+  }
+}

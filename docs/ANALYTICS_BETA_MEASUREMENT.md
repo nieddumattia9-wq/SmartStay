@@ -105,9 +105,14 @@ Other scopes are `raw`, `aggregates` and `all`.
 
 ## Storage limitation
 
-The current store is `in-memory-single-instance`. All analytics data is lost when the backend restarts. It is suitable only for local validation, staging sampling and a tightly controlled first beta with explicit acknowledgement and regular report capture.
+The current store is `in-memory-single-instance`. All analytics data is lost when the backend restarts, and each API process owns a different partial view.
+It is therefore suitable for local validation only while 39C25A.4E runs two API
+instances.
 
-Before durable public measurement or horizontal scaling, SmartStay needs a first-party persistent storage adapter and a migration plan. This limitation is intentionally visible in the report and release environment contract.
+Distributed staging sets both analytics flags to false. Before remote beta
+measurement, SmartStay needs a first-party shared storage adapter and a
+migration plan. This limitation is intentionally visible in the report and
+release environment contract.
 
 ## Browser validation truth
 

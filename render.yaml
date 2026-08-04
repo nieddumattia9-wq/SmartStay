@@ -1,29 +1,47 @@
 services:
+  - type: keyvalue
+    name: smartstay-staging-valkey
+    region: frankfurt
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
   - type: web
     name: smartstay-staging-api
     runtime: node
     branch: main
     region: frankfurt
     plan: starter
-    numInstances: 1
+    numInstances: 2
     autoDeployTrigger: off
     rootDir: server
     buildCommand: npm ci --omit=dev
     startCommand: RELEASE_SHA=$RENDER_GIT_COMMIT npm start
     healthCheckPath: /health/ready
+    maxShutdownDelaySeconds: 45
     envVars:
+      - fromGroup: smartstay-staging-distributed-runtime
       - key: NODE_VERSION
         value: 24.18.0
       - key: NODE_ENV
         value: production
       - key: DEPLOYMENT_ENV
         value: staging
-      - key: RUNTIME_STATE_MODE
-        value: in-memory-single-instance
       - key: TRUST_PROXY
         value: "1"
       - key: SERVICE_NAME
         value: smartstay-staging-api
+      - key: SMARTSTAY_STATE_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: smartstay-staging-valkey
+          property: connectionString
+      - key: SMARTSTAY_QUEUE_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: smartstay-staging-valkey
+          property: connectionString
       - key: CLIENT_ORIGINS
         sync: false
       - key: VITE_API_URL
@@ -34,16 +52,49 @@ services:
         sync: false
       - key: LITEAPI_WHITELABEL_BASE_URL
         sync: false
-      - key: ANALYTICS_ENABLED
-        value: "true"
-      - key: VITE_ANALYTICS_ENABLED
-        value: "true"
-      - key: ANALYTICS_ADMIN_TOKEN
+      - key: PROVIDER_ACCOUNT_RATE_LIMITS_JSON
         sync: false
-      - key: ANALYTICS_STORAGE_MODE
-        value: in-memory-single-instance
-      - key: ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED
-        value: "true"
+      - key: ANALYTICS_ENABLED
+        value: "false"
+      - key: VITE_ANALYTICS_ENABLED
+        value: "false"
+
+  - type: worker
+    name: smartstay-staging-search-worker
+    runtime: node
+    branch: main
+    region: frankfurt
+    plan: starter
+    numInstances: 2
+    autoDeployTrigger: off
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: RELEASE_SHA=$RENDER_GIT_COMMIT npm run worker:search
+    maxShutdownDelaySeconds: 45
+    envVars:
+      - fromGroup: smartstay-staging-distributed-runtime
+      - key: NODE_VERSION
+        value: 24.18.0
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOYMENT_ENV
+        value: staging
+      - key: SERVICE_NAME
+        value: smartstay-staging-search-worker
+      - key: SMARTSTAY_STATE_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: smartstay-staging-valkey
+          property: connectionString
+      - key: SMARTSTAY_QUEUE_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: smartstay-staging-valkey
+          property: connectionString
+      - key: LITEAPI_API_KEY
+        sync: false
+      - key: PROVIDER_ACCOUNT_RATE_LIMITS_JSON
+        sync: false
 
   - type: web
     name: smartstay-staging-web
@@ -58,7 +109,7 @@ services:
       - key: VITE_API_URL
         sync: false
       - key: VITE_ANALYTICS_ENABLED
-        value: "true"
+        value: "false"
       - key: VITE_GOOGLE_MAPS_EMBED_KEY
         sync: false
     headers:
@@ -84,3 +135,65 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
+envVarGroups:
+  - name: smartstay-staging-distributed-runtime
+    envVars:
+      - key: RUNTIME_STATE_MODE
+        value: valkey-distributed
+      - key: SMARTSTAY_OPERATIONAL_STATE_MODE
+        value: valkey-distributed
+      - key: SMARTSTAY_STATE_ENVIRONMENT
+        value: staging
+      - key: SMARTSTAY_STATE_KEY_SECRET
+        generateValue: true
+      - key: SMARTSTAY_STATE_CONNECT_TIMEOUT_MS
+        value: "2000"
+      - key: SMARTSTAY_STATE_COMMAND_TIMEOUT_MS
+        value: "3000"
+      - key: SMARTSTAY_STATE_COMMAND_POOL_SIZE
+        value: "4"
+      - key: SMARTSTAY_STATE_MAX_SESSIONS
+        value: "1000"
+      - key: SMARTSTAY_STATE_SESSION_AGGREGATE_MAX_BYTES
+        value: "134217728"
+      - key: SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED
+        value: "true"
+      - key: SMARTSTAY_QUEUE_ENVIRONMENT
+        value: staging
+      - key: SMARTSTAY_QUEUE_KEY_SECRET
+        generateValue: true
+      - key: SMARTSTAY_SEARCH_QUEUE_MAX_ADMITTED
+        value: "1000"
+      - key: SMARTSTAY_QUEUE_CONNECT_TIMEOUT_MS
+        value: "2000"
+      - key: SMARTSTAY_QUEUE_COMMAND_TIMEOUT_MS
+        value: "3000"
+      - key: SMARTSTAY_SEARCH_QUEUE_RETRY_AFTER_MS
+        value: "1000"
+      - key: SMARTSTAY_SEARCH_QUEUE_JOB_ATTEMPTS
+        value: "3"
+      - key: SMARTSTAY_SEARCH_QUEUE_JOB_BACKOFF_MS
+        value: "1000"
+      - key: SMARTSTAY_SEARCH_WORKER_CONCURRENCY
+        value: "4"
+      - key: SMARTSTAY_SEARCH_WORKER_START_TIMEOUT_MS
+        value: "30000"
+      - key: SMARTSTAY_SEARCH_WORKER_HEARTBEAT_INTERVAL_MS
+        value: "5000"
+      - key: SMARTSTAY_SEARCH_WORKER_HEARTBEAT_TTL_MS
+        value: "20000"
+      - key: SMARTSTAY_SEARCH_WORKER_DRAIN_TIMEOUT_MS
+        value: "30000"
+      - key: PROVIDER_MAX_CONCURRENT_OPERATIONS
+        value: "8"
+      - key: PROVIDER_MAX_CONCURRENT_OPERATIONS_PER_PROVIDER
+        value: "8"
+      - key: PROVIDER_MAX_QUEUED_OPERATIONS
+        value: "64"
+      - key: PROVIDER_MAX_QUEUED_OPERATIONS_PER_PROVIDER
+        value: "32"
+      - key: PROVIDER_CAPACITY_LEASE_TTL_MS
+        value: "40000"
+      - key: PROVIDER_CAPACITY_ACQUIRE_POLL_MS
+        value: "25"

@@ -17,56 +17,42 @@ controlled beta instead uses:
 - `X-Robots-Tag`;
 - a `robots.txt` disallow rule;
 - a visible request not to share the link;
-- single-instance rate limits and observability.
+- shared distributed rate limits and operational readiness.
 
 A real hard access gate, if later required, must be enforced before the static
 frontend or at the backend/edge. It must not be simulated with a frontend-only
 password.
 
-## Analytics enablement
+## Analytics hold during distributed acceptance
 
-The controlled beta enables the existing first-party analytics contract:
-
-```text
-ANALYTICS_ENABLED=true
-VITE_ANALYTICS_ENABLED=true
-ANALYTICS_STORAGE_MODE=in-memory-single-instance
-ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED=true
-```
-
-No cookies, advertising SDK, cross-session profile or exact travel data are
-added.
-
-`ANALYTICS_ADMIN_TOKEN` is required on the backend and must contain at least
-32 characters.
-
-Because this is an update to an existing Render Blueprint, add the token
-manually to `smartstay-staging-api` in the Render Dashboard before syncing and
-deploying the analytics-enabled configuration. Do not commit or paste the
-token into chat.
-
-Generate a token locally, for example:
+39C25A.4E keeps the existing first-party analytics contract disabled:
 
 ```text
-node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+ANALYTICS_ENABLED=false
+VITE_ANALYTICS_ENABLED=false
 ```
+
+The local analytics contract, privacy controls and synthetic measurement gate
+remain active in CI. They add no cookies, advertising SDK, cross-session
+profile or exact travel data.
 
 ## Storage truth
 
-Analytics remain:
+The implemented analytics adapter remains:
 
 ```text
 in-memory-single-instance
 ```
 
-A backend restart or deploy erases raw and aggregate analytics data. During the
-controlled beta:
+A backend restart or deploy erases raw and aggregate analytics data. On a
+multi-instance API, each process would also expose only its own partial view.
+Therefore:
 
-- keep exactly one backend instance;
-- avoid unnecessary deploys;
-- capture the aggregate report regularly;
-- never describe the store as durable;
-- stop measurement if the operational limitation becomes misleading.
+- do not enable the analytics flags during 4E;
+- do not request or configure `ANALYTICS_ADMIN_TOKEN` for distributed staging;
+- do not describe process-local reports as staging-wide aggregates;
+- keep tester invitations paused until a shared analytics adapter is reviewed
+  or the measurement plan is explicitly redesigned.
 
 Raw retention is at most 30 days. Aggregate retention is at most 180 days, but
 a restart can delete both earlier.
@@ -84,9 +70,10 @@ Each invitation should state:
    invitation channel.
 5. The beta privacy notice is available at `/privacy`.
 
-## Measurement cadence
+## Measurement cadence after a shared adapter exists
 
-At least once per testing day:
+Only after a separate analytics release gate passes, at least once per testing
+day:
 
 1. read the aggregate-only analytics report;
 2. save the report outside the volatile service;
@@ -121,3 +108,5 @@ Pause invitations immediately if any of these occurs:
 - critical defects are resolved;
 - no payment or booking is represented as part of the test;
 - a decision is made to continue, pause or redesign the beta.
+
+39C25A.4E infrastructure acceptance alone does not reopen invitations.

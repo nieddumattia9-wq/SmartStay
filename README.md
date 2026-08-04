@@ -95,7 +95,11 @@ Health payloads expose the service version and deployment environment, but never
 
 Read [`docs/STAGING_RELEASE.md`](docs/STAGING_RELEASE.md).
 
-The current search, idempotency, verification and handoff stores are in-memory. Staging and controlled beta must therefore use one backend instance until shared persistence is implemented.
+The canonical staging profile uses the Valkey-distributed state adapters and
+durable search queue with two API and two worker instances. Development and
+the isolated local smoke retain the in-memory compatibility profile. See
+[`docs/STAGING_DISTRIBUTED_ACCEPTANCE.md`](docs/STAGING_DISTRIBUTED_ACCEPTANCE.md)
+for the source/deployment authorization boundary.
 
 ## Security
 

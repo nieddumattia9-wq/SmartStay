@@ -385,7 +385,7 @@ function createReleaseCandidate({
       node:
         process.version,
       runtimeStateMode:
-        "in-memory-single-instance",
+        "valkey-distributed",
     },
     artifacts: {
       frontend: {
@@ -411,10 +411,20 @@ function createReleaseCandidate({
     },
     lockfiles,
     constraints: {
-      singleBackendInstance:
-        true,
+      backendInstances:
+        2,
+      searchWorkerInstances:
+        2,
       runtimeStateMode:
-        "in-memory-single-instance",
+        "valkey-distributed",
+      sharedValkeyRequired:
+        true,
+      asynchronousSearchQueueRequired:
+        true,
+      providerAccountRateLimitsRequired:
+        true,
+      processLocalAnalyticsAllowed:
+        false,
       routeStackRequired:
         false,
       manualProductionApproval:

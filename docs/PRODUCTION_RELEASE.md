@@ -8,15 +8,20 @@ Production promotion remains blocked until all required evidence exists.
 
 ## Non-negotiable runtime constraint
 
-The backend stores search sessions, idempotency records, booking verifications, and handoffs in process memory.
+Production must use the distributed operational-state and durable search-queue
+adapters proven by 39C25A.4D and remotely accepted in 39C25A.4E:
 
-Until shared persistence exists:
+- at least two API instances;
+- at least two dedicated search-worker instances;
+- private authenticated persistent Valkey-compatible storage;
+- `RUNTIME_STATE_MODE=valkey-distributed` and matching operational mode;
+- asynchronous queue enabled with ready worker heartbeats;
+- global provider concurrency at or below eight;
+- confirmed provider account-rate policies;
+- no process-local analytics presented as a global measurement store.
 
-- deploy exactly one backend instance;
-- disable horizontal autoscaling;
-- do not use rolling overlap;
-- expect active sessions to expire on restart or rollback;
-- keep `RUNTIME_STATE_MODE=in-memory-single-instance`.
+Production remains blocked until the distributed staging acceptance and
+rollback evidence are complete.
 
 ## 1. Create an immutable release candidate
 
@@ -46,7 +51,9 @@ The manifest records:
 - frontend file hashes and aggregate SHA-256;
 - backend file hashes and aggregate SHA-256;
 - root and backend lockfile hashes;
-- single-instance constraint;
+- two-API/two-worker distributed constraint;
+- shared persistent state and queue requirements;
+- provider account-rate-limit requirement;
 - absence of automatic deploy, tag, or release actions.
 
 The GitHub release gate uploads this evidence for pushes to `main` and manual workflow runs.
@@ -134,6 +141,11 @@ A human approval is required after reviewing that plan.
 
 The hosting-specific deployment command belongs outside the SmartStay domain and must deploy the exact candidate SHA/artifact.
 
+Before traffic, independently verify the minimum two API/two worker topology,
+private authenticated datastore, persistence, `noeviction`, matching
+namespaces, queue schema and worker heartbeats. No source command provisions
+or scales production resources.
+
 After deployment:
 
 1. check `/health/live`;
@@ -170,7 +182,10 @@ Sequence:
 6. run the bounded live journey if booking flow was affected;
 7. record the rollback report.
 
-Restart or rollback invalidates in-memory search and booking IDs. The frontend must recover through the existing expired-session flow.
+The distributed store preserves eligible state across process replacement, but
+rollback must still respect schema compatibility and retained TTLs. If the
+target predates distributed state, first scale API to one and stop all workers;
+never run that target on a multi-instance topology.
 
 ## 10. Evidence retention
 

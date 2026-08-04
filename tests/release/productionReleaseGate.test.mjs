@@ -172,10 +172,20 @@ function createFixture() {
     },
     lockfiles,
     constraints: {
-      singleBackendInstance:
-        true,
+      backendInstances:
+        2,
+      searchWorkerInstances:
+        2,
       runtimeStateMode:
-        "in-memory-single-instance",
+        "valkey-distributed",
+      sharedValkeyRequired:
+        true,
+      asynchronousSearchQueueRequired:
+        true,
+      providerAccountRateLimitsRequired:
+        true,
+      processLocalAnalyticsAllowed:
+        false,
       routeStackRequired:
         false,
     },
@@ -493,6 +503,24 @@ test(
       assert.equal(
         plan.production
           .manualApprovalRequired,
+        true
+      );
+
+      assert.equal(
+        plan.production
+          .minimumBackendInstances,
+        2
+      );
+
+      assert.equal(
+        plan.production
+          .minimumSearchWorkerInstances,
+        2
+      );
+
+      assert.equal(
+        plan.production
+          .distributedRuntimeRequired,
         true
       );
 

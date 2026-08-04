@@ -563,11 +563,26 @@ function validateReleaseCandidateManifest(
 
   assert(
     manifest.constraints
-      ?.singleBackendInstance ===
-        true &&
+      ?.backendInstances ===
+        2 &&
+    manifest.constraints
+      ?.searchWorkerInstances ===
+        2 &&
     manifest.constraints
       ?.runtimeStateMode ===
-        "in-memory-single-instance" &&
+        "valkey-distributed" &&
+    manifest.constraints
+      ?.sharedValkeyRequired ===
+        true &&
+    manifest.constraints
+      ?.asynchronousSearchQueueRequired ===
+        true &&
+    manifest.constraints
+      ?.providerAccountRateLimitsRequired ===
+        true &&
+    manifest.constraints
+      ?.processLocalAnalyticsAllowed ===
+        false &&
     manifest.constraints
       ?.routeStackRequired ===
         false,
@@ -967,7 +982,11 @@ function createProductionReleasePlan({
     production: {
       frontendUrl,
       backendUrl,
-      singleBackendInstance:
+      minimumBackendInstances:
+        2,
+      minimumSearchWorkerInstances:
+        2,
+      distributedRuntimeRequired:
         true,
       manualApprovalRequired:
         true,

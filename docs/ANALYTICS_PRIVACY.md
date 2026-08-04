@@ -148,7 +148,11 @@ Automatic pruning runs on write, read and status operations. Manual deletion exi
 
 ## Measurement limits
 
-Rates are journey-level and use the first occurrence of an action within a journey. The current aggregate state is process-local and therefore cannot merge multiple backend instances. SmartStay staging and the first controlled beta must remain single-instance.
+Rates are journey-level and use the first occurrence of an action within a
+journey. The current aggregate state is process-local and therefore cannot
+merge multiple backend instances. Distributed staging keeps analytics
+disabled; controlled-beta measurement remains blocked until a shared adapter
+or an explicitly redesigned measurement topology is approved.
 
 The detailed metric definitions and sample-readiness rules are documented in:
 

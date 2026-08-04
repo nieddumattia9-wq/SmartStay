@@ -35,14 +35,54 @@ const CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS =
     "VITE_ANALYTICS_ENABLED",
   ]);
 
-const REQUIRED_RUNTIME_STATE_MODE =
+const IN_MEMORY_RUNTIME_STATE_MODE =
   "in-memory-single-instance";
+
+const DISTRIBUTED_RUNTIME_STATE_MODE =
+  "valkey-distributed";
+
+const REQUIRED_RUNTIME_STATE_MODE =
+  IN_MEMORY_RUNTIME_STATE_MODE;
+
+const DISTRIBUTED_RELEASE_ENVIRONMENT_KEYS =
+  Object.freeze([
+    "PROVIDER_ACCOUNT_RATE_LIMITS_JSON",
+    "PROVIDER_MAX_CONCURRENT_OPERATIONS",
+    "SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED",
+    "SMARTSTAY_OPERATIONAL_STATE_MODE",
+    "SMARTSTAY_QUEUE_ENVIRONMENT",
+    "SMARTSTAY_QUEUE_KEY_SECRET",
+    "SMARTSTAY_QUEUE_REDIS_URL",
+    "SMARTSTAY_SEARCH_QUEUE_MAX_ADMITTED",
+    "SMARTSTAY_SEARCH_WORKER_CONCURRENCY",
+    "SMARTSTAY_STATE_COMMAND_POOL_SIZE",
+    "SMARTSTAY_STATE_ENVIRONMENT",
+    "SMARTSTAY_STATE_KEY_SECRET",
+    "SMARTSTAY_STATE_MAX_SESSIONS",
+    "SMARTSTAY_STATE_REDIS_URL",
+    "SMARTSTAY_STATE_SESSION_AGGREGATE_MAX_BYTES",
+  ]);
+
+const RELEASE_RUNTIME_STATE_MODES =
+  new Set([
+    IN_MEMORY_RUNTIME_STATE_MODE,
+    DISTRIBUTED_RUNTIME_STATE_MODE,
+  ]);
 
 const REQUIRED_ANALYTICS_STORAGE_MODE =
   "in-memory-single-instance";
 
 const MIN_ANALYTICS_ADMIN_TOKEN_LENGTH =
   32;
+
+const MIN_DISTRIBUTED_SECRET_BYTES =
+  32;
+
+const MIN_DISTRIBUTED_SESSION_AGGREGATE_BYTES =
+  82_529_650;
+
+const MAX_DISTRIBUTED_PROVIDER_CONCURRENCY =
+  8;
 
 function normalizeText(
   value
@@ -340,6 +380,432 @@ function validateClientOrigins(
   return issues;
 }
 
+function validateRedisUrl(
+  value,
+  field
+) {
+  const candidate =
+    normalizeText(
+      value
+    );
+
+  if (!candidate) {
+    return createIssue(
+      field,
+      "REQUIRED",
+      `${field} is required.`
+    );
+  }
+
+  try {
+    const parsed =
+      new URL(
+        candidate
+      );
+
+    if (
+      ![
+        "redis:",
+        "rediss:",
+      ].includes(
+        parsed.protocol
+      ) ||
+      !parsed.hostname ||
+      parsed.hash
+    ) {
+      return createIssue(
+        field,
+        "INVALID_REDIS_URL",
+        `${field} must be a valid redis:// or rediss:// URL.`
+      );
+    }
+
+    return null;
+  } catch {
+    return createIssue(
+      field,
+      "INVALID_REDIS_URL",
+      `${field} must be a valid redis:// or rediss:// URL.`
+    );
+  }
+}
+
+function validateIntegerSetting(
+  environment,
+  field,
+  {
+    minimum =
+      1,
+    maximum =
+      Number.MAX_SAFE_INTEGER,
+  } = {}
+) {
+  const candidate =
+    normalizeText(
+      environment[field]
+    );
+  const number =
+    Number(candidate);
+
+  if (!candidate) {
+    return createIssue(
+      field,
+      "REQUIRED",
+      `${field} is required.`
+    );
+  }
+
+  if (
+    !Number.isSafeInteger(
+      number
+    ) ||
+    number < minimum ||
+    number > maximum
+  ) {
+    return createIssue(
+      field,
+      "OUTSIDE_DISTRIBUTED_LIMIT",
+      `${field} must be an integer from ${minimum} to ${maximum}.`
+    );
+  }
+
+  return null;
+}
+
+function collectProviderAccountRateLimitIssues(
+  value
+) {
+  const field =
+    "PROVIDER_ACCOUNT_RATE_LIMITS_JSON";
+  const candidate =
+    normalizeText(
+      value
+    );
+
+  if (!candidate) {
+    return [
+      createIssue(
+        field,
+        "REQUIRED",
+        `${field} is required for a distributed release.`
+      ),
+    ];
+  }
+
+  let source;
+
+  try {
+    source =
+      JSON.parse(
+        candidate
+      );
+  } catch {
+    return [
+      createIssue(
+        field,
+        "INVALID_PROVIDER_RATE_LIMITS",
+        `${field} must be valid JSON.`
+      ),
+    ];
+  }
+
+  if (
+    !source ||
+    typeof source !==
+      "object" ||
+    Array.isArray(
+      source
+    ) ||
+    Object.keys(
+      source
+    ).length ===
+      0
+  ) {
+    return [
+      createIssue(
+        field,
+        "INVALID_PROVIDER_RATE_LIMITS",
+        `${field} must be a non-empty object keyed by provider id.`
+      ),
+    ];
+  }
+
+  const issues =
+    [];
+
+  if (
+    !Object.prototype
+      .hasOwnProperty.call(
+        source,
+        "liteapi"
+      ) &&
+    !Object.prototype
+      .hasOwnProperty.call(
+        source,
+        "*"
+      )
+  ) {
+    issues.push(
+      createIssue(
+        field,
+        "LITEAPI_RATE_LIMIT_REQUIRED",
+        `${field} must define liteapi or a wildcard policy.`
+      )
+    );
+  }
+
+  for (
+    const [
+      providerId,
+      policy,
+    ] of Object.entries(
+      source
+    )
+  ) {
+    if (
+      !policy ||
+      typeof policy !==
+        "object" ||
+      Array.isArray(
+        policy
+      ) ||
+      !Number.isSafeInteger(
+        Number(
+          policy.maxRequests
+        )
+      ) ||
+      Number(
+        policy.maxRequests
+      ) < 1 ||
+      Number(
+        policy.maxRequests
+      ) > 1_000_000 ||
+      !Number.isSafeInteger(
+        Number(
+          policy.windowMs
+        )
+      ) ||
+      Number(
+        policy.windowMs
+      ) < 100 ||
+      Number(
+        policy.windowMs
+      ) >
+        24 * 60 * 60 * 1_000
+    ) {
+      issues.push(
+        createIssue(
+          field,
+          "INVALID_PROVIDER_RATE_LIMIT_POLICY",
+          `Provider rate limit policy "${providerId}" is invalid.`
+        )
+      );
+    }
+  }
+
+  return issues;
+}
+
+function collectDistributedRuntimeIssues(
+  environment,
+  deploymentEnvironment
+) {
+  const issues =
+    [];
+
+  if (
+    normalizeText(
+      environment
+        .SMARTSTAY_OPERATIONAL_STATE_MODE
+    ) !==
+      DISTRIBUTED_RUNTIME_STATE_MODE
+  ) {
+    issues.push(
+      createIssue(
+        "SMARTSTAY_OPERATIONAL_STATE_MODE",
+        "DISTRIBUTED_OPERATIONAL_STATE_REQUIRED",
+        `SMARTSTAY_OPERATIONAL_STATE_MODE must be ${DISTRIBUTED_RUNTIME_STATE_MODE}.`
+      )
+    );
+  }
+
+  if (
+    normalizeBooleanFlag(
+      environment
+        .SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED
+    ) !== true
+  ) {
+    issues.push(
+      createIssue(
+        "SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED",
+        "DISTRIBUTED_QUEUE_REQUIRED",
+        "SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED must be true."
+      )
+    );
+  }
+
+  const stateUrlIssue =
+    validateRedisUrl(
+      environment
+        .SMARTSTAY_STATE_REDIS_URL,
+      "SMARTSTAY_STATE_REDIS_URL"
+    );
+  const queueUrlIssue =
+    validateRedisUrl(
+      environment
+        .SMARTSTAY_QUEUE_REDIS_URL,
+      "SMARTSTAY_QUEUE_REDIS_URL"
+    );
+
+  if (stateUrlIssue) {
+    issues.push(
+      stateUrlIssue
+    );
+  }
+
+  if (queueUrlIssue) {
+    issues.push(
+      queueUrlIssue
+    );
+  }
+
+  if (
+    !stateUrlIssue &&
+    !queueUrlIssue &&
+    normalizeText(
+      environment
+        .SMARTSTAY_STATE_REDIS_URL
+    ) !==
+      normalizeText(
+        environment
+          .SMARTSTAY_QUEUE_REDIS_URL
+      )
+  ) {
+    issues.push(
+      createIssue(
+        "SMARTSTAY_QUEUE_REDIS_URL",
+        "DISTRIBUTED_DATASTORE_MISMATCH",
+        "State and queue must use the same staging Valkey connection."
+      )
+    );
+  }
+
+  for (
+    const field of
+    [
+      "SMARTSTAY_STATE_ENVIRONMENT",
+      "SMARTSTAY_QUEUE_ENVIRONMENT",
+    ]
+  ) {
+    if (
+      normalizeText(
+        environment[field]
+      ).toLowerCase() !==
+        deploymentEnvironment
+    ) {
+      issues.push(
+        createIssue(
+          field,
+          "DISTRIBUTED_NAMESPACE_MISMATCH",
+          `${field} must match DEPLOYMENT_ENV.`
+        )
+      );
+    }
+  }
+
+  for (
+    const field of
+    [
+      "SMARTSTAY_STATE_KEY_SECRET",
+      "SMARTSTAY_QUEUE_KEY_SECRET",
+    ]
+  ) {
+    if (
+      Buffer.byteLength(
+        typeof environment[field] ===
+          "string"
+          ? environment[field]
+          : "",
+        "utf8"
+      ) <
+        MIN_DISTRIBUTED_SECRET_BYTES
+    ) {
+      issues.push(
+        createIssue(
+          field,
+          "DISTRIBUTED_SECRET_TOO_SHORT",
+          `${field} must contain at least ${MIN_DISTRIBUTED_SECRET_BYTES} UTF-8 bytes.`
+        )
+      );
+    }
+  }
+
+  for (
+    const [
+      field,
+      minimum,
+      maximum,
+    ] of
+    [
+      [
+        "SMARTSTAY_STATE_COMMAND_POOL_SIZE",
+        1,
+        8,
+      ],
+      [
+        "SMARTSTAY_STATE_MAX_SESSIONS",
+        1_000,
+        100_000,
+      ],
+      [
+        "SMARTSTAY_STATE_SESSION_AGGREGATE_MAX_BYTES",
+        MIN_DISTRIBUTED_SESSION_AGGREGATE_BYTES,
+        8 * 1_024 * 1_024 * 1_024,
+      ],
+      [
+        "SMARTSTAY_SEARCH_QUEUE_MAX_ADMITTED",
+        1_000,
+        1_000,
+      ],
+      [
+        "SMARTSTAY_SEARCH_WORKER_CONCURRENCY",
+        1,
+        32,
+      ],
+      [
+        "PROVIDER_MAX_CONCURRENT_OPERATIONS",
+        1,
+        MAX_DISTRIBUTED_PROVIDER_CONCURRENCY,
+      ],
+    ]
+  ) {
+    const issue =
+      validateIntegerSetting(
+        environment,
+        field,
+        {
+          minimum,
+          maximum,
+        }
+      );
+
+    if (issue) {
+      issues.push(
+        issue
+      );
+    }
+  }
+
+  issues.push(
+    ...collectProviderAccountRateLimitIssues(
+      environment
+        .PROVIDER_ACCOUNT_RATE_LIMITS_JSON
+    )
+  );
+
+  return issues;
+}
+
 function collectReleaseEnvironmentIssues(
   environment =
     process.env
@@ -518,18 +984,49 @@ function collectReleaseEnvironmentIssues(
     );
   }
 
-  if (
+  const runtimeStateMode =
     normalizeText(
       environment
         .RUNTIME_STATE_MODE
-    ) !==
-      REQUIRED_RUNTIME_STATE_MODE
+    );
+
+  if (
+    !RELEASE_RUNTIME_STATE_MODES
+      .has(
+        runtimeStateMode
+      )
   ) {
     issues.push(
       createIssue(
         "RUNTIME_STATE_MODE",
-        "SINGLE_INSTANCE_ACKNOWLEDGEMENT_REQUIRED",
-        `RUNTIME_STATE_MODE must be ${REQUIRED_RUNTIME_STATE_MODE}.`
+        "RUNTIME_STATE_MODE_UNSUPPORTED",
+        "RUNTIME_STATE_MODE must declare an approved release topology."
+      )
+    );
+  }
+  else if (
+    deploymentEnvironment ===
+      "production" &&
+    runtimeStateMode !==
+      DISTRIBUTED_RUNTIME_STATE_MODE
+  ) {
+    issues.push(
+      createIssue(
+        "RUNTIME_STATE_MODE",
+        "DISTRIBUTED_RUNTIME_REQUIRED",
+        `Production requires RUNTIME_STATE_MODE=${DISTRIBUTED_RUNTIME_STATE_MODE}.`
+      )
+    );
+  }
+
+  if (
+    runtimeStateMode ===
+      DISTRIBUTED_RUNTIME_STATE_MODE
+  ) {
+    issues.push(
+      ...collectDistributedRuntimeIssues(
+        environment,
+        deploymentEnvironment
       )
     );
   }
@@ -565,6 +1062,21 @@ function collectReleaseEnvironmentIssues(
         "ANALYTICS_ENABLED",
         "ANALYTICS_FLAG_MISMATCH",
         "VITE_ANALYTICS_ENABLED and ANALYTICS_ENABLED must match."
+      )
+    );
+  }
+
+  if (
+    runtimeStateMode ===
+      DISTRIBUTED_RUNTIME_STATE_MODE &&
+    backendAnalyticsEnabled ===
+      true
+  ) {
+    issues.push(
+      createIssue(
+        "ANALYTICS_ENABLED",
+        "DISTRIBUTED_ANALYTICS_UNSUPPORTED",
+        "Analytics must stay disabled until a shared analytics store is available."
       )
     );
   }
@@ -621,6 +1133,151 @@ function collectReleaseEnvironmentIssues(
   return issues;
 }
 
+function createReleaseEnvironmentError(
+  issues
+) {
+  const error =
+    new Error(
+      "Release environment validation failed."
+    );
+
+  error.name =
+    "SmartStayReleaseEnvironmentError";
+
+  error.code =
+    "RELEASE_ENVIRONMENT_INVALID";
+
+  error.issues =
+    issues;
+
+  return error;
+}
+
+function collectDistributedWorkerEnvironmentIssues(
+  environment =
+    process.env
+) {
+  const issues =
+    [];
+  const deploymentEnvironment =
+    getDeploymentEnvironment(
+      environment
+    );
+
+  if (
+    !RELEASE_DEPLOYMENT_ENVIRONMENTS
+      .has(
+        deploymentEnvironment
+      )
+  ) {
+    issues.push(
+      createIssue(
+        "DEPLOYMENT_ENV",
+        "INVALID_DEPLOYMENT_ENV",
+        "DEPLOYMENT_ENV must be staging or production."
+      )
+    );
+  }
+
+  if (
+    normalizeText(
+      environment.NODE_ENV
+    ).toLowerCase() !==
+      "production"
+  ) {
+    issues.push(
+      createIssue(
+        "NODE_ENV",
+        "PRODUCTION_REQUIRED",
+        "NODE_ENV must be production for a release worker."
+      )
+    );
+  }
+
+  if (
+    !/^[0-9a-f]{7,64}$/i.test(
+      normalizeText(
+        environment.RELEASE_SHA
+      )
+    )
+  ) {
+    issues.push(
+      createIssue(
+        "RELEASE_SHA",
+        "INVALID_RELEASE_SHA",
+        "RELEASE_SHA must be a Git commit hash."
+      )
+    );
+  }
+
+  if (
+    !normalizeText(
+      environment.LITEAPI_API_KEY
+    )
+  ) {
+    issues.push(
+      createIssue(
+        "LITEAPI_API_KEY",
+        "REQUIRED",
+        "LITEAPI_API_KEY is required."
+      )
+    );
+  }
+
+  if (
+    normalizeText(
+      environment
+        .RUNTIME_STATE_MODE
+    ) !==
+      DISTRIBUTED_RUNTIME_STATE_MODE
+  ) {
+    issues.push(
+      createIssue(
+        "RUNTIME_STATE_MODE",
+        "DISTRIBUTED_RUNTIME_REQUIRED",
+        `The search worker requires RUNTIME_STATE_MODE=${DISTRIBUTED_RUNTIME_STATE_MODE}.`
+      )
+    );
+  }
+
+  issues.push(
+    ...collectDistributedRuntimeIssues(
+      environment,
+      deploymentEnvironment
+    )
+  );
+
+  return issues;
+}
+
+function assertDistributedWorkerEnvironment({
+  environment =
+    process.env,
+} = {}) {
+  const issues =
+    collectDistributedWorkerEnvironmentIssues(
+      environment
+    );
+
+  if (
+    issues.length >
+      0
+  ) {
+    throw createReleaseEnvironmentError(
+      issues
+    );
+  }
+
+  return Object.freeze({
+    deploymentEnvironment:
+      getDeploymentEnvironment(
+        environment
+      ),
+    runtimeStateMode:
+      DISTRIBUTED_RUNTIME_STATE_MODE,
+  });
+}
+
 function assertReleaseEnvironment({
   environment =
     process.env,
@@ -634,21 +1291,9 @@ function assertReleaseEnvironment({
     issues.length >
       0
   ) {
-    const error =
-      new Error(
-        "Release environment validation failed."
-      );
-
-    error.name =
-      "SmartStayReleaseEnvironmentError";
-
-    error.code =
-      "RELEASE_ENVIRONMENT_INVALID";
-
-    error.issues =
-      issues;
-
-    throw error;
+    throw createReleaseEnvironmentError(
+      issues
+    );
   }
 
   return Object.freeze({
@@ -684,12 +1329,21 @@ function assertReleaseEnvironment({
 
 module.exports = {
   CONDITIONAL_ANALYTICS_RELEASE_ENVIRONMENT_KEYS,
+  DISTRIBUTED_RELEASE_ENVIRONMENT_KEYS,
+  DISTRIBUTED_RUNTIME_STATE_MODE,
+  IN_MEMORY_RUNTIME_STATE_MODE,
+  MAX_DISTRIBUTED_PROVIDER_CONCURRENCY,
   MIN_ANALYTICS_ADMIN_TOKEN_LENGTH,
+  MIN_DISTRIBUTED_SECRET_BYTES,
+  MIN_DISTRIBUTED_SESSION_AGGREGATE_BYTES,
   RELEASE_DEPLOYMENT_ENVIRONMENTS,
   REQUIRED_ANALYTICS_STORAGE_MODE,
   REQUIRED_RELEASE_ENVIRONMENT_KEYS,
   REQUIRED_RUNTIME_STATE_MODE,
+  assertDistributedWorkerEnvironment,
   assertReleaseEnvironment,
+  collectDistributedRuntimeIssues,
+  collectDistributedWorkerEnvironmentIssues,
   collectReleaseEnvironmentIssues,
   getDeploymentEnvironment,
   isReleaseEnvironment,

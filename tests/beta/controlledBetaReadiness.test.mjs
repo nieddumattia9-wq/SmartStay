@@ -192,7 +192,7 @@ test(
 );
 
 test(
-  "controlled beta analytics are explicit, private and operationally bounded",
+  "distributed staging keeps process-local beta analytics explicitly disabled",
   () => {
     const render =
       readText(
@@ -212,38 +212,22 @@ test(
     assertContains(
       render,
       "      - key: ANALYTICS_ENABLED\n" +
-        '        value: "true"\n',
+        '        value: "false"\n',
       "backend analytics"
     );
 
     assert.equal(
       (
         render.match(
-          /- key: VITE_ANALYTICS_ENABLED\n\s+value: "true"/g
+          /- key: VITE_ANALYTICS_ENABLED\n\s+value: "false"/g
         ) ?? []
       ).length,
       2
     );
 
-    assertContains(
+    assert.doesNotMatch(
       render,
-      "      - key: ANALYTICS_ADMIN_TOKEN\n" +
-        "        sync: false\n",
-      "admin token"
-    );
-
-    assertContains(
-      render,
-      "      - key: ANALYTICS_STORAGE_MODE\n" +
-        "        value: in-memory-single-instance\n",
-      "storage truth"
-    );
-
-    assertContains(
-      render,
-      "      - key: ANALYTICS_VOLATILE_STORAGE_ACKNOWLEDGED\n" +
-        '        value: "true"\n',
-      "volatile acknowledgement"
+      /ANALYTICS_ADMIN_TOKEN/
     );
 
     for (
@@ -251,9 +235,9 @@ test(
       of [
         /10-20 real\s+testers/,
         /frontend-only\s+password/,
-        /add the token\s+manually/,
-        /avoid unnecessary deploys/,
-        /capture the aggregate report regularly/,
+        /do not enable the analytics flags during 4E/,
+        /do not request or configure `ANALYTICS_ADMIN_TOKEN`/,
+        /keep tester invitations paused/,
         /Pause invitations immediately/,
       ]
     ) {

@@ -1,9 +1,10 @@
 # Search queue operations
 
-The durable search queue is opt-in. `SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED`
-remains `false` unless a controlled rollout explicitly enables the distributed
-state and queue configuration together. Integrating this release does not start
-a worker, enable the feature, call a provider, or deploy the service.
+The durable search queue remains opt-in for development and isolated local
+tests. It is mandatory for the reviewed 39C25A.4E distributed staging profile:
+`SMARTSTAY_ASYNC_SEARCH_QUEUE_ENABLED=true` must be enabled together with
+Valkey-distributed operational state and dedicated workers. Committing the
+source profile does not start a worker, call a provider or deploy a service.
 
 ## Health contract
 

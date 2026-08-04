@@ -26,6 +26,12 @@ const {
 );
 
 const {
+  assertDistributedWorkerEnvironment,
+} = require(
+  "./config/releaseEnvironment"
+);
+
+const {
   closeOperationalState,
   getOperationalState,
 } = require(
@@ -56,6 +62,10 @@ async function startSearchWorker({
   processObject =
     process,
 } = {}) {
+  assertDistributedWorkerEnvironment({
+    environment,
+  });
+
   const config =
     getSearchQueueConfig(
       environment

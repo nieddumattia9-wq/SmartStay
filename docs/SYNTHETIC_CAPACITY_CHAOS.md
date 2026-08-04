@@ -113,5 +113,6 @@ Every namespace is environment-scoped and deleted after its scenario.
 
 Local resource measurements size the later staging plan. A local 4D PASS does
 not certify a paid Valkey plan or CDN capacity; those remain deployment checks
-in 4E. The asynchronous queue flag and distributed state stay disabled in the
-normal runtime configuration until that separate rollout gate is approved.
+in 4E. The reviewed staging source profile now enables the asynchronous queue
+and distributed state, but no resource is provisioned or activated until the
+separate rollout gate receives explicit approval.
