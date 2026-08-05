@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -679,6 +680,15 @@ function HotelDetailsPanel({
   const closeButtonRef =
     useRef<HTMLButtonElement>(null);
 
+  const postRecheckActionRef =
+    useRef<HTMLButtonElement>(null);
+
+  const verificationRegionRef =
+    useRef<HTMLElement>(null);
+
+  const postRecheckFocusPendingRef =
+    useRef(false);
+
   const descriptionId =
     useId();
 
@@ -719,6 +729,9 @@ function HotelDetailsPanel({
     useState(false);
 
   useEffect(() => {
+    postRecheckFocusPendingRef.current =
+      false;
+
     setBookingRecheck(
       null
     );
@@ -786,6 +799,13 @@ function HotelDetailsPanel({
           analyticsRole,
       }
     );
+
+    postRecheckFocusPendingRef.current =
+      true;
+
+    closeButtonRef.current?.focus({
+      preventScroll: true,
+    });
 
     setBookingBusy(
       true
@@ -863,6 +883,41 @@ function HotelDetailsPanel({
       );
     }
   }
+
+  useLayoutEffect(() => {
+    if (
+      bookingBusy ||
+      !postRecheckFocusPendingRef.current
+    ) {
+      return;
+    }
+
+    const focusTarget =
+      postRecheckActionRef.current ??
+      verificationRegionRef.current ??
+      closeButtonRef.current ??
+      panelRef.current;
+
+    if (
+      !focusTarget ||
+      !document.contains(
+        focusTarget
+      )
+    ) {
+      return;
+    }
+
+    postRecheckFocusPendingRef.current =
+      false;
+
+    focusTarget.focus({
+      preventScroll: true,
+    });
+  }, [
+    bookingBusy,
+    bookingError,
+    bookingRecheck,
+  ]);
 
   async function handleContinueToCheckout(
     acceptChanges: boolean
@@ -1443,8 +1498,10 @@ function HotelDetailsPanel({
 
               {offer && (
                 <section
+                  ref={verificationRegionRef}
                   className="hotel-details-panel__verification"
                   aria-live="polite"
+                  tabIndex={-1}
                 >
                   {!bookingRecheck && (
                     <>
@@ -1467,6 +1524,7 @@ function HotelDetailsPanel({
                       </div>
 
                       <button
+                        ref={postRecheckActionRef}
                         type="button"
                         className="hotel-details-panel__booking"
                         onClick={
@@ -1519,6 +1577,7 @@ function HotelDetailsPanel({
                       </div>
 
                       <button
+                        ref={postRecheckActionRef}
                         type="button"
                         className="hotel-details-panel__booking"
                         onClick={() =>
@@ -1595,6 +1654,7 @@ function HotelDetailsPanel({
                       </div>
 
                       <button
+                        ref={postRecheckActionRef}
                         type="button"
                         className="hotel-details-panel__booking"
                         onClick={() =>
@@ -1641,6 +1701,7 @@ function HotelDetailsPanel({
 
                       {bookingRecheck?.retryable && (
                         <button
+                          ref={postRecheckActionRef}
                           type="button"
                           className="hotel-details-panel__booking"
                           onClick={
