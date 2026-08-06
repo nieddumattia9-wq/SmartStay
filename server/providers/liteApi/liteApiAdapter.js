@@ -4,6 +4,9 @@ const {
   "../../observability/operationalLogger"
 );
 
+const crypto =
+  require("crypto");
+
 const {
   ACCOMMODATION_PROVIDER_IDS,
 } = require("../providerRegistry");
@@ -32,6 +35,260 @@ const {
 
 const PROVIDER_ID =
   ACCOMMODATION_PROVIDER_IDS.LITE_API;
+
+const {
+  LITEAPI_PRICING_STATES,
+  isLiteApiPriceMaterialized,
+} = require(
+  "./liteApiCommercialPricing"
+);
+
+function createAdapterSessionId() {
+  return (
+    "smartstay_" +
+    Date.now() +
+    "_" +
+    crypto
+      .randomBytes(8)
+      .toString("hex")
+  );
+}
+
+function getPricingPolicy(
+  offer
+) {
+  const policy =
+    offer?.commercialPricing
+      ?.policy;
+
+  return policy &&
+    typeof policy === "object" &&
+    !Array.isArray(policy)
+      ? policy
+      : null;
+}
+
+function getRequiredCommissionPercent(
+  offer
+) {
+  const value =
+    Number(
+      offer?.commercialPricing
+        ?.requiredSellerCommissionPercent
+    );
+
+  return (
+    Number.isFinite(value) &&
+    value > 0
+  )
+    ? value
+    : null;
+}
+
+function getSelectionFingerprint(
+  offer
+) {
+  const fingerprint =
+    typeof offer
+      ?.providerOfferContext
+      ?.selectionFingerprint ===
+      "string"
+      ? offer
+          .providerOfferContext
+          .selectionFingerprint
+          .trim()
+      : "";
+
+  return fingerprint || null;
+}
+
+function createLiteApiPricingError({
+  code,
+  message,
+  status = 409,
+} = {}) {
+  const error =
+    new Error(message);
+
+  error.code =
+    code;
+
+  error.status =
+    status;
+
+  return error;
+}
+
+function createLiteApiMaterializationInput({
+  hotelId,
+  stayContext,
+  providerContext,
+  offer,
+} = {}) {
+  const normalizedHotelId =
+    typeof hotelId === "string"
+      ? hotelId.trim()
+      : String(
+          hotelId ?? ""
+        ).trim();
+
+  const checkin =
+    typeof stayContext?.checkin ===
+      "string"
+      ? stayContext.checkin.trim()
+      : "";
+
+  const checkout =
+    typeof stayContext?.checkout ===
+      "string"
+      ? stayContext.checkout.trim()
+      : "";
+
+  const sessionId =
+    typeof providerContext?.sessionId ===
+      "string"
+      ? providerContext.sessionId.trim()
+      : "";
+
+  const occupancies =
+    Array.isArray(
+      stayContext?.rooms
+    )
+      ? stayContext.rooms.map(
+          (room) => ({
+            adults:
+              room?.adults,
+            children:
+              Array.isArray(
+                room?.childAges
+              )
+                ? room.childAges
+                : [],
+          })
+        )
+      : [];
+
+  const margin =
+    getRequiredCommissionPercent(
+      offer
+    );
+
+  if (
+    !normalizedHotelId ||
+    !checkin ||
+    !checkout ||
+    occupancies.length === 0
+  ) {
+    throw createLiteApiPricingError({
+      code:
+        "PROVIDER_PRICING_CONTEXT_REQUIRED",
+      message:
+        "The selected offer cannot be priced safely without its stay context.",
+    });
+  }
+
+  if (!sessionId) {
+    throw createLiteApiPricingError({
+      code:
+        "PROVIDER_PRICING_SESSION_REQUIRED",
+      message:
+        "The selected offer cannot be priced safely without its provider session.",
+    });
+  }
+
+  if (margin === null) {
+    throw createLiteApiPricingError({
+      code:
+        "PROVIDER_PRICING_MARGIN_REQUIRED",
+      message:
+        "The provider-specific commission required for this offer is unavailable.",
+    });
+  }
+
+  if (!getSelectionFingerprint(offer)) {
+    throw createLiteApiPricingError({
+      code:
+        "PROVIDER_PRICING_SELECTION_REQUIRED",
+      message:
+        "The selected room and rate conditions cannot be matched safely.",
+    });
+  }
+
+  return {
+    hotelIds:
+      [normalizedHotelId],
+    checkin,
+    checkout,
+    occupancies,
+    currency:
+      stayContext?.currency ??
+      offer?.currency ??
+      "EUR",
+    sessionId,
+    margin,
+  };
+}
+
+function selectMaterializedLiteApiOffer({
+  hotels,
+  originalOffer,
+} = {}) {
+  const expectedFingerprint =
+    getSelectionFingerprint(
+      originalOffer
+    );
+
+  const matchingOffers =
+    (
+      Array.isArray(hotels)
+        ? hotels
+        : []
+    )
+      .flatMap((hotel) =>
+        Array.isArray(hotel?.offers)
+          ? hotel.offers
+          : []
+      )
+      .filter(
+        (candidate) =>
+          getSelectionFingerprint(
+            candidate
+          ) ===
+          expectedFingerprint
+      );
+
+  if (matchingOffers.length !== 1) {
+    throw createLiteApiPricingError({
+      code:
+        "PROVIDER_PRICING_SELECTION_MISMATCH",
+      message:
+        "The provider did not return exactly the selected room and booking conditions.",
+    });
+  }
+
+  const selectedOffer =
+    matchingOffers[0];
+
+  if (
+    !isLiteApiPriceMaterialized({
+      offer:
+        selectedOffer,
+      minimumTargetSellingPrice:
+        originalOffer
+          ?.commercialPricing
+          ?.targetSellingPrice,
+    })
+  ) {
+    throw createLiteApiPricingError({
+      code:
+        "PROVIDER_PRICE_FLOOR_NOT_MATERIALIZED",
+      message:
+        "The provider did not materialize a bookable price at or above the public selling target.",
+    });
+  }
+
+  return selectedOffer;
+}
 
 function createLiteApiSearchInput(
   request
@@ -96,6 +353,11 @@ function createLiteApiSearchInput(
 
     currency:
       request?.currency ?? "EUR",
+
+    commercialPricingPolicy:
+      request
+        ?.commercialPricingPolicy ??
+      null,
   };
 }
 
@@ -418,6 +680,7 @@ async function tryLoadLiteApiHotelMetadata(
 function loadDefaultDependencies() {
   const {
     searchLiteApiRates,
+    createLiteApiSessionId,
     getLiteApiHotels,
     getLiteApiFacilities,
     prebookLiteApiOffer,
@@ -443,6 +706,7 @@ function loadDefaultDependencies() {
 
   return {
     searchLiteApiRates,
+    createLiteApiSessionId,
     getLiteApiHotels,
     getLiteApiFacilities,
     prebookLiteApiOffer,
@@ -465,6 +729,7 @@ function createLiteApiAdapter(
 
   const {
     searchLiteApiRates,
+    createLiteApiSessionId,
     getLiteApiHotels,
     getLiteApiFacilities,
     prebookLiteApiOffer,
@@ -489,6 +754,7 @@ function createLiteApiAdapter(
   };
 
   const optionalFunctions = {
+    createLiteApiSessionId,
     prebookLiteApiOffer,
     createLiteApiPrebookOffer,
     createLiteApiWhitelabelCheckoutUrl,
@@ -547,9 +813,37 @@ function createLiteApiAdapter(
           request
         );
 
+      const {
+        commercialPricingPolicy,
+        ...ratesInput
+      } = providerInput;
+
+      const sessionId =
+        typeof createLiteApiSessionId ===
+          "function"
+          ? createLiteApiSessionId()
+          : createAdapterSessionId();
+
+      const minimumSellerCommissionPercent =
+        Number(
+          commercialPricingPolicy
+            ?.minimumSellerCommissionPercent
+        );
+
+      const requestedSellerCommissionPercent =
+        Number.isFinite(
+          minimumSellerCommissionPercent
+        ) &&
+        minimumSellerCommissionPercent > 0
+          ? minimumSellerCommissionPercent
+          : null;
+
       const response =
         await searchLiteApiRates({
-          ...providerInput,
+          ...ratesInput,
+          sessionId,
+          margin:
+            requestedSellerCommissionPercent,
           signal,
         });
 
@@ -599,6 +893,8 @@ function createLiteApiAdapter(
           {
             maximumRecords:
               MAX_LITEAPI_HOTELS_PER_SEARCH,
+            commercialPricingPolicy,
+            requestedSellerCommissionPercent,
           }
         );
 
@@ -636,6 +932,8 @@ function createLiteApiAdapter(
               {
                 maximumRecords:
                   MAX_LITEAPI_HOTELS_PER_SEARCH,
+                commercialPricingPolicy,
+                requestedSellerCommissionPercent,
               }
             )
           : preliminaryMappedHotels;
@@ -684,6 +982,10 @@ function createLiteApiAdapter(
 
           hotels,
 
+          providerContext: {
+            sessionId,
+          },
+
           rawData:
             null,
         });
@@ -692,6 +994,8 @@ function createLiteApiAdapter(
     async recheckOffer({
       offer,
       hotelId,
+      providerContext,
+      stayContext,
       signal,
     } = {}) {
       if (
@@ -714,31 +1018,119 @@ function createLiteApiAdapter(
         throw error;
       }
 
-      const providerOfferReference =
-        typeof offer
-          ?.providerOfferReference ===
-          "string"
-          ? offer
-              .providerOfferReference
-              .trim()
-          : "";
-
-      if (!providerOfferReference) {
-        const error =
-          new Error(
-            "The provider offer reference is unavailable."
-          );
-
-        error.code =
-          "PROVIDER_OFFER_REFERENCE_REQUIRED";
-
-        error.status =
-          409;
-
-        throw error;
-      }
-
       try {
+        let offerForPrebook =
+          offer;
+
+        const pricingState =
+          offer?.commercialPricing
+            ?.state;
+
+        if (
+          pricingState ===
+          LITEAPI_PRICING_STATES
+            .UNVERIFIED
+        ) {
+          throw createLiteApiPricingError({
+            code:
+              "PROVIDER_PRICE_UNVERIFIED",
+            message:
+              "The selected offer does not contain enough information to enforce the SmartStay pricing policy.",
+          });
+        }
+
+        if (
+          pricingState ===
+          LITEAPI_PRICING_STATES
+            .MATERIALIZATION_REQUIRED
+        ) {
+          const materializationInput =
+            createLiteApiMaterializationInput({
+              hotelId,
+              stayContext,
+              providerContext,
+              offer,
+            });
+
+          const materializationResponse =
+            await searchLiteApiRates({
+              ...materializationInput,
+              signal,
+            });
+
+          const materializationData =
+            materializationResponse
+              ?.data ??
+            null;
+
+          if (
+            materializationResponse
+              ?.noContent ||
+            isLiteApiNoResults(
+              materializationData
+            )
+          ) {
+            return createProviderOfferRecheckSoldOut({
+              providerId:
+                PROVIDER_ID,
+              rawData:
+                null,
+            });
+          }
+
+          const materializedHotels =
+            mapLiteApiHotelResponse(
+              materializationData,
+              offer?.currency ??
+                "EUR",
+              null,
+              null,
+              {
+                maximumRecords:
+                  1,
+                commercialPricingPolicy:
+                  getPricingPolicy(
+                    offer
+                  ),
+                requestedSellerCommissionPercent:
+                  materializationInput
+                    .margin,
+              }
+            );
+
+          offerForPrebook =
+            selectMaterializedLiteApiOffer({
+              hotels:
+                materializedHotels,
+              originalOffer:
+                offer,
+            });
+        }
+
+        const providerOfferReference =
+          typeof offerForPrebook
+            ?.providerOfferReference ===
+            "string"
+            ? offerForPrebook
+                .providerOfferReference
+                .trim()
+            : "";
+
+        if (!providerOfferReference) {
+          const error =
+            new Error(
+              "The provider offer reference is unavailable."
+            );
+
+          error.code =
+            "PROVIDER_OFFER_REFERENCE_REQUIRED";
+
+          error.status =
+            409;
+
+          throw error;
+        }
+
         const response =
           await prebookLiteApiOffer(
             providerOfferReference,
@@ -767,15 +1159,17 @@ function createLiteApiAdapter(
               response?.data ??
               null,
             originalOffer:
-              offer,
+              offerForPrebook,
             hotelId,
             sourceProvider:
               PROVIDER_ID,
             providerName:
-              offer?.provider ??
+              offerForPrebook
+                ?.provider ??
               "LiteAPI",
             fallbackCurrency:
-              offer?.currency ??
+              offerForPrebook
+                ?.currency ??
               "EUR",
           });
 
@@ -792,6 +1186,45 @@ function createLiteApiAdapter(
             502;
 
           throw error;
+        }
+
+        const enforcedTarget =
+          Number(
+            offerForPrebook
+              ?.commercialPricing
+              ?.targetSellingPrice
+          );
+
+        const verifiedPrice =
+          Number(
+            mapped.offer.price
+          );
+
+        if (
+          getPricingPolicy(
+            offerForPrebook
+          ) &&
+          (
+            !Number.isFinite(
+              enforcedTarget
+            ) ||
+            !Number.isFinite(
+              verifiedPrice
+            ) ||
+            Number(
+              verifiedPrice.toFixed(2)
+            ) <
+              Number(
+                enforcedTarget.toFixed(2)
+              )
+          )
+        ) {
+          throw createLiteApiPricingError({
+            code:
+              "PROVIDER_PREBOOK_PRICE_BELOW_TARGET",
+            message:
+              "The verified checkout price is below the enforced public selling target.",
+          });
         }
 
         return createProviderOfferRecheckConfirmed({

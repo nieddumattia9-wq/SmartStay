@@ -92,6 +92,73 @@ function getProviderHotelId(
   return canonicalId || null;
 }
 
+function getProviderContextForOffer({
+  session,
+  hotel,
+  sourceProvider,
+} = {}) {
+  if (
+    hotel?.providerContext !==
+      null &&
+    hotel?.providerContext !==
+      undefined
+  ) {
+    return hotel.providerContext;
+  }
+
+  const normalizedProviderId =
+    typeof sourceProvider ===
+      "string"
+      ? sourceProvider
+          .trim()
+          .toLowerCase()
+      : "";
+
+  const providerExecution =
+    Array.isArray(
+      session?.providerExecutions
+    )
+      ? session.providerExecutions.find(
+          (execution) =>
+            typeof execution
+              ?.providerId ===
+              "string" &&
+            execution.providerId
+              .trim()
+              .toLowerCase() ===
+              normalizedProviderId
+        )
+      : null;
+
+  if (
+    providerExecution
+      ?.providerContext !==
+      null &&
+    providerExecution
+      ?.providerContext !==
+      undefined
+  ) {
+    return providerExecution
+      .providerContext;
+  }
+
+  const sessionProviderId =
+    typeof session?.providerId ===
+      "string"
+      ? session.providerId
+          .trim()
+          .toLowerCase()
+      : "";
+
+  return (
+    sessionProviderId ===
+      normalizedProviderId
+      ? session?.providerContext ??
+        null
+      : null
+  );
+}
+
 function createRecheckRequiredResult({
   code,
   message,
@@ -190,6 +257,12 @@ function createBookingOfferRecheckService({
     }
 
     try {
+      const stayContext =
+        createBookingStayContext(
+          session
+            .originalSearchData
+        );
+
       const providerResult =
         await executeRecheck({
           sourceProvider,
@@ -199,8 +272,12 @@ function createBookingOfferRecheckService({
             ),
           offer,
           providerContext:
-            hotel?.providerContext ??
-            null,
+            getProviderContextForOffer({
+              session,
+              hotel,
+              sourceProvider,
+            }),
+          stayContext,
         });
 
       if (
@@ -261,10 +338,7 @@ function createBookingOfferRecheckService({
             canonicalOfferId,
           confirmedOffer,
           stayContext:
-            createBookingStayContext(
-              session
-                .originalSearchData
-            ),
+            stayContext,
           sourceProvider,
           providerBookingReference:
             providerResult
@@ -340,6 +414,7 @@ const recheckBookingOffer =
 
 module.exports = {
   BOOKING_OFFER_RECHECK_STATES,
+  getProviderContextForOffer,
   createBookingOfferRecheckService,
   recheckBookingOffer,
 };

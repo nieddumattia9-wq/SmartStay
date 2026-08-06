@@ -570,6 +570,7 @@ function createLiteApiRatesPayload({
   latitude = null,
   longitude = null,
   radius = 8000,
+  hotelIds = null,
   checkin,
   checkout,
   occupancies = null,
@@ -579,6 +580,7 @@ function createLiteApiRatesPayload({
   guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
   limit = LITEAPI_RESULTS_LIMIT,
   sessionId = createLiteApiSessionId(),
+  margin = null,
 } = {}) {
   const payload = {
     checkin,
@@ -600,6 +602,61 @@ function createLiteApiRatesPayload({
     includeHotelData: true,
     sessionId,
   };
+
+  const normalizedHotelIds =
+    Array.from(
+      new Set(
+        (
+          Array.isArray(hotelIds)
+            ? hotelIds
+            : hotelIds === null ||
+                hotelIds === undefined
+              ? []
+              : [hotelIds]
+        )
+          .map((hotelId) =>
+            String(
+              hotelId ?? ""
+            ).trim()
+          )
+          .filter(Boolean)
+      )
+    );
+
+  const normalizedMargin =
+    margin === null ||
+    margin === undefined ||
+    margin === ""
+      ? null
+      : Number(margin);
+
+  if (
+    normalizedMargin !== null &&
+    (
+      !Number.isFinite(
+        normalizedMargin
+      ) ||
+      normalizedMargin < 0
+    )
+  ) {
+    throw new Error(
+      "LiteAPI margin must be a finite non-negative percentage."
+    );
+  }
+
+  if (normalizedMargin !== null) {
+    payload.margin =
+      Number(
+        normalizedMargin.toFixed(6)
+      );
+  }
+
+  if (normalizedHotelIds.length > 0) {
+    payload.hotelIds =
+      normalizedHotelIds;
+
+    return payload;
+  }
 
   if (
     cityName &&
@@ -637,6 +694,7 @@ async function searchLiteApiRates({
   latitude = null,
   longitude = null,
   radius = 8000,
+  hotelIds = null,
   checkin,
   checkout,
   occupancies = null,
@@ -646,6 +704,7 @@ async function searchLiteApiRates({
   guestNationality = LITEAPI_DEFAULT_GUEST_NATIONALITY,
   limit = LITEAPI_RESULTS_LIMIT,
   sessionId = createLiteApiSessionId(),
+  margin = null,
   signal,
 } = {}) {
   const payload =
@@ -655,6 +714,7 @@ async function searchLiteApiRates({
       latitude,
       longitude,
       radius,
+      hotelIds,
       checkin,
       checkout,
       occupancies,
@@ -664,6 +724,7 @@ async function searchLiteApiRates({
       guestNationality,
       limit,
       sessionId,
+      margin,
     });
 
   return getLiteApiRates(

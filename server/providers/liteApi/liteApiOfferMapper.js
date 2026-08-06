@@ -1,3 +1,13 @@
+const {
+  LITEAPI_PRICING_STATES,
+  createLiteApiCommercialPricing,
+  createLiteApiSelectionFingerprint,
+  getLiteApiPublicPriceFloor,
+  getLiteApiRetailSellingPrice,
+} = require(
+  "./liteApiCommercialPricing"
+);
+
 function isPlainObject(value) {
   return (
     value !== null &&
@@ -229,91 +239,37 @@ function getNestedRates(container) {
 }
 
 function getPublicPrice(rate) {
-  return pickNumber(rate, [
-    [
-      "suggestedSellingPrice",
-      "amount",
-    ],
-    [
-      "suggestedSellingPrice",
-      0,
-      "amount",
-    ],
-    ["suggestedSellingPrice"],
-    [
-      "offerRetailRate",
-      "amount",
-    ],
-    ["offerRetailRate"],
-    [
-      "retailRate",
-      "suggestedSellingPrice",
-      0,
-      "amount",
-    ],
-    [
-      "retailRate",
-      "suggestedSellingPrice",
-      "amount",
-    ],
-    [
-      "retailRate",
-      "suggestedSellingPrice",
-    ],
-    [
-      "retailRate",
-      "total",
-      0,
-      "amount",
-    ],
-    [
-      "retailRate",
-      "total",
-      "amount",
-    ],
-    [
-      "retailRate",
-      "amount",
-    ],
-    ["price", "amount"],
-    ["price"],
-    ["amount"],
-    ["total"],
-    ["totalPrice"],
-    ["sellingPrice"],
-  ]);
+  const publicPriceFloor =
+    getLiteApiPublicPriceFloor(
+      rate
+    );
+
+  const retailSellingPrice =
+    getLiteApiRetailSellingPrice(
+      rate
+    );
+
+  if (
+    publicPriceFloor !== null &&
+    retailSellingPrice !== null
+  ) {
+    return Math.max(
+      publicPriceFloor,
+      retailSellingPrice
+    );
+  }
+
+  return (
+    publicPriceFloor ??
+    retailSellingPrice
+  );
 }
 
 function getCheckoutPrice(rate) {
   return (
-    pickNumber(rate, [
-      [
-        "offerRetailRate",
-        "amount",
-      ],
-      ["offerRetailRate"],
-      [
-        "retailRate",
-        "total",
-        0,
-        "amount",
-      ],
-      [
-        "retailRate",
-        "total",
-        "amount",
-      ],
-      [
-        "retailRate",
-        "amount",
-      ],
-      ["price", "amount"],
-      ["price"],
-      ["amount"],
-      ["total"],
-      ["totalPrice"],
-      ["sellingPrice"],
-    ]) ??
+    getLiteApiRetailSellingPrice(
+      rate
+    ) ??
     getPublicPrice(rate)
   );
 }
@@ -498,6 +454,9 @@ function mergeRoomWithRate(
   return {
     ...room,
     ...rate,
+
+    __liteApiSelectedNestedRate:
+      true,
 
     roomName:
       pickString(rate, [
@@ -1221,14 +1180,25 @@ function createLiteApiOffer({
   sourceProvider,
   providerName,
   priceMode = "public",
+  commercialPricingPolicy = null,
+  requestedSellerCommissionPercent = null,
 }) {
+  const commercialPricing =
+    createLiteApiCommercialPricing({
+      rate,
+      commercialPricingPolicy,
+      requestedSellerCommissionPercent,
+    });
+
   const price =
     priceMode ===
       "checkout"
       ? getCheckoutPrice(
           rate
         )
-      : getPublicPrice(
+      : commercialPricing
+          .sellingPrice ??
+        getPublicPrice(
           rate
         );
 
@@ -1291,6 +1261,17 @@ function createLiteApiOffer({
         ["rateToken"],
       ]) ||
       null,
+
+    providerOfferContext: {
+      selectionFingerprint:
+        createLiteApiSelectionFingerprint(
+          rate
+        ),
+    },
+
+    commercialPricing:
+      commercialPricing
+        .pricingControl,
 
     price,
 
@@ -1491,6 +1472,30 @@ function createLiteApiPrebookOffer({
           ?.providerOfferReference ??
         mappedOffer
           .providerOfferReference,
+
+      providerOfferContext:
+        originalOffer
+          ?.providerOfferContext ??
+        mappedOffer
+          .providerOfferContext ??
+        null,
+
+      commercialPricing:
+        originalOffer
+          ?.commercialPricing
+          ? {
+              ...originalOffer
+                .commercialPricing,
+              state:
+                LITEAPI_PRICING_STATES
+                  .MATERIALIZED,
+              targetSellingPrice:
+                roundMoney(
+                  mappedOffer.price
+                ),
+            }
+          : mappedOffer
+              .commercialPricing,
 
       deepLink:
         originalOffer?.deepLink ??

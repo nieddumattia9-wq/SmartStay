@@ -1453,7 +1453,8 @@ function createLiteApiOfferFromMapper(
     record,
     fallbackCurrency = "EUR",
     hotelDataIndex = new Map(),
-    searchLocation = null
+    searchLocation = null,
+    offerMappingOptions = {}
   ) {
     const recordHotel = getHotelObject(record);
   
@@ -1478,6 +1479,14 @@ function createLiteApiOfferFromMapper(
           hotelId: sourceHotelId,
           index,
           fallbackCurrency,
+          commercialPricingPolicy:
+            offerMappingOptions
+              .commercialPricingPolicy ??
+            null,
+          requestedSellerCommissionPercent:
+            offerMappingOptions
+              .requestedSellerCommissionPercent ??
+            null,
         })
       )
       .filter(Boolean)
@@ -1810,6 +1819,10 @@ function createLiteApiOfferFromMapper(
       {
         maximumRecords =
           Number.POSITIVE_INFINITY,
+        commercialPricingPolicy =
+          null,
+        requestedSellerCommissionPercent =
+          null,
       } = {}
     ) {
       const normalizedMaximumRecords =
@@ -1882,7 +1895,11 @@ function createLiteApiOfferFromMapper(
             enrichedRecord,
             fallbackCurrency,
             hotelDataIndex,
-            searchLocation
+            searchLocation,
+            {
+              commercialPricingPolicy,
+              requestedSellerCommissionPercent,
+            }
           );
         })
         .filter(Boolean);

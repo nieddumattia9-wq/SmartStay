@@ -29,6 +29,12 @@ const {
 );
 
 const {
+  getCommercialPricingPolicy,
+} = require(
+  "../config/commercialPricing"
+);
+
+const {
   loadConfiguredProviderAdapter,
 } = require(
   "./common/configuredProviderAdapterService"
@@ -915,6 +921,8 @@ async function continueHotelSearchForProvider({
   searchData,
   continuation,
   providerContext = null,
+  commercialPricingPolicy =
+    getCommercialPricingPolicy(),
   title =
     "SEARCH HOTELS - CONTINUE",
   fallbackCurrency = "EUR",
@@ -941,6 +949,7 @@ async function continueHotelSearchForProvider({
     ...normalizedRequest,
 
     providerContext,
+    commercialPricingPolicy,
   };
 
   if (
@@ -1077,6 +1086,8 @@ async function searchHotelsAcrossProviders({
   title,
   fallbackCurrency = "EUR",
   providerContext = null,
+  commercialPricingPolicy =
+    getCommercialPricingPolicy(),
 }) {
   const normalizedRequest =
     normalizeAccommodationSearchRequest(
@@ -1091,6 +1102,7 @@ async function searchHotelsAcrossProviders({
   const request = {
     ...normalizedRequest,
     providerContext,
+    commercialPricingPolicy,
   };
 
   if (request.continuation) {
@@ -1107,6 +1119,10 @@ async function searchHotelsAcrossProviders({
 
       providerContext:
         request.providerContext,
+
+      commercialPricingPolicy:
+        request
+          .commercialPricingPolicy,
 
       title,
 
@@ -1356,6 +1372,7 @@ async function recheckOfferWithProvider({
   hotelId,
   offer,
   providerContext = null,
+  stayContext = null,
 } = {}) {
   const providerId =
     typeof sourceProvider === "string"
@@ -1462,6 +1479,7 @@ async function recheckOfferWithProvider({
             offer,
             hotelId,
             providerContext,
+            stayContext,
           },
         })
       );
