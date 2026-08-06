@@ -68,6 +68,7 @@ const {
   calculateRequiredLiteApiMargin,
   createLiteApiCommercialPricing,
   createLiteApiSelectionFingerprint,
+  getLiteApiCommissionAmount,
 } = require(
   "../../server/providers/liteApi/liteApiCommercialPricing.js"
 );
@@ -222,6 +223,138 @@ function createAdapterDependencies(
     ...overrides,
   };
 }
+
+test(
+  "LiteAPI live per-rate commission arrays are parsed without exposing provider pricing to the core",
+  () => {
+    assert.equal(
+      getLiteApiCommissionAmount({
+        rates: [
+          {
+            commission: [
+              {
+                amount:
+                  19.71,
+                currency:
+                  "EUR",
+              },
+            ],
+          },
+        ],
+      }),
+      19.71
+    );
+
+    const pricing =
+      createLiteApiCommercialPricing({
+        rate: {
+          offerRetailRate: {
+            amount:
+              266.18,
+            currency:
+              "EUR",
+          },
+          suggestedSellingPrice: {
+            amount:
+              300.72,
+            currency:
+              "EUR",
+          },
+          rates: [
+            {
+              commission: [
+                {
+                  amount:
+                    19.71,
+                  currency:
+                    "EUR",
+                },
+              ],
+            },
+          ],
+        },
+        commercialPricingPolicy:
+          createPolicy(),
+        requestedSellerCommissionPercent:
+          8,
+      });
+
+    assert.equal(
+      pricing.pricingControl.state,
+      LITEAPI_PRICING_STATES
+        .MATERIALIZATION_REQUIRED
+    );
+    assert.equal(
+      pricing.pricingControl
+        .targetSellingPrice,
+      300.72
+    );
+    assert.ok(
+      pricing.pricingControl
+        .requiredSellerCommissionPercent >
+        8
+    );
+  }
+);
+
+test(
+  "LiteAPI multi-room per-rate commission arrays are summed once at offer level",
+  () => {
+    assert.equal(
+      getLiteApiCommissionAmount({
+        rates: [
+          {
+            commission: [
+              {
+                amount:
+                  8,
+                currency:
+                  "EUR",
+              },
+            ],
+          },
+          {
+            commission: [
+              {
+                amount:
+                  12.34,
+                currency:
+                  "EUR",
+              },
+            ],
+          },
+        ],
+      }),
+      20.34
+    );
+  }
+);
+
+test(
+  "LiteAPI per-rate commission parsing fails closed instead of accepting a partial multi-room amount",
+  () => {
+    assert.equal(
+      getLiteApiCommissionAmount({
+        rates: [
+          {
+            commission: [
+              {
+                amount:
+                  8,
+                currency:
+                  "EUR",
+              },
+            ],
+          },
+          {
+            commission: [],
+          },
+        ],
+      }),
+      null
+    );
+  }
+);
 
 test(
   "SmartStay owns a provider-neutral 8 percent default pricing policy",

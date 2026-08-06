@@ -234,8 +234,12 @@ function getCommissionFromSource(
   source
 ) {
   return pickFirstNumber(source, [
+    ["retailRate", "commission", 0, "amount"],
+    ["retailRate", "commission", 0],
     ["retailRate", "commission", "amount"],
     ["retailRate", "commission"],
+    ["commission", 0, "amount"],
+    ["commission", 0],
     ["commission", "amount"],
     ["commission"],
   ]);
