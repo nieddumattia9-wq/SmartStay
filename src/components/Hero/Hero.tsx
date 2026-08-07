@@ -6,6 +6,15 @@ function Hero() {
 
     <section className="hero">
 
+      <img
+        src="/brand/stayopti-mark.svg"
+        className="hero__brand-mark"
+        alt=""
+        aria-hidden="true"
+        width="92"
+        height="92"
+      />
+
       <h1 className="hero__title">
 
         StayOpti

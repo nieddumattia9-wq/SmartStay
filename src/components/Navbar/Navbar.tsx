@@ -16,7 +16,20 @@ function Navbar() {
         aria-label="StayOpti home"
       >
 
-        StayOpti
+        <img
+          src="/brand/stayopti-mark.svg"
+          className="navbar__brand-mark"
+          alt=""
+          aria-hidden="true"
+          width="40"
+          height="40"
+        />
+
+        <span className="navbar__brand-name">
+
+          StayOpti
+
+        </span>
 
       </Link>
 

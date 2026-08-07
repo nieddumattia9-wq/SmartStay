@@ -17,6 +17,12 @@
   }
   
   .navbar__logo {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
   
     color: #0f172a;
   
@@ -28,6 +34,22 @@
   
     letter-spacing: -.03em;
   
+  }
+
+  .navbar__brand-mark {
+
+    width: 40px;
+
+    height: 40px;
+
+    flex: 0 0 40px;
+
+  }
+
+  .navbar__brand-name {
+
+    line-height: 1;
+
   }
   
   .navbar__logo:hover {
@@ -145,6 +167,24 @@
   
       gap: 12px;
   
+    }
+
+    .navbar__logo {
+
+      gap: 6px;
+
+      font-size: 22px;
+
+    }
+
+    .navbar__brand-mark {
+
+      width: 34px;
+
+      height: 34px;
+
+      flex-basis: 34px;
+
     }
   
     .navbar__login {
