@@ -1190,6 +1190,25 @@ function createLiteApiOffer({
       requestedSellerCommissionPercent,
     });
 
+  const publicSaleAvailable =
+    commercialPricing
+      .pricingControl
+      .state ===
+      LITEAPI_PRICING_STATES
+        .MATERIALIZED ||
+    commercialPricing
+      .pricingControl
+      .state ===
+      LITEAPI_PRICING_STATES
+        .UNMANAGED;
+
+  if (
+    priceMode !== "checkout" &&
+    !publicSaleAvailable
+  ) {
+    return null;
+  }
+
   const price =
     priceMode ===
       "checkout"

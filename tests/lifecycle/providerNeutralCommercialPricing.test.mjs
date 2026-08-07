@@ -65,7 +65,6 @@ const {
 
 const {
   LITEAPI_PRICING_STATES,
-  calculateRequiredLiteApiMargin,
   createLiteApiCommercialPricing,
   createLiteApiSelectionFingerprint,
   getLiteApiCommissionAmount,
@@ -117,6 +116,7 @@ function createProviderRate({
   retail = 108,
   commission = 8,
   publicFloor = 115,
+  roomName = "Standard room",
   boardName = "Breakfast included",
   refundableTag = "RFN",
 } = {}) {
@@ -125,7 +125,7 @@ function createProviderRate({
     roomTypeId:
       "room-type-1",
     roomName:
-      "Standard room",
+      roomName,
     boardName,
     refundableTag,
     offerRetailRate: {
@@ -160,6 +160,86 @@ function createProviderRate({
             "EUR",
           timezone:
             "GMT",
+        },
+      ],
+    },
+  };
+}
+
+function createInternalLiteApiOffer({
+  state =
+    LITEAPI_PRICING_STATES
+      .MATERIALIZED,
+  targetSellingPrice = 115,
+  price = 115,
+} = {}) {
+  return {
+    id:
+      "liteapi:hotel-1:offer-original",
+    sourceProvider:
+      "liteapi",
+    provider:
+      "LiteAPI",
+    providerOfferReference:
+      "offer-original",
+    providerOfferContext: {
+      selectionFingerprint:
+        "fingerprint-1",
+    },
+    commercialPricing: {
+      schemaVersion:
+        1,
+      policy:
+        createPolicy(),
+      state,
+      targetSellingPrice,
+      requiredSellerCommissionPercent:
+        state ===
+          LITEAPI_PRICING_STATES
+            .MATERIALIZED
+          ? 8
+          : null,
+    },
+    price,
+    totalKnownCost:
+      price,
+    currency:
+      "EUR",
+    roomName:
+      "Standard room",
+    mealPlan:
+      "Breakfast included",
+    refundable:
+      true,
+    bookable:
+      true,
+  };
+}
+
+function createLiteApiRecheckInput(
+  offer
+) {
+  return {
+    offer,
+    hotelId:
+      "hotel-1",
+    providerContext: {
+      sessionId:
+        "smartstay-session-1",
+    },
+    stayContext: {
+      checkin:
+        "2026-10-10",
+      checkout:
+        "2026-10-12",
+      currency:
+        "EUR",
+      rooms: [
+        {
+          adults:
+            2,
+          childAges:
+            [],
         },
       ],
     },
@@ -282,17 +362,21 @@ test(
     assert.equal(
       pricing.pricingControl.state,
       LITEAPI_PRICING_STATES
-        .MATERIALIZATION_REQUIRED
+        .PUBLIC_SALE_UNAVAILABLE
+    );
+    assert.equal(
+      pricing.sellingPrice,
+      null
     );
     assert.equal(
       pricing.pricingControl
         .targetSellingPrice,
       300.72
     );
-    assert.ok(
+    assert.equal(
       pricing.pricingControl
-        .requiredSellerCommissionPercent >
-        8
+        .requiredSellerCommissionPercent,
+      null
     );
   }
 );
@@ -686,7 +770,7 @@ test(
 );
 
 test(
-  "the final selling price is the higher of minimum commission price and public floor",
+  "a public price is emitted only when the provider already materialized the floor",
   () => {
     const belowFloor =
       createLiteApiCommercialPricing({
@@ -707,19 +791,19 @@ test(
 
     assert.equal(
       belowFloor.sellingPrice,
-      115
+      null
     );
 
     assert.equal(
       belowFloor.pricingControl.state,
       LITEAPI_PRICING_STATES
-        .MATERIALIZATION_REQUIRED
+        .PUBLIC_SALE_UNAVAILABLE
     );
 
     assert.equal(
       belowFloor.pricingControl
         .requiredSellerCommissionPercent,
-      15
+      null
     );
 
     const aboveFloor =
@@ -748,111 +832,6 @@ test(
       aboveFloor.pricingControl.state,
       LITEAPI_PRICING_STATES
         .MATERIALIZED
-    );
-  }
-);
-
-test(
-  "required provider margin is rounded upward and never below the SmartStay minimum",
-  () => {
-    assert.equal(
-      calculateRequiredLiteApiMargin({
-        retailSellingPrice:
-          108,
-        commissionAmount:
-          8,
-        currentCommissionPercent:
-          8,
-        targetSellingPrice:
-          109.01,
-      }),
-      9.01
-    );
-
-    assert.equal(
-      calculateRequiredLiteApiMargin({
-        retailSellingPrice:
-          108,
-        commissionAmount:
-          8,
-        currentCommissionPercent:
-          8,
-        targetSellingPrice:
-          104,
-      }),
-      8
-    );
-
-    assert.deepEqual(
-      [
-        109,
-        125,
-        160,
-      ].map(
-        (targetSellingPrice) =>
-          calculateRequiredLiteApiMargin({
-            retailSellingPrice:
-              108,
-            commissionAmount:
-              8,
-            currentCommissionPercent:
-              8,
-            targetSellingPrice,
-          })
-      ),
-      [
-        9,
-        25,
-        60,
-      ]
-    );
-  }
-);
-
-test(
-  "required provider margin preserves fixed included amounts outside the commissionable base",
-  () => {
-    assert.equal(
-      calculateRequiredLiteApiMargin({
-        retailSellingPrice:
-          128,
-        commissionAmount:
-          8,
-        currentCommissionPercent:
-          8,
-        targetSellingPrice:
-          135,
-      }),
-      15
-    );
-
-    const pricing =
-      createLiteApiCommercialPricing({
-        rate:
-          createProviderRate({
-            retail:
-              128,
-            commission:
-              8,
-            publicFloor:
-              135,
-          }),
-        commercialPricingPolicy:
-          createPolicy(),
-        requestedSellerCommissionPercent:
-          8,
-      });
-
-    assert.equal(
-      pricing.pricingControl.state,
-      LITEAPI_PRICING_STATES
-        .MATERIALIZATION_REQUIRED
-    );
-
-    assert.equal(
-      pricing.pricingControl
-        .requiredSellerCommissionPercent,
-      15
     );
   }
 );
@@ -936,16 +915,13 @@ test(
 );
 
 test(
-  "real LiteAPI response mapping keeps the same selected room across a targeted rerate",
+  "LiteAPI removes only the non-public offer and keeps the hotel when another offer is valid",
   () => {
     const pricingPolicy =
       createPolicy();
 
     const mapResponse =
-      (
-        rate,
-        requestedSellerCommissionPercent
-      ) =>
+      (roomTypes) =>
         mapLiteApiHotelResponse(
           {
             data: [
@@ -958,9 +934,7 @@ test(
                   name:
                     "Hotel Test",
                 },
-                roomTypes: [
-                  rate,
-                ],
+                roomTypes,
               },
             ],
           },
@@ -970,63 +944,69 @@ test(
           {
             commercialPricingPolicy:
               pricingPolicy,
-            requestedSellerCommissionPercent,
+            requestedSellerCommissionPercent:
+              8,
           }
-        )[0]?.offers?.[0];
+        );
 
-    const initial =
-      mapResponse(
-        createProviderRate(),
-        8
-      );
-
-    const rerated =
-      mapResponse(
+    const hotels =
+      mapResponse([
         createProviderRate({
           offerId:
-            "offer-materialized",
+            "offer-below-floor",
           retail:
-            115,
+            108,
           commission:
-            15,
+            8,
+          publicFloor:
+            115,
         }),
-        15
-      );
-
-    assert.ok(initial);
-    assert.ok(rerated);
+        createProviderRate({
+          offerId:
+            "offer-publicly-valid",
+          retail:
+            118,
+          commission:
+            8,
+          publicFloor:
+            115,
+          roomName:
+            "Deluxe room",
+        }),
+      ]);
 
     assert.equal(
-      initial.price,
-      115
+      hotels.length,
+      1
     );
-
     assert.equal(
-      initial.commercialPricing
-        .state,
-      LITEAPI_PRICING_STATES
-        .MATERIALIZATION_REQUIRED
+      hotels[0].offers.length,
+      1
     );
-
     assert.equal(
-      rerated.commercialPricing
-        .state,
+      hotels[0].offers[0]
+        .providerOfferReference,
+      "offer-publicly-valid"
+    );
+    assert.equal(
+      hotels[0].offers[0].price,
+      118
+    );
+    assert.equal(
+      hotels[0].offers[0]
+        .commercialPricing.state,
       LITEAPI_PRICING_STATES
         .MATERIALIZED
     );
 
-    assert.equal(
-      initial.providerOfferContext
-        .selectionFingerprint,
-      rerated.providerOfferContext
-        .selectionFingerprint
-    );
-
-    assert.notEqual(
-      initial
-        .providerOfferReference,
-      rerated
-        .providerOfferReference
+    assert.deepEqual(
+      mapResponse([
+        createProviderRate({
+          offerId:
+            "offer-below-floor-only",
+        }),
+      ]),
+      []
     );
   }
 );
@@ -1037,7 +1017,10 @@ test(
     const internalOffer =
       createLiteApiOffer({
         rate:
-          createProviderRate(),
+          createProviderRate({
+            publicFloor:
+              108,
+          }),
         hotelId:
           "hotel-1",
         index:
@@ -1071,7 +1054,7 @@ test(
 
     assert.equal(
       publicOffer.price,
-      115
+      108
     );
 
     for (const forbidden of [
@@ -1196,7 +1179,7 @@ test(
 );
 
 test(
-  "LiteAPI rates payload supports a single-hotel targeted rerate with a bounded explicit margin",
+  "LiteAPI rates payload bounds a server-owned explicit margin and hotel scope",
   () => {
     const payload =
       createLiteApiRatesPayload({
@@ -1269,74 +1252,83 @@ test(
 );
 
 test(
-  "selected LiteAPI offer is rerated once, matched exactly and prebooked with the materialized reference",
+  "non-public and legacy LiteAPI offers fail closed without a second Rates call",
   async () => {
-    const pricingPolicy =
-      createPolicy();
+    for (const state of [
+      LITEAPI_PRICING_STATES
+        .PUBLIC_SALE_UNAVAILABLE,
+      LITEAPI_PRICING_STATES
+        .MATERIALIZATION_REQUIRED,
+      LITEAPI_PRICING_STATES
+        .UNVERIFIED,
+    ]) {
+      let ratesCalls = 0;
+      let prebookCalls = 0;
 
-    const fingerprint =
-      createLiteApiSelectionFingerprint(
-        createProviderRate()
+      const offer =
+        createInternalLiteApiOffer({
+          state,
+        });
+
+      const adapter =
+        createLiteApiAdapter(
+          createAdapterDependencies({
+            searchLiteApiRates:
+              async () => {
+                ratesCalls += 1;
+
+                return {
+                  data:
+                    null,
+                  noContent:
+                    true,
+                };
+              },
+            prebookLiteApiOffer:
+              async () => {
+                prebookCalls += 1;
+
+                return {
+                  data:
+                    null,
+                  noContent:
+                    true,
+                };
+              },
+          })
+        );
+
+      await assert.rejects(
+        () =>
+          adapter.recheckOffer(
+            createLiteApiRecheckInput(
+              offer
+            )
+          ),
+        (error) =>
+          error.code ===
+          "PROVIDER_PRICE_NOT_PUBLICLY_BOOKABLE"
       );
 
-    const originalOffer = {
-      id:
-        "liteapi:hotel-1:offer-original",
-      sourceProvider:
-        "liteapi",
-      provider:
-        "LiteAPI",
-      providerOfferReference:
-        "offer-original",
-      providerOfferContext: {
-        selectionFingerprint:
-          fingerprint,
-      },
-      commercialPricing: {
-        schemaVersion:
-          1,
-        policy:
-          pricingPolicy,
-        state:
-          LITEAPI_PRICING_STATES
-            .MATERIALIZATION_REQUIRED,
-        targetSellingPrice:
-          115,
-        requiredSellerCommissionPercent:
-          15,
-      },
-      price:
-        115,
-      totalKnownCost:
-        115,
-      currency:
-        "EUR",
-      roomName:
-        "Standard room",
-      mealPlan:
-        "Breakfast included",
-      refundable:
-        true,
-      bookable:
-        true,
-    };
+      assert.equal(
+        ratesCalls,
+        0
+      );
+      assert.equal(
+        prebookCalls,
+        0
+      );
+    }
+  }
+);
 
-    const materializedOffer = {
-      ...originalOffer,
-      providerOfferReference:
-        "offer-materialized",
-      commercialPricing: {
-        ...originalOffer
-          .commercialPricing,
-        state:
-          LITEAPI_PRICING_STATES
-            .MATERIALIZED,
-      },
-    };
+test(
+  "a materialized LiteAPI offer goes directly to prebook without a second Rates call",
+  async () => {
+    const offer =
+      createInternalLiteApiOffer();
 
-    let materializationInput =
-      null;
-
+    let ratesCalls = 0;
     let prebookReference =
       null;
 
@@ -1344,32 +1336,16 @@ test(
       createLiteApiAdapter(
         createAdapterDependencies({
           searchLiteApiRates:
-            async (input) => {
-              materializationInput =
-                input;
+            async () => {
+              ratesCalls += 1;
 
               return {
-                data: {
-                  results: [
-                    {
-                      hotelId:
-                        "hotel-1",
-                    },
-                  ],
-                },
+                data:
+                  null,
                 noContent:
-                  false,
+                  true,
               };
             },
-          mapLiteApiHotelResponse:
-            () => [
-              {
-                id:
-                  "liteapi:hotel-1",
-                offers:
-                  [materializedOffer],
-              },
-            ],
           prebookLiteApiOffer:
             async (offerId) => {
               prebookReference =
@@ -1386,11 +1362,8 @@ test(
             },
           createLiteApiPrebookOffer:
             ({ originalOffer }) => ({
-              offer: {
-                ...originalOffer,
-                price:
-                  115,
-              },
+              offer:
+                originalOffer,
               providerBookingReference:
                 "prebook-1",
             }),
@@ -1398,53 +1371,20 @@ test(
       );
 
     const result =
-      await adapter.recheckOffer({
-        offer:
-          originalOffer,
-        hotelId:
-          "hotel-1",
-        providerContext: {
-          sessionId:
-            "smartstay-session-1",
-        },
-        stayContext: {
-          checkin:
-            "2026-10-10",
-          checkout:
-            "2026-10-12",
-          currency:
-            "EUR",
-          rooms: [
-            {
-              adults:
-                2,
-              childAges:
-                [],
-            },
-          ],
-        },
-      });
-
-    assert.deepEqual(
-      materializationInput.hotelIds,
-      ["hotel-1"]
-    );
+      await adapter.recheckOffer(
+        createLiteApiRecheckInput(
+          offer
+        )
+      );
 
     assert.equal(
-      materializationInput.margin,
-      15
+      ratesCalls,
+      0
     );
-
-    assert.equal(
-      materializationInput.sessionId,
-      "smartstay-session-1"
-    );
-
     assert.equal(
       prebookReference,
-      "offer-materialized"
+      "offer-original"
     );
-
     assert.equal(
       result.outcome,
       "confirmed"
@@ -1453,149 +1393,27 @@ test(
 );
 
 test(
-  "materialization fails closed on an ambiguous selection or a prebook price below target",
+  "a materialized offer still fails closed when prebook drops below its verified target",
   async () => {
-    const pricingPolicy =
-      createPolicy();
+    const offer =
+      createInternalLiteApiOffer();
 
-    const originalOffer = {
-      id:
-        "liteapi:hotel-1:offer-original",
-      sourceProvider:
-        "liteapi",
-      provider:
-        "LiteAPI",
-      providerOfferReference:
-        "offer-original",
-      providerOfferContext: {
-        selectionFingerprint:
-          "fingerprint-1",
-      },
-      commercialPricing: {
-        schemaVersion:
-          1,
-        policy:
-          pricingPolicy,
-        state:
-          LITEAPI_PRICING_STATES
-            .MATERIALIZATION_REQUIRED,
-        targetSellingPrice:
-          115,
-        requiredSellerCommissionPercent:
-          15,
-      },
-      price:
-        115,
-      currency:
-        "EUR",
-    };
+    let ratesCalls = 0;
 
-    const commonInput = {
-      offer:
-        originalOffer,
-      hotelId:
-        "hotel-1",
-      providerContext: {
-        sessionId:
-          "smartstay-session-1",
-      },
-      stayContext: {
-        checkin:
-          "2026-10-10",
-        checkout:
-          "2026-10-12",
-        currency:
-          "EUR",
-        rooms: [
-          {
-            adults:
-              2,
-            childAges:
-              [],
-          },
-        ],
-      },
-    };
-
-    const mismatchedAdapter =
+    const adapter =
       createLiteApiAdapter(
         createAdapterDependencies({
           searchLiteApiRates:
-            async () => ({
-              data: {
-                results:
-                  [{}],
-              },
-              noContent:
-                false,
-            }),
-          mapLiteApiHotelResponse:
-            () => [
-              {
-                offers: [
-                  {
-                    ...originalOffer,
-                    providerOfferContext: {
-                      selectionFingerprint:
-                        "different",
-                    },
-                    commercialPricing: {
-                      ...originalOffer
-                        .commercialPricing,
-                      state:
-                        LITEAPI_PRICING_STATES
-                          .MATERIALIZED,
-                    },
-                  },
-                ],
-              },
-            ],
-        })
-      );
+            async () => {
+              ratesCalls += 1;
 
-    await assert.rejects(
-      () =>
-        mismatchedAdapter
-          .recheckOffer(
-            commonInput
-          ),
-      (error) =>
-        error.code ===
-        "PROVIDER_PRICING_SELECTION_MISMATCH"
-    );
-
-    const materializedOffer = {
-      ...originalOffer,
-      providerOfferReference:
-        "offer-materialized",
-      commercialPricing: {
-        ...originalOffer
-          .commercialPricing,
-        state:
-          LITEAPI_PRICING_STATES
-            .MATERIALIZED,
-      },
-    };
-
-    const belowTargetAdapter =
-      createLiteApiAdapter(
-        createAdapterDependencies({
-          searchLiteApiRates:
-            async () => ({
-              data: {
-                results:
-                  [{}],
-              },
-              noContent:
-                false,
-            }),
-          mapLiteApiHotelResponse:
-            () => [
-              {
-                offers:
-                  [materializedOffer],
-              },
-            ],
+              return {
+                data:
+                  null,
+                noContent:
+                  true,
+              };
+            },
           createLiteApiPrebookOffer:
             ({ originalOffer }) => ({
               offer: {
@@ -1611,13 +1429,19 @@ test(
 
     await assert.rejects(
       () =>
-        belowTargetAdapter
-          .recheckOffer(
-            commonInput
-          ),
+        adapter.recheckOffer(
+          createLiteApiRecheckInput(
+            offer
+          )
+        ),
       (error) =>
         error.code ===
         "PROVIDER_PREBOOK_PRICE_BELOW_TARGET"
+    );
+
+    assert.equal(
+      ratesCalls,
+      0
     );
   }
 );

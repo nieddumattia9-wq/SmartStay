@@ -5,6 +5,9 @@ const LITEAPI_PRICING_STATES =
   Object.freeze({
     MATERIALIZED:
       "materialized",
+    PUBLIC_SALE_UNAVAILABLE:
+      "public-sale-unavailable",
+    // Kept only so offers stored by the previous release fail closed.
     MATERIALIZATION_REQUIRED:
       "materialization-required",
     UNVERIFIED:
@@ -159,21 +162,6 @@ function roundMoney(value) {
   );
 }
 
-function roundMarginUp(value) {
-  if (!Number.isFinite(value)) {
-    return null;
-  }
-
-  return (
-    Math.ceil(
-      Math.max(0, value) *
-      1_000_000 -
-      0.0000001
-    ) /
-    1_000_000
-  );
-}
-
 function getNestedRates(rate) {
   if (!isPlainObject(rate)) {
     return [];
@@ -305,96 +293,6 @@ function getMinimumCommissionPercent(
     : null;
 }
 
-function calculateRequiredLiteApiMargin({
-  retailSellingPrice,
-  commissionAmount = null,
-  currentCommissionPercent,
-  targetSellingPrice,
-} = {}) {
-  const retail =
-    asNumber(
-      retailSellingPrice
-    );
-
-  const target =
-    asNumber(
-      targetSellingPrice
-    );
-
-  const currentPercent =
-    asNumber(
-      currentCommissionPercent
-    );
-
-  if (
-    retail === null ||
-    retail <= 0 ||
-    target === null ||
-    target <= 0 ||
-    currentPercent === null ||
-    currentPercent <= 0
-  ) {
-    return null;
-  }
-
-  const normalizedCommission =
-    asNumber(
-      commissionAmount
-    );
-
-  if (
-    normalizedCommission === null ||
-    normalizedCommission <= 0 ||
-    normalizedCommission >= retail
-  ) {
-    return null;
-  }
-
-  const commissionableBase =
-    normalizedCommission /
-    (currentPercent / 100);
-
-  const currentNonCommissionAmount =
-    retail -
-    normalizedCommission;
-
-  if (
-    !Number.isFinite(
-      commissionableBase
-    ) ||
-    commissionableBase <= 0 ||
-    !Number.isFinite(
-      currentNonCommissionAmount
-    ) ||
-    currentNonCommissionAmount < 0
-  ) {
-    return null;
-  }
-
-  const requiredPercent =
-    (
-      target -
-      currentNonCommissionAmount
-    ) /
-    commissionableBase *
-    100;
-
-  if (
-    !Number.isFinite(
-      requiredPercent
-    )
-  ) {
-    return null;
-  }
-
-  return roundMarginUp(
-    Math.max(
-      currentPercent,
-      requiredPercent
-    )
-  );
-}
-
 function createLiteApiCommercialPricing({
   rate,
   commercialPricingPolicy = null,
@@ -471,17 +369,6 @@ function createLiteApiCommercialPricing({
       retailSellingPrice >
       PRICE_EPSILON;
 
-  const requiredSellerCommissionPercent =
-    needsMaterialization
-      ? calculateRequiredLiteApiMargin({
-          retailSellingPrice,
-          commissionAmount:
-            commissionAmount,
-          currentCommissionPercent,
-          targetSellingPrice,
-        })
-      : currentCommissionPercent;
-
   let state =
     LITEAPI_PRICING_STATES
       .MATERIALIZED;
@@ -497,19 +384,19 @@ function createLiteApiCommercialPricing({
   }
   else if (needsMaterialization) {
     state =
-      requiredSellerCommissionPercent ===
-        null
-        ? LITEAPI_PRICING_STATES
-            .UNVERIFIED
-        : LITEAPI_PRICING_STATES
-            .MATERIALIZATION_REQUIRED;
+      LITEAPI_PRICING_STATES
+        .PUBLIC_SALE_UNAVAILABLE;
   }
 
   return {
     sellingPrice:
-      roundMoney(
-        targetSellingPrice
-      ),
+      state ===
+        LITEAPI_PRICING_STATES
+          .MATERIALIZED
+        ? roundMoney(
+            targetSellingPrice
+          )
+        : null,
 
     pricingControl: {
       schemaVersion:
@@ -534,13 +421,14 @@ function createLiteApiCommercialPricing({
         ),
 
       requiredSellerCommissionPercent:
-        requiredSellerCommissionPercent ===
-          null
-          ? null
-          : Number(
-              requiredSellerCommissionPercent
+        state ===
+          LITEAPI_PRICING_STATES
+            .MATERIALIZED
+          ? Number(
+              currentCommissionPercent
                 .toFixed(6)
-            ),
+            )
+          : null,
     },
   };
 }
@@ -691,40 +579,12 @@ function createLiteApiSelectionFingerprint(
     .slice(0, 32);
 }
 
-function isLiteApiPriceMaterialized({
-  offer,
-  minimumTargetSellingPrice,
-} = {}) {
-  const price =
-    asNumber(
-      offer?.price
-    );
-
-  const target =
-    asNumber(
-      minimumTargetSellingPrice
-    );
-
-  return (
-    offer?.commercialPricing
-      ?.state ===
-      LITEAPI_PRICING_STATES
-        .MATERIALIZED &&
-    price !== null &&
-    target !== null &&
-    roundMoney(price) >=
-      roundMoney(target)
-  );
-}
-
 module.exports = {
   LITEAPI_PRICING_STATES,
   PRICE_EPSILON,
-  calculateRequiredLiteApiMargin,
   createLiteApiCommercialPricing,
   createLiteApiSelectionFingerprint,
   getLiteApiCommissionAmount,
   getLiteApiPublicPriceFloor,
   getLiteApiRetailSellingPrice,
-  isLiteApiPriceMaterialized,
 };

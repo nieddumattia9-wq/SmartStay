@@ -38,7 +38,6 @@ const PROVIDER_ID =
 
 const {
   LITEAPI_PRICING_STATES,
-  isLiteApiPriceMaterialized,
 } = require(
   "./liteApiCommercialPricing"
 );
@@ -68,40 +67,6 @@ function getPricingPolicy(
       : null;
 }
 
-function getRequiredCommissionPercent(
-  offer
-) {
-  const value =
-    Number(
-      offer?.commercialPricing
-        ?.requiredSellerCommissionPercent
-    );
-
-  return (
-    Number.isFinite(value) &&
-    value > 0
-  )
-    ? value
-    : null;
-}
-
-function getSelectionFingerprint(
-  offer
-) {
-  const fingerprint =
-    typeof offer
-      ?.providerOfferContext
-      ?.selectionFingerprint ===
-      "string"
-      ? offer
-          .providerOfferContext
-          .selectionFingerprint
-          .trim()
-      : "";
-
-  return fingerprint || null;
-}
-
 function createLiteApiPricingError({
   code,
   message,
@@ -117,177 +82,6 @@ function createLiteApiPricingError({
     status;
 
   return error;
-}
-
-function createLiteApiMaterializationInput({
-  hotelId,
-  stayContext,
-  providerContext,
-  offer,
-} = {}) {
-  const normalizedHotelId =
-    typeof hotelId === "string"
-      ? hotelId.trim()
-      : String(
-          hotelId ?? ""
-        ).trim();
-
-  const checkin =
-    typeof stayContext?.checkin ===
-      "string"
-      ? stayContext.checkin.trim()
-      : "";
-
-  const checkout =
-    typeof stayContext?.checkout ===
-      "string"
-      ? stayContext.checkout.trim()
-      : "";
-
-  const sessionId =
-    typeof providerContext?.sessionId ===
-      "string"
-      ? providerContext.sessionId.trim()
-      : "";
-
-  const occupancies =
-    Array.isArray(
-      stayContext?.rooms
-    )
-      ? stayContext.rooms.map(
-          (room) => ({
-            adults:
-              room?.adults,
-            children:
-              Array.isArray(
-                room?.childAges
-              )
-                ? room.childAges
-                : [],
-          })
-        )
-      : [];
-
-  const margin =
-    getRequiredCommissionPercent(
-      offer
-    );
-
-  if (
-    !normalizedHotelId ||
-    !checkin ||
-    !checkout ||
-    occupancies.length === 0
-  ) {
-    throw createLiteApiPricingError({
-      code:
-        "PROVIDER_PRICING_CONTEXT_REQUIRED",
-      message:
-        "The selected offer cannot be priced safely without its stay context.",
-    });
-  }
-
-  if (!sessionId) {
-    throw createLiteApiPricingError({
-      code:
-        "PROVIDER_PRICING_SESSION_REQUIRED",
-      message:
-        "The selected offer cannot be priced safely without its provider session.",
-    });
-  }
-
-  if (margin === null) {
-    throw createLiteApiPricingError({
-      code:
-        "PROVIDER_PRICING_MARGIN_REQUIRED",
-      message:
-        "The provider-specific commission required for this offer is unavailable.",
-    });
-  }
-
-  if (!getSelectionFingerprint(offer)) {
-    throw createLiteApiPricingError({
-      code:
-        "PROVIDER_PRICING_SELECTION_REQUIRED",
-      message:
-        "The selected room and rate conditions cannot be matched safely.",
-    });
-  }
-
-  return {
-    hotelIds:
-      [normalizedHotelId],
-    checkin,
-    checkout,
-    occupancies,
-    currency:
-      stayContext?.currency ??
-      offer?.currency ??
-      "EUR",
-    sessionId,
-    margin,
-  };
-}
-
-function selectMaterializedLiteApiOffer({
-  hotels,
-  originalOffer,
-} = {}) {
-  const expectedFingerprint =
-    getSelectionFingerprint(
-      originalOffer
-    );
-
-  const matchingOffers =
-    (
-      Array.isArray(hotels)
-        ? hotels
-        : []
-    )
-      .flatMap((hotel) =>
-        Array.isArray(hotel?.offers)
-          ? hotel.offers
-          : []
-      )
-      .filter(
-        (candidate) =>
-          getSelectionFingerprint(
-            candidate
-          ) ===
-          expectedFingerprint
-      );
-
-  if (matchingOffers.length !== 1) {
-    throw createLiteApiPricingError({
-      code:
-        "PROVIDER_PRICING_SELECTION_MISMATCH",
-      message:
-        "The provider did not return exactly the selected room and booking conditions.",
-    });
-  }
-
-  const selectedOffer =
-    matchingOffers[0];
-
-  if (
-    !isLiteApiPriceMaterialized({
-      offer:
-        selectedOffer,
-      minimumTargetSellingPrice:
-        originalOffer
-          ?.commercialPricing
-          ?.targetSellingPrice,
-    })
-  ) {
-    throw createLiteApiPricingError({
-      code:
-        "PROVIDER_PRICE_FLOOR_NOT_MATERIALIZED",
-      message:
-        "The provider did not materialize a bookable price at or above the public selling target.",
-    });
-  }
-
-  return selectedOffer;
 }
 
 function createLiteApiSearchInput(
@@ -1019,7 +813,7 @@ function createLiteApiAdapter(
       }
 
       try {
-        let offerForPrebook =
+        const offerForPrebook =
           offer;
 
         const pricingState =
@@ -1027,84 +821,17 @@ function createLiteApiAdapter(
             ?.state;
 
         if (
-          pricingState ===
-          LITEAPI_PRICING_STATES
-            .UNVERIFIED
+          getPricingPolicy(offer) &&
+          pricingState !==
+            LITEAPI_PRICING_STATES
+              .MATERIALIZED
         ) {
           throw createLiteApiPricingError({
             code:
-              "PROVIDER_PRICE_UNVERIFIED",
+              "PROVIDER_PRICE_NOT_PUBLICLY_BOOKABLE",
             message:
-              "The selected offer does not contain enough information to enforce the SmartStay pricing policy.",
+              "The selected offer does not have a provider-confirmed public selling price.",
           });
-        }
-
-        if (
-          pricingState ===
-          LITEAPI_PRICING_STATES
-            .MATERIALIZATION_REQUIRED
-        ) {
-          const materializationInput =
-            createLiteApiMaterializationInput({
-              hotelId,
-              stayContext,
-              providerContext,
-              offer,
-            });
-
-          const materializationResponse =
-            await searchLiteApiRates({
-              ...materializationInput,
-              signal,
-            });
-
-          const materializationData =
-            materializationResponse
-              ?.data ??
-            null;
-
-          if (
-            materializationResponse
-              ?.noContent ||
-            isLiteApiNoResults(
-              materializationData
-            )
-          ) {
-            return createProviderOfferRecheckSoldOut({
-              providerId:
-                PROVIDER_ID,
-              rawData:
-                null,
-            });
-          }
-
-          const materializedHotels =
-            mapLiteApiHotelResponse(
-              materializationData,
-              offer?.currency ??
-                "EUR",
-              null,
-              null,
-              {
-                maximumRecords:
-                  1,
-                commercialPricingPolicy:
-                  getPricingPolicy(
-                    offer
-                  ),
-                requestedSellerCommissionPercent:
-                  materializationInput
-                    .margin,
-              }
-            );
-
-          offerForPrebook =
-            selectMaterializedLiteApiOffer({
-              hotels:
-                materializedHotels,
-              originalOffer:
-                offer,
-            });
         }
 
         const providerOfferReference =
