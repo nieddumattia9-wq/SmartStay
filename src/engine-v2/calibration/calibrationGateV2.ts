@@ -2874,7 +2874,7 @@ export function assertSmartStayCalibrationPassedV2(
 
   throw new Error(
     [
-      "SmartStay Calibration Gate V2 failed:",
+      "StayOpti Calibration Gate V2 failed:",
       ...blockingIssues.map(
         (issue) =>
           [

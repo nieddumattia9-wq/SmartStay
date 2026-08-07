@@ -87,7 +87,7 @@ function SmartOptimizer({
             id={titleId}
             className="optimizer-title"
           >
-            Your SmartStay balance
+            Your StayOpti balance
           </h3>
 
           <p
@@ -121,7 +121,7 @@ function SmartOptimizer({
         snapCount={
           sliderOptions.length
         }
-        ariaLabel={`Current SmartStay balance: ${selectedOption.title}`}
+        ariaLabel={`Current StayOpti balance: ${selectedOption.title}`}
       />
 
       <div className="optimizer-info">

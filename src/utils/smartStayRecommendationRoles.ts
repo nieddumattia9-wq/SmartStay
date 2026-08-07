@@ -289,7 +289,7 @@ function createBestChoicePick(
       ],
 
     reason:
-      "Strongest overall match for your budget, distance and selected SmartStay balance.",
+      "Strongest overall match for your budget, distance and selected StayOpti balance.",
 
     evaluation,
 

@@ -17,7 +17,7 @@ function readText(
 }
 
 test(
-  "D6B Home exposes one contextual non-interactive SmartStay balance indicator",
+  "D6B Home exposes one contextual non-interactive StayOpti balance indicator",
   () => {
     const trip =
       readText(
@@ -42,12 +42,12 @@ test(
     assert.equal(
       (
         combined.match(
-          /Your SmartStay balance/g
+          /Your StayOpti balance/g
         ) ??
         []
       ).length,
       1,
-      "Home must expose one SmartStay balance heading."
+      "Home must expose one StayOpti balance heading."
     );
 
     assert.match(

@@ -139,41 +139,41 @@ function createExplanation(
   ) {
     return (
       context +
-      ", SmartStay will prioritize savings while using the wider range to keep more options available."
+      ", StayOpti will prioritize savings while using the wider range to keep more options available."
     );
   }
 
   if (selectedIndex === 0) {
     return (
       context +
-      ", SmartStay can give more weight to comfort, quality and location."
+      ", StayOpti can give more weight to comfort, quality and location."
     );
   }
 
   if (selectedIndex === 1) {
     return (
       context +
-      ", SmartStay can favor comfort while still protecting value."
+      ", StayOpti can favor comfort while still protecting value."
     );
   }
 
   if (selectedIndex === 2) {
     return (
       context +
-      ", SmartStay will balance total price, distance, quality and reliability."
+      ", StayOpti will balance total price, distance, quality and reliability."
     );
   }
 
   if (selectedIndex === 3) {
     return (
       context +
-      ", SmartStay will prioritize savings while still considering quality and reliability."
+      ", StayOpti will prioritize savings while still considering quality and reliability."
     );
   }
 
   return (
     context +
-    ", SmartStay will strongly prioritize the lowest reliable total prices."
+    ", StayOpti will strongly prioritize the lowest reliable total prices."
   );
 }
 
@@ -213,7 +213,7 @@ export function calculateAutomaticPreferenceBalance(
       selectedIndex: 2,
 
       explanation:
-        "Select a destination, valid dates and a total budget to see SmartStay's suggested balance.",
+        "Select a destination, valid dates and a total budget to see StayOpti's suggested balance.",
 
       budgetPerRoomNight: null,
     };

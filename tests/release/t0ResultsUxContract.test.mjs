@@ -211,7 +211,7 @@ test(
 
     assert.match(
       card,
-      /SmartStay fit/
+      /StayOpti fit/
     );
 
     assert.match(
@@ -269,7 +269,7 @@ test(
 
     assert.match(
       card,
-      /Full SmartStay comparison/
+      /Full StayOpti comparison/
     );
 
     assert.match(

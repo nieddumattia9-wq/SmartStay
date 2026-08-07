@@ -56,7 +56,7 @@ import type {
     "Searching thousands of stays...";
 
   const LAST_STEP =
-    "Building your SmartStay...";
+    "Building your StayOpti...";
 
   const LOADING_POOL = [
     "Comparing prices across platforms...",
@@ -260,7 +260,7 @@ import type {
       );
     } catch (error) {
       console.warn(
-        "Unable to save SmartStay search metadata.",
+        "Unable to save StayOpti search metadata.",
         error
       );
     }
@@ -1275,7 +1275,7 @@ import type {
       >
         <div className="loading-card">
           <h1 className="loading-title">
-            SmartStay
+            StayOpti
           </h1>
 
           <p className="loading-subtitle">

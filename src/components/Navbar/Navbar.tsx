@@ -13,10 +13,10 @@ function Navbar() {
       <Link
         to="/"
         className="navbar__logo"
-        aria-label="SmartStay home"
+        aria-label="StayOpti home"
       >
 
-        SmartStay
+        StayOpti
 
       </Link>
 

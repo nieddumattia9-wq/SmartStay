@@ -16,7 +16,7 @@ function Privacy() {
         </h1>
 
         <p>
-          SmartStay is currently available as a private, controlled beta.
+          StayOpti is currently available as a private, controlled beta.
           Please do not share the staging link publicly.
         </p>
 
@@ -25,14 +25,14 @@ function Privacy() {
         <p>
           Your destination, dates, budget, party details and selected offers
           are processed only to perform the accommodation search, recheck and
-          booking handoff. SmartStay does not collect payment-card details.
+          booking handoff. StayOpti does not collect payment-card details.
           A partner checkout has its own privacy terms.
         </p>
 
         <h2>First-party beta analytics</h2>
 
         <p>
-          SmartStay may collect small, bucketed product events to understand
+          StayOpti may collect small, bucketed product events to understand
           whether searches complete, which recommendation roles are useful and
           where testers encounter problems. Analytics contain no destination,
           exact dates, exact budget, hotel name, hotel ID, booking ID, provider
@@ -72,7 +72,7 @@ function Privacy() {
 
         <p>
           This concise notice is for the controlled beta and is not the final
-          public legal policy. SmartStay will complete verified controller
+          public legal policy. StayOpti will complete verified controller
           details and professional legal review before broader public traffic.
         </p>
       </div>

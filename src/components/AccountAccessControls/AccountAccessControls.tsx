@@ -193,7 +193,7 @@ function AccountAccessControls() {
 
   const dialogTitle =
     accountAction === "signup"
-      ? "SmartStay accounts are coming soon"
+      ? "StayOpti accounts are coming soon"
       : "Account access is coming soon";
 
   return (

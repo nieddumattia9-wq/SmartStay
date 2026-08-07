@@ -2385,7 +2385,7 @@ function createRecommendationReason(
     return "Strongest coherent premium experience for your Maximum Comfort search.";
   }
 
-  return "Strongest evidence-backed match for your budget, distance and selected SmartStay balance.";
+  return "Strongest evidence-backed match for your budget, distance and selected StayOpti balance.";
 }
 
 function createRecommendationPicks(

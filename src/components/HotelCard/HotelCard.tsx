@@ -495,7 +495,7 @@ function HotelCard({
           />
         ) : (
           <div className="hotel-card__image-placeholder">
-            SmartStay
+            StayOpti
           </div>
         )}
 
@@ -503,7 +503,7 @@ function HotelCard({
           undefined && (
           <div className="hotel-card__image-score">
             <span>
-              SmartStay fit
+              StayOpti fit
             </span>
 
             <strong>
@@ -526,7 +526,7 @@ function HotelCard({
             <div className="hotel-card__header-left">
               {showRecommendationLabel && (
                 <p className="hotel-card__eyebrow">
-                  SmartStay recommendation
+                  StayOpti recommendation
                 </p>
               )}
 
@@ -695,7 +695,7 @@ function HotelCard({
 
                   <span>
                     <span className="hotel-card__engine-title">
-                      Full SmartStay comparison
+                      Full StayOpti comparison
                     </span>
 
                     <span className="hotel-card__engine-subtitle">

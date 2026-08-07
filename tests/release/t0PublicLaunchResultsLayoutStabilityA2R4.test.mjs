@@ -68,7 +68,7 @@ test("R4C keeps one stable Results shell through loading, ranking and final cont
   }
 
   assert.match(loadingBranch, /Loading hotels\.\.\./);
-  assert.match(rankingBranch, /SmartStay Engine V2 is ranking your stays\.\.\./);
+  assert.match(rankingBranch, /StayOpti Engine V2 is ranking your stays\.\.\./);
 
   const pendingShellCount = (
     resultsSource.match(/className="results-page results-page--pending"/g) ?? []

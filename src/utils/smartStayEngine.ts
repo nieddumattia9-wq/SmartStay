@@ -1505,7 +1505,7 @@ function calculateSavingScore(
       (hotel.reviewCount ?? 0) <= 0
     ) {
       reasons.push(
-        "Limited review data, so SmartStay keeps this score more conservative."
+        "Limited review data, so StayOpti keeps this score more conservative."
       );
     }
   
@@ -1514,7 +1514,7 @@ function calculateSavingScore(
       breakdown.dataQuality < 48
     ) {
       reasons.push(
-        "Some important hotel data is missing, so SmartStay treats this result with extra caution."
+        "Some important hotel data is missing, so StayOpti treats this result with extra caution."
       );
     }
   

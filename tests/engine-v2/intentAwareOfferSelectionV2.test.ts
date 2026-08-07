@@ -435,7 +435,7 @@ test(
     );
     assert.ok(
       hotelCardSource.includes(
-        "Full SmartStay comparison"
+        "Full StayOpti comparison"
       )
     );
     assert.ok(

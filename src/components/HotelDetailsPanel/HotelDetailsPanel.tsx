@@ -426,7 +426,7 @@ function getBookingFailureMessage(
     !(error instanceof
       ApiRequestError)
   ) {
-    return "SmartStay could not prepare secure checkout.";
+    return "StayOpti could not prepare secure checkout.";
   }
 
   if (
@@ -454,7 +454,7 @@ function getBookingFailureMessage(
 
   return (
     error.message ||
-    "SmartStay could not prepare secure checkout."
+    "StayOpti could not prepare secure checkout."
   );
 }
 
@@ -1343,7 +1343,7 @@ function HotelDetailsPanel({
             </strong>
 
             <p>
-              SmartStay is retrieving the available information.
+              StayOpti is retrieving the available information.
             </p>
           </div>
         )}
@@ -1515,7 +1515,7 @@ function HotelDetailsPanel({
                         </h3>
 
                         <p>
-                          SmartStay will check availability, the complete known total, taxes and cancellation conditions before opening secure checkout.
+                          StayOpti will check availability, the complete known total, taxes and cancellation conditions before opening secure checkout.
                         </p>
 
                         <p>

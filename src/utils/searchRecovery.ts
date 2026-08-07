@@ -163,7 +163,7 @@ export function getSearchRecoveryDecision(
       kind:
         "network",
       message:
-        "SmartStay could not be reached. Check your connection and try again.",
+        "StayOpti could not be reached. Check your connection and try again.",
       retryable:
         true,
       clearStoredSearchState:
@@ -182,7 +182,7 @@ export function getSearchRecoveryDecision(
       kind:
         "timeout",
       message:
-        "SmartStay took too long to respond. Try again.",
+        "StayOpti took too long to respond. Try again.",
       retryable:
         true,
       clearStoredSearchState:
@@ -221,7 +221,7 @@ export function getSearchRecoveryDecision(
       kind:
         "temporarily-unavailable",
       message:
-        "SmartStay is temporarily unavailable. Try again shortly.",
+        "StayOpti is temporarily unavailable. Try again shortly.",
       retryable:
         true,
       clearStoredSearchState:

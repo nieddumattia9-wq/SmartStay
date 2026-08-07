@@ -464,7 +464,7 @@ test(
 
     assert.ok(
       hotelCardSource.includes(
-        "Full SmartStay comparison"
+        "Full StayOpti comparison"
       )
     );
 
@@ -696,7 +696,7 @@ test(
 
     assert.ok(
       resultsSource.includes(
-        "These stays also match your current search and are ordered by SmartStay fit."
+        "These stays also match your current search and are ordered by StayOpti fit."
       )
     );
 

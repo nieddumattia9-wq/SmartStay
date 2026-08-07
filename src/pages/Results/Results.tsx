@@ -378,7 +378,7 @@ function writeStoredRankingV2(
       emptyState.reason ===
       "reliability-gate"
     ) {
-      return "No stays passed SmartStay verification";
+      return "No stays passed StayOpti verification";
     }
 
     if (
@@ -415,11 +415,11 @@ function writeStoredRankingV2(
           .length >
           0
       ) {
-        return "Your distance limit is the main constraint. SmartStay calculated the smallest useful expansions from the stays already found.";
+        return "Your distance limit is the main constraint. StayOpti calculated the smallest useful expansions from the stays already found.";
       }
 
       return (
-        "SmartStay found " +
+        "StayOpti found " +
         analyzedCount +
         " " +
         (
@@ -448,11 +448,11 @@ function writeStoredRankingV2(
           .length >
           0
       ) {
-        return "Your total budget is the main limit. SmartStay found fully priced options and calculated the smallest useful adjustments below.";
+        return "Your total budget is the main limit. StayOpti found fully priced options and calculated the smallest useful adjustments below.";
       }
 
       return (
-        "SmartStay analyzed " +
+        "StayOpti analyzed " +
         analyzedCount +
         " " +
         (
@@ -469,7 +469,7 @@ function writeStoredRankingV2(
       "reliability-gate"
     ) {
       return (
-        "SmartStay found " +
+        "StayOpti found " +
         analyzedCount +
         " " +
         (
@@ -485,10 +485,10 @@ function writeStoredRankingV2(
       emptyState.reason ===
       "product-policy"
     ) {
-      return "Available stays were found, but they were excluded by the selected requirements or SmartStay visibility policies.";
+      return "Available stays were found, but they were excluded by the selected requirements or StayOpti visibility policies.";
     }
 
-    return "Available stays were found, but SmartStay could not identify a safe visible option with the current search settings.";
+    return "Available stays were found, but StayOpti could not identify a safe visible option with the current search settings.";
   }
 
   function getSelectedLocation(
@@ -921,10 +921,10 @@ const rankedHotels =
               hasMultipleStays
                 ? role ===
                     "best-choice"
-                  ? "These stays offer an equivalent evidence-backed fit for your budget, distance and selected SmartStay balance."
+                  ? "These stays offer an equivalent evidence-backed fit for your budget, distance and selected StayOpti balance."
                   : role ===
                       "cheaper-alternative"
-                    ? "These stays offer comparable savings while keeping overall trip fit within SmartStay's quality threshold."
+                    ? "These stays offer comparable savings while keeping overall trip fit within StayOpti's quality threshold."
                     : "These stays offer a comparable, worthwhile improvement for the extra cost."
                 : firstPick.reason;
 
@@ -1383,7 +1383,7 @@ const rankedHotels =
           }
 
           setEngineError(
-            "SmartStay could not rank these stays with Engine V2. Please start a new search."
+            "StayOpti could not rank these stays with Engine V2. Please start a new search."
           );
         }
       }
@@ -1861,7 +1861,7 @@ const rankedHotels =
             role="status"
             aria-live="polite"
           >
-            SmartStay Engine V2 is ranking your stays...
+            StayOpti Engine V2 is ranking your stays...
           </div>
         </div>
       );
@@ -1919,15 +1919,15 @@ const rankedHotels =
       <div className="results-page">
         <section className="results-page__header">
           <p className="results-page__eyebrow">
-            Ranked by SmartStay Engine
+            Ranked by StayOpti Engine
           </p>
 
           <h1 className="results-page__title">
-            Your SmartStay recommendations
+            Your StayOpti recommendations
           </h1>
 
           <p className="results-search-summary">
-            SmartStay analyzed {hotels.length} stays
+            StayOpti analyzed {hotels.length} stays
             {displayDestinationLabel
               ? ` for your search in ${displayDestinationLabel}`
               : " for your search"}.
@@ -2134,7 +2134,7 @@ const rankedHotels =
                 </strong>
 
                 <p>
-                  SmartStay reused the stays already found. No new provider search was sent.
+                  StayOpti reused the stays already found. No new provider search was sent.
                 </p>
               </div>
 
@@ -2175,7 +2175,7 @@ const rankedHotels =
                   </strong>
 
                   <p>
-                    SmartStay reused the stays already found. No new provider search was sent.
+                    StayOpti reused the stays already found. No new provider search was sent.
                   </p>
                 </div>
 
@@ -2209,7 +2209,7 @@ const rankedHotels =
                 </strong>
 
                 <p>
-                  SmartStay kept the reliable stays already found even though the provider search could not finish.
+                  StayOpti kept the reliable stays already found even though the provider search could not finish.
                 </p>
               </div>
             )
@@ -2243,7 +2243,7 @@ const rankedHotels =
                 ? getEmptyStateDescription(
                     emptyState
                   )
-                : "Available stays were found, but SmartStay could not identify a safe visible option with the current search settings."}
+                : "Available stays were found, but StayOpti could not identify a safe visible option with the current search settings."}
             </p>
 
             {emptyState &&
@@ -2658,7 +2658,7 @@ const rankedHotels =
                       lineHeight: 1.6,
                     }}
                   >
-                    Your SmartStay recommendations stay above. Open the full list only if you want to compare the other suitable options.
+                    Your StayOpti recommendations stay above. Open the full list only if you want to compare the other suitable options.
                   </p>
 
                   <button
@@ -2725,7 +2725,7 @@ const rankedHotels =
                       color: "#64748b",
                     }}
                   >
-                    These stays also match your current search and are ordered by SmartStay fit.
+                    These stays also match your current search and are ordered by StayOpti fit.
                   </p>
                 </div>
 

@@ -8,7 +8,7 @@ function Hero() {
 
       <h1 className="hero__title">
 
-        SmartStay
+        StayOpti
 
       </h1>
 

@@ -51,7 +51,7 @@ function BetaFeedback() {
   const summary =
     useMemo(
       () => [
-        "SmartStay controlled-beta feedback",
+        "StayOpti controlled-beta feedback",
         `Usefulness (1-5): ${usefulness}`,
         `Clarity (1-5): ${clarity}`,
         `Stage: ${stage}`,
@@ -99,11 +99,11 @@ function BetaFeedback() {
         </p>
 
         <h1 id="feedback-title">
-          Help us improve SmartStay
+          Help us improve StayOpti
         </h1>
 
         <p>
-          This form stays in your browser. SmartStay does not submit the text
+          This form stays in your browser. StayOpti does not submit the text
           automatically. Copy the summary and return it through the same
           private channel used for your beta invitation.
         </p>

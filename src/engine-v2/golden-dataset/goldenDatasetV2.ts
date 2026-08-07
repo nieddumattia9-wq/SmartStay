@@ -3316,7 +3316,7 @@ export function validateSmartStayGoldenDatasetV2(
   ) {
     throw new Error(
       [
-        "SmartStay Golden Dataset V2 validation failed:",
+        "StayOpti Golden Dataset V2 validation failed:",
         ...errors.map(
           (error) =>
             `- ${error}`

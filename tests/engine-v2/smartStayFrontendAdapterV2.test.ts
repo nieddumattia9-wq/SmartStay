@@ -1643,7 +1643,7 @@ test(
 
     assert.ok(
       !resultsSource.includes(
-        "did not pass SmartStay verification"
+        "did not pass StayOpti verification"
       )
     );
 

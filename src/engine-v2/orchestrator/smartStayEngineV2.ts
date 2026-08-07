@@ -540,7 +540,7 @@ function validateHotels(
     )
   ) {
     throw new Error(
-      "SmartStay Engine V2 requires every hotel to have a non-empty id."
+      "StayOpti Engine V2 requires every hotel to have a non-empty id."
     );
   }
 
@@ -551,7 +551,7 @@ function validateHotels(
     hotelIds.length
   ) {
     throw new Error(
-      "SmartStay Engine V2 received duplicate hotel ids."
+      "StayOpti Engine V2 received duplicate hotel ids."
     );
   }
 }

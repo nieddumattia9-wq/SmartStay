@@ -140,7 +140,7 @@ test(
 
     assert.match(
       feedback,
-      /SmartStay does not submit the text\s+automatically\./
+      /StayOpti does not submit the text\s+automatically\./
     );
 
     assert.match(

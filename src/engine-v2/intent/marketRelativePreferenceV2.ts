@@ -242,7 +242,7 @@ function normalizeFallbackExplanation(
     "string" &&
     value.trim()
     ? value.trim()
-    : "SmartStay is using the trip inputs available before reliable destination-market data is available.";
+    : "StayOpti is using the trip inputs available before reliable destination-market data is available.";
 }
 
 function getPreferenceTitle(
@@ -269,7 +269,7 @@ function getPreferenceTitle(
 }
 
 function createExtremeBudgetExplanation() {
-  return "Your budget per room and night is extremely constrained, so SmartStay is prioritizing Maximum Savings even before destination-market adjustments.";
+  return "Your budget per room and night is extremely constrained, so StayOpti is prioritizing Maximum Savings even before destination-market adjustments.";
 }
 
 function createMarketExplanation(
@@ -293,34 +293,34 @@ function createMarketExplanation(
   if (selectedIndex === 0) {
     return (
       prefix +
-      ` has very strong purchasing power. SmartStay has set the balance to ${preferenceTitle} to prioritize the strongest coherent experience within budget.`
+      ` has very strong purchasing power. StayOpti has set the balance to ${preferenceTitle} to prioritize the strongest coherent experience within budget.`
     );
   }
 
   if (selectedIndex === 1) {
     return (
       prefix +
-      ` has strong purchasing power. SmartStay has set the balance to ${preferenceTitle} while still protecting value.`
+      ` has strong purchasing power. StayOpti has set the balance to ${preferenceTitle} while still protecting value.`
     );
   }
 
   if (selectedIndex === 2) {
     return (
       prefix +
-      ` sits near the typical comparable range. SmartStay has kept the balance at ${preferenceTitle} across price, location, quality and reliability.`
+      ` sits near the typical comparable range. StayOpti has kept the balance at ${preferenceTitle} across price, location, quality and reliability.`
     );
   }
 
   if (selectedIndex === 3) {
     return (
       prefix +
-      ` is below typical comparable prices. SmartStay has set the balance to ${preferenceTitle} while still protecting quality and reliability.`
+      ` is below typical comparable prices. StayOpti has set the balance to ${preferenceTitle} while still protecting quality and reliability.`
     );
   }
 
   return (
     prefix +
-    ` is highly constrained compared with comparable prices. SmartStay has set the balance to ${preferenceTitle} to protect the lowest reliable totals.`
+    ` is highly constrained compared with comparable prices. StayOpti has set the balance to ${preferenceTitle} to protect the lowest reliable totals.`
   );
 }
 
