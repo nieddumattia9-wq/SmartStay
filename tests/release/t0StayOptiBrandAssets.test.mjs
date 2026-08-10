@@ -273,7 +273,7 @@ test(
 );
 
 test(
-  "StayOpti final Navbar logo keeps deterministic responsive sizing",
+  "StayOpti Navbar logo keeps the approved prominent responsive sizing",
   () => {
     const navbarCss =
       readText(
@@ -285,20 +285,39 @@ test(
         "src/components/Hero/Hero.css"
       );
 
+    assert.equal(
+      (
+        navbarCss.match(
+          /\.navbar__brand-mark\s*\{/g
+        ) ?? []
+      ).length,
+      3,
+      "Navbar logo must expose exactly one desktop and two responsive size rules"
+    );
+
+    assert.match(
+      navbarCss,
+      /\.navbar__brand-mark\s*\{[\s\S]*?width:\s*72px;[\s\S]*?height:\s*72px;[\s\S]*?flex:\s*0 0 72px;/,
+      "Desktop Navbar logo must be 72px"
+    );
+
+    assert.match(
+      navbarCss,
+      /@media \(max-width:\s*768px\)[\s\S]*?\.navbar__brand-mark\s*\{[\s\S]*?width:\s*64px;[\s\S]*?height:\s*64px;[\s\S]*?flex-basis:\s*64px;/,
+      "Tablet Navbar logo must be 64px"
+    );
+
+    assert.match(
+      navbarCss,
+      /@media \(max-width:\s*520px\)[\s\S]*?\.navbar__brand-mark\s*\{[\s\S]*?width:\s*60px;[\s\S]*?height:\s*60px;[\s\S]*?flex-basis:\s*60px;/,
+      "Mobile Navbar logo must be 60px"
+    );
+
     assert.ok(
-      navbarCss.includes(
-        ".navbar__brand-mark"
-      ) &&
-      navbarCss.includes(
-        "width: 40px"
-      ) &&
-      navbarCss.includes(
-        "width: 34px"
-      ) &&
       navbarCss.includes(
         "border-radius: 50%"
       ),
-      "Navbar logo does not preserve desktop, mobile and focus sizing"
+      "Navbar logo focus treatment must remain circular"
     );
 
     assert.doesNotMatch(

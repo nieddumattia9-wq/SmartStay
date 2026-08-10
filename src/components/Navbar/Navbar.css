@@ -34,11 +34,11 @@
 
   .navbar__brand-mark {
 
-    width: 40px;
+    width: 72px;
 
-    height: 40px;
+    height: 72px;
 
-    flex: 0 0 40px;
+    flex: 0 0 72px;
 
     display: block;
 
@@ -150,6 +150,16 @@
       padding: 24px;
   
     }
+
+    .navbar__brand-mark {
+
+      width: 64px;
+
+      height: 64px;
+
+      flex-basis: 64px;
+
+    }
   
   }
   
@@ -169,11 +179,11 @@
 
     .navbar__brand-mark {
 
-      width: 34px;
+      width: 60px;
 
-      height: 34px;
+      height: 60px;
 
-      flex-basis: 34px;
+      flex-basis: 60px;
 
     }
   
