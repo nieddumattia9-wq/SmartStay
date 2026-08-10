@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import {
   existsSync,
   readFileSync,
@@ -17,19 +18,72 @@ function readText(
   );
 }
 
-const BRAND_MARK_PATH =
-  "public/brand/stayopti-mark.svg";
+function sha256(
+  relativePath
+) {
+  return crypto
+    .createHash("sha256")
+    .update(
+      readFileSync(relativePath)
+    )
+    .digest("hex");
+}
+
+function readPngMetadata(
+  relativePath
+) {
+  const bytes =
+    readFileSync(relativePath);
+
+  assert.ok(
+    bytes.subarray(0, 8).equals(
+      Buffer.from([
+        0x89,
+        0x50,
+        0x4e,
+        0x47,
+        0x0d,
+        0x0a,
+        0x1a,
+        0x0a,
+      ])
+    ),
+    `Invalid PNG signature: ${relativePath}`
+  );
+
+  assert.equal(
+    bytes.subarray(12, 16).toString("ascii"),
+    "IHDR",
+    `PNG IHDR is missing: ${relativePath}`
+  );
+
+  return {
+    width:
+      bytes.readUInt32BE(16),
+    height:
+      bytes.readUInt32BE(20),
+    bitDepth:
+      bytes[24],
+    colorType:
+      bytes[25],
+    byteLength:
+      bytes.length,
+  };
+}
+
+const BRAND_LOGO_PATH =
+  "public/brand/stayopti-logo.png";
 
 const FAVICON_PATH =
-  "public/favicon.svg";
+  "public/favicon.png";
 
 test(
-  "StayOpti logo and favicon are safe source-controlled SVG assets",
+  "StayOpti logo and favicon are the approved transparent PNG assets",
   () => {
     for (
       const relativePath
       of [
-        BRAND_MARK_PATH,
+        BRAND_LOGO_PATH,
         FAVICON_PATH,
       ]
     ) {
@@ -37,68 +91,86 @@ test(
         existsSync(relativePath),
         `Missing brand asset: ${relativePath}`
       );
-
-      const asset =
-        readText(relativePath);
-
-      assert.match(
-        asset,
-        /^<svg\s[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"[^>]*viewBox="0 0 96 96"[^>]*>/
-      );
-
-      assert.ok(
-        asset.includes(
-          'stroke="#16C65B"'
-        ),
-        `Approved logo green is missing from ${relativePath}`
-      );
-
-      assert.doesNotMatch(
-        asset,
-        /<script\b|\bon\w+\s*=|(?:href|src)\s*=|<foreignObject\b|data:/i,
-        `Unsafe or external SVG content in ${relativePath}`
-      );
     }
 
-    const mark =
-      readText(BRAND_MARK_PATH);
+    const logo =
+      readPngMetadata(
+        BRAND_LOGO_PATH
+      );
 
     const favicon =
-      readText(FAVICON_PATH);
-
-    assert.ok(
-      mark.includes(
-        "M18 14v12M12 20h12"
-      ),
-      "The approved sparkle detail is missing from the primary mark"
-    );
-
-    assert.ok(
-      !favicon.includes(
-        "M18 14v12M12 20h12"
-      ),
-      "The micro favicon must stay simplified"
-    );
-
-    for (
-      const requiredShape
-      of [
-        "M61 11c-12.7 0-23 10.2-23 22.8",
-        "m50.5 33.5 7.3 7.3 14.5-17",
-        "M14 49v31",
-      ]
-    ) {
-      assert.ok(
-        mark.includes(requiredShape) &&
-        favicon.includes(requiredShape),
-        `Core StayOpti symbol is incomplete: ${requiredShape}`
+      readPngMetadata(
+        FAVICON_PATH
       );
-    }
+
+    assert.deepEqual(
+      {
+        width:
+          logo.width,
+        height:
+          logo.height,
+        bitDepth:
+          logo.bitDepth,
+        colorType:
+          logo.colorType,
+      },
+      {
+        width:
+          512,
+        height:
+          512,
+        bitDepth:
+          8,
+        colorType:
+          6,
+      }
+    );
+
+    assert.deepEqual(
+      {
+        width:
+          favicon.width,
+        height:
+          favicon.height,
+        bitDepth:
+          favicon.bitDepth,
+        colorType:
+          favicon.colorType,
+      },
+      {
+        width:
+          64,
+        height:
+          64,
+        bitDepth:
+          8,
+        colorType:
+          6,
+      }
+    );
+
+    assert.equal(
+      sha256(BRAND_LOGO_PATH),
+      "9524981fd4f506fb60f22ce1cd773707d122057f129f5e48bda23cd2e36e1a50"
+    );
+
+    assert.equal(
+      sha256(FAVICON_PATH),
+      "5fe70df38ee87eab62f3b4e528595f3e2917db6a4671a9dcb0ef00b05b5d6eec"
+    );
+
+    assert.ok(
+      logo.byteLength <
+        250_000 &&
+      favicon.byteLength <
+        12_000,
+      "StayOpti PNG assets exceed their web size budgets"
+    );
   }
 );
 
 test(
-  "StayOpti brand assets are wired into metadata, Navbar and Hero",
+  "StayOpti final logo is wired only into Navbar and browser metadata",
   () => {
     const index =
       readText("index.html");
@@ -113,6 +185,96 @@ test(
         "src/components/Hero/Hero.tsx"
       );
 
+    const optimizer =
+      readText(
+        "src/components/TripOptimizer/TripOptimizer.tsx"
+      );
+
+    assert.ok(
+      index.includes(
+        'type="image/png"'
+      ) &&
+      index.includes(
+        'sizes="64x64"'
+      ) &&
+      index.includes(
+        'href="/favicon.png"'
+      ) &&
+      index.includes(
+        'name="theme-color"\n      content="#16c65b"'
+      ),
+      "StayOpti PNG favicon or browser theme color is not wired"
+    );
+
+    assert.ok(
+      navbar.includes(
+        'src="/brand/stayopti-logo.png"'
+      ) &&
+      navbar.includes(
+        'aria-label="StayOpti home"'
+      ) &&
+      navbar.includes(
+        'alt=""'
+      ) &&
+      navbar.includes(
+        'aria-hidden="true"'
+      ),
+      "Navbar does not expose the approved accessible StayOpti logo"
+    );
+
+    assert.doesNotMatch(
+      navbar,
+      /navbar__brand-name|>\s*StayOpti\s*</,
+      "Navbar must display only the logo, without a visible wordmark"
+    );
+
+    assert.ok(
+      hero.includes(
+        '<h1 className="hero__title">'
+      ) &&
+      hero.includes(
+        "StayOpti"
+      ) &&
+      hero.includes(
+        "Find the smartest way to travel."
+      ),
+      "Hero must preserve the StayOpti text title and subtitle"
+    );
+
+    assert.doesNotMatch(
+      hero,
+      /<img\b|hero__brand-mark|stayopti-(?:mark|logo)/,
+      "Hero must not display a logo above the StayOpti title"
+    );
+
+    assert.ok(
+      optimizer.includes(
+        "Find my stay"
+      ) &&
+      !optimizer.includes(
+        "Find my StayOpti"
+      ),
+      "Home search CTA must use the approved Find my stay copy"
+    );
+
+    const runtimeBrandSources =
+      [
+        index,
+        navbar,
+        hero,
+      ].join("\n");
+
+    assert.doesNotMatch(
+      runtimeBrandSources,
+      /stayopti-mark\.svg|favicon\.svg/,
+      "Legacy StayOpti symbols must not remain wired into runtime surfaces"
+    );
+  }
+);
+
+test(
+  "StayOpti final Navbar logo keeps deterministic responsive sizing",
+  () => {
     const navbarCss =
       readText(
         "src/components/Navbar/Navbar.css"
@@ -124,49 +286,6 @@ test(
       );
 
     assert.ok(
-      index.includes(
-        '<link rel="icon" type="image/svg+xml" href="/favicon.svg" />'
-      ) &&
-      index.includes(
-        'name="theme-color"\n      content="#16c65b"'
-      ),
-      "StayOpti favicon or browser theme color is not wired"
-    );
-
-    for (
-      const [
-        relativePath,
-        source,
-      ]
-      of [
-        [
-          "Navbar.tsx",
-          navbar,
-        ],
-        [
-          "Hero.tsx",
-          hero,
-        ],
-      ]
-    ) {
-      assert.ok(
-        source.includes(
-          'src="/brand/stayopti-mark.svg"'
-        ) &&
-        source.includes(
-          'alt=""'
-        ) &&
-        source.includes(
-          "aria-hidden=\"true\""
-        ) &&
-        source.includes(
-          "StayOpti"
-        ),
-        `Accessible StayOpti mark integration is incomplete in ${relativePath}`
-      );
-    }
-
-    assert.ok(
       navbarCss.includes(
         ".navbar__brand-mark"
       ) &&
@@ -175,30 +294,29 @@ test(
       ) &&
       navbarCss.includes(
         "width: 34px"
+      ) &&
+      navbarCss.includes(
+        "border-radius: 50%"
       ),
-      "Navbar logo does not define deterministic desktop and mobile sizing"
+      "Navbar logo does not preserve desktop, mobile and focus sizing"
     );
 
-    assert.ok(
-      heroCss.includes(
-        ".hero__brand-mark"
-      ) &&
-      heroCss.includes(
-        "width: 92px"
-      ) &&
-      heroCss.includes(
-        "width: 68px"
-      ) &&
-      heroCss.includes(
-        "color: #159447"
-      ),
-      "Hero logo and accessible wordmark do not preserve the approved responsive visual contract"
+    assert.doesNotMatch(
+      navbarCss,
+      /navbar__brand-name/,
+      "Removed Navbar wordmark styles must not remain"
+    );
+
+    assert.doesNotMatch(
+      heroCss,
+      /hero__brand-mark/,
+      "Removed Hero logo styles must not remain"
     );
   }
 );
 
 test(
-  "StayOpti keeps the accessible Home wordmark color separate from the logo green",
+  "StayOpti keeps the accessible Home wordmark color separate from the logo colors",
   () => {
     const heroCss =
       readText(
@@ -220,34 +338,8 @@ test(
 );
 
 test(
-  "StayOpti visual integration preserves public text and compatibility boundaries",
+  "StayOpti visual refresh preserves compatibility-sensitive internal identifiers",
   () => {
-    const navbar =
-      readText(
-        "src/components/Navbar/Navbar.tsx"
-      );
-
-    const hero =
-      readText(
-        "src/components/Hero/Hero.tsx"
-      );
-
-    assert.ok(
-      navbar.includes(
-        'aria-label="StayOpti home"'
-      ) &&
-      navbar.includes(
-        '<span className="navbar__brand-name">'
-      ) &&
-      hero.includes(
-        '<h1 className="hero__title">'
-      ) &&
-      hero.includes(
-        "Find the smartest way to travel."
-      ),
-      "The visible and accessible public wordmark must remain text"
-    );
-
     const rootPackage =
       JSON.parse(
         readText("package.json")

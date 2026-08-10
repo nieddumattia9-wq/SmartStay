@@ -152,7 +152,7 @@ test(
       ],
       [
         "src/components/TripOptimizer/TripOptimizer.tsx",
-        "Find my StayOpti",
+        "Find my stay",
       ],
       [
         "src/components/SmartOptimizer/SmartOptimizer.tsx",

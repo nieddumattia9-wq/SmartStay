@@ -14,16 +14,6 @@
 
 }
 
-.hero__brand-mark {
-
-  width: 92px;
-
-  height: 92px;
-
-  margin-bottom: 4px;
-
-}
-
 .hero__title {
 
   margin: 0;
@@ -78,14 +68,6 @@
 
   }
 
-  .hero__brand-mark {
-
-    width: 76px;
-
-    height: 76px;
-
-  }
-
   .hero__subtitle {
 
     font-size: 1.1rem;
@@ -97,14 +79,6 @@
 }
 
 @media (max-width: 480px) {
-
-  .hero__brand-mark {
-
-    width: 68px;
-
-    height: 68px;
-
-  }
 
   .hero__title {
 

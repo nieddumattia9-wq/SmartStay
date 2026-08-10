@@ -17,19 +17,13 @@ function Navbar() {
       >
 
         <img
-          src="/brand/stayopti-mark.svg"
+          src="/brand/stayopti-logo.png"
           className="navbar__brand-mark"
           alt=""
           aria-hidden="true"
           width="40"
           height="40"
         />
-
-        <span className="navbar__brand-name">
-
-          StayOpti
-
-        </span>
 
       </Link>
 

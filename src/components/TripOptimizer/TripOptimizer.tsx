@@ -667,7 +667,7 @@ function TripOptimizer() {
         />
 
         <span>
-          Find my StayOpti
+          Find my stay
         </span>
       </button>
     </form>
