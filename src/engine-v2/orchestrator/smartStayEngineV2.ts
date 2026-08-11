@@ -128,6 +128,18 @@ import type {
 } from "../recommendation/recommendationRolesEngine";
 
 import {
+  createRecommendationDecisionTraceRuntimeV2,
+} from "../recommendation/recommendationDecisionTraceRuntimeV2";
+
+import {
+  validateRecommendationDecisionTraceV2,
+} from "../recommendation/recommendationDecisionTraceV2";
+
+import type {
+  SmartStayRecommendationDecisionTraceV2,
+} from "../recommendation/recommendationDecisionTraceV2";
+
+import {
   evaluateEvidenceBasedExplanationsV2,
 } from "../explanations/evidenceBasedExplanationsEngine";
 
@@ -289,6 +301,17 @@ export interface SmartStayEngineV2SearchResult {
 
   ranking:
     SmartStayRankingStabilityDiversityEvaluationV2;
+}
+
+export interface SmartStayEngineV2InternalDiagnosticsOptions {
+  recommendationDecisionTrace?: boolean;
+}
+
+export interface SmartStayEngineV2InternalDiagnosticsResult {
+  result: SmartStayEngineV2SearchResult;
+  recommendationDecisionTrace:
+    SmartStayRecommendationDecisionTraceV2 |
+    null;
 }
 
 interface FoundationCandidate {
@@ -2765,5 +2788,43 @@ export function evaluateSmartStaySearchV2(
     explanations,
     counterfactualComparisons,
     ranking,
+  };
+}
+
+export function evaluateSmartStaySearchWithInternalDiagnosticsV2(
+  input: SmartStayEngineV2SearchInput,
+  diagnostics: SmartStayEngineV2InternalDiagnosticsOptions = {}
+): SmartStayEngineV2InternalDiagnosticsResult {
+  const result = evaluateSmartStaySearchV2(input);
+
+  if (diagnostics.recommendationDecisionTrace !== true) {
+    return {
+      result,
+      recommendationDecisionTrace: null,
+    };
+  }
+
+  const recommendationDecisionTrace =
+    createRecommendationDecisionTraceRuntimeV2({
+      searchInput: input,
+      result,
+    });
+  const validation = validateRecommendationDecisionTraceV2(
+    recommendationDecisionTrace
+  );
+
+  if (!validation.valid) {
+    const issueCodes = validation.issues
+      .map((issue) => issue.code)
+      .join(", ");
+
+    throw new Error(
+      `Recommendation Decision Trace runtime validation failed: ${issueCodes}.`
+    );
+  }
+
+  return {
+    result,
+    recommendationDecisionTrace,
   };
 }
