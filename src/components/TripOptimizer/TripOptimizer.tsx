@@ -613,12 +613,29 @@ function TripOptimizer() {
       </div>
 
       <div className="trip-card__preferences-grid">
-        <div className="trip-card__preference-column">
+        <div className="trip-card__preference-slot trip-card__preference-slot--guests">
           <GuestsSelector
             value={guests}
             onChange={setGuests}
           />
+        </div>
 
+        <SmartOptimizer
+          value={
+            effectiveSmartPreference
+          }
+          explanation={
+            automaticPreferenceBalance
+              .explanation
+          }
+          isReady={
+            automaticPreferenceBalance
+              .isReady
+          }
+          className="smart-optimizer--guided trip-card__balance-indicator"
+        />
+
+        <div className="trip-card__preference-slot trip-card__preference-slot--distance">
           <DistanceSelector
             value={
               maxDistanceKm
@@ -629,32 +646,19 @@ function TripOptimizer() {
           />
         </div>
 
-        <BudgetSelector
-          value={budget}
-          onChange={
-            handleBudgetChange
-          }
-          nightCount={
-            currentNightCount
-          }
-          currency="EUR"
-        />
+        <div className="trip-card__preference-slot trip-card__preference-slot--budget">
+          <BudgetSelector
+            value={budget}
+            onChange={
+              handleBudgetChange
+            }
+            nightCount={
+              currentNightCount
+            }
+            currency="EUR"
+          />
+        </div>
       </div>
-
-      <SmartOptimizer
-        value={
-          effectiveSmartPreference
-        }
-        explanation={
-          automaticPreferenceBalance
-            .explanation
-        }
-        isReady={
-          automaticPreferenceBalance
-            .isReady
-        }
-        className="smart-optimizer--guided"
-      />
 
       <button
         type="submit"

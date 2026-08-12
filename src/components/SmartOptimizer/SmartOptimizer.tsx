@@ -45,7 +45,10 @@ function indexToPercent(
   }
 
   return (
-    sanitizeIndex(index) /
+    (
+      MAX_INDEX -
+      sanitizeIndex(index)
+    ) /
     MAX_INDEX
   ) * 100;
 }
@@ -101,11 +104,11 @@ function SmartOptimizer({
 
       <div className="optimizer-labels">
         <span>
-          More comfort
+          More savings
         </span>
 
         <span>
-          More savings
+          More comfort
         </span>
       </div>
 
