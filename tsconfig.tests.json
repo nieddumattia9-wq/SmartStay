@@ -26,7 +26,9 @@
     "src/engine-v2/golden-dataset/**/*.ts",
     "src/engine-v2/orchestrator/**/*.ts",
     "src/engine-v2/ranking/**/*.ts",
-    "tests/engine-v2/**/*.test.ts"
+    "src/engine-v3/**/*.ts",
+    "tests/engine-v2/**/*.test.ts",
+    "tests/engine-v3/**/*.test.ts"
   ],
   "exclude": [
     "node_modules",
