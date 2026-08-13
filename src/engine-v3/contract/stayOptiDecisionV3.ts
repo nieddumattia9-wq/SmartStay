@@ -9,6 +9,7 @@ import {
 
 import {
   isStableHashV3,
+  stableSerializeV3,
 } from "./stableHashV3";
 
 import {
@@ -28,6 +29,16 @@ import {
   type SmartStayPolicyVersionV3,
   type SmartStayV2AdapterVersionV3,
 } from "./versionsV3";
+
+import {
+  createStayIntegrityCoverageReportV3,
+  type StayIntegrityCoverageReportV3,
+} from "../integrity/integrityCoverageV3";
+
+import {
+  validateStayOfferIntegritySnapshotV3,
+  type StayOfferIntegritySnapshotV3,
+} from "../integrity/stayOfferIntegrityV3";
 
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
@@ -234,6 +245,9 @@ export interface StayOptiDecisionTraceV3 {
   candidateHotelIds:
     string[];
 
+  offerSnapshotIds:
+    string[];
+
   roleAssignments:
     Array<{
       solutionId:
@@ -245,6 +259,31 @@ export interface StayOptiDecisionTraceV3 {
       sourceReasonCodes:
         string[];
     }>;
+}
+
+export interface StayOptiDecisionIntegrityV3 {
+  phase:
+    "v3-02";
+
+  offerSnapshots:
+    StayOfferIntegritySnapshotV3[];
+
+  coverage:
+    StayIntegrityCoverageReportV3;
+
+  recheckPolicy: {
+    requiredBeforeHandoff:
+      true;
+
+    materialChangeRequiresUserConfirmation:
+      true;
+
+    materialChangeRequiresDecisionReplay:
+      true;
+  };
+
+  reasonCodes:
+    SmartStayReasonCodeV3[];
 }
 
 export interface StayOptiDecisionReplayV3 {
@@ -285,6 +324,9 @@ export interface StayOptiDecisionV3 {
 
   coverage:
     StayOptiDecisionCoverageV3;
+
+  integrity:
+    StayOptiDecisionIntegrityV3;
 
   solutions:
     StaySolutionV3[];
@@ -358,6 +400,11 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-recommended-solution-invalid"
   | "decision-best-alternative-invalid"
   | "decision-temporal-solution-invalid"
+  | "decision-integrity-snapshot-invalid"
+  | "decision-integrity-snapshot-id-duplicate"
+  | "decision-integrity-segment-snapshot-missing"
+  | "decision-integrity-coverage-mismatch"
+  | "decision-integrity-promotion-unsafe"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -448,7 +495,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-01 contract."
+      "Decision versions do not match the frozen V3-02 contract."
     );
   }
 
@@ -475,6 +522,121 @@ export function validateStayOptiDecisionV3(
 
   const solutionIds =
     new Set<string>();
+
+  const snapshotIds =
+    new Set<string>();
+
+  const snapshotOfferKeys =
+    new Set<string>();
+
+  decision.integrity
+    .offerSnapshots.forEach(
+      (
+        snapshot,
+        index
+      ) => {
+        const validation =
+          validateStayOfferIntegritySnapshotV3(
+            snapshot
+          );
+
+        if (
+          !validation.valid
+        ) {
+          addIssue(
+            issues,
+            "decision-integrity-snapshot-invalid",
+            `integrity.offerSnapshots.${index}`,
+            validation.issues
+              .map(
+                (issue) =>
+                  issue.code
+              )
+              .join(
+                ", "
+              )
+          );
+        }
+
+        if (
+          snapshotIds.has(
+            snapshot.snapshotId
+          )
+        ) {
+          addIssue(
+            issues,
+            "decision-integrity-snapshot-id-duplicate",
+            `integrity.offerSnapshots.${index}.snapshotId`,
+            "Offer integrity snapshot IDs must be unique."
+          );
+        }
+
+        snapshotIds.add(
+          snapshot.snapshotId
+        );
+
+        snapshotOfferKeys.add(
+          `${snapshot.hotelId}\u0000${snapshot.offerId}`
+        );
+      }
+    );
+
+  const expectedIntegrityCoverage =
+    createStayIntegrityCoverageReportV3({
+      analyzedHotelCount:
+        decision.coverage
+          .analyzedHotelCount,
+      snapshots:
+        decision.integrity
+          .offerSnapshots,
+      publicRatesConsistency:
+        decision.integrity
+          .coverage
+          .publicRatesConsistency,
+    });
+
+  if (
+    stableSerializeV3(
+      expectedIntegrityCoverage
+    ) !==
+      stableSerializeV3(
+        decision.integrity
+          .coverage
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-integrity-coverage-mismatch",
+      "integrity.coverage",
+      "Integrity coverage must be reproducible from the attached offer snapshots."
+    );
+  }
+
+  if (
+    decision.mode ===
+      "compatibility-v2" &&
+    (
+      decision.integrity
+        .coverage
+        .publicRatesConsistency !==
+        "unverified" ||
+      decision.integrity
+        .coverage
+        .publicV3Promotion !==
+        "blocked" ||
+      decision.integrity
+        .coverage
+        .publicSplitPromotion !==
+        "blocked"
+    )
+  ) {
+    addIssue(
+      issues,
+      "decision-integrity-promotion-unsafe",
+      "integrity.coverage",
+      "The V2 compatibility adapter cannot certify public-rate consistency or public V3/Split promotion."
+    );
+  }
 
   const solutionById =
     new Map<
@@ -531,6 +693,26 @@ export function validateStayOptiDecisionV3(
         solution.solutionId,
         solution
       );
+
+      for (
+        const segment
+        of solution.segments
+      ) {
+        if (
+          segment.offerId ===
+            null ||
+          !snapshotOfferKeys.has(
+            `${segment.hotelId}\u0000${segment.offerId}`
+          )
+        ) {
+          addIssue(
+            issues,
+            "decision-integrity-segment-snapshot-missing",
+            `solutions.${index}.segments.${segment.ordinal}`,
+            "Every decision segment must reference a canonical offer integrity snapshot."
+          );
+        }
+      }
     }
   );
 
@@ -668,6 +850,42 @@ export function validateStayOptiDecisionV3(
     "counterfactuals.reasonCodes",
     issues
   );
+
+  validateReasonCodes(
+    decision.integrity
+      .reasonCodes,
+    "integrity.reasonCodes",
+    issues
+  );
+
+  validateReasonCodes(
+    decision.integrity
+      .coverage
+      .reasonCodes,
+    "integrity.coverage.reasonCodes",
+    issues
+  );
+
+  const expectedTraceSnapshotIds = [
+    ...snapshotIds,
+  ].sort();
+
+  if (
+    stableSerializeV3(
+      expectedTraceSnapshotIds
+    ) !==
+      stableSerializeV3(
+        decision.internalTrace
+          .offerSnapshotIds
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-integrity-coverage-mismatch",
+      "internalTrace.offerSnapshotIds",
+      "Internal trace must reference every offer integrity snapshot exactly once."
+    );
+  }
 
   try {
     assertCommercialFirewallV3(

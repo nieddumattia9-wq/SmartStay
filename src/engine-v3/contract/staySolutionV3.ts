@@ -125,6 +125,7 @@ export type StaySolutionValidationIssueCodeV3 =
   | "solution-transition-count-invalid"
   | "solution-date-range-invalid"
   | "solution-segments-not-contiguous"
+  | "solution-boundary-mismatch"
   | "solution-segment-id-missing"
   | "solution-segment-ordinal-invalid"
   | "solution-segment-hotel-id-missing"
@@ -132,7 +133,9 @@ export type StaySolutionValidationIssueCodeV3 =
   | "solution-total-nights-mismatch"
   | "solution-cost-invalid"
   | "solution-cost-currency-mismatch"
-  | "solution-total-cost-mismatch";
+  | "solution-total-cost-mismatch"
+  | "solution-total-tax-mismatch"
+  | "solution-feasibility-inconsistent";
 
 export interface StaySolutionValidationIssueV3 {
   code:
@@ -430,6 +433,19 @@ export function validateStaySolutionV3(
     solution.segments.length >
     0;
 
+  let allSegmentsFeasible =
+    solution.segments.length >
+    0;
+
+  let segmentIncludedTaxTotal =
+    0;
+
+  let segmentExcludedTaxTotal =
+    0;
+
+  let segmentUnknownTaxTotal =
+    0;
+
   for (
     const [
       index,
@@ -547,6 +563,23 @@ export function validateStaySolutionV3(
     }
 
     if (
+      segmentStart ===
+        null ||
+      segmentEnd ===
+        null ||
+      !segment.bookable ||
+      segment.cost.amount ===
+        null ||
+      segment.cost.currency ===
+        null ||
+      segment.cost.completeness !==
+        "reported-complete"
+    ) {
+      allSegmentsFeasible =
+        false;
+    }
+
+    if (
       previousEnd !==
         null &&
       segmentStart !==
@@ -607,6 +640,62 @@ export function validateStaySolutionV3(
       knownSegmentCostTotal +=
         segment.cost.amount;
     }
+
+    segmentIncludedTaxTotal +=
+      segment.cost
+        .includedTaxes;
+
+    segmentExcludedTaxTotal +=
+      segment.cost
+        .excludedTaxes;
+
+    segmentUnknownTaxTotal +=
+      segment.cost
+        .unknownTaxes;
+  }
+
+  const firstSegment =
+    solution.segments[0] ??
+    null;
+
+  const lastSegment =
+    solution.segments[
+      solution.segments.length -
+      1
+    ] ??
+    null;
+
+  if (
+    firstSegment !==
+      null &&
+    lastSegment !==
+      null &&
+    (
+      firstSegment.checkIn !==
+        solution.checkIn ||
+      lastSegment.checkOut !==
+        solution.checkOut
+    )
+  ) {
+    addIssue(
+      issues,
+      "solution-boundary-mismatch",
+      "checkIn/checkOut",
+      "Solution boundaries must match the first check-in and final check-out."
+    );
+  }
+
+  if (
+    solution.feasibility ===
+      "feasible" &&
+    !allSegmentsFeasible
+  ) {
+    addIssue(
+      issues,
+      "solution-feasibility-inconsistent",
+      "feasibility",
+      "A feasible solution requires complete dates, bookable segments and reported-complete costs."
+    );
   }
 
   if (
@@ -662,6 +751,34 @@ export function validateStaySolutionV3(
       "solution-total-cost-mismatch",
       "totalCost.amount",
       "Solution total cost must equal the sum of segment costs."
+    );
+  }
+
+  if (
+    Math.abs(
+      segmentIncludedTaxTotal -
+      solution.totalCost
+        .includedTaxes
+    ) >
+      0.01 ||
+    Math.abs(
+      segmentExcludedTaxTotal -
+      solution.totalCost
+        .excludedTaxes
+    ) >
+      0.01 ||
+    Math.abs(
+      segmentUnknownTaxTotal -
+      solution.totalCost
+        .unknownTaxes
+    ) >
+      0.01
+  ) {
+    addIssue(
+      issues,
+      "solution-total-tax-mismatch",
+      "totalCost",
+      "Solution tax components must equal the sum of segment tax components."
     );
   }
 

@@ -16,6 +16,7 @@ export {
   validateStayOptiDecisionV3,
   type StayOptiDecisionCandidateV3,
   type StayOptiDecisionContextV3,
+  type StayOptiDecisionIntegrityV3,
   type StayOptiDecisionRoleV3,
   type StayOptiDecisionStatusV3,
   type StayOptiDecisionV3,
@@ -42,6 +43,36 @@ export {
 export {
   SMARTSTAY_V3_VERSIONS,
 } from "./contract/versionsV3";
+
+export {
+  createStayIntegrityCoverageReportV3,
+  type StayIntegrityCoverageReportV3,
+  type StayIntegrityGateStatusV3,
+  type StayPublicRatesConsistencyV3,
+} from "./integrity/integrityCoverageV3";
+
+export {
+  assertStayOfferIntegritySnapshotV3,
+  createCanonicalOfferKeyV3,
+  createStayOfferIntegritySnapshotV3,
+  createStayOfferSnapshotFingerprintV3,
+  deduplicateStayOfferSnapshotsV3,
+  enumerateStayNightsV3,
+  parseIsoDateV3,
+  validateStayOfferIntegritySnapshotV3,
+  type CreateStayOfferIntegritySnapshotInputV3,
+  type StayCanonicalCostV3,
+  type StayNightEvidenceInputV3,
+  type StayOfferIntegritySnapshotV3,
+  type StayScopeV3,
+  type StayTemporalPriceEvidenceV3,
+} from "./integrity/stayOfferIntegrityV3";
+
+export {
+  compareStayOfferRecheckV3,
+  type StayOfferRecheckDecisionDiffV3,
+  type StayOfferRecheckStateV3,
+} from "./integrity/recheckDecisionDiffV3";
 
 export {
   createDecisionFingerprintV3,

@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.1"
+      "3.0.0-decision.2"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.1"
+      "3.0.0-alpha.2"
     );
     assert.equal(
       decision.mode,
@@ -503,6 +503,66 @@ test(
         (solution) =>
           solution.kind ===
           "single"
+      ),
+      true
+    );
+    assert.equal(
+      decision.integrity.phase,
+      "v3-02"
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .offerSnapshotCount,
+      decision.coverage
+        .analyzedHotelCount
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .exactStayScopeCount,
+      decision.integrity
+        .coverage
+        .offerSnapshotCount
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .completeNightlyEvidenceCount,
+      0
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .publicRatesConsistency,
+      "unverified"
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .publicV3Promotion,
+      "blocked"
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .publicSplitPromotion,
+      "blocked"
+    );
+    assert.equal(
+      decision.solutions.every(
+        (solution) =>
+          solution.segments.every(
+            (segment) =>
+              decision.integrity
+                .offerSnapshots.some(
+                  (snapshot) =>
+                    snapshot.hotelId ===
+                      segment.hotelId &&
+                    snapshot.offerId ===
+                      segment.offerId
+                )
+          )
       ),
       true
     );
@@ -549,6 +609,22 @@ test(
           "split-saver"
       ),
       false
+    );
+    assert.equal(
+      decision.integrity
+        .coverage
+        .offlineTemporalEvaluation,
+      "blocked"
+    );
+    assert.equal(
+      decision.integrity
+        .offerSnapshots.every(
+          (snapshot) =>
+            snapshot.temporalPriceEvidence
+              .nights.length ===
+              0
+        ),
+      true
     );
   }
 );
@@ -761,6 +837,55 @@ test(
         (issue) =>
           issue.code ===
           "solution-segments-not-contiguous"
+      ),
+      true
+    );
+  }
+);
+
+test(
+  "StaySolution rejects boundary, tax aggregation and feasibility contradictions",
+  () => {
+    const split =
+      createValidSplitSolution();
+
+    split.checkIn =
+      "2026-10-09";
+    split.totalCost.includedTaxes =
+      31;
+    split.segments[0].bookable =
+      false;
+
+    const validation =
+      validateStaySolutionV3(
+        split
+      );
+
+    assert.equal(
+      validation.valid,
+      false
+    );
+    assert.equal(
+      validation.issues.some(
+        (issue) =>
+          issue.code ===
+          "solution-boundary-mismatch"
+      ),
+      true
+    );
+    assert.equal(
+      validation.issues.some(
+        (issue) =>
+          issue.code ===
+          "solution-total-tax-mismatch"
+      ),
+      true
+    );
+    assert.equal(
+      validation.issues.some(
+        (issue) =>
+          issue.code ===
+          "solution-feasibility-inconsistent"
       ),
       true
     );
