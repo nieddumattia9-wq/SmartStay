@@ -17,6 +17,7 @@ export {
   type StayOptiDecisionCandidateV3,
   type StayOptiDecisionContextV3,
   type StayOptiDecisionIntegrityV3,
+  type StayOptiDecisionPersonalizationV3,
   type StayOptiDecisionRoleV3,
   type StayOptiDecisionStatusV3,
   type StayOptiDecisionV3,
@@ -79,3 +80,35 @@ export {
   runDeterministicDecisionReplayV3,
   verifyDecisionReplayV3,
 } from "./replay/decisionReplayV3";
+
+export {
+  applyDiminishingReturnsV3,
+  createBudgetUtilityV3,
+  evaluatePersonalUtilityV3,
+  isStayOptiPreferenceIdV3,
+  resolvePersonalPreferenceV3,
+  validatePersonalUtilityEvaluationV3,
+  type EvaluateStayOptiPersonalUtilityInputV3,
+  type StayOptiPersonalUtilityContextV3,
+  type StayOptiPersonalUtilityEvaluationV3,
+  type StayOptiPreferenceIdV3,
+  type StayOptiPreferenceOriginV3,
+  type StayOptiPreferenceResolutionV3,
+  type StayOptiTripTypeV3,
+  type StayOptiUtilityContributionV3,
+  type StayOptiUtilityDimensionInputV3,
+  type StayOptiUtilityDimensionV3,
+  type StayOptiUtilityInteractionV3,
+} from "./utility/personalUtilityV3";
+
+export {
+  evaluatePeerIntelligenceV3,
+  validatePeerAssignmentV3,
+  type StayOptiPeerAssignmentV3,
+  type StayOptiPeerCandidateV3,
+  type StayOptiPeerCategoryV3,
+  type StayOptiPeerExclusionV3,
+  type StayOptiPeerGroupModeV3,
+  type StayOptiPeerIntelligenceOptionsV3,
+  type StayOptiPeerUnitTypeV3,
+} from "./peer/peerIntelligenceV3";

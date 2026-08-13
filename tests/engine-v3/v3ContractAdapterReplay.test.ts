@@ -475,15 +475,56 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.2"
+      "3.0.0-decision.3"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.2"
+      "3.0.0-alpha.3"
     );
     assert.equal(
       decision.mode,
       "compatibility-v2"
+    );
+    assert.equal(
+      decision.personalization
+        .phase,
+      "v3-03"
+    );
+    assert.equal(
+      decision.personalization
+        .rankingApplication,
+      "shadow-only"
+    );
+    assert.equal(
+      decision.personalization
+        .preference.origin,
+      "declared"
+    );
+    assert.equal(
+      decision.personalization
+        .preference
+        .declaredPreferenceId,
+      "balanced"
+    );
+    assert.equal(
+      decision.personalization
+        .preference
+        .inferredPreferenceId,
+      null
+    );
+    assert.equal(
+      decision.personalization
+        .utilityEvaluations
+        .length,
+      decision.coverage
+        .analyzedHotelCount
+    );
+    assert.equal(
+      decision.personalization
+        .peerAssignments
+        .length,
+      decision.coverage
+        .analyzedHotelCount
     );
     assert.equal(
       validateStayOptiDecisionV3(
@@ -491,6 +532,41 @@ test(
       ).valid,
       true
     );
+
+    const v2Result =
+      evaluateSmartStaySearchV2(
+        SEARCH_INPUT
+      );
+
+    for (
+      const candidate
+      of decision.candidates
+    ) {
+      const hotelId =
+        decision.solutions.find(
+          (solution) =>
+            solution.solutionId ===
+            candidate.solutionId
+        )?.segments[0]
+          ?.hotelId;
+
+      const v2Pick =
+        v2Result
+          .recommendationRoles
+          .picks.find(
+            (pick) =>
+              pick.hotelId ===
+                hotelId &&
+              pick.role ===
+                candidate.role
+          );
+
+      assert.equal(
+        candidate.utilityScore,
+        v2Pick?.metrics
+          .utilityScore
+      );
+    }
     assert.equal(
       decision.replay
         .decisionFingerprint,
@@ -758,6 +834,69 @@ test(
           "decision-commercial-firewall-failed"
       ),
       true
+    );
+  }
+);
+
+test(
+  "V3 contract rejects mutated utility and unsafe peer output",
+  () => {
+    const utilityMutation =
+      createDecision();
+
+    utilityMutation
+      .personalization
+      .utilityEvaluations[0]
+      .utilityScore =
+        100;
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        utilityMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-personalization-utility-invalid"
+      )
+    );
+
+    const peerMutation =
+      createDecision();
+
+    peerMutation
+      .personalization
+      .peerAssignments[0]
+      .directComparisonAllowed =
+        !peerMutation
+          .personalization
+          .peerAssignments[0]
+          .directComparisonAllowed;
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        peerMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-personalization-peer-invalid"
+      )
+    );
+
+    const preferenceMutation =
+      createDecision();
+
+    preferenceMutation.context
+      .preferenceId =
+        "maximum-savings";
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        preferenceMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-personalization-preference-invalid"
+      )
     );
   }
 );

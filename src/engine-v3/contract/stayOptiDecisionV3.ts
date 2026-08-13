@@ -40,6 +40,18 @@ import {
   type StayOfferIntegritySnapshotV3,
 } from "../integrity/stayOfferIntegrityV3";
 
+import {
+  isStayOptiPreferenceIdV3,
+  validatePersonalUtilityEvaluationV3,
+  type StayOptiPersonalUtilityEvaluationV3,
+  type StayOptiPreferenceResolutionV3,
+} from "../utility/personalUtilityV3";
+
+import {
+  validatePeerAssignmentV3,
+  type StayOptiPeerAssignmentV3,
+} from "../peer/peerIntelligenceV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -248,6 +260,12 @@ export interface StayOptiDecisionTraceV3 {
   offerSnapshotIds:
     string[];
 
+  utilityEvaluationIds:
+    string[];
+
+  peerAssignmentIds:
+    string[];
+
   roleAssignments:
     Array<{
       solutionId:
@@ -281,6 +299,26 @@ export interface StayOptiDecisionIntegrityV3 {
     materialChangeRequiresDecisionReplay:
       true;
   };
+
+  reasonCodes:
+    SmartStayReasonCodeV3[];
+}
+
+export interface StayOptiDecisionPersonalizationV3 {
+  phase:
+    "v3-03";
+
+  rankingApplication:
+    "shadow-only";
+
+  preference:
+    StayOptiPreferenceResolutionV3;
+
+  utilityEvaluations:
+    StayOptiPersonalUtilityEvaluationV3[];
+
+  peerAssignments:
+    StayOptiPeerAssignmentV3[];
 
   reasonCodes:
     SmartStayReasonCodeV3[];
@@ -327,6 +365,9 @@ export interface StayOptiDecisionV3 {
 
   integrity:
     StayOptiDecisionIntegrityV3;
+
+  personalization:
+    StayOptiDecisionPersonalizationV3;
 
   solutions:
     StaySolutionV3[];
@@ -405,6 +446,11 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-integrity-segment-snapshot-missing"
   | "decision-integrity-coverage-mismatch"
   | "decision-integrity-promotion-unsafe"
+  | "decision-personalization-preference-invalid"
+  | "decision-personalization-utility-invalid"
+  | "decision-personalization-peer-invalid"
+  | "decision-personalization-hotel-duplicate"
+  | "decision-personalization-coverage-mismatch"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -495,7 +541,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-02 contract."
+      "Decision versions do not match the frozen V3-03 contract."
     );
   }
 
@@ -635,6 +681,216 @@ export function validateStayOptiDecisionV3(
       "decision-integrity-promotion-unsafe",
       "integrity.coverage",
       "The V2 compatibility adapter cannot certify public-rate consistency or public V3/Split promotion."
+    );
+  }
+
+  const preference =
+    decision.personalization
+      .preference;
+
+  const validPreferenceShape =
+    decision.personalization
+      .phase ===
+      "v3-03" &&
+    decision.personalization
+      .rankingApplication ===
+      "shadow-only" &&
+    isStayOptiPreferenceIdV3(
+      preference
+        .resolvedPreferenceId
+    ) &&
+    decision.context
+      .preferenceId ===
+      preference
+        .resolvedPreferenceId &&
+    (
+      preference.origin ===
+        "declared"
+        ? preference
+            .declaredPreferenceId !==
+            null &&
+          preference
+            .inferredPreferenceId ===
+            null &&
+          preference
+            .resolvedPreferenceId ===
+            preference
+              .declaredPreferenceId
+        : preference.origin ===
+            "inferred"
+          ? preference
+              .declaredPreferenceId ===
+              null &&
+            preference
+              .inferredPreferenceId !==
+              null &&
+            preference
+              .resolvedPreferenceId ===
+              preference
+                .inferredPreferenceId
+          : preference.origin ===
+              "neutral-default" &&
+            preference
+              .declaredPreferenceId ===
+              null &&
+            preference
+              .inferredPreferenceId ===
+              null &&
+            preference
+              .resolvedPreferenceId ===
+              "balanced"
+    );
+
+  if (
+    !validPreferenceShape
+  ) {
+    addIssue(
+      issues,
+      "decision-personalization-preference-invalid",
+      "personalization.preference",
+      "Declared, inferred and neutral preference states must remain separate and internally consistent."
+    );
+  }
+
+  const utilityHotelIds =
+    new Set<string>();
+
+  const utilityEvaluationIds =
+    new Set<string>();
+
+  decision.personalization
+    .utilityEvaluations
+    .forEach(
+      (
+        evaluation,
+        index
+      ) => {
+        if (
+          !validatePersonalUtilityEvaluationV3(
+            evaluation
+          ).valid ||
+          stableSerializeV3(
+            evaluation.preference
+          ) !==
+            stableSerializeV3(
+              preference
+            )
+        ) {
+          addIssue(
+            issues,
+            "decision-personalization-utility-invalid",
+            `personalization.utilityEvaluations.${index}`,
+            "Personal utility evaluation is invalid or uses a different preference resolution."
+          );
+        }
+
+        if (
+          utilityHotelIds.has(
+            evaluation.hotelId
+          ) ||
+          utilityEvaluationIds.has(
+            evaluation.evaluationId
+          )
+        ) {
+          addIssue(
+            issues,
+            "decision-personalization-hotel-duplicate",
+            `personalization.utilityEvaluations.${index}`,
+            "Personal utility evaluations require unique hotel and evaluation IDs."
+          );
+        }
+
+        utilityHotelIds.add(
+          evaluation.hotelId
+        );
+
+        utilityEvaluationIds.add(
+          evaluation.evaluationId
+        );
+      }
+    );
+
+  const peerHotelIds =
+    new Set<string>();
+
+  const peerAssignmentIds =
+    new Set<string>();
+
+  decision.personalization
+    .peerAssignments
+    .forEach(
+      (
+        assignment,
+        index
+      ) => {
+        if (
+          !validatePeerAssignmentV3(
+            assignment
+          ).valid
+        ) {
+          addIssue(
+            issues,
+            "decision-personalization-peer-invalid",
+            `personalization.peerAssignments.${index}`,
+            "Peer assignment is invalid or permits an undeclared incompatible comparison."
+          );
+        }
+
+        if (
+          peerHotelIds.has(
+            assignment.hotelId
+          ) ||
+          peerAssignmentIds.has(
+            assignment.assignmentId
+          )
+        ) {
+          addIssue(
+            issues,
+            "decision-personalization-hotel-duplicate",
+            `personalization.peerAssignments.${index}`,
+            "Peer assignments require unique hotel and assignment IDs."
+          );
+        }
+
+        peerHotelIds.add(
+          assignment.hotelId
+        );
+
+        peerAssignmentIds.add(
+          assignment.assignmentId
+        );
+      }
+    );
+
+  const expectedPersonalizationHotelIds =
+    decision.internalTrace
+      .candidateHotelIds
+      .slice()
+      .sort();
+
+  if (
+    stableSerializeV3(
+      [
+        ...utilityHotelIds,
+      ].sort()
+    ) !==
+      stableSerializeV3(
+        expectedPersonalizationHotelIds
+      ) ||
+    stableSerializeV3(
+      [
+        ...peerHotelIds,
+      ].sort()
+    ) !==
+      stableSerializeV3(
+        expectedPersonalizationHotelIds
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-personalization-coverage-mismatch",
+      "personalization",
+      "Utility and peer intelligence must cover every analyzed hotel exactly once."
     );
   }
 
@@ -866,6 +1122,13 @@ export function validateStayOptiDecisionV3(
     issues
   );
 
+  validateReasonCodes(
+    decision.personalization
+      .reasonCodes,
+    "personalization.reasonCodes",
+    issues
+  );
+
   const expectedTraceSnapshotIds = [
     ...snapshotIds,
   ].sort();
@@ -884,6 +1147,34 @@ export function validateStayOptiDecisionV3(
       "decision-integrity-coverage-mismatch",
       "internalTrace.offerSnapshotIds",
       "Internal trace must reference every offer integrity snapshot exactly once."
+    );
+  }
+
+  if (
+    stableSerializeV3(
+      [
+        ...utilityEvaluationIds,
+      ].sort()
+    ) !==
+      stableSerializeV3(
+        decision.internalTrace
+          .utilityEvaluationIds
+      ) ||
+    stableSerializeV3(
+      [
+        ...peerAssignmentIds,
+      ].sort()
+    ) !==
+      stableSerializeV3(
+        decision.internalTrace
+          .peerAssignmentIds
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-personalization-coverage-mismatch",
+      "internalTrace.utilityEvaluationIds/peerAssignmentIds",
+      "Internal trace must reference every V3 utility evaluation and peer assignment exactly once."
     );
   }
 

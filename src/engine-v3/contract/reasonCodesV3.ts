@@ -21,6 +21,16 @@ export const SMARTSTAY_REASON_CODES_V3 = [
   "integrity:scope-incomplete",
   "integrity:temporal-evidence-complete",
   "outcome:not-instrumented",
+  "peer:compatible-context",
+  "peer:declared-fallback",
+  "peer:direct-comparison-allowed",
+  "peer:direct-comparison-blocked",
+  "peer:exact-context",
+  "peer:fallback-explicit",
+  "peer:unavailable",
+  "preference:declared",
+  "preference:inferred",
+  "preference:neutral-default",
   "robustness:not-evaluated",
   "role:best-choice",
   "role:best-sensible-saving",
@@ -29,6 +39,11 @@ export const SMARTSTAY_REASON_CODES_V3 = [
   "solution:single",
   "solution:split",
   "temporal:not-evaluated",
+  "utility:budget-no-spend-bias",
+  "utility:evaluated",
+  "utility:non-linear",
+  "utility:shadow-only",
+  "utility:unavailable",
 ] as const;
 
 export type SmartStayReasonCodeV3 =

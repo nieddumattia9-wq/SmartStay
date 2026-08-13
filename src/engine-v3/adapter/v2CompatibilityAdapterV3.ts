@@ -50,6 +50,8 @@ import {
   SMARTSTAY_DECISION_SCHEMA_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
   SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3,
+  SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
+  SMARTSTAY_PERSONAL_UTILITY_VERSION_V3,
   SMARTSTAY_POLICY_VERSION_V3,
   SMARTSTAY_V2_ADAPTER_VERSION_V3,
 } from "../contract/versionsV3";
@@ -67,6 +69,18 @@ import {
   parseIsoDateV3,
   type StayOfferIntegritySnapshotV3,
 } from "../integrity/stayOfferIntegrityV3";
+
+import {
+  evaluatePersonalUtilityV3,
+  isStayOptiPreferenceIdV3,
+  resolvePersonalPreferenceV3,
+  type StayOptiTripTypeV3,
+} from "../utility/personalUtilityV3";
+
+import {
+  evaluatePeerIntelligenceV3,
+  type StayOptiPeerCandidateV3,
+} from "../peer/peerIntelligenceV3";
 
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
@@ -260,12 +274,11 @@ function resolvePreferenceId(
     SmartStayEngineV2SearchInput
 ) {
   if (
-    typeof input.preferenceId ===
-      "string" &&
-    input.preferenceId.trim()
+    isStayOptiPreferenceIdV3(
+      input.preferenceId
+    )
   ) {
-    return input.preferenceId
-      .trim();
+    return input.preferenceId;
   }
 
   const byIndex = [
@@ -289,6 +302,67 @@ function resolvePreferenceId(
         input.selectedIndex
       ]
     : "balanced";
+}
+
+function resolveTripType(
+  input:
+    SmartStayEngineV2SearchInput,
+  counts: {
+    nights:
+      number |
+      null;
+
+    adults:
+      number |
+      null;
+
+    children:
+      number |
+      null;
+
+    rooms:
+      number |
+      null;
+  }
+): StayOptiTripTypeV3 {
+  if (
+    input.tripProfile
+  ) {
+    return input.tripProfile;
+  }
+
+  if (
+    (
+      counts.children ??
+      0
+    ) > 0
+  ) {
+    return "family";
+  }
+
+  if (
+    (
+      counts.adults ??
+      0
+    ) >= 3 ||
+    (
+      counts.rooms ??
+      0
+    ) >= 2
+  ) {
+    return "group";
+  }
+
+  if (
+    (
+      counts.nights ??
+      0
+    ) >= 7
+  ) {
+    return "long-stay";
+  }
+
+  return "mixed";
 }
 
 function resolvePreferenceSource(
@@ -757,11 +831,6 @@ export function adaptV2SearchResultToDecisionV3(
       input.policy
     );
 
-  const preferenceId =
-    resolvePreferenceId(
-      input.searchInput
-    );
-
   const checkIn =
     normalizeIsoDate(
       input.searchInput
@@ -802,6 +871,41 @@ export function adaptV2SearchResultToDecisionV3(
         .rooms
     );
 
+  const tripType =
+    resolveTripType(
+      input.searchInput,
+      {
+        nights,
+        adults,
+        children,
+        rooms,
+      }
+    );
+
+  const resolvedPreferenceId =
+    resolvePreferenceId(
+      input.searchInput
+    );
+
+  const preferenceResolution =
+    resolvePersonalPreferenceV3({
+      preferenceId:
+        resolvedPreferenceId,
+      preferenceSource:
+        resolvePreferenceSource(
+          input.searchInput
+        ),
+      nights,
+      adults,
+      children,
+      rooms,
+      tripType,
+    });
+
+  const preferenceId =
+    preferenceResolution
+      .resolvedPreferenceId;
+
   const stayScope = {
     checkIn,
     checkOut,
@@ -836,6 +940,19 @@ export function adaptV2SearchResultToDecisionV3(
     new Map<
       string,
       StayOfferIntegritySnapshotV3
+    >();
+
+  const selectedOfferByHotelId =
+    new Map<
+      string,
+      SmartStaySelectedOfferV2
+    >();
+
+  const sourceOfferByHotelId =
+    new Map<
+      string,
+      HotelOffer |
+      null
     >();
 
   const addIntegritySnapshot = (
@@ -904,13 +1021,26 @@ export function adaptV2SearchResultToDecisionV3(
       selectedOffer !==
         null
     ) {
-      addIntegritySnapshot(
-        evaluation,
-        selectedOffer,
+      const sourceOffer =
         findSourceOffer(
           evaluation,
           selectedOffer
-        )
+        );
+
+      selectedOfferByHotelId.set(
+        evaluation.hotel.id,
+        selectedOffer
+      );
+
+      sourceOfferByHotelId.set(
+        evaluation.hotel.id,
+        sourceOffer
+      );
+
+      addIntegritySnapshot(
+        evaluation,
+        selectedOffer,
+        sourceOffer
       );
     }
   }
@@ -961,6 +1091,16 @@ export function adaptV2SearchResultToDecisionV3(
         evaluation,
         selectedOffer
       );
+
+    selectedOfferByHotelId.set(
+      evaluation.hotel.id,
+      selectedOffer
+    );
+
+    sourceOfferByHotelId.set(
+      evaluation.hotel.id,
+      sourceOffer
+    );
 
     addIntegritySnapshot(
       evaluation,
@@ -1162,6 +1302,291 @@ export function adaptV2SearchResultToDecisionV3(
       ),
   };
 
+  const scopeFingerprint =
+    createStableHashV3(
+      {
+        checkIn,
+        checkOut,
+        nights,
+        adults,
+        children,
+        rooms,
+        currency:
+          context.currency,
+      },
+      "stayopti-v3-peer-scope"
+    );
+
+  const sortedEvaluations = [
+    ...input.result
+      .evaluations,
+  ].sort(
+    (
+      first,
+      second
+    ) =>
+      first.hotel.id.localeCompare(
+        second.hotel.id
+      )
+  );
+
+  const peerCandidates:
+    StayOptiPeerCandidateV3[] =
+      sortedEvaluations.map(
+        (evaluation) => {
+          const selectedOffer =
+            selectedOfferByHotelId.get(
+              evaluation.hotel.id
+            ) ??
+            null;
+
+          const sourceOffer =
+            sourceOfferByHotelId.get(
+              evaluation.hotel.id
+            ) ??
+            null;
+
+          return {
+            hotelId:
+              evaluation.hotel.id,
+            scopeFingerprint,
+            destinationKey:
+              input.searchInput
+                .destinationKey
+                ?.trim() ||
+              [
+                evaluation.hotel.city,
+                evaluation.hotel.country,
+              ]
+                .filter(
+                  Boolean
+                )
+                .join(
+                  ":"
+                ) ||
+              "unknown-destination",
+            category:
+              evaluation
+                .accommodation
+                .category,
+            unitType:
+              evaluation
+                .accommodation
+                .unitType,
+            roomName:
+              selectedOffer
+                ?.roomName ??
+              null,
+            mealPlan:
+              sourceOffer
+                ?.mealPlan ??
+              null,
+            refundable:
+              sourceOffer
+                ?.refundable ??
+              selectedOffer
+                ?.refundable ??
+              null,
+            totalCost:
+              selectedOffer ===
+                null
+                ? null
+                : normalizePositiveNumber(
+                    selectedOffer.amount
+                  ),
+            currency:
+              selectedOffer ===
+                null
+                ? context.currency
+                : normalizeCurrency(
+                    selectedOffer.currency
+                  ),
+            qualityScore:
+              evaluation.scores
+                .quality.score,
+            distanceKm:
+              typeof evaluation
+                .hotel.distance ===
+                  "number" &&
+                Number.isFinite(
+                  evaluation.hotel
+                    .distance
+                ) &&
+                evaluation.hotel
+                  .distance >= 0
+                ? evaluation.hotel
+                    .distance
+                : null,
+            eligible:
+              evaluation
+                .reliabilityGate
+                .eligible &&
+              selectedOffer
+                ?.bookable ===
+                true,
+            evidenceIds:
+              uniqueSorted([
+                ...evaluation.evidence.map(
+                  (fact) =>
+                    fact.id
+                ),
+                ...evaluation
+                  .accommodation
+                  .evidenceIds,
+              ]),
+          };
+        }
+      );
+
+  const peerAssignments =
+    evaluatePeerIntelligenceV3(
+      peerCandidates
+    );
+
+  const utilityEvaluations =
+    sortedEvaluations.map(
+      (evaluation) => {
+        const selectedOffer =
+          selectedOfferByHotelId.get(
+            evaluation.hotel.id
+          ) ??
+          null;
+
+        const mapDimension = (
+          dimension:
+            | "priceValue"
+            | "quality"
+            | "location"
+            | "comfort"
+            | "flexibility"
+            | "categoryFit"
+            | "userFit"
+        ) => {
+          const source =
+            evaluation.scores[
+              dimension
+            ];
+
+          return {
+            score:
+              source.score,
+            confidence:
+              source.confidence,
+            evidenceIds:
+              source.evidenceIds,
+          };
+        };
+
+        return evaluatePersonalUtilityV3({
+          hotelId:
+            evaluation.hotel.id,
+          preference:
+            preferenceResolution,
+          context: {
+            totalBudget:
+              context.totalBudget,
+            totalCost:
+              selectedOffer ===
+                null
+                ? null
+                : normalizePositiveNumber(
+                    selectedOffer.amount
+                  ),
+            nights,
+            adults,
+            children,
+            rooms,
+            maximumDistanceKm:
+              context.maximumDistanceKm,
+            leadTimeDays:
+              evaluation
+                .flexibilityContext
+                ?.leadTimeDays ??
+              null,
+            tripType,
+          },
+          dimensions: {
+            priceValue:
+              mapDimension(
+                "priceValue"
+              ),
+            quality:
+              mapDimension(
+                "quality"
+              ),
+            location:
+              mapDimension(
+                "location"
+              ),
+            comfort:
+              mapDimension(
+                "comfort"
+              ),
+            flexibility:
+              mapDimension(
+                "flexibility"
+              ),
+            categoryFit:
+              mapDimension(
+                "categoryFit"
+              ),
+            userFit:
+              mapDimension(
+                "userFit"
+              ),
+          },
+        });
+      }
+    );
+
+  const preferenceReasonCode:
+    SmartStayReasonCodeV3 =
+      preferenceResolution.origin ===
+        "declared"
+        ? "preference:declared"
+        : preferenceResolution.origin ===
+            "inferred"
+          ? "preference:inferred"
+          : "preference:neutral-default";
+
+  const peerReasonCodes:
+    SmartStayReasonCodeV3[] =
+      peerAssignments.map(
+        (assignment) =>
+          assignment.mode ===
+            "exact-context"
+            ? "peer:exact-context"
+            : assignment.mode ===
+                "compatible-context"
+              ? "peer:compatible-context"
+              : assignment.mode ===
+                  "declared-fallback"
+                ? "peer:declared-fallback"
+                : "peer:unavailable"
+      );
+
+  const personalizationReasonCodes =
+    uniqueReasonCodesV3([
+      preferenceReasonCode,
+      "utility:shadow-only",
+      ...(
+        utilityEvaluations.some(
+          (evaluation) =>
+            evaluation.status ===
+              "usable"
+        )
+          ? [
+              "utility:evaluated" as const,
+              "utility:non-linear" as const,
+              "utility:budget-no-spend-bias" as const,
+            ]
+          : [
+              "utility:unavailable" as const,
+            ]
+      ),
+      ...peerReasonCodes,
+    ]);
+
   const offerIntegritySnapshots = [
     ...integritySnapshotByOffer
       .values(),
@@ -1231,6 +1656,17 @@ export function adaptV2SearchResultToDecisionV3(
             (snapshot) =>
               snapshot.snapshotId
           ),
+        preferenceResolution,
+        utilityEvaluationFingerprints:
+          utilityEvaluations.map(
+            (evaluation) =>
+              evaluation.fingerprint
+          ),
+        peerAssignmentFingerprints:
+          peerAssignments.map(
+            (assignment) =>
+              assignment.fingerprint
+          ),
       },
       "stayopti-v3-input"
     );
@@ -1240,6 +1676,10 @@ export function adaptV2SearchResultToDecisionV3(
       {
         policyVersion:
           SMARTSTAY_POLICY_VERSION_V3,
+        personalUtilityVersion:
+          SMARTSTAY_PERSONAL_UTILITY_VERSION_V3,
+        peerIntelligenceVersion:
+          SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -1342,6 +1782,18 @@ export function adaptV2SearchResultToDecisionV3(
           ),
         ]),
     },
+    personalization: {
+      phase:
+        "v3-03",
+      rankingApplication:
+        "shadow-only",
+      preference:
+        preferenceResolution,
+      utilityEvaluations,
+      peerAssignments,
+      reasonCodes:
+        personalizationReasonCodes,
+    },
     solutions,
     candidates,
     recommendedSolutionId,
@@ -1439,6 +1891,7 @@ export function adaptV2SearchResultToDecisionV3(
         "firewall:commercial-fields-absent",
         ...integrityCoverage
           .reasonCodes,
+        ...personalizationReasonCodes,
         statusReasonCode,
       ]),
     internalTrace: {
@@ -1464,6 +1917,16 @@ export function adaptV2SearchResultToDecisionV3(
           (snapshot) =>
             snapshot.snapshotId
         ),
+      utilityEvaluationIds:
+        utilityEvaluations.map(
+          (evaluation) =>
+            evaluation.evaluationId
+        ).sort(),
+      peerAssignmentIds:
+        peerAssignments.map(
+          (assignment) =>
+            assignment.assignmentId
+        ).sort(),
       roleAssignments:
         roleAssignments.sort(
           (
