@@ -49,6 +49,7 @@ import type {
 import {
   SMARTSTAY_DECISION_SCHEMA_VERSION_V3,
   SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
+  SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
   SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3,
   SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
@@ -86,6 +87,10 @@ import {
 import {
   evaluateDecisionGeometryV3,
 } from "../geometry/decisionGeometryV3";
+
+import {
+  evaluateDecisionRobustnessV3,
+} from "../robustness/decisionRobustnessV3";
 
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
@@ -1699,6 +1704,88 @@ export function adaptV2SearchResultToDecisionV3(
       bestAlternativeSolutionId
     );
 
+  const decisionRobustness =
+    evaluateDecisionRobustnessV3({
+      candidates:
+        sortedEvaluations.map(
+          (evaluation) => {
+            const hotelId =
+              evaluation.hotel.id;
+
+            const selectedOffer =
+              selectedOfferByHotelId.get(
+                hotelId
+              ) ??
+              null;
+
+            const integritySnapshot =
+              selectedOffer ===
+                null
+                ? null
+                : integritySnapshotByOffer.get(
+                    `${hotelId}\u0000${selectedOffer.offerId}`
+                  ) ??
+                  null;
+
+            const utility =
+              utilityByHotelId.get(
+                hotelId
+              );
+
+            const geometry =
+              decisionGeometry
+                .candidates
+                .find(
+                  (candidate) =>
+                    candidate.hotelId ===
+                      hotelId
+                );
+
+            if (
+              utility ===
+                undefined ||
+              geometry ===
+                undefined
+            ) {
+              throw new Error(
+                `V3-05 robustness evidence is incomplete for ${hotelId}.`
+              );
+            }
+
+            return {
+              hotelId,
+              solutionId:
+                solutionIdByHotelId.get(
+                  hotelId
+                ) ??
+                null,
+              eligible:
+                evaluation
+                  .reliabilityGate
+                  .eligible &&
+                selectedOffer
+                  ?.bookable ===
+                  true,
+              utility,
+              geometry,
+              offerSnapshot:
+                integritySnapshot,
+              sourceRiskScore:
+                evaluation.risk
+                  .score,
+              sourceRiskLevel:
+                evaluation.risk
+                  .level,
+            };
+          }
+        ),
+      decisionGeometry,
+      anchorHotelId:
+        recommendedHotelId,
+      constraintRelaxations:
+        [],
+    });
+
   const recommendedSwitchThreshold =
     recommendedHotelId ===
       null ||
@@ -1864,6 +1951,9 @@ export function adaptV2SearchResultToDecisionV3(
         decisionGeometryFingerprint:
           decisionGeometry
             .fingerprint,
+        decisionRobustnessFingerprint:
+          decisionRobustness
+            .fingerprint,
       },
       "stayopti-v3-input"
     );
@@ -1879,6 +1969,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
         decisionGeometryVersion:
           SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
+        decisionRobustnessVersion:
+          SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -2021,17 +2113,8 @@ export function adaptV2SearchResultToDecisionV3(
         "temporal:not-evaluated",
       ],
     },
-    robustness: {
-      status:
-        "not-evaluated",
-      robustChoiceScore:
-        null,
-      expectedRegret:
-        null,
-      reasonCodes: [
-        "robustness:not-evaluated",
-      ],
-    },
+    robustness:
+      decisionRobustness,
     outcomeLearning: {
       status:
         "not-instrumented",
@@ -2091,7 +2174,8 @@ export function adaptV2SearchResultToDecisionV3(
         "adapter:from-v2",
         "adapter:v2-evidence-bridged",
         "temporal:not-evaluated",
-        "robustness:not-evaluated",
+        ...decisionRobustness
+          .reasonCodes,
         ...decisionGeometry
           .reasonCodes,
         ...(
@@ -2147,6 +2231,9 @@ export function adaptV2SearchResultToDecisionV3(
         ).sort(),
       decisionGeometryEvaluationId:
         decisionGeometry
+          .evaluationId,
+      decisionRobustnessEvaluationId:
+        decisionRobustness
           .evaluationId,
       roleAssignments:
         roleAssignments.sort(

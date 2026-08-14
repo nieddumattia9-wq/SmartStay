@@ -139,3 +139,27 @@ export {
   type StayOptiThresholdVerdictV3,
   type StayOptiTradeOffThresholdV3,
 } from "./geometry/decisionGeometryV3";
+
+export {
+  STAYOPTI_ROBUSTNESS_SCENARIOS_V3,
+  assertDecisionRobustnessV3,
+  evaluateDecisionRobustnessV3,
+  validateDecisionRobustnessV3,
+  type EvaluateStayOptiRobustnessCandidateV3,
+  type StayOptiAbstentionCodeV3,
+  type StayOptiCandidateRegretV3,
+  type StayOptiConstraintRelaxationCandidateV3,
+  type StayOptiConstraintRelaxationEvaluationV3,
+  type StayOptiConstraintRelaxationKindV3,
+  type StayOptiDecisionRobustnessOptionsV3,
+  type StayOptiDecisionRobustnessV3,
+  type StayOptiNearTieV3,
+  type StayOptiNoGoodOptionV3,
+  type StayOptiRiskSignalCodeV3,
+  type StayOptiRiskSignalV3,
+  type StayOptiRobustnessCandidateEvaluationV3,
+  type StayOptiRobustnessCandidateStatusV3,
+  type StayOptiRobustnessScenarioIdV3,
+  type StayOptiRobustnessScenarioV3,
+  type StayOptiScenarioCandidateScoreV3,
+} from "./robustness/decisionRobustnessV3";

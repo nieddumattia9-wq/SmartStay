@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.4"
+      "3.0.0-decision.5"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.4"
+      "3.0.0-alpha.5"
     );
     assert.equal(
       decision.mode,
@@ -563,6 +563,29 @@ test(
       decision.internalTrace
         .decisionGeometryEvaluationId,
       decision.decisionGeometry
+        .evaluationId
+    );
+    assert.equal(
+      decision.robustness
+        .phase,
+      "v3-05"
+    );
+    assert.equal(
+      decision.robustness
+        .rankingApplication,
+      "shadow-only"
+    );
+    assert.equal(
+      decision.robustness
+        .candidates
+        .length,
+      decision.coverage
+        .analyzedHotelCount
+    );
+    assert.equal(
+      decision.internalTrace
+        .decisionRobustnessEvaluationId,
+      decision.robustness
         .evaluationId
     );
     assert.equal(
@@ -953,6 +976,24 @@ test(
         (issue) =>
           issue.code ===
           "decision-geometry-invalid"
+      )
+    );
+
+    const robustnessMutation =
+      createDecision();
+
+    robustnessMutation
+      .robustness
+      .fingerprint =
+        "fnv1a32-00000000";
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        robustnessMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-robustness-invalid"
       )
     );
   }

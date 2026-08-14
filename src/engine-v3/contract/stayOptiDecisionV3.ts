@@ -57,6 +57,11 @@ import {
   type StayOptiDecisionGeometryV3,
 } from "../geometry/decisionGeometryV3";
 
+import {
+  validateDecisionRobustnessV3,
+  type StayOptiDecisionRobustnessV3,
+} from "../robustness/decisionRobustnessV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -274,6 +279,9 @@ export interface StayOptiDecisionTraceV3 {
   decisionGeometryEvaluationId:
     string;
 
+  decisionRobustnessEvaluationId:
+    string;
+
   roleAssignments:
     Array<{
       solutionId:
@@ -397,19 +405,8 @@ export interface StayOptiDecisionV3 {
   temporalOptimization:
     StayOptiTemporalOptimizationV3;
 
-  robustness: {
-    status:
-      "not-evaluated";
-
-    robustChoiceScore:
-      null;
-
-    expectedRegret:
-      null;
-
-    reasonCodes:
-      SmartStayReasonCodeV3[];
-  };
+  robustness:
+    StayOptiDecisionRobustnessV3;
 
   outcomeLearning: {
     status:
@@ -465,6 +462,9 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-geometry-invalid"
   | "decision-geometry-coverage-mismatch"
   | "decision-geometry-trace-mismatch"
+  | "decision-robustness-invalid"
+  | "decision-robustness-coverage-mismatch"
+  | "decision-robustness-trace-mismatch"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -555,7 +555,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-04 contract."
+      "Decision versions do not match the frozen V3-05 contract."
     );
   }
 
@@ -965,6 +965,63 @@ export function validateStayOptiDecisionV3(
     );
   }
 
+  if (
+    decision.robustness.phase !==
+      "v3-05" ||
+    decision.robustness
+      .rankingApplication !==
+      "shadow-only" ||
+    !validateDecisionRobustnessV3(
+      decision.robustness
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-robustness-invalid",
+      "robustness",
+      "Risk, robustness, regret and abstention must be a valid V3-05 shadow-only evaluation."
+    );
+  }
+
+  const robustnessHotelIds =
+    decision.robustness
+      .candidates
+      .map(
+        (candidate) =>
+          candidate.hotelId
+      )
+      .sort();
+
+  if (
+    stableSerializeV3(
+      robustnessHotelIds
+    ) !==
+      stableSerializeV3(
+        expectedPersonalizationHotelIds
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-robustness-coverage-mismatch",
+      "robustness.candidates",
+      "Decision Robustness must cover every analyzed hotel exactly once."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .decisionRobustnessEvaluationId !==
+    decision.robustness
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-robustness-trace-mismatch",
+      "internalTrace.decisionRobustnessEvaluationId",
+      "Internal trace must reference the attached V3-05 robustness evaluation."
+    );
+  }
+
   const solutionById =
     new Map<
       string,
@@ -1161,6 +1218,42 @@ export function validateStayOptiDecisionV3(
     decision.robustness
       .reasonCodes,
     "robustness.reasonCodes",
+    issues
+  );
+
+  decision.robustness
+    .candidates
+    .forEach(
+      (
+        candidate,
+        index
+      ) =>
+        validateReasonCodes(
+          candidate.reasonCodes,
+          `robustness.candidates.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  decision.robustness
+    .scenarios
+    .forEach(
+      (
+        scenario,
+        index
+      ) =>
+        validateReasonCodes(
+          scenario.reasonCodes,
+          `robustness.scenarios.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  validateReasonCodes(
+    decision.robustness
+      .constraintRelaxation
+      .reasonCodes,
+    "robustness.constraintRelaxation.reasonCodes",
     issues
   );
 

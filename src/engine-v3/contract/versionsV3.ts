@@ -7,8 +7,11 @@ export const SMARTSTAY_ENGINE_VERSION_V3_02 =
 export const SMARTSTAY_ENGINE_VERSION_V3_03 =
   "3.0.0-alpha.3" as const;
 
-export const SMARTSTAY_ENGINE_VERSION_V3 =
+export const SMARTSTAY_ENGINE_VERSION_V3_04 =
   "3.0.0-alpha.4" as const;
+
+export const SMARTSTAY_ENGINE_VERSION_V3 =
+  "3.0.0-alpha.5" as const;
 
 export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3_01 =
   "3.0.0-decision.1" as const;
@@ -19,8 +22,11 @@ export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3_02 =
 export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3_03 =
   "3.0.0-decision.3" as const;
 
-export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3 =
+export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3_04 =
   "3.0.0-decision.4" as const;
+
+export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3 =
+  "3.0.0-decision.5" as const;
 
 export const SMARTSTAY_POLICY_VERSION_V3_01 =
   "3.0.0-policy.1" as const;
@@ -31,8 +37,11 @@ export const SMARTSTAY_POLICY_VERSION_V3_02 =
 export const SMARTSTAY_POLICY_VERSION_V3_03 =
   "3.0.0-policy.3" as const;
 
-export const SMARTSTAY_POLICY_VERSION_V3 =
+export const SMARTSTAY_POLICY_VERSION_V3_04 =
   "3.0.0-policy.4" as const;
+
+export const SMARTSTAY_POLICY_VERSION_V3 =
+  "3.0.0-policy.5" as const;
 
 export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3_01 =
   "3.0.0-evidence.1" as const;
@@ -43,8 +52,11 @@ export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3_02 =
 export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3_03 =
   "3.0.0-evidence.3" as const;
 
-export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3 =
+export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3_04 =
   "3.0.0-evidence.4" as const;
+
+export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3 =
+  "3.0.0-evidence.5" as const;
 
 export const SMARTSTAY_V2_ADAPTER_VERSION_V3_01 =
   "3.0.0-v2-adapter.1" as const;
@@ -55,8 +67,11 @@ export const SMARTSTAY_V2_ADAPTER_VERSION_V3_02 =
 export const SMARTSTAY_V2_ADAPTER_VERSION_V3_03 =
   "3.0.0-v2-adapter.3" as const;
 
-export const SMARTSTAY_V2_ADAPTER_VERSION_V3 =
+export const SMARTSTAY_V2_ADAPTER_VERSION_V3_04 =
   "3.0.0-v2-adapter.4" as const;
+
+export const SMARTSTAY_V2_ADAPTER_VERSION_V3 =
+  "3.0.0-v2-adapter.5" as const;
 
 export const SMARTSTAY_COMMERCIAL_FIREWALL_VERSION_V3 =
   "3.0.0-commercial-firewall.1" as const;
@@ -72,6 +87,9 @@ export const SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3 =
 
 export const SMARTSTAY_DECISION_GEOMETRY_VERSION_V3 =
   "3.0.0-decision-geometry.1" as const;
+
+export const SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3 =
+  "3.0.0-decision-robustness.1" as const;
 
 export const SMARTSTAY_V3_VERSIONS = {
   engine:
@@ -103,6 +121,9 @@ export const SMARTSTAY_V3_VERSIONS = {
 
   decisionGeometry:
     SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
+
+  decisionRobustness:
+    SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
 } as const;
 
 export type SmartStayEngineVersionV3 =
