@@ -48,6 +48,7 @@ import type {
 
 import {
   SMARTSTAY_DECISION_SCHEMA_VERSION_V3,
+  SMARTSTAY_CONTEXTUAL_STAY_VALUE_VERSION_V3,
   SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
   SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
@@ -91,6 +92,12 @@ import {
 import {
   evaluateDecisionRobustnessV3,
 } from "../robustness/decisionRobustnessV3";
+
+import {
+  evaluateContextualStayValueV3,
+  type StayOptiContextualCapabilityInputV3,
+  type StayOptiFrictionSignalInputV3,
+} from "../contextual/contextualStayValueV3";
 
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
@@ -162,6 +169,103 @@ function uniqueSorted(
       )
     ),
   ].sort();
+}
+
+const CONTEXTUAL_CAPABILITY_PATTERNS: ReadonlyArray<{
+  code: StayOptiContextualCapabilityInputV3["code"];
+  pattern: RegExp;
+}> = [
+  { code: "kitchen", pattern: /\b(kitchen|kitchenette|cucina)\b/i },
+  { code: "laundry", pattern: /\b(laundry|laundromat|lavanderia)\b/i },
+  { code: "workspace", pattern: /\b(workspace|desk|business center|cowork)\b/i },
+  { code: "family-room", pattern: /\b(family room|connecting room|interconnecting)\b/i },
+  { code: "private-bathroom", pattern: /\b(private bathroom|ensuite|en suite)\b/i },
+  { code: "crib", pattern: /\b(crib|cot|culla)\b/i },
+  { code: "elevator", pattern: /\b(elevator|lift|ascensore)\b/i },
+  { code: "front-desk", pattern: /\b(front desk|reception|receptionist)\b/i },
+  { code: "luggage-storage", pattern: /\b(luggage storage|bag storage|deposito bagagli)\b/i },
+  { code: "self-check-in", pattern: /\b(self check in|self-check-in|keyless entry)\b/i },
+  { code: "air-conditioning", pattern: /\b(air conditioning|air-conditioned|a\/c|aria condizionata)\b/i },
+];
+
+function mapContextualCapabilities(
+  evaluation:
+    SmartStayEvaluationV2
+) {
+  const sourceText = [
+    ...evaluation.hotel.amenities,
+    ...evaluation.hotel.facilities,
+  ].join(" | ");
+  const evidenceIds = uniqueSorted([
+    ...evaluation.scores.comfort.evidenceIds,
+    ...evaluation.accommodation.evidenceIds,
+  ]);
+  const confidence = Math.min(
+    1,
+    Math.max(
+      0,
+      evaluation.scores.comfort.confidence
+    )
+  );
+
+  return CONTEXTUAL_CAPABILITY_PATTERNS
+    .filter(({ pattern }) => pattern.test(sourceText))
+    .map(({ code }): StayOptiContextualCapabilityInputV3 => ({
+      code,
+      state: true,
+      source: "provider-structured",
+      confidence,
+      evidenceIds,
+    }));
+}
+
+function mapContextualFrictionSignals(
+  capabilities:
+    StayOptiContextualCapabilityInputV3[]
+) {
+  const mapping: Partial<Record<
+    StayOptiContextualCapabilityInputV3["code"],
+    {
+      code: StayOptiFrictionSignalInputV3["code"];
+      convenienceImpact: number;
+      weight: number;
+    }
+  >> = {
+    "front-desk": {
+      code: "front-desk",
+      convenienceImpact: 0.5,
+      weight: 0.8,
+    },
+    "self-check-in": {
+      code: "self-check-in",
+      convenienceImpact: 0.45,
+      weight: 0.7,
+    },
+    "luggage-storage": {
+      code: "luggage-storage",
+      convenienceImpact: 0.6,
+      weight: 0.8,
+    },
+    elevator: {
+      code: "elevator",
+      convenienceImpact: 0.3,
+      weight: 0.5,
+    },
+  };
+
+  return capabilities.flatMap(
+    (capability): StayOptiFrictionSignalInputV3[] => {
+      const signal = mapping[capability.code];
+      return signal === undefined
+        ? []
+        : [{
+            ...signal,
+            source: capability.source,
+            confidence: capability.confidence,
+            evidenceIds: capability.evidenceIds,
+          }];
+    }
+  );
 }
 
 function normalizePositiveInteger(
@@ -1786,6 +1890,235 @@ export function adaptV2SearchResultToDecisionV3(
         [],
     });
 
+  const contextualStayValue =
+    evaluateContextualStayValueV3({
+      context: {
+        preferenceId,
+        tripType,
+        nights,
+        adults,
+        children,
+        rooms,
+        leadTimeDays:
+          sortedEvaluations.find(
+            (evaluation) =>
+              evaluation.flexibilityContext
+                ?.leadTimeDays !==
+                null &&
+              evaluation.flexibilityContext
+                ?.leadTimeDays !==
+                undefined
+          )?.flexibilityContext
+            ?.leadTimeDays ??
+          null,
+        destination:
+          null,
+      },
+      candidates:
+        sortedEvaluations.map(
+          (evaluation) => {
+            const hotelId =
+              evaluation.hotel.id;
+            const selectedOffer =
+              selectedOfferByHotelId.get(
+                hotelId
+              ) ??
+              null;
+            const integritySnapshot =
+              selectedOffer ===
+                null
+                ? null
+                : integritySnapshotByOffer.get(
+                    `${hotelId}\u0000${selectedOffer.offerId}`
+                  ) ??
+                  null;
+            const capabilities =
+              mapContextualCapabilities(
+                evaluation
+              );
+            const totalCost =
+              integritySnapshot
+                ?.cost.total.amount ??
+              null;
+            const currency =
+              integritySnapshot
+                ?.cost.total.currency ??
+              null;
+            const snapshotEvidenceIds =
+              uniqueSorted(
+                integritySnapshot
+                  ?.evidenceIds ??
+                []
+              );
+            const cancellationStateKnown =
+              integritySnapshot
+                ?.cancellation.state ===
+                "known";
+            const paymentStateKnown =
+              integritySnapshot
+                ?.payment.state ===
+                "known";
+            const canonicalPaymentTiming =
+              integritySnapshot
+                ?.payment.timing;
+            const paymentTiming =
+              canonicalPaymentTiming ===
+                "pay-now" ||
+              canonicalPaymentTiming ===
+                "pay-later"
+                ? canonicalPaymentTiming
+                : "unknown";
+
+            return {
+              hotelId,
+              totalCost,
+              currency,
+              straightLineDistanceKm:
+                typeof evaluation.hotel
+                  .distance ===
+                  "number" &&
+                Number.isFinite(
+                  evaluation.hotel
+                    .distance
+                ) &&
+                evaluation.hotel
+                  .distance >=
+                  0
+                  ? evaluation.hotel
+                      .distance
+                  : null,
+              straightLineEvidenceIds:
+                uniqueSorted(
+                  evaluation.scores
+                    .location
+                    .evidenceIds
+                ),
+              travelPoints:
+                [],
+              selectedRoom:
+                selectedOffer ===
+                  null
+                  ? null
+                  : {
+                      offerId:
+                        selectedOffer
+                          .offerId,
+                      roomName:
+                        selectedOffer
+                          .roomName,
+                      totalCost:
+                        normalizePositiveNumber(
+                          selectedOffer.amount
+                        ),
+                      currency:
+                        normalizeCurrency(
+                          selectedOffer.currency
+                        ),
+                      bookable:
+                        selectedOffer
+                          .bookable,
+                      comparisonScopeFingerprint:
+                        scopeFingerprint,
+                      tierRank:
+                        selectedOffer
+                          .roomTierRank >
+                          0
+                          ? selectedOffer
+                              .roomTierRank
+                          : null,
+                      tierSource:
+                        "semantic-inference" as const,
+                      attributes:
+                        [],
+                      evidenceIds:
+                        snapshotEvidenceIds,
+                    },
+              roomAlternatives:
+                [],
+              cancellation:
+                integritySnapshot ===
+                  null
+                  ? null
+                  : {
+                      policyKnown:
+                        cancellationStateKnown,
+                      refundable:
+                        integritySnapshot
+                          .cancellation
+                          .status ===
+                          "refundable"
+                          ? true
+                          : integritySnapshot
+                              .cancellation
+                              .status ===
+                              "non-refundable"
+                            ? false
+                            : null,
+                      freeCancellationUntil:
+                        integritySnapshot
+                          .cancellation
+                          .freeCancellationUntil,
+                      penaltyAmount:
+                        integritySnapshot
+                          .cancellation
+                          .penaltyAmount,
+                      penaltyCurrency:
+                        integritySnapshot
+                          .cancellation
+                          .penaltyCurrency,
+                      changeProbability:
+                        null,
+                      source:
+                        cancellationStateKnown
+                          ? "provider-structured" as const
+                          : "unverified" as const,
+                      confidence:
+                        cancellationStateKnown
+                          ? 0.8
+                          : 0,
+                      evidenceIds:
+                        snapshotEvidenceIds,
+                    },
+              payment:
+                integritySnapshot ===
+                  null
+                  ? null
+                  : {
+                      timing:
+                        paymentTiming,
+                      deferralDays:
+                        null,
+                      annualValueRate:
+                        null,
+                      source:
+                        paymentStateKnown
+                          ? "provider-structured" as const
+                          : "unverified" as const,
+                      confidence:
+                        paymentStateKnown
+                          ? 0.8
+                          : 0,
+                      evidenceIds:
+                        snapshotEvidenceIds,
+                    },
+              capabilities,
+              frictionSignals:
+                mapContextualFrictionSignals(
+                  capabilities
+                ),
+              evidenceIds:
+                uniqueSorted([
+                  ...evaluation.evidence.map(
+                    (fact) =>
+                      fact.id
+                  ),
+                  ...snapshotEvidenceIds,
+                ]),
+            };
+          }
+        ),
+    });
+
   const recommendedSwitchThreshold =
     recommendedHotelId ===
       null ||
@@ -1954,6 +2287,9 @@ export function adaptV2SearchResultToDecisionV3(
         decisionRobustnessFingerprint:
           decisionRobustness
             .fingerprint,
+        contextualStayValueFingerprint:
+          contextualStayValue
+            .fingerprint,
       },
       "stayopti-v3-input"
     );
@@ -1971,6 +2307,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
         decisionRobustnessVersion:
           SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
+        contextualStayValueVersion:
+          SMARTSTAY_CONTEXTUAL_STAY_VALUE_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -2115,6 +2453,7 @@ export function adaptV2SearchResultToDecisionV3(
     },
     robustness:
       decisionRobustness,
+    contextualStayValue,
     outcomeLearning: {
       status:
         "not-instrumented",
@@ -2176,6 +2515,8 @@ export function adaptV2SearchResultToDecisionV3(
         "temporal:not-evaluated",
         ...decisionRobustness
           .reasonCodes,
+        ...contextualStayValue
+          .reasonCodes,
         ...decisionGeometry
           .reasonCodes,
         ...(
@@ -2234,6 +2575,9 @@ export function adaptV2SearchResultToDecisionV3(
           .evaluationId,
       decisionRobustnessEvaluationId:
         decisionRobustness
+          .evaluationId,
+      contextualStayValueEvaluationId:
+        contextualStayValue
           .evaluationId,
       roleAssignments:
         roleAssignments.sort(

@@ -62,6 +62,11 @@ import {
   type StayOptiDecisionRobustnessV3,
 } from "../robustness/decisionRobustnessV3";
 
+import {
+  validateContextualStayValueV3,
+  type StayOptiContextualStayValueEvaluationV3,
+} from "../contextual/contextualStayValueV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -282,6 +287,9 @@ export interface StayOptiDecisionTraceV3 {
   decisionRobustnessEvaluationId:
     string;
 
+  contextualStayValueEvaluationId:
+    string;
+
   roleAssignments:
     Array<{
       solutionId:
@@ -408,6 +416,9 @@ export interface StayOptiDecisionV3 {
   robustness:
     StayOptiDecisionRobustnessV3;
 
+  contextualStayValue:
+    StayOptiContextualStayValueEvaluationV3;
+
   outcomeLearning: {
     status:
       "not-instrumented";
@@ -465,6 +476,9 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-robustness-invalid"
   | "decision-robustness-coverage-mismatch"
   | "decision-robustness-trace-mismatch"
+  | "decision-contextual-invalid"
+  | "decision-contextual-coverage-mismatch"
+  | "decision-contextual-trace-mismatch"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -555,7 +569,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-05 contract."
+      "Decision versions do not match the frozen V3-06 contract."
     );
   }
 
@@ -1022,6 +1036,66 @@ export function validateStayOptiDecisionV3(
     );
   }
 
+  if (
+    decision.contextualStayValue.phase !==
+      "v3-06" ||
+    decision.contextualStayValue
+      .rankingApplication !==
+      "shadow-only" ||
+    decision.contextualStayValue
+      .publicPresentation !==
+      "disabled" ||
+    !validateContextualStayValueV3(
+      decision.contextualStayValue
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-contextual-invalid",
+      "contextualStayValue",
+      "Location, room, flexibility and friction must be a valid V3-06 shadow-only evaluation."
+    );
+  }
+
+  const contextualHotelIds =
+    decision.contextualStayValue
+      .candidates
+      .map(
+        (candidate) =>
+          candidate.hotelId
+      )
+      .sort();
+
+  if (
+    stableSerializeV3(
+      contextualHotelIds
+    ) !==
+      stableSerializeV3(
+        expectedPersonalizationHotelIds
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-contextual-coverage-mismatch",
+      "contextualStayValue.candidates",
+      "Contextual Stay Value must cover every analyzed hotel exactly once."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .contextualStayValueEvaluationId !==
+    decision.contextualStayValue
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-contextual-trace-mismatch",
+      "internalTrace.contextualStayValueEvaluationId",
+      "Internal trace must reference the attached V3-06 contextual evaluation."
+    );
+  }
+
   const solutionById =
     new Map<
       string,
@@ -1256,6 +1330,53 @@ export function validateStayOptiDecisionV3(
     "robustness.constraintRelaxation.reasonCodes",
     issues
   );
+
+  validateReasonCodes(
+    decision.contextualStayValue
+      .reasonCodes,
+    "contextualStayValue.reasonCodes",
+    issues
+  );
+
+  decision.contextualStayValue
+    .candidates
+    .forEach(
+      (
+        candidate,
+        index
+      ) => {
+        validateReasonCodes(
+          candidate.reasonCodes,
+          `contextualStayValue.candidates.${index}.reasonCodes`,
+          issues
+        );
+        validateReasonCodes(
+          candidate.location.reasonCodes,
+          `contextualStayValue.candidates.${index}.location.reasonCodes`,
+          issues
+        );
+        validateReasonCodes(
+          candidate.roomUpgrade.reasonCodes,
+          `contextualStayValue.candidates.${index}.roomUpgrade.reasonCodes`,
+          issues
+        );
+        validateReasonCodes(
+          candidate.flexibility.reasonCodes,
+          `contextualStayValue.candidates.${index}.flexibility.reasonCodes`,
+          issues
+        );
+        validateReasonCodes(
+          candidate.contextInteractions.reasonCodes,
+          `contextualStayValue.candidates.${index}.contextInteractions.reasonCodes`,
+          issues
+        );
+        validateReasonCodes(
+          candidate.convenience.reasonCodes,
+          `contextualStayValue.candidates.${index}.convenience.reasonCodes`,
+          issues
+        );
+      }
+    );
 
   validateReasonCodes(
     decision.outcomeLearning

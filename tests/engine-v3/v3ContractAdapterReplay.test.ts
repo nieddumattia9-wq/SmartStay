@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.5"
+      "3.0.0-decision.6"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.5"
+      "3.0.0-alpha.6"
     );
     assert.equal(
       decision.mode,
@@ -586,6 +586,39 @@ test(
       decision.internalTrace
         .decisionRobustnessEvaluationId,
       decision.robustness
+        .evaluationId
+    );
+    assert.equal(
+      decision.contextualStayValue
+        .phase,
+      "v3-06"
+    );
+    assert.equal(
+      decision.contextualStayValue
+        .rankingApplication,
+      "shadow-only"
+    );
+    assert.equal(
+      decision.contextualStayValue
+        .publicPresentation,
+      "disabled"
+    );
+    assert.equal(
+      decision.contextualStayValue
+        .decisionGainGate
+        .rankingEnabled,
+      false
+    );
+    assert.equal(
+      decision.contextualStayValue
+        .candidates.length,
+      decision.coverage
+        .analyzedHotelCount
+    );
+    assert.equal(
+      decision.internalTrace
+        .contextualStayValueEvaluationId,
+      decision.contextualStayValue
         .evaluationId
     );
     assert.equal(
@@ -901,7 +934,7 @@ test(
 );
 
 test(
-  "V3 contract rejects mutated utility, unsafe peer output and mutated geometry",
+  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness and context",
   () => {
     const utilityMutation =
       createDecision();
@@ -994,6 +1027,26 @@ test(
         (issue) =>
           issue.code ===
           "decision-robustness-invalid"
+      )
+    );
+
+    const contextualMutation =
+      createDecision();
+
+    contextualMutation
+      .contextualStayValue
+      .candidates[0]
+      .convenience
+      .convenienceIndex =
+        99;
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        contextualMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-contextual-invalid"
       )
     );
   }
