@@ -50,6 +50,7 @@ import {
   SMARTSTAY_DECISION_SCHEMA_VERSION_V3,
   SMARTSTAY_CONTEXTUAL_STAY_VALUE_VERSION_V3,
   SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
+  SMARTSTAY_DECISION_EXPLANATION_VERSION_V3,
   SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
   SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3,
@@ -98,6 +99,10 @@ import {
   type StayOptiContextualCapabilityInputV3,
   type StayOptiFrictionSignalInputV3,
 } from "../contextual/contextualStayValueV3";
+
+import {
+  evaluateDecisionExplanationV3,
+} from "../explanation/decisionExplanationV3";
 
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
@@ -2119,40 +2124,6 @@ export function adaptV2SearchResultToDecisionV3(
         ),
     });
 
-  const recommendedSwitchThreshold =
-    recommendedHotelId ===
-      null ||
-    bestAlternativeHotelId ===
-      null
-      ? null
-      : decisionGeometry
-          .tradeOffThresholds
-          .find(
-            (threshold) =>
-              (
-                threshold
-                  .lowerCostHotelId ===
-                  recommendedHotelId &&
-                threshold
-                  .higherCostHotelId ===
-                  bestAlternativeHotelId
-              ) ||
-              (
-                threshold
-                  .lowerCostHotelId ===
-                  bestAlternativeHotelId &&
-                threshold
-                  .higherCostHotelId ===
-                  recommendedHotelId
-              )
-          ) ??
-        null;
-
-  const exactSwitchThresholdAvailable =
-    recommendedSwitchThreshold
-      ?.exact ===
-      true;
-
   const preferenceReasonCode:
     SmartStayReasonCodeV3 =
       preferenceResolution.origin ===
@@ -2309,6 +2280,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
         contextualStayValueVersion:
           SMARTSTAY_CONTEXTUAL_STAY_VALUE_VERSION_V3,
+        decisionExplanationVersion:
+          SMARTSTAY_DECISION_EXPLANATION_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -2337,6 +2310,52 @@ export function adaptV2SearchResultToDecisionV3(
         ) ??
       []
     );
+
+  const sourceRoleReasonCodes =
+    uniqueSorted(
+      input.result
+        .recommendationRoles
+        .picks.find(
+          (pick) =>
+            pick.role ===
+            "best-choice"
+        )?.reasonCodes ??
+      []
+    );
+
+  const decisionExplanation =
+    evaluateDecisionExplanationV3({
+      solutionMappings:
+        solutions.flatMap(
+          (solution) => {
+            const hotelId =
+              solution.segments[0]
+                ?.hotelId ??
+              null;
+
+            return hotelId ===
+              null
+              ? []
+              : [{
+                  hotelId,
+                  solutionId:
+                    solution.solutionId,
+                }];
+          }
+        ),
+      preferredAlternativeHotelId:
+        bestAlternativeHotelId,
+      utilityEvaluations,
+      decisionGeometry,
+      decisionRobustness,
+      contextualStayValue,
+      legacyPrimaryEvidenceIds:
+        primaryEvidenceIds,
+      legacyTradeOffEvidenceIds:
+        tradeOffEvidenceIds,
+      sourceReasonCodes:
+        sourceRoleReasonCodes,
+    });
 
   const decisionWithoutFingerprint:
     StayOptiDecisionV3 = {
@@ -2479,30 +2498,8 @@ export function adaptV2SearchResultToDecisionV3(
           : "counterfactual:exact-thresholds-unavailable",
       ],
     },
-    thesis: {
-      titleKey:
-        status ===
-          "recommended"
-          ? "stayopti.v3.decision.recommended"
-          : "stayopti.v3.decision.abstained",
-      recommendedSolutionId,
-      bestAlternativeSolutionId,
-      primaryEvidenceIds,
-      tradeOffEvidenceIds,
-      sourceReasonCodes:
-        uniqueSorted(
-          input.result
-            .recommendationRoles
-            .picks.find(
-              (pick) =>
-                pick.role ===
-                "best-choice"
-            )?.reasonCodes ??
-          []
-        ),
-      exactSwitchThresholdAvailable:
-        exactSwitchThresholdAvailable,
-    },
+    thesis:
+      decisionExplanation,
     replay: {
       inputFingerprint,
       decisionFingerprint:
@@ -2516,6 +2513,8 @@ export function adaptV2SearchResultToDecisionV3(
         ...decisionRobustness
           .reasonCodes,
         ...contextualStayValue
+          .reasonCodes,
+        ...decisionExplanation
           .reasonCodes,
         ...decisionGeometry
           .reasonCodes,
@@ -2578,6 +2577,9 @@ export function adaptV2SearchResultToDecisionV3(
           .evaluationId,
       contextualStayValueEvaluationId:
         contextualStayValue
+          .evaluationId,
+      decisionExplanationEvaluationId:
+        decisionExplanation
           .evaluationId,
       roleAssignments:
         roleAssignments.sort(

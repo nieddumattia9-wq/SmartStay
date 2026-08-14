@@ -20,6 +20,7 @@ export {
   type StayOptiDecisionPersonalizationV3,
   type StayOptiDecisionRoleV3,
   type StayOptiDecisionStatusV3,
+  type StayOptiDecisionThesisV3,
   type StayOptiDecisionV3,
 } from "./contract/stayOptiDecisionV3";
 
@@ -197,3 +198,23 @@ export {
   type StayOptiTravelPointInputV3,
   type StayOptiTripSpecificLocationV3,
 } from "./contextual/contextualStayValueV3";
+
+export {
+  STAYOPTI_EXPLANATION_SLOT_IDS_V3,
+  assertDecisionExplanationV3,
+  evaluateDecisionExplanationV3,
+  validateDecisionExplanationV3,
+  type EvaluateStayOptiDecisionExplanationInputV3,
+  type StayOptiDecisionExplanationV3,
+  type StayOptiDecisionExplanationValidationV3,
+  type StayOptiExplanationClaimCodeV3,
+  type StayOptiExplanationClaimStatusV3,
+  type StayOptiExplanationClaimV3,
+  type StayOptiExplanationCopyEvidenceLinkV3,
+  type StayOptiExplanationNumericFactCodeV3,
+  type StayOptiExplanationNumericFactV3,
+  type StayOptiExplanationNumericUnitV3,
+  type StayOptiExplanationSlotIdV3,
+  type StayOptiExplanationStatusV3,
+  type StayOptiExplanationStrengthLabelV3,
+} from "./explanation/decisionExplanationV3";

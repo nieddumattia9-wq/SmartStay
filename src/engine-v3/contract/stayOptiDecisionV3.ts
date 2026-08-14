@@ -67,6 +67,11 @@ import {
   type StayOptiContextualStayValueEvaluationV3,
 } from "../contextual/contextualStayValueV3";
 
+import {
+  validateDecisionExplanationV3,
+  type StayOptiDecisionExplanationV3,
+} from "../explanation/decisionExplanationV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -231,30 +236,8 @@ export interface StayOptiTemporalOptimizationV3 {
     SmartStayReasonCodeV3[];
 }
 
-export interface StayOptiDecisionThesisV3 {
-  titleKey:
-    string;
-
-  recommendedSolutionId:
-    string |
-    null;
-
-  bestAlternativeSolutionId:
-    string |
-    null;
-
-  primaryEvidenceIds:
-    string[];
-
-  tradeOffEvidenceIds:
-    string[];
-
-  sourceReasonCodes:
-    string[];
-
-  exactSwitchThresholdAvailable:
-    boolean;
-}
+export type StayOptiDecisionThesisV3 =
+  StayOptiDecisionExplanationV3;
 
 export interface StayOptiDecisionTraceV3 {
   internalOnly:
@@ -288,6 +271,9 @@ export interface StayOptiDecisionTraceV3 {
     string;
 
   contextualStayValueEvaluationId:
+    string;
+
+  decisionExplanationEvaluationId:
     string;
 
   roleAssignments:
@@ -479,6 +465,10 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-contextual-invalid"
   | "decision-contextual-coverage-mismatch"
   | "decision-contextual-trace-mismatch"
+  | "decision-explanation-invalid"
+  | "decision-explanation-solution-mismatch"
+  | "decision-explanation-source-mismatch"
+  | "decision-explanation-trace-mismatch"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -569,7 +559,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-06 contract."
+      "Decision versions do not match the frozen V3-07 contract."
     );
   }
 
@@ -1096,6 +1086,66 @@ export function validateStayOptiDecisionV3(
     );
   }
 
+  if (
+    decision.thesis.phase !==
+      "v3-07" ||
+    decision.thesis
+      .rankingApplication !==
+      "shadow-only" ||
+    decision.thesis
+      .publicPresentation !==
+      "disabled" ||
+    !validateDecisionExplanationV3(
+      decision.thesis
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-explanation-invalid",
+      "thesis",
+      "The six-part Decision Thesis must be a valid V3-07 shadow-only explanation."
+    );
+  }
+
+  if (
+    decision.thesis
+      .sourceEvaluationIds
+      .decisionGeometryEvaluationId !==
+      decision.decisionGeometry
+        .evaluationId ||
+    decision.thesis
+      .sourceEvaluationIds
+      .decisionRobustnessEvaluationId !==
+      decision.robustness
+        .evaluationId ||
+    decision.thesis
+      .sourceEvaluationIds
+      .contextualStayValueEvaluationId !==
+      decision.contextualStayValue
+        .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-explanation-source-mismatch",
+      "thesis.sourceEvaluationIds",
+      "Decision Thesis source IDs must reference the attached geometry, robustness and contextual evaluations."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .decisionExplanationEvaluationId !==
+    decision.thesis
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-explanation-trace-mismatch",
+      "internalTrace.decisionExplanationEvaluationId",
+      "Internal trace must reference the attached V3-07 Decision Thesis."
+    );
+  }
+
   const solutionById =
     new Map<
       string,
@@ -1173,6 +1223,53 @@ export function validateStayOptiDecisionV3(
       }
     }
   );
+
+  const explanationSolutionMatches = (
+    hotelId:
+      string |
+      null,
+    solutionId:
+      string |
+      null
+  ) =>
+    hotelId ===
+      null
+      ? solutionId ===
+          null
+      : solutionId !==
+          null &&
+        (
+          solutionById.get(
+            solutionId
+          )?.segments.some(
+            (segment) =>
+              segment.hotelId ===
+              hotelId
+          ) ??
+          false
+        );
+
+  if (
+    !explanationSolutionMatches(
+      decision.thesis
+        .recommendedHotelId,
+      decision.thesis
+        .recommendedSolutionId
+    ) ||
+    !explanationSolutionMatches(
+      decision.thesis
+        .bestAlternativeHotelId,
+      decision.thesis
+        .bestAlternativeSolutionId
+    )
+  ) {
+    addIssue(
+      issues,
+      "decision-explanation-solution-mismatch",
+      "thesis.recommendedSolutionId/bestAlternativeSolutionId",
+      "Decision Thesis hotel and solution references must resolve to the same attached stay solutions."
+    );
+  }
 
   decision.candidates.forEach(
     (
@@ -1377,6 +1474,131 @@ export function validateStayOptiDecisionV3(
         );
       }
     );
+
+  validateReasonCodes(
+    decision.thesis
+      .reasonCodes,
+    "thesis.reasonCodes",
+    issues
+  );
+
+  [
+    decision.thesis
+      .recommendation,
+    decision.thesis
+      .primaryReason,
+    decision.thesis
+      .mainTradeOff,
+    decision.thesis
+      .bestAlternative,
+    decision.thesis
+      .switchCondition,
+    decision.thesis
+      .uncertainty,
+  ].forEach(
+    (
+      claim,
+      index
+    ) =>
+      validateReasonCodes(
+        claim.reasonCodes,
+        `thesis.claims.${index}.reasonCodes`,
+        issues
+      )
+  );
+
+  const attachedExplanationEvidenceIds =
+    new Set<string>([
+      ...decision.candidates
+        .flatMap(
+          (candidate) =>
+            candidate.evidenceIds
+        ),
+      ...decision.integrity
+        .offerSnapshots
+        .flatMap(
+          (snapshot) =>
+            snapshot.evidenceIds
+        ),
+      ...decision.personalization
+        .utilityEvaluations
+        .flatMap(
+          (evaluation) =>
+            evaluation.contributions
+              .flatMap(
+                (contribution) =>
+                  contribution.evidenceIds
+              )
+        ),
+      ...decision.personalization
+        .peerAssignments
+        .flatMap(
+          (assignment) =>
+            assignment.evidenceIds
+        ),
+      ...decision.robustness
+        .candidates
+        .flatMap(
+          (candidate) =>
+            candidate.riskSignals
+              .flatMap(
+                (signal) =>
+                  signal.evidenceIds
+              )
+        ),
+      ...decision.contextualStayValue
+        .candidates
+        .flatMap(
+          (candidate) => [
+            ...candidate.location
+              .evidenceIds,
+            ...candidate.roomUpgrade
+              .evidenceIds,
+            ...candidate.flexibility
+              .evidenceIds,
+            ...candidate.contextInteractions
+              .evidenceIds,
+            ...candidate.convenience
+              .evidenceIds,
+          ]
+        ),
+    ]);
+
+  const hasDetachedExplanationEvidence =
+    [
+      decision.thesis
+        .recommendation,
+      decision.thesis
+        .primaryReason,
+      decision.thesis
+        .mainTradeOff,
+      decision.thesis
+        .bestAlternative,
+      decision.thesis
+        .switchCondition,
+      decision.thesis
+        .uncertainty,
+    ].some(
+      (claim) =>
+        claim.evidenceIds.some(
+          (evidenceId) =>
+            !attachedExplanationEvidenceIds
+              .has(
+                evidenceId
+              )
+        )
+    );
+
+  if (
+    hasDetachedExplanationEvidence
+  ) {
+    addIssue(
+      issues,
+      "decision-explanation-source-mismatch",
+      "thesis.copyEvidenceLinks",
+      "Every Decision Thesis evidence ID must resolve to evidence attached to the same V3 decision."
+    );
+  }
 
   validateReasonCodes(
     decision.outcomeLearning

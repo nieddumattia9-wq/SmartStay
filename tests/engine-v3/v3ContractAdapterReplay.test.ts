@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.6"
+      "3.0.0-decision.7"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.6"
+      "3.0.0-alpha.7"
     );
     assert.equal(
       decision.mode,
@@ -619,6 +619,49 @@ test(
       decision.internalTrace
         .contextualStayValueEvaluationId,
       decision.contextualStayValue
+        .evaluationId
+    );
+    assert.equal(
+      decision.thesis.phase,
+      "v3-07"
+    );
+    assert.equal(
+      decision.thesis
+        .rankingApplication,
+      "shadow-only"
+    );
+    assert.equal(
+      decision.thesis
+        .publicPresentation,
+      "disabled"
+    );
+    assert.equal(
+      decision.thesis
+        .publicGate.copyEnabled,
+      false
+    );
+    assert.equal(
+      decision.thesis
+        .numericPolicy
+        .publicPercentageCount,
+      0
+    );
+    assert.equal(
+      decision.thesis
+        .copyEvidenceLinks
+        .every(
+          (link) =>
+            link.evidenceIds.length >
+              0 &&
+            link.derivationIds.length >
+              0
+        ),
+      true
+    );
+    assert.equal(
+      decision.internalTrace
+        .decisionExplanationEvaluationId,
+      decision.thesis
         .evaluationId
     );
     assert.equal(
@@ -934,7 +977,7 @@ test(
 );
 
 test(
-  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness and context",
+  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness, context and explanation",
   () => {
     const utilityMutation =
       createDecision();
@@ -1047,6 +1090,25 @@ test(
         (issue) =>
           issue.code ===
           "decision-contextual-invalid"
+      )
+    );
+
+    const explanationMutation =
+      createDecision();
+
+    explanationMutation
+      .thesis
+      .primaryReason
+      .messageKey =
+        "stayopti.v3.explanation.fabricated";
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        explanationMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-explanation-invalid"
       )
     );
   }
