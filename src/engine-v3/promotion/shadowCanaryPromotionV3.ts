@@ -63,7 +63,7 @@ export interface StayOptiComparableDecisionV3 {
 
 export interface StayOptiShadowSafetySignalsV3 {
   priceIntegrity: "pass" | "fail" | "unknown";
-  publicRateConsistency: "verified" | "failed" | "unverified";
+  publicRateConsistency: "verified" | "not-applicable" | "failed" | "unverified";
   commercialFirewall: "pass" | "fail";
   privacyFirewall: "pass" | "fail";
   deterministicReplay: "pass" | "fail";
@@ -695,7 +695,7 @@ function validateSafetySignals(signals: StayOptiShadowSafetySignalsV3) {
 
   if (
     !["pass", "fail", "unknown"].includes(signals.priceIntegrity) ||
-    !["verified", "failed", "unverified"].includes(
+    !["verified", "not-applicable", "failed", "unverified"].includes(
       signals.publicRateConsistency
     ) ||
     [
@@ -720,7 +720,14 @@ function createCriticalRegressions(
   if (signals.deterministicReplay !== "pass") codes.push("non-deterministic-decision");
   if (signals.priceIntegrity !== "pass") codes.push("price-integrity");
   if (signals.privacyFirewall !== "pass") codes.push("privacy-violation");
-  if (signals.publicRateConsistency !== "verified") codes.push("public-rate-integrity");
+  if (
+    ![
+      "verified",
+      "not-applicable",
+    ].includes(
+      signals.publicRateConsistency
+    )
+  ) codes.push("public-rate-integrity");
   if (signals.recommendationSafety !== "pass") codes.push("unsafe-recommendation");
 
   return CRITICAL_REGRESSION_ORDER.filter((code) => codes.includes(code));

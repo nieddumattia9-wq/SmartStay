@@ -8,7 +8,7 @@ L’entry point già introdotto da V3-11C, `buildSmartStayFrontendRuntimeV2`, re
 
 ## Pacchetto cieco
 
-`createRealCaseBlindReviewBundleV3` riceve casi acquisiti da ricerche autorizzate con Evidence Public Rates già legata tramite fingerprint alla precisa decisione V3 e produce due oggetti separati:
+`createRealCaseBlindReviewBundleV3` riceve casi acquisiti da ricerche autorizzate con Evidence già legata tramite fingerprint alla precisa decisione V3 e produce due oggetti separati:
 
 - `blind-review-packet.json`: contesto di viaggio e due opzioni sinistra/destra, senza etichetta V2/V3, token selezione linkabili, identità del provider, identità della struttura, PII o riferimenti di prenotazione;
 - `sealed-assignments.json`: associazione V2/V3, fingerprint decisionali, fingerprint shadow e segnali di sicurezza. Questo file non deve essere consegnato ai valutatori.
@@ -17,10 +17,18 @@ La randomizzazione sinistra/destra è deterministica rispetto a caso e soglie co
 
 1. l’esatta decisione V2 del frontend;
 2. l’orchestrazione indipendente V3-11B;
-3. il confronto shadow interno con Public Rates `verified`;
+3. il confronto shadow interno con Public Rates `verified` per una raccomandazione oppure `not-applicable` per un’astensione decision-bound;
 4. la proiezione cieca dei soli fatti utili al giudizio.
 
 Una dichiarazione testuale `verified` non è sufficiente: Evidence mancante, manomessa o riferita a una decisione diversa, una referenza di prenotazione o un errore shadow vengono rifiutati fail-closed.
+
+### Astensioni e prova tariffaria
+
+Una raccomandazione V3 continua a richiedere la catena decision-bound `Rates → Prebook → GET Prebook`, con token della soluzione e totali coerenti entro la tolleranza congelata. Questo requisito non è stato ridotto.
+
+Quando V3 si astiene o non trova una soluzione fattibile, non esiste invece una tariffa selezionata da sottoporre a Prebook. In quel solo caso il collector deve produrre `v3-abstention-no-selected-rate`: una prova con chiavi chiuse e fingerprint separato, legata sia alla decisione V3 sia alla sua proiezione comparabile, con stato non-raccomandazione e token selezione obbligatoriamente nullo. Solo questa prova restituisce `not-applicable`.
+
+`not-applicable` consente al caso di entrare nella valutazione cieca dell’astensione, ma non rende V3 pronta per il pubblico: i gate di promozione e il kill switch continuano a richiedere Public Rates `verified` per qualunque raccomandazione servita.
 
 ## Review HTML offline
 

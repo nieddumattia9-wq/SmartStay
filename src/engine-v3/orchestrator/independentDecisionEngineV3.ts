@@ -58,7 +58,7 @@ export interface RunIndependentDecisionShadowInputV3 {
   segment: StayOptiEvaluationSegmentV3;
   searchInput: SmartStayEngineV2SearchInput;
   publicV2Result: SmartStayEngineV2SearchResult;
-  publicRateEvidence?: StayOptiBoundPublicRateEvidenceV3;
+  publicRateEvidence?: StayOptiBoundPublicRateEvidenceInputV3;
   compatibilityPolicy?: StayOptiV3CompatibilityPolicyInput;
 }
 
@@ -94,6 +94,26 @@ export interface StayOptiBoundPublicRateEvidenceV3 {
     string;
 }
 
+export interface StayOptiBoundPublicRateAbstentionEvidenceV3 {
+  evidenceType:
+    "v3-abstention-no-selected-rate";
+  decisionFingerprint:
+    string;
+  comparableDecisionFingerprint:
+    string;
+  comparableStatus:
+    | "abstained"
+    | "no-feasible-solution";
+  hotelSelectionToken:
+    null;
+  evidenceFingerprint:
+    string;
+}
+
+export type StayOptiBoundPublicRateEvidenceInputV3 =
+  | StayOptiBoundPublicRateEvidenceV3
+  | StayOptiBoundPublicRateAbstentionEvidenceV3;
+
 type PublicRateEvidenceWithoutFingerprintV3 =
   Omit<
     StayOptiBoundPublicRateEvidenceV3,
@@ -118,6 +138,35 @@ export function createBoundPublicRateEvidenceV3(
     ...input,
     evidenceFingerprint:
       createPublicRateEvidenceFingerprintV3(
+        input
+      ),
+  };
+}
+
+type PublicRateAbstentionEvidenceWithoutFingerprintV3 =
+  Omit<
+    StayOptiBoundPublicRateAbstentionEvidenceV3,
+    "evidenceFingerprint"
+  >;
+
+function createPublicRateAbstentionEvidenceFingerprintV3(
+  evidence:
+    PublicRateAbstentionEvidenceWithoutFingerprintV3
+) {
+  return createStableHashV3(
+    evidence,
+    "stayopti-v3-bound-public-rate-abstention-evidence"
+  );
+}
+
+export function createBoundPublicRateAbstentionEvidenceV3(
+  input:
+    PublicRateAbstentionEvidenceWithoutFingerprintV3
+): StayOptiBoundPublicRateAbstentionEvidenceV3 {
+  return {
+    ...input,
+    evidenceFingerprint:
+      createPublicRateAbstentionEvidenceFingerprintV3(
         input
       ),
   };
@@ -605,7 +654,7 @@ export function deriveBoundPublicRateConsistencyV3(
     comparable:
       StayOptiComparableDecisionV3;
     evidence?:
-      StayOptiBoundPublicRateEvidenceV3;
+      StayOptiBoundPublicRateEvidenceInputV3;
   }
 ): StayPublicRatesConsistencyV3 {
   const evidence =
@@ -618,15 +667,65 @@ export function deriveBoundPublicRateConsistencyV3(
     return "unverified";
   }
 
-  const {
-    evidenceFingerprint,
-    ...withoutFingerprint
-  } = evidence;
-
   const evidenceKeys =
     Object.keys(
       evidence
     ).sort();
+
+  if (
+    evidence.evidenceType ===
+      "v3-abstention-no-selected-rate"
+  ) {
+    const {
+      evidenceFingerprint,
+      ...withoutFingerprint
+    } = evidence;
+
+    const expectedEvidenceKeys = [
+      "comparableDecisionFingerprint",
+      "comparableStatus",
+      "decisionFingerprint",
+      "evidenceFingerprint",
+      "evidenceType",
+      "hotelSelectionToken",
+    ];
+
+    return JSON.stringify(
+      evidenceKeys
+    ) ===
+        JSON.stringify(
+          expectedEvidenceKeys
+        ) &&
+      evidenceFingerprint ===
+        createPublicRateAbstentionEvidenceFingerprintV3(
+          withoutFingerprint
+        ) &&
+      evidence.decisionFingerprint ===
+        input.decision.replay
+          .decisionFingerprint &&
+      evidence.comparableDecisionFingerprint ===
+        input.comparable
+          .decisionFingerprint &&
+      evidence.comparableStatus ===
+        input.comparable.status &&
+      input.comparable.selectedSolutionToken ===
+        null &&
+      evidence.hotelSelectionToken ===
+        null &&
+      input.decision.robustness
+        .recommendationPolicy ===
+        "abstain" &&
+      input.decision.robustness
+        .policyPreferredHotelId ===
+        null
+        ? "not-applicable"
+        : "failed";
+  }
+
+  const {
+    evidenceFingerprint,
+    ...withoutFingerprint
+  } = evidence;
 
   const expectedEvidenceKeys = [
     "currency",
@@ -794,7 +893,7 @@ export function deriveIndependentShadowSafetySignalsV3(
   input: {
     decision: StayOptiDecisionV3;
     comparable: StayOptiComparableDecisionV3;
-    publicRateEvidence?: StayOptiBoundPublicRateEvidenceV3;
+    publicRateEvidence?: StayOptiBoundPublicRateEvidenceInputV3;
     deterministicReplayMatches: boolean;
   }
 ): StayOptiShadowSafetySignalsV3 {

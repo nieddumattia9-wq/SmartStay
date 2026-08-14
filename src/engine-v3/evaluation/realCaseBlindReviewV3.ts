@@ -27,7 +27,7 @@ import {
   createIndependentV3ComparableDecisionV3,
   createV2ComparableDecisionV3,
   runIndependentDecisionShadowV3,
-  type StayOptiBoundPublicRateEvidenceV3,
+  type StayOptiBoundPublicRateEvidenceInputV3,
 } from "../orchestrator/independentDecisionEngineV3";
 
 import type {
@@ -69,7 +69,7 @@ export interface StayOptiRealCaseBlindReviewSourceV3 {
     StayOptiRealCaseSegmentInputV3;
 
   publicRateEvidence:
-    StayOptiBoundPublicRateEvidenceV3;
+    StayOptiBoundPublicRateEvidenceInputV3;
 
   frontendInput:
     SmartStayFrontendInputV2;
@@ -1006,7 +1006,7 @@ function createCase(
         .bestChoiceHotelId
     );
 
-  if (
+  const publicRateConsistency =
     deriveBoundPublicRateConsistencyV3({
       decision:
         v3SourceDecision,
@@ -1014,11 +1014,20 @@ function createCase(
         v3Decision,
       evidence:
         source.publicRateEvidence,
-    }) !==
-      "verified"
+    });
+
+  const expectedPublicRateConsistency =
+    v3Decision.status ===
+      "recommended"
+      ? "verified"
+      : "not-applicable";
+
+  if (
+    publicRateConsistency !==
+      expectedPublicRateConsistency
   ) {
     throw new Error(
-      "Only decision-bound verified public-rate evidence may enter blind evaluation."
+      "Blind evaluation requires verified rate-chain evidence for recommendations or decision-bound not-applicable evidence for abstentions."
     );
   }
 

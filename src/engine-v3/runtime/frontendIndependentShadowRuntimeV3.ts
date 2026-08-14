@@ -9,7 +9,7 @@ import {
 import {
   runIndependentDecisionShadowV3,
   type RunIndependentDecisionShadowResultV3,
-  type StayOptiBoundPublicRateEvidenceV3,
+  type StayOptiBoundPublicRateEvidenceInputV3,
 } from "../orchestrator/independentDecisionEngineV3";
 
 import type {
@@ -32,7 +32,7 @@ export interface RunFrontendIndependentShadowRuntimeInputV3 {
   runtime:
     SmartStayFrontendRuntimeV2;
   publicRateEvidence?:
-    StayOptiBoundPublicRateEvidenceV3;
+    StayOptiBoundPublicRateEvidenceInputV3;
 }
 
 const MAX_BUFFERED_OBSERVATIONS =

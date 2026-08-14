@@ -85,6 +85,7 @@ export {
 export {
   STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3,
   STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3,
+  createBoundPublicRateAbstentionEvidenceV3,
   createBoundPublicRateEvidenceV3,
   createHotelSelectionTokenV3,
   createIndependentV3ComparableDecisionV3,
@@ -94,7 +95,9 @@ export {
   runIndependentDecisionShadowV3,
   type RunIndependentDecisionShadowInputV3,
   type RunIndependentDecisionShadowResultV3,
+  type StayOptiBoundPublicRateAbstentionEvidenceV3,
   type StayOptiBoundPublicRateEvidenceV3,
+  type StayOptiBoundPublicRateEvidenceInputV3,
 } from "./orchestrator/independentDecisionEngineV3";
 
 export {

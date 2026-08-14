@@ -13,6 +13,7 @@ import {
 import {
   STAYOPTI_REAL_CASE_BLIND_REVIEW_AUDIT_V3,
   adaptV2SearchResultToDecisionV3,
+  createBoundPublicRateAbstentionEvidenceV3,
   createBoundPublicRateEvidenceV3,
   createBlindEvaluationFromReviewResponsesV3,
   createHotelSelectionTokenV3,
@@ -454,6 +455,86 @@ function createBundle() {
   ]);
 }
 
+function createAbstentionBundle() {
+  const frontendInput = {
+    ...FRONTEND_INPUT,
+    hotels: [],
+  };
+
+  const runtime =
+    buildSmartStayFrontendRuntimeV2(
+      frontendInput
+    );
+
+  const decision =
+    adaptV2SearchResultToDecisionV3({
+      searchInput:
+        runtime.searchInput,
+      result:
+        runtime.result,
+    });
+
+  const comparable =
+    createIndependentV3ComparableDecisionV3(
+      decision,
+      runtime.result
+        .recommendationRoles
+        .bestChoiceHotelId
+    );
+
+  assert.notEqual(
+    comparable.status,
+    "recommended"
+  );
+
+  const comparableStatus =
+    comparable.status;
+
+  if (
+    comparableStatus ===
+      "recommended"
+  ) {
+    throw new Error(
+      "Blind-review abstention fixture unexpectedly recommended a hotel."
+    );
+  }
+
+  return createRealCaseBlindReviewBundleV3([
+    {
+      caseId:
+        "real-case-abstention-0001",
+      caseType:
+        "adversarial",
+      segment: {
+        destination:
+          "urban",
+        leadTime:
+          "medium",
+        duration:
+          "short-stay",
+        coverage:
+          "low",
+      },
+      publicRateEvidence:
+        createBoundPublicRateAbstentionEvidenceV3({
+          evidenceType:
+            "v3-abstention-no-selected-rate",
+          decisionFingerprint:
+            decision.replay
+              .decisionFingerprint,
+          comparableDecisionFingerprint:
+            comparable
+              .decisionFingerprint,
+          comparableStatus:
+            comparableStatus,
+          hotelSelectionToken:
+            null,
+        }),
+      frontendInput,
+    },
+  ]);
+}
+
 test(
   "exact frontend decision bridge preserves the public V2 view semantics",
   () => {
@@ -566,7 +647,7 @@ test(
       STAYOPTI_REAL_CASE_BLIND_REVIEW_AUDIT_V3,
       {
         version:
-          "3.0.0-real-case-blind-review.1",
+          "3.0.0-real-case-blind-review.2",
         application:
           "offline-human-review-only",
         liveProviderCalls:
@@ -582,6 +663,63 @@ test(
         automaticPromotionAllowed:
           false,
       }
+    );
+  }
+);
+
+test(
+  "decision-bound abstentions enter the blind packet without inventing rate evidence",
+  () => {
+    const bundle =
+      createAbstentionBundle();
+
+    assert.deepEqual(
+      validateRealCaseBlindReviewBundleV3(
+        bundle
+      ),
+      {
+        valid:
+          true,
+        issues: [],
+      }
+    );
+
+    assert.equal(
+      bundle.assignments
+        .assignments[0]
+        ?.safety
+        .publicRateConsistency,
+      "not-applicable"
+    );
+
+    assert.equal(
+      bundle.packet.cases[0]
+        ?.left.totalCost,
+      null
+    );
+
+    assert.equal(
+      bundle.packet.cases[0]
+        ?.right.totalCost,
+      null
+    );
+
+    const publicPacket =
+      JSON.stringify(
+        bundle.packet
+      );
+
+    assert.equal(
+      publicPacket.includes(
+        "decisionFingerprint"
+      ),
+      false
+    );
+    assert.equal(
+      publicPacket.includes(
+        "publicRateEvidence"
+      ),
+      false
     );
   }
 );
@@ -737,7 +875,7 @@ test(
               FRONTEND_INPUT,
           },
         ]),
-      /decision-bound verified public-rate evidence/
+      /verified rate-chain evidence/
     );
   }
 );

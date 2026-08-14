@@ -218,16 +218,16 @@ export const SMARTSTAY_PROMOTION_AUDIT_SCHEMA_VERSION_V3 =
   "3.0.0-promotion-audit.1" as const;
 
 export const SMARTSTAY_INDEPENDENT_DECISION_VERSION_V3 =
-  "3.0.0-independent-decision.2" as const;
+  "3.0.0-independent-decision.3" as const;
 
 export const SMARTSTAY_REAL_CASE_BLIND_REVIEW_VERSION_V3 =
-  "3.0.0-real-case-blind-review.1" as const;
+  "3.0.0-real-case-blind-review.2" as const;
 
 export const SMARTSTAY_BLIND_REVIEW_PACKET_SCHEMA_VERSION_V3 =
   "3.0.0-blind-review-packet.1" as const;
 
 export const SMARTSTAY_BLIND_REVIEW_ASSIGNMENT_SCHEMA_VERSION_V3 =
-  "3.0.0-blind-review-assignment.1" as const;
+  "3.0.0-blind-review-assignment.2" as const;
 
 export const SMARTSTAY_V3_VERSIONS = {
   engine:

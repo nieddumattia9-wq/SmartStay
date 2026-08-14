@@ -13,6 +13,7 @@ import type {
 export type StayPublicRatesConsistencyV3 =
   | "unverified"
   | "verified"
+  | "not-applicable"
   | "failed";
 
 export type StayIntegrityGateStatusV3 =

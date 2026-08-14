@@ -25,6 +25,7 @@ import {
   STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3,
   STAYOPTI_FRONTEND_SHADOW_RUNTIME_AUDIT_V3,
   adaptV2SearchResultToDecisionV3,
+  createBoundPublicRateAbstentionEvidenceV3,
   createBoundPublicRateEvidenceV3,
   createHotelSelectionTokenV3,
   createIndependentV3ComparableDecisionV3,
@@ -420,6 +421,56 @@ function createVerifiedPublicRateEvidence() {
         .amount +
       0.01,
   });
+}
+
+function createAbstentionSource() {
+  const searchInput = {
+    ...SEARCH_INPUT,
+    hotels: [],
+  };
+
+  const result =
+    evaluateSmartStaySearchV2(
+      searchInput
+    );
+
+  const decision =
+    adaptV2SearchResultToDecisionV3({
+      searchInput,
+      result,
+    });
+
+  const comparable =
+    createIndependentV3ComparableDecisionV3(
+      decision,
+      result.recommendationRoles
+        .bestChoiceHotelId
+    );
+
+  assert.notEqual(
+    comparable.status,
+    "recommended"
+  );
+
+  const comparableStatus =
+    comparable.status;
+
+  if (
+    comparableStatus ===
+      "recommended"
+  ) {
+    throw new Error(
+      "Abstention fixture unexpectedly recommended a hotel."
+    );
+  }
+
+  return {
+    comparable,
+    comparableStatus,
+    decision,
+    result,
+    searchInput,
+  };
 }
 
 test(
@@ -970,6 +1021,181 @@ test(
         comparable,
       }),
       "unverified"
+    );
+  }
+);
+
+test(
+  "decision-bound abstention evidence is not applicable to rates and cannot mask a recommendation",
+  () => {
+    const abstention =
+      createAbstentionSource();
+
+    const evidence =
+      createBoundPublicRateAbstentionEvidenceV3({
+        evidenceType:
+          "v3-abstention-no-selected-rate",
+        decisionFingerprint:
+          abstention.decision.replay
+            .decisionFingerprint,
+        comparableDecisionFingerprint:
+          abstention.comparable
+            .decisionFingerprint,
+        comparableStatus:
+          abstention.comparableStatus,
+        hotelSelectionToken:
+          null,
+      });
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision:
+          abstention.decision,
+        comparable:
+          abstention.comparable,
+        evidence,
+      }),
+      "not-applicable"
+    );
+
+    const safety =
+      deriveIndependentShadowSafetySignalsV3({
+        decision:
+          abstention.decision,
+        comparable:
+          abstention.comparable,
+        publicRateEvidence:
+          evidence,
+        deterministicReplayMatches:
+          true,
+      });
+
+    assert.equal(
+      safety.publicRateConsistency,
+      "not-applicable"
+    );
+
+    const shadow =
+      runIndependentDecisionShadowV3({
+        mode:
+          "shadow",
+        comparisonToken:
+          "independent-shadow-abstention-0001",
+        segment:
+          SEGMENT,
+        searchInput:
+          abstention.searchInput,
+        publicV2Result:
+          abstention.result,
+        publicRateEvidence:
+          evidence,
+      });
+
+    assert.equal(
+      shadow.shadowObservation
+        ?.recordType,
+      "shadow-comparison"
+    );
+
+    if (
+      shadow.shadowObservation
+        ?.recordType ===
+        "shadow-comparison"
+    ) {
+      assert.equal(
+        shadow.shadowObservation
+          .criticalRegressions
+          .includes(
+            "public-rate-integrity"
+          ),
+        false
+      );
+    }
+
+    const recommendation =
+      createSource();
+
+    const recommendationComparable =
+      createIndependentV3ComparableDecisionV3(
+        recommendation.decision,
+        recommendation.result
+          .recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision:
+          recommendation.decision,
+        comparable:
+          recommendationComparable,
+        evidence,
+      }),
+      "failed"
+    );
+  }
+);
+
+test(
+  "abstention evidence fails closed when missing, tampered, or bound to another comparable decision",
+  () => {
+    const source =
+      createAbstentionSource();
+
+    const evidence =
+      createBoundPublicRateAbstentionEvidenceV3({
+        evidenceType:
+          "v3-abstention-no-selected-rate",
+        decisionFingerprint:
+          source.decision.replay
+            .decisionFingerprint,
+        comparableDecisionFingerprint:
+          source.comparable
+            .decisionFingerprint,
+        comparableStatus:
+          source.comparableStatus,
+        hotelSelectionToken:
+          null,
+      });
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision:
+          source.decision,
+        comparable:
+          source.comparable,
+      }),
+      "unverified"
+    );
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision:
+          source.decision,
+        comparable:
+          source.comparable,
+        evidence: {
+          ...evidence,
+          comparableDecisionFingerprint:
+            "fnv1a32-00000000",
+        },
+      }),
+      "failed"
+    );
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision:
+          source.decision,
+        comparable:
+          source.comparable,
+        evidence: {
+          ...evidence,
+          evidenceFingerprint:
+            "fnv1a32-00000000",
+        },
+      }),
+      "failed"
     );
   }
 );
