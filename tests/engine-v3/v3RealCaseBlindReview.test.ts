@@ -803,6 +803,29 @@ test(
       /stayopti-blind-responses/
     );
 
+    const script =
+      html.match(
+        /<script>([\s\S]*?)<\/script>/
+      )?.[1] ??
+      "";
+
+    assert.notEqual(
+      script,
+      ""
+    );
+
+    assert.doesNotThrow(
+      () =>
+        Function(
+          script
+        )
+    );
+
+    assert.match(
+      html,
+      /<div class="facts">/
+    );
+
     assert.equal(
       html.includes(
         "leftLabel"

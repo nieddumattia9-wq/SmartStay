@@ -1901,7 +1901,7 @@ function optionHtml(title, option) {
   if (option.status !== "recommended") return "<h3>" + title + "</h3><p>Il sistema preferisce non raccomandare una struttura con i dati disponibili.</p>";
   const d = option.dimensions || {};
   return [
-    "<h3>", title, "</h3><div class=\"facts\">",
+    "<h3>", title, '</h3><div class="facts">',
     "<span>Costo totale</span><b>", text(option.totalCost), " ", text(option.currency), "</b>",
     "<span>Categoria</span><b>", text(option.starCategory), " stelle</b>",
     "<span>Recensioni</span><b>", text(option.reviewScore), " (", text(option.reviewCountBand), ")</b>",
