@@ -52,6 +52,11 @@ import {
   type StayOptiPeerAssignmentV3,
 } from "../peer/peerIntelligenceV3";
 
+import {
+  validateDecisionGeometryV3,
+  type StayOptiDecisionGeometryV3,
+} from "../geometry/decisionGeometryV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -266,6 +271,9 @@ export interface StayOptiDecisionTraceV3 {
   peerAssignmentIds:
     string[];
 
+  decisionGeometryEvaluationId:
+    string;
+
   roleAssignments:
     Array<{
       solutionId:
@@ -369,6 +377,9 @@ export interface StayOptiDecisionV3 {
   personalization:
     StayOptiDecisionPersonalizationV3;
 
+  decisionGeometry:
+    StayOptiDecisionGeometryV3;
+
   solutions:
     StaySolutionV3[];
 
@@ -451,6 +462,9 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-personalization-peer-invalid"
   | "decision-personalization-hotel-duplicate"
   | "decision-personalization-coverage-mismatch"
+  | "decision-geometry-invalid"
+  | "decision-geometry-coverage-mismatch"
+  | "decision-geometry-trace-mismatch"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -541,7 +555,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-03 contract."
+      "Decision versions do not match the frozen V3-04 contract."
     );
   }
 
@@ -894,6 +908,63 @@ export function validateStayOptiDecisionV3(
     );
   }
 
+  if (
+    decision.decisionGeometry.phase !==
+      "v3-04" ||
+    decision.decisionGeometry
+      .rankingApplication !==
+      "shadow-only" ||
+    !validateDecisionGeometryV3(
+      decision.decisionGeometry
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-geometry-invalid",
+      "decisionGeometry",
+      "Decision Geometry must be a valid V3-04 shadow-only evaluation."
+    );
+  }
+
+  const geometryHotelIds =
+    decision.decisionGeometry
+      .candidates
+      .map(
+        (candidate) =>
+          candidate.hotelId
+      )
+      .sort();
+
+  if (
+    stableSerializeV3(
+      geometryHotelIds
+    ) !==
+      stableSerializeV3(
+        expectedPersonalizationHotelIds
+      )
+  ) {
+    addIssue(
+      issues,
+      "decision-geometry-coverage-mismatch",
+      "decisionGeometry.candidates",
+      "Decision Geometry must cover every analyzed hotel exactly once."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .decisionGeometryEvaluationId !==
+    decision.decisionGeometry
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-geometry-trace-mismatch",
+      "internalTrace.decisionGeometryEvaluationId",
+      "Internal trace must reference the attached Decision Geometry evaluation."
+    );
+  }
+
   const solutionById =
     new Map<
       string,
@@ -1128,6 +1199,98 @@ export function validateStayOptiDecisionV3(
     "personalization.reasonCodes",
     issues
   );
+
+  validateReasonCodes(
+    decision.decisionGeometry
+      .reasonCodes,
+    "decisionGeometry.reasonCodes",
+    issues
+  );
+
+  decision.decisionGeometry
+    .candidates
+    .forEach(
+      (
+        candidate,
+        index
+      ) =>
+        validateReasonCodes(
+          candidate.reasonCodes,
+          `decisionGeometry.candidates.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  decision.decisionGeometry
+    .dominanceRelations
+    .forEach(
+      (
+        relation,
+        index
+      ) =>
+        validateReasonCodes(
+          relation.reasonCodes,
+          `decisionGeometry.dominanceRelations.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  decision.decisionGeometry
+    .pairwiseFinalistComparisons
+    .forEach(
+      (
+        comparison,
+        index
+      ) =>
+        validateReasonCodes(
+          comparison.reasonCodes,
+          `decisionGeometry.pairwiseFinalistComparisons.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  decision.decisionGeometry
+    .marginalValueSegments
+    .forEach(
+      (
+        segment,
+        index
+      ) =>
+        validateReasonCodes(
+          segment.reasonCodes,
+          `decisionGeometry.marginalValueSegments.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  decision.decisionGeometry
+    .tradeOffThresholds
+    .forEach(
+      (
+        threshold,
+        index
+      ) =>
+        validateReasonCodes(
+          threshold.reasonCodes,
+          `decisionGeometry.tradeOffThresholds.${index}.reasonCodes`,
+          issues
+        )
+    );
+
+  decision.decisionGeometry
+    .decisionMap
+    .points
+    .forEach(
+      (
+        point,
+        index
+      ) =>
+        validateReasonCodes(
+          point.reasonCodes,
+          `decisionGeometry.decisionMap.points.${index}.reasonCodes`,
+          issues
+        )
+    );
 
   const expectedTraceSnapshotIds = [
     ...snapshotIds,

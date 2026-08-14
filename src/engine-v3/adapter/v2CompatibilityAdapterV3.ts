@@ -48,6 +48,7 @@ import type {
 
 import {
   SMARTSTAY_DECISION_SCHEMA_VERSION_V3,
+  SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
   SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3,
   SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
@@ -81,6 +82,10 @@ import {
   evaluatePeerIntelligenceV3,
   type StayOptiPeerCandidateV3,
 } from "../peer/peerIntelligenceV3";
+
+import {
+  evaluateDecisionGeometryV3,
+} from "../geometry/decisionGeometryV3";
 
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
@@ -1539,6 +1544,195 @@ export function adaptV2SearchResultToDecisionV3(
       }
     );
 
+  const utilityByHotelId =
+    new Map(
+      utilityEvaluations.map(
+        (evaluation) => [
+          evaluation.hotelId,
+          evaluation,
+        ]
+      )
+    );
+
+  const peerAssignmentByHotelId =
+    new Map(
+      peerAssignments.map(
+        (assignment) => [
+          assignment.hotelId,
+          assignment,
+        ]
+      )
+    );
+
+  const solutionIdByHotelId =
+    new Map<string, string>();
+
+  for (
+    const solution
+    of solutions
+  ) {
+    const hotelId =
+      solution.kind ===
+        "single"
+        ? solution.segments[0]
+            ?.hotelId ??
+          null
+        : null;
+
+    if (
+      hotelId !==
+        null
+    ) {
+      solutionIdByHotelId.set(
+        hotelId,
+        solution.solutionId
+      );
+    }
+  }
+
+  const decisionGeometry =
+    evaluateDecisionGeometryV3(
+      sortedEvaluations.map(
+        (evaluation) => {
+          const hotelId =
+            evaluation.hotel.id;
+
+          const selectedOffer =
+            selectedOfferByHotelId.get(
+              hotelId
+            ) ??
+            null;
+
+          const integritySnapshot =
+            selectedOffer ===
+              null
+              ? null
+              : integritySnapshotByOffer.get(
+                  `${hotelId}\u0000${selectedOffer.offerId}`
+                ) ??
+                null;
+
+          const utility =
+            utilityByHotelId.get(
+              hotelId
+            );
+
+          const peerAssignment =
+            peerAssignmentByHotelId.get(
+              hotelId
+            );
+
+          if (
+            utility ===
+              undefined ||
+            peerAssignment ===
+              undefined
+          ) {
+            throw new Error(
+              `V3-04 geometry evidence is incomplete for ${hotelId}.`
+            );
+          }
+
+          return {
+            hotelId,
+            solutionId:
+              solutionIdByHotelId.get(
+                hotelId
+              ) ??
+              null,
+            eligible:
+              evaluation
+                .reliabilityGate
+                .eligible &&
+              selectedOffer
+                ?.bookable ===
+                true,
+            totalCost:
+              integritySnapshot
+                ?.cost
+                .total
+                .amount ??
+              null,
+            currency:
+              integritySnapshot
+                ?.cost
+                .total
+                .currency ??
+              null,
+            costIntegrityStatus:
+              integritySnapshot
+                ?.cost
+                .integrityStatus ??
+              "incomplete",
+            utility,
+            peerAssignment,
+          };
+        }
+      )
+    );
+
+  const solutionHotelId = (
+    solutionId:
+      string |
+      null
+  ) =>
+    solutionId ===
+      null
+      ? null
+      : solutions.find(
+          (solution) =>
+            solution.solutionId ===
+              solutionId &&
+            solution.kind ===
+              "single"
+        )?.segments[0]
+          ?.hotelId ??
+        null;
+
+  const recommendedHotelId =
+    solutionHotelId(
+      recommendedSolutionId
+    );
+
+  const bestAlternativeHotelId =
+    solutionHotelId(
+      bestAlternativeSolutionId
+    );
+
+  const recommendedSwitchThreshold =
+    recommendedHotelId ===
+      null ||
+    bestAlternativeHotelId ===
+      null
+      ? null
+      : decisionGeometry
+          .tradeOffThresholds
+          .find(
+            (threshold) =>
+              (
+                threshold
+                  .lowerCostHotelId ===
+                  recommendedHotelId &&
+                threshold
+                  .higherCostHotelId ===
+                  bestAlternativeHotelId
+              ) ||
+              (
+                threshold
+                  .lowerCostHotelId ===
+                  bestAlternativeHotelId &&
+                threshold
+                  .higherCostHotelId ===
+                  recommendedHotelId
+              )
+          ) ??
+        null;
+
+  const exactSwitchThresholdAvailable =
+    recommendedSwitchThreshold
+      ?.exact ===
+      true;
+
   const preferenceReasonCode:
     SmartStayReasonCodeV3 =
       preferenceResolution.origin ===
@@ -1667,6 +1861,9 @@ export function adaptV2SearchResultToDecisionV3(
             (assignment) =>
               assignment.fingerprint
           ),
+        decisionGeometryFingerprint:
+          decisionGeometry
+            .fingerprint,
       },
       "stayopti-v3-input"
     );
@@ -1680,6 +1877,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_PERSONAL_UTILITY_VERSION_V3,
         peerIntelligenceVersion:
           SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
+        decisionGeometryVersion:
+          SMARTSTAY_DECISION_GEOMETRY_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -1794,6 +1993,7 @@ export function adaptV2SearchResultToDecisionV3(
       reasonCodes:
         personalizationReasonCodes,
     },
+    decisionGeometry,
     solutions,
     candidates,
     recommendedSolutionId,
@@ -1846,9 +2046,15 @@ export function adaptV2SearchResultToDecisionV3(
           .comparisons
           .length,
       exactThresholdsAvailable:
-        false,
+        decisionGeometry
+          .exactThresholdCount >
+        0,
       reasonCodes: [
-        "counterfactual:exact-thresholds-unavailable",
+        decisionGeometry
+          .exactThresholdCount >
+          0
+          ? "counterfactual:exact-thresholds-available"
+          : "counterfactual:exact-thresholds-unavailable",
       ],
     },
     thesis: {
@@ -1873,7 +2079,7 @@ export function adaptV2SearchResultToDecisionV3(
           []
         ),
       exactSwitchThresholdAvailable:
-        false,
+        exactSwitchThresholdAvailable,
     },
     replay: {
       inputFingerprint,
@@ -1886,7 +2092,19 @@ export function adaptV2SearchResultToDecisionV3(
         "adapter:v2-evidence-bridged",
         "temporal:not-evaluated",
         "robustness:not-evaluated",
-        "counterfactual:exact-thresholds-unavailable",
+        ...decisionGeometry
+          .reasonCodes,
+        ...(
+          decisionGeometry
+            .exactThresholdCount >
+            0
+            ? [
+                "counterfactual:exact-thresholds-available" as const,
+              ]
+            : [
+                "counterfactual:exact-thresholds-unavailable" as const,
+              ]
+        ),
         "outcome:not-instrumented",
         "firewall:commercial-fields-absent",
         ...integrityCoverage
@@ -1927,6 +2145,9 @@ export function adaptV2SearchResultToDecisionV3(
           (assignment) =>
             assignment.assignmentId
         ).sort(),
+      decisionGeometryEvaluationId:
+        decisionGeometry
+          .evaluationId,
       roleAssignments:
         roleAssignments.sort(
           (

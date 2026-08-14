@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.3"
+      "3.0.0-decision.4"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.3"
+      "3.0.0-alpha.4"
     );
     assert.equal(
       decision.mode,
@@ -525,6 +525,45 @@ test(
         .length,
       decision.coverage
         .analyzedHotelCount
+    );
+    assert.equal(
+      decision.decisionGeometry
+        .phase,
+      "v3-04"
+    );
+    assert.equal(
+      decision.decisionGeometry
+        .rankingApplication,
+      "shadow-only"
+    );
+    assert.equal(
+      decision.decisionGeometry
+        .candidates
+        .length,
+      decision.coverage
+        .analyzedHotelCount
+    );
+    assert.equal(
+      decision.decisionGeometry
+        .candidates
+        .every(
+          (candidate) =>
+            candidate
+              .strongParetoStatus ===
+            "unknown"
+        ),
+      true
+    );
+    assert.equal(
+      decision.decisionGeometry
+        .exactThresholdCount,
+      0
+    );
+    assert.equal(
+      decision.internalTrace
+        .decisionGeometryEvaluationId,
+      decision.decisionGeometry
+        .evaluationId
     );
     assert.equal(
       validateStayOptiDecisionV3(
@@ -839,7 +878,7 @@ test(
 );
 
 test(
-  "V3 contract rejects mutated utility and unsafe peer output",
+  "V3 contract rejects mutated utility, unsafe peer output and mutated geometry",
   () => {
     const utilityMutation =
       createDecision();
@@ -896,6 +935,24 @@ test(
         (issue) =>
           issue.code ===
           "decision-personalization-preference-invalid"
+      )
+    );
+
+    const geometryMutation =
+      createDecision();
+
+    geometryMutation
+      .decisionGeometry
+      .fingerprint =
+        "fnv1a32-00000000";
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        geometryMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-geometry-invalid"
       )
     );
   }
