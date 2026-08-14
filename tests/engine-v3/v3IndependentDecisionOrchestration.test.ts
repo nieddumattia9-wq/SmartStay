@@ -39,6 +39,12 @@ import {
   type StayOptiV3CompatibilityPolicyInput,
 } from "../../src/engine-v3";
 
+import {
+  STAYOPTI_STRICT_OFF_SHADOW_LOADER_AUDIT_V3,
+  loadFrontendIndependentShadowRuntimeV3,
+  type StayOptiFrontendShadowRuntimeModuleV3,
+} from "../../src/engine-v3/runtime/strictOffShadowLoaderV3";
+
 function createOffer(
   index: number,
   provider: string,
@@ -969,6 +975,77 @@ test(
 );
 
 test(
+  "strict off mode does not import the V3 runtime and shadow imports it exactly once",
+  async () => {
+    let importCount =
+      0;
+
+    const fakeRuntimeModule: StayOptiFrontendShadowRuntimeModuleV3 = {
+      runFrontendIndependentShadowRuntimeV3:
+        runFrontendIndependentShadowRuntimeV3,
+    };
+
+    const importer =
+      async () => {
+        importCount +=
+          1;
+
+        return fakeRuntimeModule;
+      };
+
+    const offModule =
+      await loadFrontendIndependentShadowRuntimeV3(
+        "off",
+        importer
+      );
+
+    assert.equal(
+      offModule,
+      null
+    );
+    assert.equal(
+      importCount,
+      0
+    );
+    assert.equal(
+      STAYOPTI_STRICT_OFF_SHADOW_LOADER_AUDIT_V3
+        .offImportsRuntime,
+      false
+    );
+
+    const shadowModule =
+      await loadFrontendIndependentShadowRuntimeV3(
+        "shadow",
+        importer
+      );
+
+    assert.equal(
+      shadowModule,
+      fakeRuntimeModule
+    );
+    assert.equal(
+      importCount,
+      1
+    );
+    assert.equal(
+      STAYOPTI_STRICT_OFF_SHADOW_LOADER_AUDIT_V3
+        .shadowImportsRuntime,
+      true
+    );
+    assert.equal(
+      STAYOPTI_STRICT_OFF_SHADOW_LOADER_AUDIT_V3
+        .publicServingEngine,
+      "v2"
+    );
+    assert.equal(
+      STAYOPTI_STRICT_OFF_SHADOW_LOADER_AUDIT_V3
+        .splitEnabled,
+      false
+    );
+  }
+);
+
+test(
   "the real Results runtime invokes the isolated V3 hook while the public V2 view stays byte-equivalent",
   () => {
     resetFrontendShadowBufferV3();
@@ -1060,11 +1137,15 @@ test(
     );
     assert.match(
       resultsSource,
-      /runFrontendIndependentShadowRuntimeV3/
+      /loadFrontendIndependentShadowRuntimeV3/
     );
     assert.match(
       resultsSource,
-      /if \(searchId\) \{/
+      /STAYOPTI_V3_SHADOW_MODE ===[\s\S]*"shadow" &&[\s\S]*searchId/
+    );
+    assert.doesNotMatch(
+      resultsSource,
+      /engine-v3\/runtime\/frontendIndependentShadowRuntimeV3/
     );
 
     resetFrontendShadowBufferV3();

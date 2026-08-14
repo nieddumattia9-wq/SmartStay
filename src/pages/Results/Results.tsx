@@ -46,6 +46,14 @@ import type {
 } from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
 
 import {
+  STAYOPTI_V3_SHADOW_MODE,
+} from "../../config/runtimeConfig";
+
+import {
+  loadFrontendIndependentShadowRuntimeV3,
+} from "../../engine-v3/runtime/strictOffShadowLoaderV3";
+
+import {
   diagnoseSmartStayEmptyStateV2,
 } from "../../engine-v2/frontend/constraintAwareEmptyStateV2";
 
@@ -1253,19 +1261,6 @@ const rankedHotels =
               "../../engine-v2/frontend/smartStayFrontendAdapterV2"
             );
 
-          const [
-            v3ShadowModule,
-            runtimeConfig,
-          ] =
-            await Promise.all([
-              import(
-                "../../engine-v3/runtime/frontendIndependentShadowRuntimeV3"
-              ),
-              import(
-                "../../config/runtimeConfig"
-              ),
-            ]);
-
           const previousRankingHotelIds =
             recoveryActive
               ? []
@@ -1361,13 +1356,21 @@ const rankedHotels =
           const view =
             engineRuntime.view;
 
-          if (searchId) {
+          if (
+            STAYOPTI_V3_SHADOW_MODE ===
+              "shadow" &&
+            searchId
+          ) {
             try {
+              const v3ShadowModule =
+                await loadFrontendIndependentShadowRuntimeV3(
+                  STAYOPTI_V3_SHADOW_MODE
+                );
+
               v3ShadowModule
-                .runFrontendIndependentShadowRuntimeV3({
+                ?.runFrontendIndependentShadowRuntimeV3({
                   mode:
-                    runtimeConfig
-                      .STAYOPTI_V3_SHADOW_MODE,
+                    STAYOPTI_V3_SHADOW_MODE,
                   sourceToken:
                     searchId,
                   runtime:
