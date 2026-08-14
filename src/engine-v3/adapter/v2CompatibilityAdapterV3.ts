@@ -57,6 +57,7 @@ import {
   SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
   SMARTSTAY_PERSONAL_UTILITY_VERSION_V3,
   SMARTSTAY_POLICY_VERSION_V3,
+  SMARTSTAY_SEARCH_WIDE_SCALE_VERSION_V3,
   SMARTSTAY_V2_ADAPTER_VERSION_V3,
 } from "../contract/versionsV3";
 
@@ -103,6 +104,10 @@ import {
 import {
   evaluateDecisionExplanationV3,
 } from "../explanation/decisionExplanationV3";
+
+import {
+  evaluateSearchWideScaleCoverageV3,
+} from "../scale/searchWideScaleCoverageV3";
 
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
@@ -2124,6 +2129,111 @@ export function adaptV2SearchResultToDecisionV3(
         ),
     });
 
+  const robustnessCandidateByHotelId =
+    new Map(
+      decisionRobustness
+        .candidates
+        .map(
+          (candidate) => [
+            candidate.hotelId,
+            candidate,
+          ]
+        )
+    );
+
+  const protectedScaleHotelIds =
+    new Set<string>(
+      [
+        recommendedHotelId,
+        bestAlternativeHotelId,
+        decisionRobustness
+          .robustChoiceHotelId,
+        ...solutions.flatMap(
+          (solution) =>
+            solution.segments.map(
+              (segment) =>
+                segment.hotelId
+            )
+        ),
+      ].filter(
+        (
+          hotelId
+        ): hotelId is string =>
+          hotelId !==
+          null
+      )
+    );
+
+  const searchWideScaleCoverage =
+    evaluateSearchWideScaleCoverageV3({
+      sourceSetCompleteness:
+        "unknown",
+      sourceReportedHotelCount:
+        null,
+      candidates:
+        sortedEvaluations.map(
+          (evaluation) => {
+            const hotelId =
+              evaluation.hotel.id;
+            const robustnessCandidate =
+              robustnessCandidateByHotelId.get(
+                hotelId
+              );
+            const utility =
+              utilityByHotelId.get(
+                hotelId
+              );
+            const selectedOffer =
+              selectedOfferByHotelId.get(
+                hotelId
+              ) ??
+              null;
+            const fullDecisionScore =
+              robustnessCandidate
+                ?.riskAdjustedUtility ??
+              null;
+            const coarseScoreLowerBound =
+              robustnessCandidate
+                ?.downsideUtility ??
+              null;
+            const coarseScoreUpperBound =
+              fullDecisionScore ===
+                null ||
+              robustnessCandidate ===
+                undefined
+                ? null
+                : Math.min(
+                    100,
+                    fullDecisionScore +
+                      robustnessCandidate
+                        .uncertaintyWidth
+                  );
+
+            return {
+              hotelId,
+              eligible:
+                evaluation
+                  .reliabilityGate
+                  .eligible &&
+                selectedOffer
+                  ?.bookable ===
+                  true,
+              coarseScoreLowerBound,
+              coarseScoreUpperBound,
+              fullDecisionScore,
+              evidenceCoverage:
+                utility
+                  ?.evidenceCoverage ??
+                0,
+              protectedByPolicy:
+                protectedScaleHotelIds.has(
+                  hotelId
+                ),
+            };
+          }
+        ),
+    });
+
   const preferenceReasonCode:
     SmartStayReasonCodeV3 =
       preferenceResolution.origin ===
@@ -2261,6 +2371,9 @@ export function adaptV2SearchResultToDecisionV3(
         contextualStayValueFingerprint:
           contextualStayValue
             .fingerprint,
+        searchWideScaleCoverageFingerprint:
+          searchWideScaleCoverage
+            .fingerprint,
       },
       "stayopti-v3-input"
     );
@@ -2282,6 +2395,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_CONTEXTUAL_STAY_VALUE_VERSION_V3,
         decisionExplanationVersion:
           SMARTSTAY_DECISION_EXPLANATION_VERSION_V3,
+        searchWideScaleVersion:
+          SMARTSTAY_SEARCH_WIDE_SCALE_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -2473,6 +2588,7 @@ export function adaptV2SearchResultToDecisionV3(
     robustness:
       decisionRobustness,
     contextualStayValue,
+    searchWideScaleCoverage,
     outcomeLearning: {
       status:
         "not-instrumented",
@@ -2515,6 +2631,8 @@ export function adaptV2SearchResultToDecisionV3(
         ...contextualStayValue
           .reasonCodes,
         ...decisionExplanation
+          .reasonCodes,
+        ...searchWideScaleCoverage
           .reasonCodes,
         ...decisionGeometry
           .reasonCodes,
@@ -2580,6 +2698,9 @@ export function adaptV2SearchResultToDecisionV3(
           .evaluationId,
       decisionExplanationEvaluationId:
         decisionExplanation
+          .evaluationId,
+      searchWideScaleCoverageEvaluationId:
+        searchWideScaleCoverage
           .evaluationId,
       roleAssignments:
         roleAssignments.sort(

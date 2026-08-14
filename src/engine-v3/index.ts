@@ -218,3 +218,24 @@ export {
   type StayOptiExplanationStatusV3,
   type StayOptiExplanationStrengthLabelV3,
 } from "./explanation/decisionExplanationV3";
+
+export {
+  assertSearchWideScaleCoverageV3,
+  evaluateSearchWideScaleCoverageV3,
+  validateSearchWideScaleCoverageV3,
+  type EvaluateStayOptiSearchWideScaleInputV3,
+  type StayOptiRelativeScarcityV3,
+  type StayOptiScaleCandidateDispositionV3,
+  type StayOptiScaleCandidateEvaluationV3,
+  type StayOptiScaleCandidateInputV3,
+  type StayOptiScaleEquivalenceAuditV3,
+  type StayOptiScaleScopeClaimV3,
+  type StayOptiScaleWorkBudgetV3,
+  type StayOptiSearchWideContextV3,
+  type StayOptiSearchWideScaleCoverageV3,
+  type StayOptiSearchWideScaleOptionsV3,
+  type StayOptiSearchWideScalePolicyV3,
+  type StayOptiSearchWideScaleValidationV3,
+  type StayOptiSearchWideScopeV3,
+  type StayOptiSourceSetCompletenessV3,
+} from "./scale/searchWideScaleCoverageV3";

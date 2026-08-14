@@ -72,6 +72,11 @@ import {
   type StayOptiDecisionExplanationV3,
 } from "../explanation/decisionExplanationV3";
 
+import {
+  validateSearchWideScaleCoverageV3,
+  type StayOptiSearchWideScaleCoverageV3,
+} from "../scale/searchWideScaleCoverageV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -276,6 +281,9 @@ export interface StayOptiDecisionTraceV3 {
   decisionExplanationEvaluationId:
     string;
 
+  searchWideScaleCoverageEvaluationId:
+    string;
+
   roleAssignments:
     Array<{
       solutionId:
@@ -405,6 +413,9 @@ export interface StayOptiDecisionV3 {
   contextualStayValue:
     StayOptiContextualStayValueEvaluationV3;
 
+  searchWideScaleCoverage:
+    StayOptiSearchWideScaleCoverageV3;
+
   outcomeLearning: {
     status:
       "not-instrumented";
@@ -469,6 +480,9 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-explanation-solution-mismatch"
   | "decision-explanation-source-mismatch"
   | "decision-explanation-trace-mismatch"
+  | "decision-scale-coverage-invalid"
+  | "decision-scale-coverage-candidate-mismatch"
+  | "decision-scale-coverage-trace-mismatch"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -559,7 +573,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-07 contract."
+      "Decision versions do not match the frozen V3-08 contract."
     );
   }
 
@@ -1146,6 +1160,74 @@ export function validateStayOptiDecisionV3(
     );
   }
 
+  if (
+    decision.searchWideScaleCoverage.phase !==
+      "v3-08" ||
+    decision.searchWideScaleCoverage
+      .rankingApplication !==
+      "shadow-only" ||
+    decision.searchWideScaleCoverage
+      .runtimeApplication !==
+      "shadow-plan-only" ||
+    decision.searchWideScaleCoverage
+      .publicPresentation !==
+      "disabled" ||
+    !validateSearchWideScaleCoverageV3(
+      decision.searchWideScaleCoverage
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-scale-coverage-invalid",
+      "searchWideScaleCoverage",
+      "Search-wide scale, coverage and safe pruning must be a valid V3-08 shadow-only evaluation."
+    );
+  }
+
+  const scaleCoverageHotelIds =
+    decision.searchWideScaleCoverage
+      .candidates
+      .map(
+        (candidate) =>
+          candidate.hotelId
+      )
+      .sort();
+
+  if (
+    stableSerializeV3(
+      scaleCoverageHotelIds
+    ) !==
+      stableSerializeV3(
+        expectedPersonalizationHotelIds
+      ) ||
+    decision.searchWideScaleCoverage
+      .scope
+      .analyzedHotelCount !==
+      decision.coverage
+        .analyzedHotelCount
+  ) {
+    addIssue(
+      issues,
+      "decision-scale-coverage-candidate-mismatch",
+      "searchWideScaleCoverage.candidates",
+      "V3-08 scale coverage must cover every analyzed hotel exactly once and preserve the decision coverage count."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .searchWideScaleCoverageEvaluationId !==
+    decision.searchWideScaleCoverage
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-scale-coverage-trace-mismatch",
+      "internalTrace.searchWideScaleCoverageEvaluationId",
+      "Internal trace must reference the attached V3-08 Search-wide Scale & Coverage evaluation."
+    );
+  }
+
   const solutionById =
     new Map<
       string,
@@ -1506,6 +1588,59 @@ export function validateStayOptiDecisionV3(
         issues
       )
   );
+
+  validateReasonCodes(
+    decision.searchWideScaleCoverage
+      .reasonCodes,
+    "searchWideScaleCoverage.reasonCodes",
+    issues
+  );
+
+  validateReasonCodes(
+    decision.searchWideScaleCoverage
+      .scope
+      .reasonCodes,
+    "searchWideScaleCoverage.scope.reasonCodes",
+    issues
+  );
+
+  validateReasonCodes(
+    decision.searchWideScaleCoverage
+      .searchWideContext
+      .reasonCodes,
+    "searchWideScaleCoverage.searchWideContext.reasonCodes",
+    issues
+  );
+
+  validateReasonCodes(
+    decision.searchWideScaleCoverage
+      .equivalence
+      .reasonCodes,
+    "searchWideScaleCoverage.equivalence.reasonCodes",
+    issues
+  );
+
+  validateReasonCodes(
+    decision.searchWideScaleCoverage
+      .workBudget
+      .reasonCodes,
+    "searchWideScaleCoverage.workBudget.reasonCodes",
+    issues
+  );
+
+  decision.searchWideScaleCoverage
+    .candidates
+    .forEach(
+      (
+        candidate,
+        index
+      ) =>
+        validateReasonCodes(
+          candidate.reasonCodes,
+          `searchWideScaleCoverage.candidates.${index}.reasonCodes`,
+          issues
+        )
+    );
 
   const attachedExplanationEvidenceIds =
     new Set<string>([

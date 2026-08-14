@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.7"
+      "3.0.0-decision.8"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.7"
+      "3.0.0-alpha.8"
     );
     assert.equal(
       decision.mode,
@@ -662,6 +662,44 @@ test(
       decision.internalTrace
         .decisionExplanationEvaluationId,
       decision.thesis
+        .evaluationId
+    );
+    assert.equal(
+      decision.searchWideScaleCoverage
+        .phase,
+      "v3-08"
+    );
+    assert.equal(
+      decision.searchWideScaleCoverage
+        .rankingApplication,
+      "shadow-only"
+    );
+    assert.equal(
+      decision.searchWideScaleCoverage
+        .runtimeApplication,
+      "shadow-plan-only"
+    );
+    assert.equal(
+      decision.searchWideScaleCoverage
+        .publicPresentation,
+      "disabled"
+    );
+    assert.equal(
+      decision.searchWideScaleCoverage
+        .scope
+        .marketCoverageClaimAllowed,
+      false
+    );
+    assert.equal(
+      decision.searchWideScaleCoverage
+        .candidates.length,
+      decision.coverage
+        .analyzedHotelCount
+    );
+    assert.equal(
+      decision.internalTrace
+        .searchWideScaleCoverageEvaluationId,
+      decision.searchWideScaleCoverage
         .evaluationId
     );
     assert.equal(
@@ -977,7 +1015,7 @@ test(
 );
 
 test(
-  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness, context and explanation",
+  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness, context, explanation and scale coverage",
   () => {
     const utilityMutation =
       createDecision();
@@ -1109,6 +1147,25 @@ test(
         (issue) =>
           issue.code ===
           "decision-explanation-invalid"
+      )
+    );
+
+    const scaleMutation =
+      createDecision();
+
+    scaleMutation
+      .searchWideScaleCoverage
+      .scope
+      .marketCoverageClaimAllowed =
+        true as false;
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        scaleMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-scale-coverage-invalid"
       )
     );
   }
