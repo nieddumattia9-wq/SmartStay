@@ -374,6 +374,34 @@ export {
 } from "./evaluation/realCaseBlindReviewV3";
 
 export {
+  STAYOPTI_ROLE_AWARE_BLIND_ASSIGNMENT_SCHEMA_VERSION_V3,
+  STAYOPTI_ROLE_AWARE_BLIND_PACKET_SCHEMA_VERSION_V3,
+  STAYOPTI_ROLE_AWARE_BLIND_REVIEW_AUDIT_V3,
+  STAYOPTI_ROLE_AWARE_BLIND_REVIEW_VERSION_V3,
+  STAYOPTI_ROLE_AWARE_DEBLIND_SCHEMA_VERSION_V3,
+  createRoleAwareBlindReviewBundleV3,
+  createRoleAwareDeblindReportV3,
+  validateRoleAwareBlindReviewBundleV3,
+  type StayOptiBlindEngineV3,
+  type StayOptiBlindEvaluationRoleV3,
+  type StayOptiRoleAwareBlindAssignmentCaseV3,
+  type StayOptiRoleAwareBlindAssignmentsV3,
+  type StayOptiRoleAwareBlindBundleV3,
+  type StayOptiRoleAwareBlindCaseV3,
+  type StayOptiRoleAwareBlindPacketV3,
+  type StayOptiRoleAwareBlindRejectionV3,
+  type StayOptiRoleAwareBlindResponseV3,
+  type StayOptiRoleAwareBlindSourceCaseV3,
+  type StayOptiRoleAwareBlindValidationV3,
+  type StayOptiRoleAwareCandidateV3,
+  type StayOptiRoleAwareDeblindJudgmentV3,
+  type StayOptiRoleAwareDeblindReportV3,
+  type StayOptiRoleAwareDeblindRoleSummaryV3,
+  type StayOptiRoleAwareReasonDiffV3,
+  type StayOptiRoleAwareRejectionReasonV3,
+} from "./evaluation/roleAwareBlindReviewV3";
+
+export {
   STAYOPTI_PROMOTION_THRESHOLDS_V3,
   createDefaultPromotionControlV3,
   createPromotionAuthorizationV3,
