@@ -479,7 +479,7 @@ test(
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.10"
+      "3.0.0-alpha.11"
     );
     assert.equal(
       decision.mode,

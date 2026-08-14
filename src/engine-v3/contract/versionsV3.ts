@@ -25,8 +25,11 @@ export const SMARTSTAY_ENGINE_VERSION_V3_08 =
 export const SMARTSTAY_ENGINE_VERSION_V3_09 =
   "3.0.0-alpha.9" as const;
 
-export const SMARTSTAY_ENGINE_VERSION_V3 =
+export const SMARTSTAY_ENGINE_VERSION_V3_10 =
   "3.0.0-alpha.10" as const;
+
+export const SMARTSTAY_ENGINE_VERSION_V3 =
+  "3.0.0-alpha.11" as const;
 
 export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3_01 =
   "3.0.0-decision.1" as const;
@@ -85,8 +88,11 @@ export const SMARTSTAY_POLICY_VERSION_V3_08 =
 export const SMARTSTAY_POLICY_VERSION_V3_09 =
   "3.0.0-policy.9" as const;
 
-export const SMARTSTAY_POLICY_VERSION_V3 =
+export const SMARTSTAY_POLICY_VERSION_V3_10 =
   "3.0.0-policy.10" as const;
+
+export const SMARTSTAY_POLICY_VERSION_V3 =
+  "3.0.0-policy.11" as const;
 
 export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3_01 =
   "3.0.0-evidence.1" as const;
@@ -190,6 +196,15 @@ export const SMARTSTAY_GOLDEN_DATASET_SCHEMA_VERSION_V3 =
 export const SMARTSTAY_BLIND_EVALUATION_SCHEMA_VERSION_V3 =
   "3.0.0-blind-evaluation.1" as const;
 
+export const SMARTSTAY_SHADOW_PROMOTION_VERSION_V3 =
+  "3.0.0-shadow-promotion.1" as const;
+
+export const SMARTSTAY_SHADOW_RECORD_SCHEMA_VERSION_V3 =
+  "3.0.0-shadow-record.1" as const;
+
+export const SMARTSTAY_PROMOTION_AUDIT_SCHEMA_VERSION_V3 =
+  "3.0.0-promotion-audit.1" as const;
+
 export const SMARTSTAY_V3_VERSIONS = {
   engine:
     SMARTSTAY_ENGINE_VERSION_V3,
@@ -247,6 +262,15 @@ export const SMARTSTAY_V3_VERSIONS = {
 
   blindEvaluationSchema:
     SMARTSTAY_BLIND_EVALUATION_SCHEMA_VERSION_V3,
+
+  shadowPromotion:
+    SMARTSTAY_SHADOW_PROMOTION_VERSION_V3,
+
+  shadowRecordSchema:
+    SMARTSTAY_SHADOW_RECORD_SCHEMA_VERSION_V3,
+
+  promotionAuditSchema:
+    SMARTSTAY_PROMOTION_AUDIT_SCHEMA_VERSION_V3,
 } as const;
 
 export type SmartStayEngineVersionV3 =
