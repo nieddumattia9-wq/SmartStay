@@ -281,15 +281,6 @@ function getRateCurrency(
   return (
     pickString(rate, [
       [
-        "suggestedSellingPrice",
-        "currency",
-      ],
-      [
-        "suggestedSellingPrice",
-        0,
-        "currency",
-      ],
-      [
         "offerRetailRate",
         "currency",
       ],
@@ -305,6 +296,15 @@ function getRateCurrency(
       ],
       ["price", "currency"],
       ["currency"],
+      [
+        "suggestedSellingPrice",
+        "currency",
+      ],
+      [
+        "suggestedSellingPrice",
+        0,
+        "currency",
+      ],
     ]) ||
     fallbackCurrency ||
     "EUR"

@@ -63,6 +63,12 @@ test(
         rate: {
           offerId:
             "offer-token",
+          offerRetailRate: {
+            amount:
+              110,
+            currency:
+              "EUR",
+          },
           suggestedSellingPrice: {
             amount:
               120,
@@ -96,7 +102,7 @@ test(
 );
 
 test(
-  "LiteAPI search keeps the public SSP while prebook uses the verified checkout retail total",
+  "LiteAPI public search and checkout both use offerRetailRate while SSP stays diagnostic",
   () => {
     const providerRate = {
       offerId:
@@ -153,7 +159,7 @@ test(
 
     assert.equal(
       publicOffer.price,
-      120
+      95
     );
 
     assert.equal(

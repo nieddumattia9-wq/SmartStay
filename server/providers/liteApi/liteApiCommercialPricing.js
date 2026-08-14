@@ -19,6 +19,15 @@ const LITEAPI_PRICING_STATES =
 const PRICE_EPSILON =
   0.005;
 
+const LITEAPI_COMMERCIAL_PRICING_SCHEMA_VERSION =
+  2;
+
+const LITEAPI_PUBLIC_RATE_PRICE_MODE =
+  "offer-retail-rate";
+
+const LITEAPI_PUBLIC_PRICE_FLOOR_MODE =
+  "reference-only";
+
 function isPlainObject(value) {
   return (
     value !== null &&
@@ -314,14 +323,17 @@ function createLiteApiCommercialPricing({
     );
 
   if (minimumCommissionPercent === null) {
+    const unmanagedSellingPrice =
+      retailSellingPrice ??
+      publicPriceFloor;
+
     return {
       sellingPrice:
-        publicPriceFloor ??
-        retailSellingPrice,
+        unmanagedSellingPrice,
 
       pricingControl: {
         schemaVersion:
-          1,
+          LITEAPI_COMMERCIAL_PRICING_SCHEMA_VERSION,
         policy:
           null,
         state:
@@ -329,11 +341,18 @@ function createLiteApiCommercialPricing({
             .UNMANAGED,
         targetSellingPrice:
           roundMoney(
-            publicPriceFloor ??
-            retailSellingPrice
+            unmanagedSellingPrice
           ),
         requiredSellerCommissionPercent:
           null,
+        providerPriceMode:
+          retailSellingPrice !== null
+            ? LITEAPI_PUBLIC_RATE_PRICE_MODE
+            : "legacy-reference-fallback",
+        suggestedSellingPriceDiagnostic:
+          roundMoney(
+            publicPriceFloor
+          ),
       },
     };
   }
@@ -357,17 +376,7 @@ function createLiteApiCommercialPricing({
       retailSellingPrice;
 
   const targetSellingPrice =
-    Math.max(
-      retailSellingPrice ?? 0,
-      publicPriceFloor ?? 0
-    );
-
-  const needsMaterialization =
-    retailSellingPrice !== null &&
-    publicPriceFloor !== null &&
-    publicPriceFloor -
-      retailSellingPrice >
-      PRICE_EPSILON;
+    retailSellingPrice ?? 0;
 
   let state =
     LITEAPI_PRICING_STATES
@@ -382,12 +391,6 @@ function createLiteApiCommercialPricing({
       LITEAPI_PRICING_STATES
         .UNVERIFIED;
   }
-  else if (needsMaterialization) {
-    state =
-      LITEAPI_PRICING_STATES
-        .PUBLIC_SALE_UNAVAILABLE;
-  }
-
   return {
     sellingPrice:
       state ===
@@ -400,7 +403,7 @@ function createLiteApiCommercialPricing({
 
     pricingControl: {
       schemaVersion:
-        1,
+        LITEAPI_COMMERCIAL_PRICING_SCHEMA_VERSION,
 
       policy: {
         schemaVersion:
@@ -410,7 +413,9 @@ function createLiteApiCommercialPricing({
         minimumSellerCommissionPercent:
           minimumCommissionPercent,
         publicPriceFloorMode:
-          "enforced",
+          LITEAPI_PUBLIC_PRICE_FLOOR_MODE,
+        providerPriceMode:
+          LITEAPI_PUBLIC_RATE_PRICE_MODE,
       },
 
       state,
@@ -429,6 +434,14 @@ function createLiteApiCommercialPricing({
                 .toFixed(6)
             )
           : null,
+
+      providerPriceMode:
+        LITEAPI_PUBLIC_RATE_PRICE_MODE,
+
+      suggestedSellingPriceDiagnostic:
+        roundMoney(
+          publicPriceFloor
+        ),
     },
   };
 }
@@ -580,7 +593,10 @@ function createLiteApiSelectionFingerprint(
 }
 
 module.exports = {
+  LITEAPI_COMMERCIAL_PRICING_SCHEMA_VERSION,
   LITEAPI_PRICING_STATES,
+  LITEAPI_PUBLIC_PRICE_FLOOR_MODE,
+  LITEAPI_PUBLIC_RATE_PRICE_MODE,
   PRICE_EPSILON,
   createLiteApiCommercialPricing,
   createLiteApiSelectionFingerprint,

@@ -64,7 +64,10 @@ const {
 );
 
 const {
+  LITEAPI_COMMERCIAL_PRICING_SCHEMA_VERSION,
   LITEAPI_PRICING_STATES,
+  LITEAPI_PUBLIC_PRICE_FLOOR_MODE,
+  LITEAPI_PUBLIC_RATE_PRICE_MODE,
   createLiteApiCommercialPricing,
   createLiteApiSelectionFingerprint,
   getLiteApiCommissionAmount,
@@ -172,6 +175,8 @@ function createInternalLiteApiOffer({
       .MATERIALIZED,
   targetSellingPrice = 115,
   price = 115,
+  publicPriceFloorMode =
+    "enforced",
 } = {}) {
   return {
     id:
@@ -190,7 +195,10 @@ function createInternalLiteApiOffer({
       schemaVersion:
         1,
       policy:
-        createPolicy(),
+        {
+          ...createPolicy(),
+          publicPriceFloorMode,
+        },
       state,
       targetSellingPrice,
       requiredSellerCommissionPercent:
@@ -362,21 +370,38 @@ test(
     assert.equal(
       pricing.pricingControl.state,
       LITEAPI_PRICING_STATES
-        .PUBLIC_SALE_UNAVAILABLE
+        .MATERIALIZED
     );
     assert.equal(
       pricing.sellingPrice,
-      null
+      266.18
     );
     assert.equal(
       pricing.pricingControl
         .targetSellingPrice,
-      300.72
+      266.18
     );
     assert.equal(
       pricing.pricingControl
         .requiredSellerCommissionPercent,
-      null
+      8
+    );
+    assert.equal(
+      pricing.pricingControl
+        .suggestedSellingPriceDiagnostic,
+      300.72
+    );
+    assert.equal(
+      pricing.pricingControl
+        .policy
+        .publicPriceFloorMode,
+      LITEAPI_PUBLIC_PRICE_FLOOR_MODE
+    );
+    assert.equal(
+      pricing.pricingControl
+        .policy
+        .providerPriceMode,
+      LITEAPI_PUBLIC_RATE_PRICE_MODE
     );
   }
 );
@@ -770,7 +795,7 @@ test(
 );
 
 test(
-  "a public price is emitted only when the provider already materialized the floor",
+  "Nuitee public rates use offerRetailRate while SSP remains diagnostic",
   () => {
     const belowFloor =
       createLiteApiCommercialPricing({
@@ -791,19 +816,31 @@ test(
 
     assert.equal(
       belowFloor.sellingPrice,
-      null
+      108
     );
 
     assert.equal(
       belowFloor.pricingControl.state,
       LITEAPI_PRICING_STATES
-        .PUBLIC_SALE_UNAVAILABLE
+        .MATERIALIZED
     );
 
     assert.equal(
       belowFloor.pricingControl
         .requiredSellerCommissionPercent,
-      null
+      8
+    );
+
+    assert.equal(
+      belowFloor.pricingControl
+        .suggestedSellingPriceDiagnostic,
+      115
+    );
+
+    assert.equal(
+      belowFloor.pricingControl
+        .schemaVersion,
+      LITEAPI_COMMERCIAL_PRICING_SCHEMA_VERSION
     );
 
     const aboveFloor =
@@ -833,6 +870,12 @@ test(
       LITEAPI_PRICING_STATES
         .MATERIALIZED
     );
+
+    assert.equal(
+      aboveFloor.pricingControl
+        .suggestedSellingPriceDiagnostic,
+      105
+    );
   }
 );
 
@@ -859,6 +902,46 @@ test(
       pricing.pricingControl.state,
       LITEAPI_PRICING_STATES
         .UNVERIFIED
+    );
+  }
+);
+
+test(
+  "a managed public-rate offer without offerRetailRate fails closed instead of displaying SSP",
+  () => {
+    const pricing =
+      createLiteApiCommercialPricing({
+        rate:
+          createProviderRate({
+            retail:
+              null,
+            publicFloor:
+              115,
+          }),
+        commercialPricingPolicy:
+          createPolicy(),
+        requestedSellerCommissionPercent:
+          8,
+      });
+
+    assert.equal(
+      pricing.sellingPrice,
+      null
+    );
+    assert.equal(
+      pricing.pricingControl.state,
+      LITEAPI_PRICING_STATES
+        .UNVERIFIED
+    );
+    assert.equal(
+      pricing.pricingControl
+        .targetSellingPrice,
+      0
+    );
+    assert.equal(
+      pricing.pricingControl
+        .suggestedSellingPriceDiagnostic,
+      115
     );
   }
 );
@@ -915,7 +998,7 @@ test(
 );
 
 test(
-  "LiteAPI removes only the non-public offer and keeps the hotel when another offer is valid",
+  "LiteAPI keeps provider-confirmed public offers even when SSP is above retail",
   () => {
     const pricingPolicy =
       createPolicy();
@@ -981,16 +1064,16 @@ test(
     );
     assert.equal(
       hotels[0].offers.length,
-      1
+      2
     );
     assert.equal(
       hotels[0].offers[0]
         .providerOfferReference,
-      "offer-publicly-valid"
+      "offer-below-floor"
     );
     assert.equal(
       hotels[0].offers[0].price,
-      118
+      108
     );
     assert.equal(
       hotels[0].offers[0]
@@ -999,14 +1082,169 @@ test(
         .MATERIALIZED
     );
 
-    assert.deepEqual(
+    const onlyBelowSsp =
       mapResponse([
         createProviderRate({
           offerId:
             "offer-below-floor-only",
         }),
-      ]),
-      []
+      ]);
+
+    assert.equal(
+      onlyBelowSsp.length,
+      1
+    );
+    assert.equal(
+      onlyBelowSsp[0].offers[0].price,
+      108
+    );
+  }
+);
+
+test(
+  "the validated Florence public-rate sample maps retail, VAT and SSP diagnostics without leaking pricing controls",
+  () => {
+    const hotels =
+      mapLiteApiHotelResponse(
+        {
+          data: [
+            {
+              hotelId:
+                "validated-florence-hotel",
+              hotel: {
+                hotelId:
+                  "validated-florence-hotel",
+                name:
+                  "Validated Florence Hotel",
+              },
+              rates: [
+                {
+                  offerId:
+                    "validated-public-offer",
+                  roomName:
+                    "Twin Room",
+                  boardName:
+                    "Room Only",
+                  refundableTag:
+                    "NRFN",
+                  offerRetailRate: {
+                    amount:
+                      461.78,
+                    currency:
+                      "EUR",
+                  },
+                  suggestedSellingPrice: {
+                    amount:
+                      476.32,
+                    currency:
+                      "EUR",
+                  },
+                  retailRate: {
+                    commission: {
+                      amount:
+                        34.19,
+                      currency:
+                        "EUR",
+                    },
+                  },
+                  taxesAndFees: [
+                    {
+                      description:
+                        "VAT of 10% per night (Included in price)",
+                      amount:
+                        38.87,
+                      currency:
+                        "EUR",
+                      included:
+                        true,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        "EUR",
+        null,
+        null,
+        {
+          commercialPricingPolicy:
+            createPolicy(),
+          requestedSellerCommissionPercent:
+            8,
+        }
+      );
+
+    assert.equal(
+      hotels.length,
+      1
+    );
+
+    const offer =
+      hotels[0].offers[0];
+
+    assert.equal(
+      offer.price,
+      461.78
+    );
+    assert.equal(
+      offer.totalKnownCost,
+      461.78
+    );
+    assert.equal(
+      offer.includedTaxes,
+      38.87
+    );
+    assert.equal(
+      offer.excludedTaxes,
+      0
+    );
+    assert.equal(
+      offer.commercialPricing.state,
+      LITEAPI_PRICING_STATES
+        .MATERIALIZED
+    );
+    assert.equal(
+      offer.commercialPricing
+        .targetSellingPrice,
+      461.78
+    );
+    assert.equal(
+      offer.commercialPricing
+        .suggestedSellingPriceDiagnostic,
+      476.32
+    );
+    assert.equal(
+      offer.commercialPricing
+        .policy
+        .publicPriceFloorMode,
+      LITEAPI_PUBLIC_PRICE_FLOOR_MODE
+    );
+
+    const publicOffer =
+      createPublicHotelOffer(
+        offer,
+        0,
+        {
+          id:
+            "liteapi:validated-florence-hotel",
+        }
+      );
+
+    const serialized =
+      JSON.stringify(
+        publicOffer
+      );
+
+    assert.equal(
+      publicOffer.price,
+      461.78
+    );
+    assert.equal(
+      serialized.includes(
+        "suggestedSellingPriceDiagnostic"
+      ),
+      false
     );
   }
 );
@@ -1442,6 +1680,51 @@ test(
     assert.equal(
       ratesCalls,
       0
+    );
+  }
+);
+
+test(
+  "a provider-public-rate offer accepts a lower verified Prebook price for canonical recheck handling",
+  async () => {
+    const offer =
+      createInternalLiteApiOffer({
+        publicPriceFloorMode:
+          LITEAPI_PUBLIC_PRICE_FLOOR_MODE,
+      });
+
+    const adapter =
+      createLiteApiAdapter(
+        createAdapterDependencies({
+          createLiteApiPrebookOffer:
+            ({ originalOffer }) => ({
+              offer: {
+                ...originalOffer,
+                price:
+                  114.99,
+                totalKnownCost:
+                  114.99,
+              },
+              providerBookingReference:
+                "prebook-1",
+            }),
+        })
+      );
+
+    const result =
+      await adapter.recheckOffer(
+        createLiteApiRecheckInput(
+          offer
+        )
+      );
+
+    assert.equal(
+      result.outcome,
+      "confirmed"
+    );
+    assert.equal(
+      result.offer.price,
+      114.99
     );
   }
 );

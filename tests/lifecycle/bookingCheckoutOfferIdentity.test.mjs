@@ -79,7 +79,7 @@ function createProviderRate({
 }
 
 test(
-  "search uses the public SSP while prebook verifies the exact checkout total",
+  "search and Prebook use the same provider-confirmed public retail total",
   () => {
     const rate =
       createProviderRate();
@@ -129,12 +129,12 @@ test(
 
     assert.equal(
       originalOffer.price,
-      450.45
+      311.63
     );
 
     assert.equal(
       originalOffer.totalKnownCost,
-      492.43
+      353.61
     );
 
     assert.equal(
@@ -168,10 +168,7 @@ test(
         originalOffer,
         prebook.offer
       ).changedFields,
-      [
-        "price",
-        "totalKnownCost",
-      ]
+      []
     );
   }
 );

@@ -67,6 +67,15 @@ function getPricingPolicy(
       : null;
 }
 
+function usesEnforcedPublicPriceFloor(
+  offer
+) {
+  return getPricingPolicy(
+    offer
+  )?.publicPriceFloorMode ===
+    "enforced";
+}
+
 function createLiteApiPricingError({
   code,
   message,
@@ -928,15 +937,28 @@ function createLiteApiAdapter(
           );
 
         if (
-          getPricingPolicy(
+          !Number.isFinite(
+            verifiedPrice
+          ) ||
+          verifiedPrice <= 0
+        ) {
+          throw createLiteApiPricingError({
+            code:
+              "PROVIDER_PREBOOK_PRICE_INVALID",
+            message:
+              "The verified checkout price is invalid.",
+            status:
+              502,
+          });
+        }
+
+        if (
+          usesEnforcedPublicPriceFloor(
             offerForPrebook
           ) &&
           (
             !Number.isFinite(
               enforcedTarget
-            ) ||
-            !Number.isFinite(
-              verifiedPrice
             ) ||
             Number(
               verifiedPrice.toFixed(2)
