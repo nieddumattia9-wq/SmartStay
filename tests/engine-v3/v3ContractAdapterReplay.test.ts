@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.8"
+      "3.0.0-decision.9"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.8"
+      "3.0.0-alpha.9"
     );
     assert.equal(
       decision.mode,
@@ -700,6 +700,39 @@ test(
       decision.internalTrace
         .searchWideScaleCoverageEvaluationId,
       decision.searchWideScaleCoverage
+        .evaluationId
+    );
+    assert.equal(
+      decision.outcomeLearning
+        .phase,
+      "v3-09"
+    );
+    assert.equal(
+      decision.outcomeLearning
+        .collectionApplication,
+      "disabled-by-default"
+    );
+    assert.equal(
+      decision.outcomeLearning
+        .runtimeApplication,
+      "contract-only"
+    );
+    assert.equal(
+      decision.outcomeLearning
+        .learningPolicy
+        .productionSelfModificationAllowed,
+      false
+    );
+    assert.equal(
+      decision.outcomeLearning
+        .sourceDecisionInputFingerprint,
+      decision.replay
+        .inputFingerprint
+    );
+    assert.equal(
+      decision.internalTrace
+        .outcomeDataLoopEvaluationId,
+      decision.outcomeLearning
         .evaluationId
     );
     assert.equal(
@@ -1015,7 +1048,7 @@ test(
 );
 
 test(
-  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness, context, explanation and scale coverage",
+  "V3 contract rejects mutated utility, unsafe peer output, geometry, robustness, context, explanation, scale coverage and outcome plan",
   () => {
     const utilityMutation =
       createDecision();
@@ -1166,6 +1199,43 @@ test(
         (issue) =>
           issue.code ===
           "decision-scale-coverage-invalid"
+      )
+    );
+
+    const outcomeMutation =
+      createDecision();
+
+    outcomeMutation
+      .outcomeLearning
+      .learningPolicy
+      .productionSelfModificationAllowed =
+        true as false;
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        outcomeMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-outcome-data-loop-invalid"
+      )
+    );
+
+    const traceMutation =
+      createDecision();
+
+    (traceMutation.internalTrace as unknown as {
+      email: string;
+    }).email =
+      "guest@example.com";
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        traceMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-trace-pii-detected"
       )
     );
   }

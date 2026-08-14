@@ -77,6 +77,12 @@ import {
   type StayOptiSearchWideScaleCoverageV3,
 } from "../scale/searchWideScaleCoverageV3";
 
+import {
+  findOutcomePiiViolationsV3,
+  validateOutcomeDataLoopPlanV3,
+  type StayOptiOutcomeDataLoopPlanV3,
+} from "../outcome/outcomeDataLoopV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -284,6 +290,9 @@ export interface StayOptiDecisionTraceV3 {
   searchWideScaleCoverageEvaluationId:
     string;
 
+  outcomeDataLoopEvaluationId:
+    string;
+
   roleAssignments:
     Array<{
       solutionId:
@@ -416,13 +425,8 @@ export interface StayOptiDecisionV3 {
   searchWideScaleCoverage:
     StayOptiSearchWideScaleCoverageV3;
 
-  outcomeLearning: {
-    status:
-      "not-instrumented";
-
-    reasonCodes:
-      SmartStayReasonCodeV3[];
-  };
+  outcomeLearning:
+    StayOptiOutcomeDataLoopPlanV3;
 
   counterfactuals: {
     comparisonCount:
@@ -483,6 +487,10 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-scale-coverage-invalid"
   | "decision-scale-coverage-candidate-mismatch"
   | "decision-scale-coverage-trace-mismatch"
+  | "decision-outcome-data-loop-invalid"
+  | "decision-outcome-data-loop-source-mismatch"
+  | "decision-outcome-data-loop-trace-mismatch"
+  | "decision-trace-pii-detected"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
 
@@ -573,7 +581,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-08 contract."
+      "Decision versions do not match the frozen V3-09 contract."
     );
   }
 
@@ -1225,6 +1233,71 @@ export function validateStayOptiDecisionV3(
       "decision-scale-coverage-trace-mismatch",
       "internalTrace.searchWideScaleCoverageEvaluationId",
       "Internal trace must reference the attached V3-08 Search-wide Scale & Coverage evaluation."
+    );
+  }
+
+  if (
+    decision.outcomeLearning.phase !==
+      "v3-09" ||
+    decision.outcomeLearning
+      .collectionApplication !==
+      "disabled-by-default" ||
+    decision.outcomeLearning
+      .runtimeApplication !==
+      "contract-only" ||
+    decision.outcomeLearning
+      .publicPresentation !==
+      "disabled" ||
+    !validateOutcomeDataLoopPlanV3(
+      decision.outcomeLearning
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-outcome-data-loop-invalid",
+      "outcomeLearning",
+      "Outcome Data Loop must remain privacy-safe, disabled by default and offline-only in V3-09."
+    );
+  }
+
+  if (
+    decision.outcomeLearning
+      .sourceDecisionInputFingerprint !==
+    decision.replay
+      .inputFingerprint
+  ) {
+    addIssue(
+      issues,
+      "decision-outcome-data-loop-source-mismatch",
+      "outcomeLearning.sourceDecisionInputFingerprint",
+      "Outcome Data Loop must reference the same deterministic decision input fingerprint."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .outcomeDataLoopEvaluationId !==
+    decision.outcomeLearning
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-outcome-data-loop-trace-mismatch",
+      "internalTrace.outcomeDataLoopEvaluationId",
+      "Internal trace must reference the attached V3-09 Outcome Data Loop plan."
+    );
+  }
+
+  if (
+    findOutcomePiiViolationsV3(
+      decision.internalTrace
+    ).length > 0
+  ) {
+    addIssue(
+      issues,
+      "decision-trace-pii-detected",
+      "internalTrace",
+      "Decision Trace must not contain personal information."
     );
   }
 

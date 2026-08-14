@@ -54,6 +54,7 @@ import {
   SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
   SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3,
+  SMARTSTAY_OUTCOME_DATA_LOOP_VERSION_V3,
   SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
   SMARTSTAY_PERSONAL_UTILITY_VERSION_V3,
   SMARTSTAY_POLICY_VERSION_V3,
@@ -109,6 +110,10 @@ import {
   evaluateSearchWideScaleCoverageV3,
 } from "../scale/searchWideScaleCoverageV3";
 
+import {
+  createOutcomeDataLoopPlanV3,
+} from "../outcome/outcomeDataLoopV3";
+
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
     1;
@@ -121,6 +126,12 @@ export interface StayOptiV3CompatibilityPolicyInput {
 
   commercialFirewallMode?:
     "strict";
+
+  outcomeDataLoopMode?:
+    "contract-only";
+
+  outcomeCollectionEnabled?:
+    false;
 }
 
 export interface AdaptV2SearchResultToDecisionV3Input {
@@ -146,6 +157,12 @@ const DEFAULT_POLICY = {
 
   commercialFirewallMode:
     "strict",
+
+  outcomeDataLoopMode:
+    "contract-only",
+
+  outcomeCollectionEnabled:
+    false,
 } as const;
 
 const ROLE_ORDER:
@@ -533,6 +550,16 @@ function resolvePolicy(
       input.commercialFirewallMode ??
       DEFAULT_POLICY
         .commercialFirewallMode,
+
+    outcomeDataLoopMode:
+      input.outcomeDataLoopMode ??
+      DEFAULT_POLICY
+        .outcomeDataLoopMode,
+
+    outcomeCollectionEnabled:
+      input.outcomeCollectionEnabled ??
+      DEFAULT_POLICY
+        .outcomeCollectionEnabled,
   } as const;
 
   if (
@@ -543,10 +570,14 @@ function resolvePolicy(
     policy.publicSplitCardEnabled !==
       false ||
     policy.commercialFirewallMode !==
-      "strict"
+      "strict" ||
+    policy.outcomeDataLoopMode !==
+      "contract-only" ||
+    policy.outcomeCollectionEnabled !==
+      false
   ) {
     throw new Error(
-      "V3-01 compatibility policy must keep one transition maximum, contract-only temporal optimization, a hidden Split card and the strict commercial firewall."
+      "V3 compatibility policy must keep one transition maximum, contract-only temporal optimization and outcome learning, hidden public cards, and strict safety firewalls."
     );
   }
 
@@ -2378,6 +2409,12 @@ export function adaptV2SearchResultToDecisionV3(
       "stayopti-v3-input"
     );
 
+  const outcomeDataLoop =
+    createOutcomeDataLoopPlanV3({
+      sourceDecisionInputFingerprint:
+        inputFingerprint,
+    });
+
   const configHash =
     createStableHashV3(
       {
@@ -2397,6 +2434,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_DECISION_EXPLANATION_VERSION_V3,
         searchWideScaleVersion:
           SMARTSTAY_SEARCH_WIDE_SCALE_VERSION_V3,
+        outcomeDataLoopVersion:
+          SMARTSTAY_OUTCOME_DATA_LOOP_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -2589,13 +2628,8 @@ export function adaptV2SearchResultToDecisionV3(
       decisionRobustness,
     contextualStayValue,
     searchWideScaleCoverage,
-    outcomeLearning: {
-      status:
-        "not-instrumented",
-      reasonCodes: [
-        "outcome:not-instrumented",
-      ],
-    },
+    outcomeLearning:
+      outcomeDataLoop,
     counterfactuals: {
       comparisonCount:
         input.result
@@ -2647,7 +2681,8 @@ export function adaptV2SearchResultToDecisionV3(
                 "counterfactual:exact-thresholds-unavailable" as const,
               ]
         ),
-        "outcome:not-instrumented",
+        ...outcomeDataLoop
+          .reasonCodes,
         "firewall:commercial-fields-absent",
         ...integrityCoverage
           .reasonCodes,
@@ -2701,6 +2736,9 @@ export function adaptV2SearchResultToDecisionV3(
           .evaluationId,
       searchWideScaleCoverageEvaluationId:
         searchWideScaleCoverage
+          .evaluationId,
+      outcomeDataLoopEvaluationId:
+        outcomeDataLoop
           .evaluationId,
       roleAssignments:
         roleAssignments.sort(
