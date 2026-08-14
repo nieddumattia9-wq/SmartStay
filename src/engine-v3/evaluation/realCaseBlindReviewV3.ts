@@ -1,7 +1,12 @@
 import {
   buildSmartStayFrontendRuntimeV2,
   type SmartStayFrontendInputV2,
+  type SmartStayFrontendRuntimeV2,
 } from "../../engine-v2/frontend/smartStayFrontendAdapterV2";
+
+import type {
+  HotelOffer,
+} from "../../types/hotel";
 
 import type {
   SmartStayEvaluationV2,
@@ -15,6 +20,10 @@ import {
   createStableHashV3,
   stableSerializeV3,
 } from "../contract/stableHashV3";
+
+import type {
+  StayOptiDecisionV3,
+} from "../contract/stayOptiDecisionV3";
 
 import {
   SMARTSTAY_BLIND_REVIEW_ASSIGNMENT_SCHEMA_VERSION_V3,
@@ -199,6 +208,17 @@ export interface StayOptiBlindOptionFactsV3 {
 
   dimensions:
     StayOptiBlindDimensionFactsV3 | null;
+}
+
+interface StayOptiBlindSelectedOfferV3 {
+  totalCost:
+    number;
+
+  currency:
+    string;
+
+  offer:
+    HotelOffer;
 }
 
 export interface StayOptiBlindReviewCaseV3 {
@@ -575,20 +595,20 @@ function resolveMealIncluded(
 }
 
 function resolveTaxesStatus(
-  evaluation:
-    SmartStayEvaluationV2
+  selectedOffer:
+    HotelOffer
 ): StayOptiBlindOptionFactsV3["taxesStatus"] {
-  const hotel =
-    evaluation.hotel;
+  const source =
+    selectedOffer;
 
   const unknown =
     finiteOrNull(
-      hotel.unknownTaxes
+      source.unknownTaxes
     );
 
   if (
     finiteOrNull(
-      hotel.totalKnownCost
+      source.totalKnownCost
     ) !==
       null &&
     unknown ===
@@ -598,14 +618,14 @@ function resolveTaxesStatus(
   }
 
   if (
-    hotel.taxesIncluded !==
+    source.taxesIncluded !==
       undefined ||
     finiteOrNull(
-      hotel.includedTaxes
+      source.includedTaxes
     ) !==
       null ||
     finiteOrNull(
-      hotel.excludedTaxes
+      source.excludedTaxes
     ) !==
       null
   ) {
@@ -657,7 +677,9 @@ function createOptionFacts(
   status:
     StayOptiComparableDecisionStatusV3,
   evaluation:
-    SmartStayEvaluationV2 | null
+    SmartStayEvaluationV2 | null,
+  selection:
+    StayOptiBlindSelectedOfferV3 | null
 ): StayOptiBlindOptionFactsV3 {
   if (
     status !==
@@ -670,10 +692,12 @@ function createOptionFacts(
 
   if (
     evaluation ===
+      null ||
+    selection ===
       null
   ) {
     throw new Error(
-      "A recommended blind option requires one matching evaluation."
+      "A recommended blind option requires one matching evaluation and exact selected offer."
     );
   }
 
@@ -681,31 +705,23 @@ function createOptionFacts(
     evaluation.hotel;
 
   const selectedOffer =
-    hotel.offers.find(
-      (offer) =>
-        offer.bookable
-    ) ??
-    hotel.offers[0] ??
-    null;
+    selection.offer;
 
   const totalCost =
     finiteOrNull(
-      hotel.totalKnownCost
-    ) ??
-    finiteOrNull(
-      hotel.price
+      selection.totalCost
     );
 
   return {
     status,
     totalCost,
     currency:
-      typeof hotel.currency ===
+      typeof selection.currency ===
         "string" &&
       /^[A-Z]{3}$/.test(
-        hotel.currency
+        selection.currency
       )
-        ? hotel.currency
+        ? selection.currency
         : null,
     starCategory:
       finiteOrNull(
@@ -739,7 +755,7 @@ function createOptionFacts(
       ),
     taxesStatus:
       resolveTaxesStatus(
-        evaluation
+        selectedOffer
       ),
     dataConfidence:
       evaluation
@@ -880,6 +896,198 @@ function findEvaluationByToken(
 
   return matches[0] ??
     null;
+}
+
+function resolveExactOffer(
+  evaluation:
+    SmartStayEvaluationV2,
+  offerId:
+    string
+) {
+  const matches =
+    evaluation.hotel
+      .offers.filter(
+        (offer) =>
+          offer.id ===
+            offerId
+      );
+
+  if (
+    matches.length !==
+      1
+  ) {
+    throw new Error(
+      "Blind review selected offer does not map to exactly one public offer."
+    );
+  }
+
+  return matches[0]!;
+}
+
+function validateSelectedOfferAmount(
+  amount:
+    unknown,
+  currency:
+    unknown,
+  offer:
+    HotelOffer
+): StayOptiBlindSelectedOfferV3 {
+  const totalCost =
+    finiteOrNull(
+      amount
+    );
+
+  const normalizedCurrency =
+    typeof currency ===
+        "string" &&
+      /^[A-Z]{3}$/.test(
+        currency
+      )
+      ? currency
+      : null;
+
+  const offerTotal =
+    finiteOrNull(
+      offer.totalKnownCost
+    ) ??
+    finiteOrNull(
+      offer.price
+    );
+
+  if (
+    totalCost ===
+      null ||
+    totalCost <=
+      0 ||
+    normalizedCurrency ===
+      null ||
+    offerTotal ===
+      null ||
+    Math.abs(
+      offerTotal -
+        totalCost
+    ) >
+      0.02 ||
+    offer.currency !==
+      normalizedCurrency
+  ) {
+    throw new Error(
+      "Blind review selected offer lacks one exact internally consistent total."
+    );
+  }
+
+  return {
+    totalCost,
+    currency:
+      normalizedCurrency,
+    offer,
+  };
+}
+
+function resolveV2SelectedOffer(
+  runtime:
+    SmartStayFrontendRuntimeV2,
+  evaluation:
+    SmartStayEvaluationV2
+): StayOptiBlindSelectedOfferV3 {
+  const matchingPicks =
+    runtime.view
+      .recommendationPicks.filter(
+        (pick) =>
+          pick.role ===
+            "best-choice" &&
+          pick.evaluation
+            .hotel.id ===
+            evaluation.hotel.id
+      );
+
+  if (
+    matchingPicks.length !==
+      1
+  ) {
+    throw new Error(
+      "Blind review V2 recommendation does not map to exactly one public Best Choice."
+    );
+  }
+
+  const selectedOffer =
+    matchingPicks[0]!
+      .evaluation
+      .selectedOffer;
+
+  if (
+    selectedOffer ===
+      null
+  ) {
+    throw new Error(
+      "Blind review V2 recommendation lacks its exact public selected offer."
+    );
+  }
+
+  return validateSelectedOfferAmount(
+    selectedOffer.amount,
+    selectedOffer.currency,
+    resolveExactOffer(
+      evaluation,
+      selectedOffer.offerId
+    )
+  );
+}
+
+function resolveV3SelectedOffer(
+  decision:
+    StayOptiDecisionV3,
+  evaluation:
+    SmartStayEvaluationV2
+): StayOptiBlindSelectedOfferV3 {
+  const matches =
+    decision.solutions.filter(
+      (solution) =>
+        solution.kind ===
+          "single" &&
+        solution.segments.length ===
+          1 &&
+        solution.segments[0]
+          ?.hotelId ===
+          evaluation.hotel.id
+    );
+
+  if (
+    matches.length !==
+      1
+  ) {
+    throw new Error(
+      "Blind review V3 recommendation does not map to exactly one selected solution."
+    );
+  }
+
+  const solution =
+    matches[0]!;
+
+  const segment =
+    solution.segments[0]!;
+
+  if (
+    segment.offerId ===
+      null ||
+    segment.offerId ===
+      undefined
+  ) {
+    throw new Error(
+      "Blind review V3 recommendation lacks its exact public selected offer."
+    );
+  }
+
+  return validateSelectedOfferAmount(
+    solution.totalCost
+      .amount,
+    solution.totalCost
+      .currency,
+    resolveExactOffer(
+      evaluation,
+      segment.offerId
+    )
+  );
 }
 
 function shouldPlaceV3OnLeft(
@@ -1064,27 +1272,76 @@ function createCase(
     );
   }
 
+  const v2Evaluation =
+    findEvaluationByToken(
+      v2Run.result
+        .evaluations,
+      v2Decision
+        .selectedSolutionToken
+    );
+
+  const v3Evaluation =
+    findEvaluationByToken(
+      v2Run.result
+        .evaluations,
+      v3Decision
+        .selectedSolutionToken
+    );
+
   const v2Facts =
     createOptionFacts(
       v2Decision.status,
-      findEvaluationByToken(
-        v2Run.result
-          .evaluations,
-        v2Decision
-          .selectedSolutionToken
-      )
+      v2Evaluation,
+      v2Decision.status ===
+          "recommended" &&
+        v2Evaluation !==
+          null
+        ? resolveV2SelectedOffer(
+            v2Run,
+            v2Evaluation
+          )
+        : null
     );
 
   const v3Facts =
     createOptionFacts(
       v3Decision.status,
-      findEvaluationByToken(
-        v2Run.result
-          .evaluations,
-        v3Decision
-          .selectedSolutionToken
-      )
+      v3Evaluation,
+      v3Decision.status ===
+          "recommended" &&
+        v3Evaluation !==
+          null
+        ? resolveV3SelectedOffer(
+            v3SourceDecision,
+            v3Evaluation
+          )
+        : null
     );
+
+  if (
+    v3Decision.status ===
+      "recommended" &&
+    (
+      source.publicRateEvidence
+        .evidenceType !==
+          "rates-prebook-get-prebook" ||
+      v3Facts.totalCost ===
+        null ||
+      Math.abs(
+        v3Facts.totalCost -
+          source.publicRateEvidence
+            .ratesTotal
+      ) >
+        0.02 ||
+      v3Facts.currency !==
+        source.publicRateEvidence
+          .currency
+    )
+  ) {
+    throw new Error(
+      "Blind review V3 facts do not match the verified decision-bound Rates total."
+    );
+  }
 
   const v3OnLeft =
     shouldPlaceV3OnLeft(

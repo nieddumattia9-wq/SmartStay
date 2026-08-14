@@ -8,6 +8,7 @@ import type {
 
 import {
   buildSmartStayFrontendRuntimeV2,
+  type SmartStayFrontendInputV2,
 } from "../../src/engine-v2/frontend/smartStayFrontendAdapterV2";
 
 import {
@@ -351,10 +352,14 @@ const FRONTEND_INPUT = {
     "EUR",
 };
 
-function createVerifiedPublicRateEvidence() {
+function createVerifiedPublicRateEvidence(
+  frontendInput:
+    SmartStayFrontendInputV2 =
+      FRONTEND_INPUT
+) {
   const runtime =
     buildSmartStayFrontendRuntimeV2(
-      FRONTEND_INPUT
+      frontendInput
     );
 
   const decision =
@@ -453,6 +458,74 @@ function createBundle() {
         FRONTEND_INPUT,
     },
   ]);
+}
+
+function createMultiOfferBundle() {
+  const primaryHotel =
+    HOTELS[1]!;
+
+  const frontendInput:
+    SmartStayFrontendInputV2 = {
+      ...FRONTEND_INPUT,
+      hotels:
+        HOTELS.map(
+          (hotel) =>
+            hotel.id ===
+              primaryHotel.id
+              ? {
+                  ...primaryHotel,
+                  price:
+                    330,
+                  basePrice:
+                    330,
+                  totalKnownCost:
+                    330,
+                  offers: [
+                    createOffer(
+                      9_001,
+                      primaryHotel.provider,
+                      330,
+                      false
+                    ),
+                    createOffer(
+                      9_002,
+                      primaryHotel.provider,
+                      331,
+                      true
+                    ),
+                  ],
+                }
+              : hotel
+        ),
+    };
+
+  return {
+    frontendInput,
+    bundle:
+      createRealCaseBlindReviewBundleV3([
+        {
+          caseId:
+            "real-case-multi-offer-0001",
+          caseType:
+            "baseline",
+          segment: {
+            destination:
+              "urban",
+            leadTime:
+              "medium",
+            duration:
+              "short-stay",
+            coverage:
+              "high",
+          },
+          publicRateEvidence:
+            createVerifiedPublicRateEvidence(
+              frontendInput
+            ),
+          frontendInput,
+        },
+      ]),
+  };
 }
 
 function createAbstentionBundle() {
@@ -663,6 +736,84 @@ test(
         automaticPromotionAllowed:
           false,
       }
+    );
+  }
+);
+
+test(
+  "blind facts use each engine exact selected offer instead of the hotel-level or first-bookable fallback",
+  () => {
+    const {
+      frontendInput,
+      bundle,
+    } =
+      createMultiOfferBundle();
+
+    const runtime =
+      buildSmartStayFrontendRuntimeV2(
+        frontendInput
+      );
+
+    const v2SelectedOffer =
+      runtime.view
+        .recommendationPicks.find(
+          (pick) =>
+            pick.role ===
+              "best-choice"
+        )
+        ?.evaluation
+        .selectedOffer;
+
+    assert.equal(
+      v2SelectedOffer
+        ?.offerId,
+      "offer-9002"
+    );
+
+    assert.equal(
+      v2SelectedOffer
+        ?.amount,
+      331
+    );
+
+    const assignment =
+      bundle.assignments
+        .assignments[0]!;
+
+    const reviewCase =
+      bundle.packet
+        .cases[0]!;
+
+    const v2Facts =
+      assignment.leftLabel ===
+        "v2"
+        ? reviewCase.left
+        : reviewCase.right;
+
+    const v3Facts =
+      assignment.leftLabel ===
+        "v3"
+        ? reviewCase.left
+        : reviewCase.right;
+
+    assert.equal(
+      v2Facts.totalCost,
+      331
+    );
+
+    assert.equal(
+      v2Facts.refundable,
+      true
+    );
+
+    assert.equal(
+      v3Facts.totalCost,
+      331
+    );
+
+    assert.equal(
+      v3Facts.refundable,
+      true
     );
   }
 );
