@@ -475,11 +475,11 @@ test(
 
     assert.equal(
       decision.schemaVersion,
-      "3.0.0-decision.9"
+      "3.0.0-decision.10"
     );
     assert.equal(
       decision.engineVersion,
-      "3.0.0-alpha.9"
+      "3.0.0-alpha.10"
     );
     assert.equal(
       decision.mode,
@@ -733,6 +733,46 @@ test(
       decision.internalTrace
         .outcomeDataLoopEvaluationId,
       decision.outcomeLearning
+        .evaluationId
+    );
+    assert.equal(
+      decision.evaluationCalibration
+        .phase,
+      "v3-10"
+    );
+    assert.equal(
+      decision.evaluationCalibration
+        .evaluationApplication,
+      "offline-protocol-only"
+    );
+    assert.equal(
+      decision.evaluationCalibration
+        .thresholdFreeze
+        .status,
+      "frozen-before-results"
+    );
+    assert.equal(
+      decision.evaluationCalibration
+        .thresholdFreeze
+        .resultsObserved,
+      false
+    );
+    assert.equal(
+      decision.evaluationCalibration
+        .promotionPolicy
+        .automaticProductionPromotionAllowed,
+      false
+    );
+    assert.equal(
+      decision.evaluationCalibration
+        .sourceDecisionInputFingerprint,
+      decision.replay
+        .inputFingerprint
+    );
+    assert.equal(
+      decision.internalTrace
+        .evaluationCalibrationEvaluationId,
+      decision.evaluationCalibration
         .evaluationId
     );
     assert.equal(
@@ -1218,6 +1258,27 @@ test(
         (issue) =>
           issue.code ===
           "decision-outcome-data-loop-invalid"
+      )
+    );
+
+    const evaluationMutation =
+      structuredClone(
+        createDecision()
+      );
+
+    evaluationMutation
+      .evaluationCalibration
+      .thresholdFreeze
+      .resultsObserved =
+        true as false;
+
+    assert.ok(
+      validateStayOptiDecisionV3(
+        evaluationMutation
+      ).issues.some(
+        (issue) =>
+          issue.code ===
+          "decision-evaluation-calibration-invalid"
       )
     );
 

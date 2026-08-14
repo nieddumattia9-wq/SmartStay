@@ -53,6 +53,7 @@ import {
   SMARTSTAY_DECISION_EXPLANATION_VERSION_V3,
   SMARTSTAY_DECISION_ROBUSTNESS_VERSION_V3,
   SMARTSTAY_ENGINE_VERSION_V3,
+  SMARTSTAY_EVALUATION_CALIBRATION_VERSION_V3,
   SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3,
   SMARTSTAY_OUTCOME_DATA_LOOP_VERSION_V3,
   SMARTSTAY_PEER_INTELLIGENCE_VERSION_V3,
@@ -114,6 +115,10 @@ import {
   createOutcomeDataLoopPlanV3,
 } from "../outcome/outcomeDataLoopV3";
 
+import {
+  createEvaluationCalibrationPlanV3,
+} from "../evaluation/evaluationCalibrationV3";
+
 export interface StayOptiV3CompatibilityPolicyInput {
   maximumTransitions?:
     1;
@@ -132,6 +137,9 @@ export interface StayOptiV3CompatibilityPolicyInput {
 
   outcomeCollectionEnabled?:
     false;
+
+  evaluationCalibrationMode?:
+    "offline-protocol-only";
 }
 
 export interface AdaptV2SearchResultToDecisionV3Input {
@@ -163,6 +171,9 @@ const DEFAULT_POLICY = {
 
   outcomeCollectionEnabled:
     false,
+
+  evaluationCalibrationMode:
+    "offline-protocol-only",
 } as const;
 
 const ROLE_ORDER:
@@ -560,6 +571,11 @@ function resolvePolicy(
       input.outcomeCollectionEnabled ??
       DEFAULT_POLICY
         .outcomeCollectionEnabled,
+
+    evaluationCalibrationMode:
+      input.evaluationCalibrationMode ??
+      DEFAULT_POLICY
+        .evaluationCalibrationMode,
   } as const;
 
   if (
@@ -574,10 +590,12 @@ function resolvePolicy(
     policy.outcomeDataLoopMode !==
       "contract-only" ||
     policy.outcomeCollectionEnabled !==
-      false
+      false ||
+    policy.evaluationCalibrationMode !==
+      "offline-protocol-only"
   ) {
     throw new Error(
-      "V3 compatibility policy must keep one transition maximum, contract-only temporal optimization and outcome learning, hidden public cards, and strict safety firewalls."
+      "V3 compatibility policy must keep one transition maximum, contract-only temporal optimization and outcome learning, offline-only evaluation, hidden public cards, and strict safety firewalls."
     );
   }
 
@@ -2415,6 +2433,12 @@ export function adaptV2SearchResultToDecisionV3(
         inputFingerprint,
     });
 
+  const evaluationCalibration =
+    createEvaluationCalibrationPlanV3({
+      sourceDecisionInputFingerprint:
+        inputFingerprint,
+    });
+
   const configHash =
     createStableHashV3(
       {
@@ -2436,6 +2460,8 @@ export function adaptV2SearchResultToDecisionV3(
           SMARTSTAY_SEARCH_WIDE_SCALE_VERSION_V3,
         outcomeDataLoopVersion:
           SMARTSTAY_OUTCOME_DATA_LOOP_VERSION_V3,
+        evaluationCalibrationVersion:
+          SMARTSTAY_EVALUATION_CALIBRATION_VERSION_V3,
         policy,
       },
       "stayopti-v3-config"
@@ -2630,6 +2656,7 @@ export function adaptV2SearchResultToDecisionV3(
     searchWideScaleCoverage,
     outcomeLearning:
       outcomeDataLoop,
+    evaluationCalibration,
     counterfactuals: {
       comparisonCount:
         input.result
@@ -2682,6 +2709,8 @@ export function adaptV2SearchResultToDecisionV3(
               ]
         ),
         ...outcomeDataLoop
+          .reasonCodes,
+        ...evaluationCalibration
           .reasonCodes,
         "firewall:commercial-fields-absent",
         ...integrityCoverage
@@ -2739,6 +2768,9 @@ export function adaptV2SearchResultToDecisionV3(
           .evaluationId,
       outcomeDataLoopEvaluationId:
         outcomeDataLoop
+          .evaluationId,
+      evaluationCalibrationEvaluationId:
+        evaluationCalibration
           .evaluationId,
       roleAssignments:
         roleAssignments.sort(

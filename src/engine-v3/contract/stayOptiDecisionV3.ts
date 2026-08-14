@@ -83,6 +83,11 @@ import {
   type StayOptiOutcomeDataLoopPlanV3,
 } from "../outcome/outcomeDataLoopV3";
 
+import {
+  validateEvaluationCalibrationPlanV3,
+  type StayOptiEvaluationCalibrationPlanV3,
+} from "../evaluation/evaluationCalibrationV3";
+
 export type StayOptiDecisionModeV3 =
   | "compatibility-v2"
   | "native-v3";
@@ -293,6 +298,9 @@ export interface StayOptiDecisionTraceV3 {
   outcomeDataLoopEvaluationId:
     string;
 
+  evaluationCalibrationEvaluationId:
+    string;
+
   roleAssignments:
     Array<{
       solutionId:
@@ -428,6 +436,9 @@ export interface StayOptiDecisionV3 {
   outcomeLearning:
     StayOptiOutcomeDataLoopPlanV3;
 
+  evaluationCalibration:
+    StayOptiEvaluationCalibrationPlanV3;
+
   counterfactuals: {
     comparisonCount:
       number;
@@ -490,6 +501,9 @@ export type StayOptiDecisionValidationIssueCodeV3 =
   | "decision-outcome-data-loop-invalid"
   | "decision-outcome-data-loop-source-mismatch"
   | "decision-outcome-data-loop-trace-mismatch"
+  | "decision-evaluation-calibration-invalid"
+  | "decision-evaluation-calibration-source-mismatch"
+  | "decision-evaluation-calibration-trace-mismatch"
   | "decision-trace-pii-detected"
   | "decision-reason-code-invalid"
   | "decision-commercial-firewall-failed";
@@ -581,7 +595,7 @@ export function validateStayOptiDecisionV3(
       issues,
       "decision-version-mismatch",
       "versions",
-      "Decision versions do not match the frozen V3-09 contract."
+      "Decision versions do not match the frozen V3-10 contract."
     );
   }
 
@@ -1289,6 +1303,58 @@ export function validateStayOptiDecisionV3(
   }
 
   if (
+    decision.evaluationCalibration.phase !==
+      "v3-10" ||
+    decision.evaluationCalibration
+      .evaluationApplication !==
+      "offline-protocol-only" ||
+    decision.evaluationCalibration
+      .rankingApplication !==
+      "shadow-only" ||
+    decision.evaluationCalibration
+      .publicPresentation !==
+      "disabled" ||
+    !validateEvaluationCalibrationPlanV3(
+      decision.evaluationCalibration
+    ).valid
+  ) {
+    addIssue(
+      issues,
+      "decision-evaluation-calibration-invalid",
+      "evaluationCalibration",
+      "Evaluation & Calibration must keep thresholds frozen before results and remain offline-only in V3-10."
+    );
+  }
+
+  if (
+    decision.evaluationCalibration
+      .sourceDecisionInputFingerprint !==
+    decision.replay
+      .inputFingerprint
+  ) {
+    addIssue(
+      issues,
+      "decision-evaluation-calibration-source-mismatch",
+      "evaluationCalibration.sourceDecisionInputFingerprint",
+      "Evaluation & Calibration must reference the same deterministic decision input fingerprint."
+    );
+  }
+
+  if (
+    decision.internalTrace
+      .evaluationCalibrationEvaluationId !==
+    decision.evaluationCalibration
+      .evaluationId
+  ) {
+    addIssue(
+      issues,
+      "decision-evaluation-calibration-trace-mismatch",
+      "internalTrace.evaluationCalibrationEvaluationId",
+      "Internal trace must reference the attached V3-10 Evaluation & Calibration plan."
+    );
+  }
+
+  if (
     findOutcomePiiViolationsV3(
       decision.internalTrace
     ).length > 0
@@ -1812,6 +1878,13 @@ export function validateStayOptiDecisionV3(
     decision.outcomeLearning
       .reasonCodes,
     "outcomeLearning.reasonCodes",
+    issues
+  );
+
+  validateReasonCodes(
+    decision.evaluationCalibration
+      .reasonCodes,
+    "evaluationCalibration.reasonCodes",
     issues
   );
 
