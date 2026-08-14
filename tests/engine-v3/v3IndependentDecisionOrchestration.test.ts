@@ -1,0 +1,820 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import type {
+  Hotel,
+  HotelOffer,
+} from "../../src/types/hotel";
+
+import {
+  evaluateSmartStaySearchV2,
+} from "../../src/engine-v2/orchestrator/smartStayEngineV2";
+
+import {
+  STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3,
+  adaptV2SearchResultToDecisionV3,
+  createHotelSelectionTokenV3,
+  createIndependentV3ComparableDecisionV3,
+  createV2ComparableDecisionV3,
+  deriveIndependentShadowSafetySignalsV3,
+  runIndependentDecisionShadowV3,
+  validateShadowObservationV3,
+  type StayOptiV3CompatibilityPolicyInput,
+} from "../../src/engine-v3";
+
+function createOffer(
+  index: number,
+  provider: string,
+  totalCost: number
+): HotelOffer {
+  return {
+    id:
+      `offer-${index}`,
+    provider,
+    price:
+      totalCost,
+    basePrice:
+      totalCost,
+    saving:
+      0,
+    currency:
+      "EUR",
+    cancellationPolicy:
+      "Free cancellation before arrival",
+    refundableTag:
+      "RFN",
+    refundable:
+      true,
+    freeCancellationUntil:
+      "2026-09-01",
+    cancellationPenalty:
+      0,
+    cancellationPenaltyCurrency:
+      "EUR",
+    cancellationPenaltyType:
+      "amount",
+    cancellationTimezone:
+      "Europe/Rome",
+    taxesIncluded:
+      true,
+    includedTaxes:
+      24,
+    excludedTaxes:
+      0,
+    unknownTaxes:
+      0,
+    totalKnownCost:
+      totalCost,
+    roomName:
+      "Double hotel room",
+    mealPlan:
+      "Breakfast included",
+    bookable:
+      true,
+  };
+}
+
+function createHotel(
+  input: {
+    id: string;
+    provider: string;
+    totalCost: number;
+    stars: number;
+    reviewScore: number;
+    reviewCount: number;
+    distance: number;
+    offerIndex: number;
+  }
+): Hotel {
+  return {
+    id:
+      input.id,
+    dataSources: [
+      input.provider,
+    ],
+    dataConfidence:
+      "full",
+    availableData: {
+      hasPrice:
+        true,
+      hasBasePrice:
+        true,
+      hasSaving:
+        true,
+      hasStars:
+        true,
+      hasReviewScore:
+        true,
+      hasReviewCount:
+        true,
+      hasDistance:
+        true,
+      hasImage:
+        true,
+      hasAddress:
+        true,
+      hasCoordinates:
+        true,
+      hasAmenities:
+        true,
+    },
+    offers: [
+      createOffer(
+        input.offerIndex,
+        input.provider,
+        input.totalCost
+      ),
+    ],
+    name:
+      `Hotel ${input.id}`,
+    provider:
+      input.provider,
+    stars:
+      input.stars,
+    reviewScore:
+      input.reviewScore,
+    reviewCount:
+      input.reviewCount,
+    reviewCountRelation:
+      "equal",
+    reviewText:
+      "Strong reviews",
+    price:
+      input.totalCost,
+    basePrice:
+      input.totalCost,
+    saving:
+      0,
+    currency:
+      "EUR",
+    taxesIncluded:
+      true,
+    includedTaxes:
+      24,
+    excludedTaxes:
+      0,
+    unknownTaxes:
+      0,
+    totalKnownCost:
+      input.totalCost,
+    distance:
+      input.distance,
+    image:
+      `https://images.example/${input.id}.jpg`,
+    address:
+      `${input.offerIndex} StayOpti Street`,
+    city:
+      "Florence",
+    country:
+      "Italy",
+    latitude:
+      43.77 +
+      input.offerIndex /
+        1000,
+    longitude:
+      11.25 +
+      input.offerIndex /
+        1000,
+    amenities: [
+      "Hotel room",
+      "Private bathroom",
+      "WiFi",
+      "Air conditioning",
+      "Breakfast",
+      "Reception",
+      "Elevator",
+    ],
+    facilities: [
+      "Front desk",
+      "Daily housekeeping",
+    ],
+  };
+}
+
+const HOTELS: Hotel[] = [
+  createHotel({
+    id:
+      "central-value",
+    provider:
+      "Provider A",
+    totalCost:
+      420,
+    stars:
+      4,
+    reviewScore:
+      8.9,
+    reviewCount:
+      920,
+    distance:
+      0.7,
+    offerIndex:
+      1,
+  }),
+  createHotel({
+    id:
+      "sensible-saving",
+    provider:
+      "Provider B",
+    totalCost:
+      330,
+    stars:
+      3,
+    reviewScore:
+      8.4,
+    reviewCount:
+      640,
+    distance:
+      1.1,
+    offerIndex:
+      2,
+  }),
+  createHotel({
+    id:
+      "comfort-upgrade",
+    provider:
+      "Provider A",
+    totalCost:
+      510,
+    stars:
+      5,
+    reviewScore:
+      9.2,
+    reviewCount:
+      1100,
+    distance:
+      0.5,
+    offerIndex:
+      3,
+  }),
+  createHotel({
+    id:
+      "weak-option",
+    provider:
+      "Provider B",
+    totalCost:
+      470,
+    stars:
+      3,
+    reviewScore:
+      7.5,
+    reviewCount:
+      90,
+    distance:
+      2.5,
+    offerIndex:
+      4,
+  }),
+];
+
+const SEARCH_INPUT = {
+  hotels:
+    HOTELS,
+  preferenceId:
+    "balanced" as const,
+  preferenceSource:
+    "manual" as const,
+  totalBudget:
+    450,
+  maximumDistanceKm:
+    3,
+  selectedLocation: {
+    latitude:
+      43.77,
+    longitude:
+      11.25,
+    confidence:
+      1,
+  },
+  nights:
+    4,
+  adults:
+    2,
+  children:
+    0,
+  rooms:
+    1,
+  checkIn:
+    "2026-10-10",
+  checkOut:
+    "2026-10-14",
+  currency:
+    "EUR",
+};
+
+const SEGMENT = {
+  profile:
+    "balanced" as const,
+  destination:
+    "urban" as const,
+  leadTime:
+    "medium" as const,
+  duration:
+    "short-stay" as const,
+  coverage:
+    "high" as const,
+};
+
+function createSource() {
+  const result =
+    evaluateSmartStaySearchV2(
+      SEARCH_INPUT
+    );
+
+  return {
+    result,
+    decision:
+      adaptV2SearchResultToDecisionV3({
+        searchInput:
+          SEARCH_INPUT,
+        result,
+      }),
+  };
+}
+
+test(
+  "independent V3 defaults to off and returns the exact public V2 object without executing V3",
+  () => {
+    const result =
+      evaluateSmartStaySearchV2(
+        SEARCH_INPUT
+      );
+
+    const invalidIfExecuted = {
+      publicSplitCardEnabled:
+        true,
+    } as unknown as StayOptiV3CompatibilityPolicyInput;
+
+    const shadow =
+      runIndependentDecisionShadowV3({
+        comparisonToken:
+          "independent-shadow-off-0001",
+        segment:
+          SEGMENT,
+        searchInput:
+          SEARCH_INPUT,
+        publicV2Result:
+          result,
+        compatibilityPolicy:
+          invalidIfExecuted,
+      });
+
+    assert.equal(
+      shadow.publicResult,
+      result
+    );
+    assert.equal(
+      shadow.publicServingEngine,
+      "v2"
+    );
+    assert.equal(
+      shadow.v3Executed,
+      false
+    );
+    assert.equal(
+      shadow.shadowObservation,
+      null
+    );
+  }
+);
+
+test(
+  "V2 and independent V3 use the same semantic hotel-token projection",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const v2 =
+      createV2ComparableDecisionV3(
+        result
+      );
+
+    const v3 =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const v2HotelId =
+      result.recommendationRoles
+        .bestChoiceHotelId;
+
+    assert.equal(
+      v2.selectedSolutionToken,
+      v2HotelId ===
+        null
+        ? null
+        : createHotelSelectionTokenV3(
+            v2HotelId
+          )
+    );
+
+    const v3HotelId =
+      decision.robustness
+        .policyPreferredHotelId;
+
+    assert.equal(
+      v3.selectedSolutionToken,
+      v3HotelId ===
+        null
+        ? null
+        : createHotelSelectionTokenV3(
+            v3HotelId
+          )
+    );
+  }
+);
+
+test(
+  "shadow mode records a valid independent comparison and never replaces public V2",
+  () => {
+    const result =
+      evaluateSmartStaySearchV2(
+        SEARCH_INPUT
+      );
+
+    const shadow =
+      runIndependentDecisionShadowV3({
+        mode:
+          "shadow",
+        comparisonToken:
+          "independent-shadow-run-0001",
+        segment:
+          SEGMENT,
+        searchInput:
+          SEARCH_INPUT,
+        publicV2Result:
+          result,
+        publicRatesConsistency:
+          "verified",
+      });
+
+    assert.equal(
+      shadow.publicResult,
+      result
+    );
+    assert.equal(
+      shadow.v3Executed,
+      true
+    );
+    assert.equal(
+      shadow.shadowObservation
+        ?.recordType,
+      "shadow-comparison"
+    );
+
+    if (
+      shadow.shadowObservation ===
+        null
+    ) {
+      assert.fail(
+        "Expected an independent shadow observation."
+      );
+    }
+
+    assert.deepEqual(
+      validateShadowObservationV3(
+        shadow.shadowObservation
+      ),
+      {
+        valid:
+          true,
+        issues: [],
+      }
+    );
+
+    if (
+      shadow.shadowObservation
+        .recordType ===
+        "shadow-comparison"
+    ) {
+      assert.equal(
+        shadow.shadowObservation
+          .publicServingEngine,
+        "v2"
+      );
+      assert.equal(
+        shadow.shadowObservation
+          .v3Authoritative,
+        false
+      );
+      assert.equal(
+        shadow.shadowObservation
+          .safety
+          .publicRateConsistency,
+        "verified"
+      );
+      assert.equal(
+        shadow.shadowObservation
+          .safety
+          .deterministicReplay,
+        "pass"
+      );
+    }
+  }
+);
+
+test(
+  "unverified public rates remain a critical shadow regression",
+  () => {
+    const result =
+      evaluateSmartStaySearchV2(
+        SEARCH_INPUT
+      );
+
+    const shadow =
+      runIndependentDecisionShadowV3({
+        mode:
+          "shadow",
+        comparisonToken:
+          "independent-shadow-run-0002",
+        segment:
+          SEGMENT,
+        searchInput:
+          SEARCH_INPUT,
+        publicV2Result:
+          result,
+      });
+
+    assert.equal(
+      shadow.shadowObservation
+        ?.recordType,
+      "shadow-comparison"
+    );
+
+    if (
+      shadow.shadowObservation
+        ?.recordType ===
+        "shadow-comparison"
+    ) {
+      assert.equal(
+        shadow.shadowObservation
+          .safety
+          .publicRateConsistency,
+        "unverified"
+      );
+      assert.ok(
+        shadow.shadowObservation
+          .criticalRegressions
+          .includes(
+            "public-rate-integrity"
+          )
+      );
+    }
+  }
+);
+
+test(
+  "independent execution failures are isolated as shadow errors",
+  () => {
+    const result =
+      evaluateSmartStaySearchV2(
+        SEARCH_INPUT
+      );
+
+    const invalidPolicy = {
+      publicSplitCardEnabled:
+        true,
+    } as unknown as StayOptiV3CompatibilityPolicyInput;
+
+    const shadow =
+      runIndependentDecisionShadowV3({
+        mode:
+          "shadow",
+        comparisonToken:
+          "independent-shadow-error-0001",
+        segment:
+          SEGMENT,
+        searchInput:
+          SEARCH_INPUT,
+        publicV2Result:
+          result,
+        compatibilityPolicy:
+          invalidPolicy,
+      });
+
+    assert.equal(
+      shadow.publicResult,
+      result
+    );
+    assert.equal(
+      shadow.shadowObservation
+        ?.recordType,
+      "shadow-error"
+    );
+  }
+);
+
+test(
+  "independent projection can diverge semantically from V2 without changing V2",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const v2HotelId =
+      result.recommendationRoles
+        .bestChoiceHotelId;
+
+    assert.notEqual(
+      v2HotelId,
+      null
+    );
+
+    const alternative =
+      decision.robustness
+        .candidates.find(
+          (candidate) => {
+            if (
+              candidate.hotelId ===
+                v2HotelId ||
+              candidate.status !==
+                "usable"
+            ) {
+              return false;
+            }
+
+            return decision.candidates.some(
+              (item) =>
+                item.eligible &&
+                item.solutionId ===
+                  candidate.solutionId
+            );
+          }
+        );
+
+    assert.notEqual(
+      alternative,
+      undefined
+    );
+
+    const divergent =
+      structuredClone(
+        decision
+      );
+
+    divergent.robustness
+      .recommendationPolicy =
+      "recommend";
+    divergent.robustness
+      .robustChoiceHotelId =
+      alternative
+        ?.hotelId ??
+      null;
+    divergent.robustness
+      .policyPreferredHotelId =
+      alternative
+        ?.hotelId ??
+      null;
+    divergent.robustness
+      .abstentionCode =
+      null;
+
+    const v2 =
+      createV2ComparableDecisionV3(
+        result
+      );
+
+    const v3 =
+      createIndependentV3ComparableDecisionV3(
+        divergent,
+        v2HotelId
+      );
+
+    assert.equal(
+      v2.status,
+      "recommended"
+    );
+    assert.equal(
+      v3.status,
+      "recommended"
+    );
+    assert.notEqual(
+      v3.selectedSolutionToken,
+      v2.selectedSolutionToken
+    );
+    assert.ok(
+      [
+        "best-sensible-saving",
+        "worthwhile-comfort-upgrade",
+        "best-choice",
+      ].includes(
+        v3.role ??
+        ""
+      )
+    );
+  }
+);
+
+test(
+  "SPLIT is rejected before independent V3 comparison",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const splitDecision =
+      structuredClone(
+        decision
+      );
+
+    splitDecision
+      .temporalOptimization
+      .status =
+      "split-recommended";
+    splitDecision
+      .temporalOptimization
+      .splitSolutionId =
+      "solution:split:test";
+
+    assert.throws(
+      () =>
+        createIndependentV3ComparableDecisionV3(
+          splitDecision,
+          result.recommendationRoles
+            .bestChoiceHotelId
+        ),
+      /blocks SPLIT/
+    );
+  }
+);
+
+test(
+  "safety derivation fails deterministic replay closed and keeps audit defaults frozen",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const comparable =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const safety =
+      deriveIndependentShadowSafetySignalsV3({
+        decision,
+        comparable,
+        publicRatesConsistency:
+          "verified",
+        deterministicReplayMatches:
+          false,
+      });
+
+    assert.equal(
+      safety.deterministicReplay,
+      "fail"
+    );
+    assert.equal(
+      STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3
+        .application,
+      "internal-shadow-only"
+    );
+    assert.equal(
+      STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3
+        .publicV2Unchanged,
+      true
+    );
+    assert.equal(
+      STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3
+        .splitRecommendationEnabled,
+      false
+    );
+  }
+);
+
+test(
+  "independent comparable projection is deterministic",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const first =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const second =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    assert.deepEqual(
+      first,
+      second
+    );
+  }
+);

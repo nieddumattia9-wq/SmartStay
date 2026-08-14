@@ -954,6 +954,35 @@ export function runV3ShadowSafelyV3<TPublicResult>(input: {
   v3Executed: boolean;
   shadowObservation: StayOptiShadowObservationV3 | null;
 } {
+  return runV3ShadowWithDerivedSafetySafelyV3({
+    mode: input.mode,
+    comparisonToken: input.comparisonToken,
+    segment: input.segment,
+    publicV2Result: input.publicV2Result,
+    v2Decision: input.v2Decision,
+    runV3: () => ({
+      decision: input.runV3(),
+      safety: input.safety,
+    }),
+  });
+}
+
+export function runV3ShadowWithDerivedSafetySafelyV3<TPublicResult>(input: {
+  mode: "off" | "shadow";
+  comparisonToken: string;
+  segment: StayOptiEvaluationSegmentV3;
+  publicV2Result: TPublicResult;
+  v2Decision: StayOptiComparableDecisionV3;
+  runV3: () => {
+    decision: StayOptiComparableDecisionV3;
+    safety: StayOptiShadowSafetySignalsV3;
+  };
+}): {
+  publicResult: TPublicResult;
+  publicServingEngine: "v2";
+  v3Executed: boolean;
+  shadowObservation: StayOptiShadowObservationV3 | null;
+} {
   const v2 = normalizeComparableDecision(input.v2Decision, "v2");
   validateSegment(input.segment);
   requireOpaqueToken(input.comparisonToken, "comparisonToken");
@@ -968,7 +997,7 @@ export function runV3ShadowSafelyV3<TPublicResult>(input: {
   }
 
   try {
-    const v3 = input.runV3();
+    const evaluation = input.runV3();
     return {
       publicResult: input.publicV2Result,
       publicServingEngine: "v2",
@@ -977,8 +1006,8 @@ export function runV3ShadowSafelyV3<TPublicResult>(input: {
         comparisonToken: input.comparisonToken,
         segment: input.segment,
         v2,
-        v3,
-        safety: input.safety,
+        v3: evaluation.decision,
+        safety: evaluation.safety,
       }),
     };
   }

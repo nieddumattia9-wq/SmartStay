@@ -83,6 +83,17 @@ export {
 } from "./replay/decisionReplayV3";
 
 export {
+  STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3,
+  createHotelSelectionTokenV3,
+  createIndependentV3ComparableDecisionV3,
+  createV2ComparableDecisionV3,
+  deriveIndependentShadowSafetySignalsV3,
+  runIndependentDecisionShadowV3,
+  type RunIndependentDecisionShadowInputV3,
+  type RunIndependentDecisionShadowResultV3,
+} from "./orchestrator/independentDecisionEngineV3";
+
+export {
   applyDiminishingReturnsV3,
   createBudgetUtilityV3,
   evaluatePersonalUtilityV3,
@@ -335,6 +346,7 @@ export {
   createShadowRegressionDashboardV3,
   evaluatePromotionKillSwitchV3,
   runV3ShadowSafelyV3,
+  runV3ShadowWithDerivedSafetySafelyV3,
   validateDefaultPromotionControlV3,
   validateKillSwitchStateV3,
   validatePromotionAuthorizationV3,
