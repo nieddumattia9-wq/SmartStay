@@ -31,8 +31,11 @@ export const SMARTSTAY_ENGINE_VERSION_V3_10 =
 export const SMARTSTAY_ENGINE_VERSION_V3_11 =
   "3.0.0-alpha.11" as const;
 
-export const SMARTSTAY_ENGINE_VERSION_V3 =
+export const SMARTSTAY_ENGINE_VERSION_V3_11B =
   "3.0.0-alpha.12" as const;
+
+export const SMARTSTAY_ENGINE_VERSION_V3 =
+  "3.0.0-alpha.13" as const;
 
 export const SMARTSTAY_DECISION_SCHEMA_VERSION_V3_01 =
   "3.0.0-decision.1" as const;
@@ -97,8 +100,11 @@ export const SMARTSTAY_POLICY_VERSION_V3_10 =
 export const SMARTSTAY_POLICY_VERSION_V3_11 =
   "3.0.0-policy.11" as const;
 
-export const SMARTSTAY_POLICY_VERSION_V3 =
+export const SMARTSTAY_POLICY_VERSION_V3_11B =
   "3.0.0-policy.12" as const;
+
+export const SMARTSTAY_POLICY_VERSION_V3 =
+  "3.0.0-policy.13" as const;
 
 export const SMARTSTAY_EVIDENCE_SCHEMA_VERSION_V3_01 =
   "3.0.0-evidence.1" as const;
@@ -212,7 +218,7 @@ export const SMARTSTAY_PROMOTION_AUDIT_SCHEMA_VERSION_V3 =
   "3.0.0-promotion-audit.1" as const;
 
 export const SMARTSTAY_INDEPENDENT_DECISION_VERSION_V3 =
-  "3.0.0-independent-decision.1" as const;
+  "3.0.0-independent-decision.2" as const;
 
 export const SMARTSTAY_V3_VERSIONS = {
   engine:

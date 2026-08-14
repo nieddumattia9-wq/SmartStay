@@ -37,6 +37,18 @@ export const RELEASE_SHA =
   ).trim() ||
   "development";
 
+export const STAYOPTI_V3_SHADOW_MODE =
+  String(
+    import.meta.env
+      .VITE_STAYOPTI_V3_SHADOW_MODE ??
+    "off"
+  )
+    .trim()
+    .toLowerCase() ===
+  "shadow"
+    ? "shadow"
+    : "off";
+
 export const GOOGLE_MAPS_EMBED_KEY =
   String(
     import.meta.env

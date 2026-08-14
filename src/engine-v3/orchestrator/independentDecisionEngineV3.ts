@@ -58,7 +58,7 @@ export interface RunIndependentDecisionShadowInputV3 {
   segment: StayOptiEvaluationSegmentV3;
   searchInput: SmartStayEngineV2SearchInput;
   publicV2Result: SmartStayEngineV2SearchResult;
-  publicRatesConsistency?: StayPublicRatesConsistencyV3;
+  publicRateEvidence?: StayOptiBoundPublicRateEvidenceV3;
   compatibilityPolicy?: StayOptiV3CompatibilityPolicyInput;
 }
 
@@ -71,6 +71,57 @@ export interface RunIndependentDecisionShadowResultV3 {
 
 type ComparableDecisionWithoutFingerprint =
   Omit<StayOptiComparableDecisionV3, "decisionFingerprint">;
+
+export const STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3 =
+  0.02 as const;
+
+export interface StayOptiBoundPublicRateEvidenceV3 {
+  evidenceType:
+    "rates-prebook-get-prebook";
+  decisionFingerprint:
+    string;
+  hotelSelectionToken:
+    string;
+  currency:
+    string;
+  ratesTotal:
+    number;
+  prebookTotal:
+    number;
+  retrievedPrebookTotal:
+    number;
+  evidenceFingerprint:
+    string;
+}
+
+type PublicRateEvidenceWithoutFingerprintV3 =
+  Omit<
+    StayOptiBoundPublicRateEvidenceV3,
+    "evidenceFingerprint"
+  >;
+
+function createPublicRateEvidenceFingerprintV3(
+  evidence:
+    PublicRateEvidenceWithoutFingerprintV3
+) {
+  return createStableHashV3(
+    evidence,
+    "stayopti-v3-bound-public-rate-evidence"
+  );
+}
+
+export function createBoundPublicRateEvidenceV3(
+  input:
+    PublicRateEvidenceWithoutFingerprintV3
+): StayOptiBoundPublicRateEvidenceV3 {
+  return {
+    ...input,
+    evidenceFingerprint:
+      createPublicRateEvidenceFingerprintV3(
+        input
+      ),
+  };
+}
 
 function uniqueSorted(
   values: readonly string[]
@@ -362,19 +413,6 @@ export function createIndependentV3ComparableDecisionV3(
       selectedHotelId
     );
 
-  const selectedCandidate =
-    selectedSolution ===
-      null
-      ? null
-      : decision.candidates.find(
-          (candidate) =>
-            candidate.solutionId ===
-              selectedSolution
-                .solutionId &&
-            candidate.eligible
-        ) ??
-        null;
-
   const robustnessCandidate =
     robustness.candidates.find(
       (candidate) =>
@@ -388,8 +426,6 @@ export function createIndependentV3ComparableDecisionV3(
       null ||
     selectedSolution.feasibility !==
       "feasible" ||
-    selectedCandidate ===
-      null ||
     robustnessCandidate
       ?.status !==
       "usable"
@@ -550,6 +586,154 @@ function derivePriceIntegrity(
       : "unknown";
 }
 
+function finitePositiveAmount(
+  value: unknown
+): value is number {
+  return typeof value ===
+      "number" &&
+    Number.isFinite(
+      value
+    ) &&
+    value >
+      0;
+}
+
+export function deriveBoundPublicRateConsistencyV3(
+  input: {
+    decision:
+      StayOptiDecisionV3;
+    comparable:
+      StayOptiComparableDecisionV3;
+    evidence?:
+      StayOptiBoundPublicRateEvidenceV3;
+  }
+): StayPublicRatesConsistencyV3 {
+  const evidence =
+    input.evidence;
+
+  if (
+    evidence ===
+      undefined
+  ) {
+    return "unverified";
+  }
+
+  const {
+    evidenceFingerprint,
+    ...withoutFingerprint
+  } = evidence;
+
+  const evidenceKeys =
+    Object.keys(
+      evidence
+    ).sort();
+
+  const expectedEvidenceKeys = [
+    "currency",
+    "decisionFingerprint",
+    "evidenceFingerprint",
+    "evidenceType",
+    "hotelSelectionToken",
+    "prebookTotal",
+    "ratesTotal",
+    "retrievedPrebookTotal",
+  ];
+
+  if (
+    JSON.stringify(
+      evidenceKeys
+    ) !==
+      JSON.stringify(
+        expectedEvidenceKeys
+      ) ||
+    evidence.evidenceType !==
+      "rates-prebook-get-prebook" ||
+    evidenceFingerprint !==
+      createPublicRateEvidenceFingerprintV3(
+        withoutFingerprint
+      ) ||
+    evidence.decisionFingerprint !==
+      input.decision.replay
+        .decisionFingerprint ||
+    input.comparable.status !==
+      "recommended" ||
+    input.comparable
+      .selectedSolutionToken ===
+      null ||
+    evidence.hotelSelectionToken !==
+      input.comparable
+        .selectedSolutionToken ||
+    !/^[A-Z]{3}$/.test(
+      evidence.currency
+    ) ||
+    !finitePositiveAmount(
+      evidence.ratesTotal
+    ) ||
+    !finitePositiveAmount(
+      evidence.prebookTotal
+    ) ||
+    !finitePositiveAmount(
+      evidence.retrievedPrebookTotal
+    )
+  ) {
+    return "failed";
+  }
+
+  const selectedHotelId =
+    input.decision
+      .robustness
+      .policyPreferredHotelId;
+
+  const solution =
+    selectedHotelId ===
+      null
+      ? null
+      : findSingleSolutionForHotel(
+          input.decision,
+          selectedHotelId
+        );
+
+  if (
+    solution ===
+      null ||
+    solution.totalCost
+      .amount ===
+      null ||
+    solution.totalCost
+      .currency !==
+      evidence.currency
+  ) {
+    return "failed";
+  }
+
+  const amounts = [
+    solution.totalCost
+      .amount,
+    evidence.ratesTotal,
+    evidence.prebookTotal,
+    evidence.retrievedPrebookTotal,
+  ];
+
+  return amounts.every(
+    (
+      amount,
+      index
+    ) =>
+      index ===
+        0 ||
+      Math.abs(
+        amount -
+          amounts[
+            index -
+              1
+          ]
+      ) <=
+        STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3
+  )
+    ? "verified"
+    : "failed";
+}
+
 function selectedRecommendationIsSafe(
   decision: StayOptiDecisionV3,
   comparable: StayOptiComparableDecisionV3
@@ -587,18 +771,6 @@ function selectedRecommendationIsSafe(
       selectedHotelId
     );
 
-  const candidate =
-    solution ===
-      null
-      ? null
-      : decision.candidates.find(
-          (item) =>
-            item.solutionId ===
-              solution.solutionId &&
-            item.eligible
-        ) ??
-        null;
-
   const robustnessCandidate =
     robustness.candidates.find(
       (item) =>
@@ -613,8 +785,6 @@ function selectedRecommendationIsSafe(
       "single" &&
     solution.feasibility ===
       "feasible" &&
-    candidate !==
-      null &&
     robustnessCandidate
       ?.status ===
       "usable";
@@ -624,7 +794,7 @@ export function deriveIndependentShadowSafetySignalsV3(
   input: {
     decision: StayOptiDecisionV3;
     comparable: StayOptiComparableDecisionV3;
-    publicRatesConsistency: StayPublicRatesConsistencyV3;
+    publicRateEvidence?: StayOptiBoundPublicRateEvidenceV3;
     deterministicReplayMatches: boolean;
   }
 ): StayOptiShadowSafetySignalsV3 {
@@ -647,7 +817,14 @@ export function deriveIndependentShadowSafetySignalsV3(
         input.comparable
       ),
     publicRateConsistency:
-      input.publicRatesConsistency,
+      deriveBoundPublicRateConsistencyV3({
+        decision:
+          input.decision,
+        comparable:
+          input.comparable,
+        evidence:
+          input.publicRateEvidence,
+      }),
     commercialFirewall:
       evaluateCommercialFirewallV3(
         input.decision
@@ -748,9 +925,8 @@ export function runIndependentDecisionShadowV3(
             decision:
               first,
             comparable,
-            publicRatesConsistency:
-              input.publicRatesConsistency ??
-              "unverified",
+            publicRateEvidence:
+              input.publicRateEvidence,
             deterministicReplayMatches:
               replay.matches,
           }),

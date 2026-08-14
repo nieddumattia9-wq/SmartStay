@@ -1,4 +1,10 @@
 import assert from "node:assert/strict";
+import {
+  readFileSync,
+} from "node:fs";
+import {
+  resolve,
+} from "node:path";
 import test from "node:test";
 
 import type {
@@ -11,12 +17,23 @@ import {
 } from "../../src/engine-v2/orchestrator/smartStayEngineV2";
 
 import {
+  buildSmartStayFrontendRuntimeV2,
+  buildSmartStayFrontendViewV2,
+} from "../../src/engine-v2/frontend/smartStayFrontendAdapterV2";
+
+import {
   STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3,
+  STAYOPTI_FRONTEND_SHADOW_RUNTIME_AUDIT_V3,
   adaptV2SearchResultToDecisionV3,
+  createBoundPublicRateEvidenceV3,
   createHotelSelectionTokenV3,
   createIndependentV3ComparableDecisionV3,
   createV2ComparableDecisionV3,
+  deriveBoundPublicRateConsistencyV3,
   deriveIndependentShadowSafetySignalsV3,
+  readFrontendShadowBufferV3,
+  resetFrontendShadowBufferV3,
+  runFrontendIndependentShadowRuntimeV3,
   runIndependentDecisionShadowV3,
   validateShadowObservationV3,
   type StayOptiV3CompatibilityPolicyInput,
@@ -331,6 +348,74 @@ function createSource() {
   };
 }
 
+function createVerifiedPublicRateEvidence() {
+  const {
+    result,
+    decision,
+  } = createSource();
+
+  const comparable =
+    createIndependentV3ComparableDecisionV3(
+      decision,
+      result.recommendationRoles
+        .bestChoiceHotelId
+    );
+
+  const selectedHotelId =
+    decision.robustness
+      .policyPreferredHotelId;
+
+  const solution =
+    decision.solutions.find(
+      (candidate) =>
+        candidate.kind ===
+          "single" &&
+        candidate.segments[0]
+          ?.hotelId ===
+          selectedHotelId
+    ) ??
+    null;
+
+  if (
+    comparable.selectedSolutionToken ===
+      null ||
+    solution ===
+      null ||
+    solution.totalCost.amount ===
+      null ||
+    solution.totalCost.currency ===
+      null
+  ) {
+    throw new Error(
+      "Test fixture requires one priced independent V3 recommendation."
+    );
+  }
+
+  return createBoundPublicRateEvidenceV3({
+    evidenceType:
+      "rates-prebook-get-prebook",
+    decisionFingerprint:
+      decision.replay
+        .decisionFingerprint,
+    hotelSelectionToken:
+      comparable
+        .selectedSolutionToken,
+    currency:
+      solution.totalCost
+        .currency,
+    ratesTotal:
+      solution.totalCost
+        .amount,
+    prebookTotal:
+      solution.totalCost
+        .amount,
+    retrievedPrebookTotal:
+      solution.totalCost
+        .amount +
+      0.01,
+  });
+}
+
 test(
   "independent V3 defaults to off and returns the exact public V2 object without executing V3",
   () => {
@@ -447,8 +532,8 @@ test(
           SEARCH_INPUT,
         publicV2Result:
           result,
-        publicRatesConsistency:
-          "verified",
+        publicRateEvidence:
+          createVerifiedPublicRateEvidence(),
       });
 
     assert.equal(
@@ -608,102 +693,145 @@ test(
 );
 
 test(
-  "independent projection can diverge semantically from V2 without changing V2",
+  "independent V3 can select an evaluated hotel outside the untouched V2 finalist picks",
   () => {
-    const {
-      result,
-      decision,
-    } = createSource();
+    const hotels =
+      Array.from(
+        {
+          length:
+            8,
+        },
+        (
+          _unused,
+          index
+        ) =>
+          createHotel({
+            id:
+              `candidate-1-${index}`,
+            provider:
+              index % 2 ===
+                0
+                ? "Provider A"
+                : "Provider B",
+            totalCost:
+              260 +
+              (
+                37 +
+                index *
+                  53
+              ) %
+                390,
+            stars:
+              3 +
+              (
+                1 +
+                index
+              ) %
+                3,
+            reviewScore:
+              7.5 +
+              (
+                (
+                  11 +
+                  index *
+                    7
+                ) %
+                  20
+              ) /
+                10,
+            reviewCount:
+              120 +
+              (
+                83 +
+                index *
+                  197
+              ) %
+                1_800,
+            distance:
+              0.3 +
+              (
+                (
+                  5 +
+                  index *
+                    3
+                ) %
+                  25
+              ) /
+                10,
+            offerIndex:
+              10 +
+              index,
+          })
+      );
+
+    const searchInput = {
+      ...SEARCH_INPUT,
+      hotels,
+      preferenceId:
+        "maximum-savings" as const,
+    };
+
+    const result =
+      evaluateSmartStaySearchV2(
+        searchInput
+      );
+
+    const decision =
+      adaptV2SearchResultToDecisionV3({
+        searchInput,
+        result,
+      });
 
     const v2HotelId =
       result.recommendationRoles
         .bestChoiceHotelId;
-
-    assert.notEqual(
-      v2HotelId,
-      null
-    );
-
-    const alternative =
+    const v3HotelId =
       decision.robustness
-        .candidates.find(
-          (candidate) => {
-            if (
-              candidate.hotelId ===
-                v2HotelId ||
-              candidate.status !==
-                "usable"
-            ) {
-              return false;
-            }
-
-            return decision.candidates.some(
-              (item) =>
-                item.eligible &&
-                item.solutionId ===
-                  candidate.solutionId
-            );
-          }
+        .policyPreferredHotelId;
+    const v2PickHotelIds =
+      result.recommendationRoles
+        .picks.map(
+          (pick) =>
+            pick.hotelId
         );
 
-    assert.notEqual(
-      alternative,
-      undefined
+    assert.equal(
+      v2HotelId,
+      "candidate-1-0"
     );
-
-    const divergent =
-      structuredClone(
-        decision
-      );
-
-    divergent.robustness
-      .recommendationPolicy =
-      "recommend";
-    divergent.robustness
-      .robustChoiceHotelId =
-      alternative
-        ?.hotelId ??
-      null;
-    divergent.robustness
-      .policyPreferredHotelId =
-      alternative
-        ?.hotelId ??
-      null;
-    divergent.robustness
-      .abstentionCode =
-      null;
-
-    const v2 =
-      createV2ComparableDecisionV3(
-        result
-      );
+    assert.equal(
+      v3HotelId,
+      "candidate-1-7"
+    );
+    assert.deepEqual(
+      v2PickHotelIds,
+      [
+        "candidate-1-0",
+        "candidate-1-1",
+      ]
+    );
+    assert.equal(
+      v2PickHotelIds.includes(
+        v3HotelId ??
+        ""
+      ),
+      false
+    );
 
     const v3 =
       createIndependentV3ComparableDecisionV3(
-        divergent,
+        decision,
         v2HotelId
       );
 
     assert.equal(
-      v2.status,
-      "recommended"
-    );
-    assert.equal(
       v3.status,
       "recommended"
     );
-    assert.notEqual(
+    assert.equal(
       v3.selectedSolutionToken,
-      v2.selectedSolutionToken
-    );
-    assert.ok(
-      [
-        "best-sensible-saving",
-        "worthwhile-comfort-upgrade",
-        "best-choice",
-      ].includes(
-        v3.role ??
-        ""
+      createHotelSelectionTokenV3(
+        "candidate-1-7"
       )
     );
   }
@@ -762,8 +890,8 @@ test(
       deriveIndependentShadowSafetySignalsV3({
         decision,
         comparable,
-        publicRatesConsistency:
-          "verified",
+        publicRateEvidence:
+          createVerifiedPublicRateEvidence(),
         deterministicReplayMatches:
           false,
       });
@@ -787,6 +915,159 @@ test(
         .splitRecommendationEnabled,
       false
     );
+  }
+);
+
+test(
+  "public-rate verification is bound to the selected decision and cannot be asserted with a bare status",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const comparable =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const evidence =
+      createVerifiedPublicRateEvidence();
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+        evidence,
+      }),
+      "verified"
+    );
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+        evidence: {
+          ...evidence,
+          decisionFingerprint:
+            "fnv1a32-00000000",
+        },
+      }),
+      "failed"
+    );
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+      }),
+      "unverified"
+    );
+  }
+);
+
+test(
+  "the real Results runtime invokes the isolated V3 hook while the public V2 view stays byte-equivalent",
+  () => {
+    resetFrontendShadowBufferV3();
+
+    const runtime =
+      buildSmartStayFrontendRuntimeV2(
+        SEARCH_INPUT
+      );
+
+    assert.deepEqual(
+      runtime.view,
+      buildSmartStayFrontendViewV2(
+        SEARCH_INPUT
+      )
+    );
+
+    const off =
+      runFrontendIndependentShadowRuntimeV3({
+        mode:
+          "off",
+        sourceToken:
+          "runtime-link-test-0001",
+        runtime,
+      });
+
+    assert.equal(
+      off.publicResult,
+      runtime.result
+    );
+    assert.equal(
+      off.v3Executed,
+      false
+    );
+    assert.deepEqual(
+      readFrontendShadowBufferV3(),
+      []
+    );
+
+    const shadow =
+      runFrontendIndependentShadowRuntimeV3({
+        mode:
+          "shadow",
+        sourceToken:
+          "runtime-link-test-0002",
+        runtime,
+      });
+
+    assert.equal(
+      shadow.publicResult,
+      runtime.result
+    );
+    assert.equal(
+      shadow.publicServingEngine,
+      "v2"
+    );
+    assert.equal(
+      readFrontendShadowBufferV3()
+        .length,
+      1
+    );
+    assert.equal(
+      STAYOPTI_FRONTEND_SHADOW_RUNTIME_AUDIT_V3
+        .defaultMode,
+      "off"
+    );
+    assert.equal(
+      STAYOPTI_FRONTEND_SHADOW_RUNTIME_AUDIT_V3
+        .externalTransmission,
+      false
+    );
+    assert.equal(
+      STAYOPTI_FRONTEND_SHADOW_RUNTIME_AUDIT_V3
+        .splitEnabled,
+      false
+    );
+
+    const resultsSource =
+      readFileSync(
+        resolve(
+          process.cwd(),
+          "src/pages/Results/Results.tsx"
+        ),
+        "utf8"
+      );
+
+    assert.match(
+      resultsSource,
+      /buildSmartStayFrontendRuntimeV2/
+    );
+    assert.match(
+      resultsSource,
+      /runFrontendIndependentShadowRuntimeV3/
+    );
+    assert.match(
+      resultsSource,
+      /if \(searchId\) \{/
+    );
+
+    resetFrontendShadowBufferV3();
   }
 );
 

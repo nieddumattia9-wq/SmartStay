@@ -30,6 +30,7 @@ import {
 
 import type {
   SmartStayEngineV2SearchInput,
+  SmartStayEngineV2SearchResult,
 } from "../orchestrator/smartStayEngineV2";
 
 import type {
@@ -250,6 +251,17 @@ export interface SmartStayFrontendViewV2 {
 
   emptyState:
     SmartStayEmptyStateV2 | null;
+}
+
+export interface SmartStayFrontendRuntimeV2 {
+  searchInput:
+    SmartStayEngineV2SearchInput;
+
+  result:
+    SmartStayEngineV2SearchResult;
+
+  view:
+    SmartStayFrontendViewV2;
 }
 
 export interface SmartStayFrontendInputV2 {
@@ -3642,9 +3654,12 @@ function evaluateFrontendEngineForView(
 
   if (
     input.marketRelativeAutomaticBalance !==
-    true
+      true
   ) {
     return {
+      searchInput:
+        requestedEngineInput,
+
       result:
         evaluateSmartStaySearchV2(
           requestedEngineInput
@@ -3667,6 +3682,9 @@ function evaluateFrontendEngineForView(
       );
 
     return {
+      searchInput:
+        requestedEngineInput,
+
       result,
 
       preferenceResolution:
@@ -3689,21 +3707,24 @@ function evaluateFrontendEngineForView(
     };
   }
 
+  const preliminaryEngineInput =
+    createFrontendEngineInput(
+      input,
+      {
+        preferenceId:
+          "balanced",
+
+        selectedIndex:
+          2,
+
+        preferenceSource:
+          "automatic",
+      }
+    );
+
   const preliminaryResult =
     evaluateSmartStaySearchV2(
-      createFrontendEngineInput(
-        input,
-        {
-          preferenceId:
-            "balanced",
-
-          selectedIndex:
-            2,
-
-          preferenceSource:
-            "automatic",
-        }
-      )
+      preliminaryEngineInput
     );
 
   const preferenceResolution =
@@ -3735,6 +3756,11 @@ function evaluateFrontendEngineForView(
         2;
 
     return {
+      searchInput:
+        requestedIsBalanced
+          ? preliminaryEngineInput
+          : requestedEngineInput,
+
       result:
         requestedIsBalanced
           ? preliminaryResult
@@ -3752,6 +3778,9 @@ function evaluateFrontendEngineForView(
       2
   ) {
     return {
+      searchInput:
+        preliminaryEngineInput,
+
       result:
         preliminaryResult,
 
@@ -3767,46 +3796,51 @@ function evaluateFrontendEngineForView(
         .generatedObservations
     );
 
+  const finalEngineInput =
+    createFrontendEngineInput(
+      input,
+      {
+        preferenceId:
+          preferenceResolution
+            .effectivePreferenceId,
+
+        selectedIndex:
+          preferenceResolution
+            .effectiveSelectedIndex,
+
+        preferenceSource:
+          "automatic",
+
+        marketContextMode:
+          "local-only",
+
+        marketContextObservations:
+          frozenObservations,
+      }
+    );
+
   const result =
     evaluateSmartStaySearchV2(
-      createFrontendEngineInput(
-        input,
-        {
-          preferenceId:
-            preferenceResolution
-              .effectivePreferenceId,
-
-          selectedIndex:
-            preferenceResolution
-              .effectiveSelectedIndex,
-
-          preferenceSource:
-            "automatic",
-
-          marketContextMode:
-            "local-only",
-
-          marketContextObservations:
-            frozenObservations,
-        }
-      )
+      finalEngineInput
     );
 
   return {
+    searchInput:
+      finalEngineInput,
+
     result,
     preferenceResolution,
   };
 }
 
-export function buildSmartStayFrontendViewV2(
+function buildSmartStayFrontendViewFromRuntimeV2(
   input:
-    SmartStayFrontendInputV2
+    SmartStayFrontendInputV2,
+  engineRun:
+    ReturnType<
+      typeof evaluateFrontendEngineForView
+    >
 ): SmartStayFrontendViewV2 {
-  const engineRun =
-    evaluateFrontendEngineForView(
-      input
-    );
-
   const result =
     engineRun.result;
 
@@ -4288,4 +4322,35 @@ export function buildSmartStayFrontendViewV2(
 
     emptyState,
   };
+}
+
+export function buildSmartStayFrontendRuntimeV2(
+  input:
+    SmartStayFrontendInputV2
+): SmartStayFrontendRuntimeV2 {
+  const engineRun =
+    evaluateFrontendEngineForView(
+      input
+    );
+
+  return {
+    searchInput:
+      engineRun.searchInput,
+    result:
+      engineRun.result,
+    view:
+      buildSmartStayFrontendViewFromRuntimeV2(
+        input,
+        engineRun
+      ),
+  };
+}
+
+export function buildSmartStayFrontendViewV2(
+  input:
+    SmartStayFrontendInputV2
+): SmartStayFrontendViewV2 {
+  return buildSmartStayFrontendRuntimeV2(
+    input
+  ).view;
 }

@@ -1253,6 +1253,19 @@ const rankedHotels =
               "../../engine-v2/frontend/smartStayFrontendAdapterV2"
             );
 
+          const [
+            v3ShadowModule,
+            runtimeConfig,
+          ] =
+            await Promise.all([
+              import(
+                "../../engine-v3/runtime/frontendIndependentShadowRuntimeV3"
+              ),
+              import(
+                "../../config/runtimeConfig"
+              ),
+            ]);
+
           const previousRankingHotelIds =
             recoveryActive
               ? []
@@ -1261,9 +1274,9 @@ const rankedHotels =
                   hotels
                 );
 
-          const view =
+          const engineRuntime =
             engineModule
-              .buildSmartStayFrontendViewV2({
+              .buildSmartStayFrontendRuntimeV2({
                 hotels,
 
                 preferenceId:
@@ -1344,6 +1357,31 @@ const rankedHotels =
                 maximumVisibleResults:
                   hotels.length,
               });
+
+          const view =
+            engineRuntime.view;
+
+          if (searchId) {
+            try {
+              v3ShadowModule
+                .runFrontendIndependentShadowRuntimeV3({
+                  mode:
+                    runtimeConfig
+                      .STAYOPTI_V3_SHADOW_MODE,
+                  sourceToken:
+                    searchId,
+                  runtime:
+                    engineRuntime,
+                });
+            }
+            catch (
+              shadowFailure
+            ) {
+              // V3 is non-authoritative. A shadow failure must never change the
+              // public V2 result or surface internal error details to the user.
+              void shadowFailure;
+            }
+          }
 
           if (
             cancelled ||

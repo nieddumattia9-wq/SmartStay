@@ -84,14 +84,28 @@ export {
 
 export {
   STAYOPTI_INDEPENDENT_DECISION_AUDIT_V3,
+  STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3,
+  createBoundPublicRateEvidenceV3,
   createHotelSelectionTokenV3,
   createIndependentV3ComparableDecisionV3,
   createV2ComparableDecisionV3,
+  deriveBoundPublicRateConsistencyV3,
   deriveIndependentShadowSafetySignalsV3,
   runIndependentDecisionShadowV3,
   type RunIndependentDecisionShadowInputV3,
   type RunIndependentDecisionShadowResultV3,
+  type StayOptiBoundPublicRateEvidenceV3,
 } from "./orchestrator/independentDecisionEngineV3";
+
+export {
+  STAYOPTI_FRONTEND_SHADOW_RUNTIME_AUDIT_V3,
+  deriveFrontendShadowSegmentV3,
+  readFrontendShadowBufferV3,
+  resetFrontendShadowBufferV3,
+  runFrontendIndependentShadowRuntimeV3,
+  type RunFrontendIndependentShadowRuntimeInputV3,
+  type StayOptiFrontendShadowRuntimeModeV3,
+} from "./runtime/frontendIndependentShadowRuntimeV3";
 
 export {
   applyDiminishingReturnsV3,

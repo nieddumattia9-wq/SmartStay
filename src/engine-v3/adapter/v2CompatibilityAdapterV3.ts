@@ -723,8 +723,6 @@ function mapCost(
 }
 
 function createSingleSolution(
-  pick:
-    SmartStayRecommendationPickV2,
   evaluation:
     SmartStayEvaluationV2,
   selectedOffer:
@@ -747,7 +745,10 @@ function createSingleSolution(
 
     preferenceId:
       string;
-  }
+  },
+  additionalEvidenceIds:
+    readonly string[] =
+      []
 ): StaySolutionV3 | null {
   const nights =
     context.nights ??
@@ -771,7 +772,7 @@ function createSingleSolution(
 
   const evidenceIds =
     uniqueSorted([
-      ...pick.evidenceIds,
+      ...additionalEvidenceIds,
       ...evaluation.evidence.map(
         (fact) =>
           fact.id
@@ -1283,7 +1284,6 @@ export function adaptV2SearchResultToDecisionV3(
 
     const solution =
       createSingleSolution(
-        pick,
         evaluation,
         selectedOffer,
         sourceOffer,
@@ -1292,7 +1292,8 @@ export function adaptV2SearchResultToDecisionV3(
           checkOut,
           nights,
           preferenceId,
-        }
+        },
+        pick.evidenceIds
       );
 
     if (
@@ -1375,6 +1376,94 @@ export function adaptV2SearchResultToDecisionV3(
           pick.reasonCodes
         ),
     });
+  }
+
+  // The compatibility recommendation candidates above intentionally preserve
+  // the public V2 roles. Independent V3 evaluation, however, must be able to
+  // represent every evaluated hotel with a selected offer, including hotels
+  // that V2 did not place in recommendationRoles.picks.
+  for (
+    const evaluation
+    of [
+      ...input.result
+        .evaluations,
+    ].sort(
+      (
+        first,
+        second
+      ) =>
+        first.hotel.id.localeCompare(
+          second.hotel.id
+        )
+    )
+  ) {
+    const alreadyMapped =
+      solutions.some(
+        (solution) =>
+          solution.kind ===
+            "single" &&
+          solution.segments.some(
+            (segment) =>
+              segment.hotelId ===
+                evaluation.hotel.id
+          )
+      );
+
+    if (
+      alreadyMapped
+    ) {
+      continue;
+    }
+
+    const selectedOffer =
+      selectedOfferByHotelId.get(
+        evaluation.hotel.id
+      ) ??
+      null;
+
+    if (
+      selectedOffer ===
+        null
+    ) {
+      continue;
+    }
+
+    const sourceOffer =
+      sourceOfferByHotelId.get(
+        evaluation.hotel.id
+      ) ??
+      null;
+
+    const solution =
+      createSingleSolution(
+        evaluation,
+        selectedOffer,
+        sourceOffer,
+        {
+          checkIn,
+          checkOut,
+          nights,
+          preferenceId,
+        }
+      );
+
+    if (
+      solution ===
+        null ||
+      solutionIds.has(
+        solution.solutionId
+      )
+    ) {
+      continue;
+    }
+
+    solutionIds.add(
+      solution.solutionId
+    );
+
+    solutions.push(
+      solution
+    );
   }
 
   const bestChoiceCandidate =
@@ -1943,8 +2032,11 @@ export function adaptV2SearchResultToDecisionV3(
           }
         ),
       decisionGeometry,
+      // V3 must select its own comparison anchor. The V2 Best Choice remains
+      // attached for compatibility and public rendering only; it cannot shape
+      // the V3 robustness cohort or preferred hotel.
       anchorHotelId:
-        recommendedHotelId,
+        null,
       constraintRelaxations:
         [],
     });
