@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.tests.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmitOnError": true
+  },
+  "include": [
+    "tools/v3BlindReviewCli.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
