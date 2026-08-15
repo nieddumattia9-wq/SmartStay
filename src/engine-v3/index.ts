@@ -633,3 +633,16 @@ export {
   type StayOptiGoldenEvaluatorAssignmentClaimV3,
   type StayOptiGoldenRealCaseReceiptV3,
 } from "./evaluation/goldenDecisionCollectionCampaignV3";
+
+export {
+  STAYOPTI_GOLDEN_REAL_EVIDENCE_BATCH_AUDIT_V3,
+  STAYOPTI_GOLDEN_REAL_EVIDENCE_BATCH_SCHEMA_VERSION_V3,
+  STAYOPTI_GOLDEN_REAL_EVIDENCE_BATCH_VERSION_V3,
+  applyGoldenRealEvidenceBatchV3,
+  validateGoldenRealEvidenceBatchV3,
+  verifyGoldenRealEvidenceBatchReplayV3,
+  type StayOptiGoldenRealEvidenceBatchInputV3,
+  type StayOptiGoldenRealEvidenceBatchStatusV3,
+  type StayOptiGoldenRealEvidenceBatchV3,
+  type StayOptiGoldenRealEvidenceCaptureV3,
+} from "./evaluation/goldenRealEvidenceBatchV3";
