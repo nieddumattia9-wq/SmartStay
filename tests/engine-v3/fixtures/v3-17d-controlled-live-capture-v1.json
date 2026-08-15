@@ -1,0 +1,11 @@
+{
+  "planInput": {
+    "planId": "golden-controlled-live-plan-v3-17d-real-v1",
+    "collectionAnchorDate": "2026-08-15"
+  },
+  "sessionInput": {
+    "sessionId": "golden-controlled-live-session-v3-17d-empty-v1",
+    "batchId": "golden-real-evidence-batch-v3-17d-empty-v1",
+    "requestedCaseSlotIds": []
+  }
+}
