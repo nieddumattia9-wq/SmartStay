@@ -363,6 +363,269 @@ test(
 );
 
 test(
+  "LiteAPI prebook prefers the nested rate offer identity over a repeated room identity",
+  () => {
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-prebook-id",
+          roomTypes: [
+            {
+              offerId:
+                "shared-room-offer",
+              roomName:
+                "Shared room",
+              rates: [
+                {
+                  offerId:
+                    "wrong-offer",
+                  offerRetailRate: {
+                    amount:
+                      70,
+                    currency:
+                      "EUR",
+                  },
+                },
+                {
+                  offerId:
+                    "offer-token",
+                  offerRetailRate: {
+                    amount:
+                      95,
+                    currency:
+                      "EUR",
+                  },
+                  boardName:
+                    "Breakfast included",
+                },
+              ],
+            },
+          ],
+        },
+        originalOffer:
+          createOriginalOffer(),
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(
+      mapped
+    );
+
+    assert.equal(
+      mapped.offer.price,
+      95
+    );
+
+    assert.equal(
+      mapped.offer.mealPlan,
+      "Breakfast included"
+    );
+  }
+);
+
+test(
+  "LiteAPI prebook uses one stable selection fingerprint when the provider rotates offer identity",
+  () => {
+    const selectedRate = {
+      offerId:
+        "offer-token",
+      offerRetailRate: {
+        amount:
+          95,
+        currency:
+          "EUR",
+      },
+      roomName:
+        "Selected room",
+      roomTypeId:
+        "room-type-1",
+      boardName:
+        "Breakfast included",
+      refundableTag:
+        "RFN",
+      refundable:
+        true,
+    };
+
+    const originalOffer =
+      createLiteApiOffer({
+        rate:
+          selectedRate,
+        hotelId:
+          "hotel-1",
+        index:
+          0,
+        fallbackCurrency:
+          "EUR",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(
+      originalOffer
+        .providerOfferContext
+        .selectionFingerprint
+    );
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-prebook-id",
+          roomTypes: [
+            {
+              roomName:
+                "Wrong room",
+              rates: [
+                {
+                  offerId:
+                    "rotated-wrong-offer",
+                  offerRetailRate: {
+                    amount:
+                      70,
+                    currency:
+                      "EUR",
+                  },
+                  boardName:
+                    "Room only",
+                  refundable:
+                    false,
+                },
+              ],
+            },
+            {
+              roomName:
+                "Selected room",
+              rates: [
+                {
+                  ...selectedRate,
+                  offerId:
+                    "rotated-selected-offer",
+                },
+              ],
+            },
+          ],
+        },
+        originalOffer,
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(
+      mapped
+    );
+
+    assert.equal(
+      mapped.offer.roomName,
+      "Selected room"
+    );
+
+    assert.equal(
+      mapped.offer.price,
+      95
+    );
+
+    assert.equal(
+      mapped.offer
+        .providerOfferReference,
+      "offer-token"
+    );
+  }
+);
+
+test(
+  "LiteAPI prebook fails closed when rotated records share the same selection fingerprint",
+  () => {
+    const selectedRate = {
+      offerId:
+        "offer-token",
+      offerRetailRate: {
+        amount:
+          95,
+        currency:
+          "EUR",
+      },
+      roomName:
+        "Selected room",
+      roomTypeId:
+        "room-type-1",
+      boardName:
+        "Breakfast included",
+      refundableTag:
+        "RFN",
+      refundable:
+        true,
+    };
+
+    const originalOffer =
+      createLiteApiOffer({
+        rate:
+          selectedRate,
+        hotelId:
+          "hotel-1",
+        index:
+          0,
+        fallbackCurrency:
+          "EUR",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-prebook-id",
+          roomTypes: [
+            {
+              roomName:
+                "Selected room",
+              rates: [
+                {
+                  ...selectedRate,
+                  offerId:
+                    "rotated-offer-a",
+                },
+                {
+                  ...selectedRate,
+                  offerId:
+                    "rotated-offer-b",
+                },
+              ],
+            },
+          ],
+        },
+        originalOffer,
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.equal(
+      mapped,
+      null
+    );
+  }
+);
+
+test(
   "LiteAPI adapter calls prebook with the exact private offer reference",
   async () => {
     let receivedOfferId =

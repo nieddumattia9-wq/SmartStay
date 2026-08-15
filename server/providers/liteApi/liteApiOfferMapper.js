@@ -474,11 +474,11 @@ function mergeRoomWithRate(
 
     offerId:
       pickString(
-        room,
+        rate,
         [["offerId"]]
       ) ||
       pickString(
-        rate,
+        room,
         [["offerId"]]
       ),
 
@@ -1386,6 +1386,16 @@ function selectPrebookOfferRecord({
         ?.providerOfferReference
     );
 
+  const expectedSelectionFingerprint =
+    asString(
+      originalOffer
+        ?.providerOfferContext
+        ?.selectionFingerprint
+    );
+
+  let exactReferenceIsAmbiguous =
+    false;
+
   if (expectedReference) {
     const exactMatches =
       records.filter(
@@ -1403,11 +1413,37 @@ function selectPrebookOfferRecord({
       return exactMatches[0];
     }
 
+    exactReferenceIsAmbiguous =
+      exactMatches.length > 1;
+  }
+
+  if (expectedSelectionFingerprint) {
+    const fingerprintMatches =
+      records.filter(
+        (record) =>
+          asString(
+            createLiteApiSelectionFingerprint(
+              record
+            )
+          ) ===
+          expectedSelectionFingerprint
+      );
+
     if (
-      exactMatches.length > 1
+      fingerprintMatches.length === 1
+    ) {
+      return fingerprintMatches[0];
+    }
+
+    if (
+      fingerprintMatches.length > 1
     ) {
       return null;
     }
+  }
+
+  if (exactReferenceIsAmbiguous) {
+    return null;
   }
 
   if (
