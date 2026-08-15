@@ -176,15 +176,25 @@ function getNestedRates(rate) {
     return [];
   }
 
-  return [
+  const candidates = [
     rate.rates,
     rate.rate,
     rate.offers,
     rate.availableRates,
     rate.roomRates,
-  ]
-    .flatMap(asArray)
-    .filter(isPlainObject);
+  ];
+
+  for (const candidate of candidates) {
+    const nestedRates =
+      asArray(candidate)
+        .filter(isPlainObject);
+
+    if (nestedRates.length > 0) {
+      return nestedRates;
+    }
+  }
+
+  return [];
 }
 
 function getLiteApiRetailSellingPrice(
@@ -462,6 +472,18 @@ function getSelectionSources(rate) {
     : [rate];
 }
 
+function getLiteApiSelectionRoomCount(
+  rate
+) {
+  if (!isPlainObject(rate)) {
+    return 0;
+  }
+
+  return getSelectionSources(
+    rate
+  ).length;
+}
+
 function createSelectionDescriptor(
   source
 ) {
@@ -536,6 +558,22 @@ function createSelectionDescriptor(
           child?.age ??
           child
         )
+      ).sort(
+        (first, second) => {
+          if (first === second) {
+            return 0;
+          }
+
+          if (first === null) {
+            return 1;
+          }
+
+          if (second === null) {
+            return -1;
+          }
+
+          return first - second;
+        }
       ),
     cancellationDeadlines:
       penalties
@@ -562,23 +600,38 @@ function createLiteApiSelectionFingerprint(
     return null;
   }
 
+  const fallbackRoomName =
+    pickFirstText(rate, [
+      ["roomName"],
+      ["roomType"],
+      ["roomTypeName"],
+      ["name"],
+    ]);
+
+  const selectionDescriptors =
+    getSelectionSources(rate)
+      .map(
+        createSelectionDescriptor
+      )
+      .map((descriptor) => ({
+        ...descriptor,
+        roomName:
+          descriptor.roomName ||
+          fallbackRoomName,
+      }))
+      .sort(
+        (first, second) =>
+          JSON.stringify(first)
+            .localeCompare(
+              JSON.stringify(second)
+            )
+      );
+
   const descriptor = {
-    roomName:
-      pickFirstText(rate, [
-        ["roomName"],
-        ["roomType"],
-        ["roomTypeName"],
-        ["name"],
-      ]),
     roomCount:
-      getSelectionSources(
-        rate
-      ).length,
+      selectionDescriptors.length,
     rates:
-      getSelectionSources(rate)
-        .map(
-          createSelectionDescriptor
-        ),
+      selectionDescriptors,
   };
 
   return crypto
@@ -603,4 +656,5 @@ module.exports = {
   getLiteApiCommissionAmount,
   getLiteApiPublicPriceFloor,
   getLiteApiRetailSellingPrice,
+  getLiteApiSelectionRoomCount,
 };

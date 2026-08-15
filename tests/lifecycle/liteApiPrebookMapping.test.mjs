@@ -8,6 +8,7 @@ const require =
 const {
   createLiteApiOffer,
   createLiteApiPrebookOffer,
+  getLiteApiOfferRecords,
 } = require(
   "../../server/providers/liteApi/liteApiOfferMapper.js"
 );
@@ -52,6 +53,137 @@ function createOriginalOffer() {
       "Refundable",
     bookable:
       true,
+  };
+}
+
+function createMultiRoomRate({
+  duplicateAliases = false,
+} = {}) {
+  const rooms = [
+    {
+      offerId:
+        "room-offer-a",
+      roomName:
+        "Standard room",
+      roomTypeId:
+        "room-type-a",
+      boardName:
+        "Breakfast included",
+      refundableTag:
+        "RFN",
+      refundable:
+        true,
+      adults:
+        2,
+      childCount:
+        0,
+      offerRetailRate: {
+        amount:
+          95,
+        currency:
+          "EUR",
+      },
+    },
+    {
+      offerId:
+        "room-offer-b",
+      roomName:
+        "Twin room",
+      roomTypeId:
+        "room-type-b",
+      boardName:
+        "Breakfast included",
+      refundableTag:
+        "RFN",
+      refundable:
+        true,
+      adults:
+        1,
+      childCount:
+        0,
+      offerRetailRate: {
+        amount:
+          95,
+        currency:
+          "EUR",
+      },
+    },
+  ];
+
+  return {
+    offerId:
+      "multi-room-offer",
+    offerRetailRate: {
+      amount:
+        190,
+      currency:
+        "EUR",
+    },
+    rates:
+      rooms,
+    ...(duplicateAliases
+      ? {
+          roomRates:
+            rooms.map(
+              (room) => ({
+                ...room,
+              })
+            ),
+        }
+      : {}),
+  };
+}
+
+function createMultiRoomOriginalOffer(
+  rate = createMultiRoomRate()
+) {
+  return createLiteApiOffer({
+    rate,
+    hotelId:
+      "hotel-1",
+    index:
+      0,
+    fallbackCurrency:
+      "EUR",
+    sourceProvider:
+      "liteapi",
+    providerName:
+      "LiteAPI",
+  });
+}
+
+function createSplitPrebookRoom(
+  room,
+  {
+    offerId,
+    amount,
+    boardName,
+  } = {}
+) {
+  return {
+    roomName:
+      room.roomName,
+    roomTypeId:
+      room.roomTypeId,
+    rates: [
+      {
+        ...room,
+        offerId:
+          offerId ??
+          `rotated-${room.offerId}`,
+        boardName:
+          boardName ??
+          room.boardName,
+        offerRetailRate: {
+          amount:
+            amount ??
+            room.offerRetailRate
+              .amount,
+          currency:
+            "EUR",
+        },
+      },
+    ],
   };
 }
 
@@ -621,6 +753,399 @@ test(
     assert.equal(
       mapped,
       null
+    );
+  }
+);
+
+test(
+  "LiteAPI multi-room selection fingerprint is order-independent and ignores duplicate alias containers",
+  () => {
+    const firstOffer =
+      createMultiRoomOriginalOffer(
+        createMultiRoomRate({
+          duplicateAliases:
+            true,
+        })
+      );
+
+    const reorderedRate =
+      createMultiRoomRate();
+
+    reorderedRate.offerId =
+      "rotated-multi-room-offer";
+
+    reorderedRate.rates =
+      [...reorderedRate.rates]
+        .reverse();
+
+    const secondOffer =
+      createMultiRoomOriginalOffer(
+        reorderedRate
+      );
+
+    assert.ok(firstOffer);
+    assert.ok(secondOffer);
+
+    assert.equal(
+      firstOffer
+        .providerOfferContext
+        .selectionFingerprint,
+      secondOffer
+        .providerOfferContext
+        .selectionFingerprint
+    );
+
+    assert.equal(
+      firstOffer
+        .providerOfferContext
+        .selectionRoomCount,
+      2
+    );
+  }
+);
+
+test(
+  "LiteAPI top-level roomRates are enumerated once",
+  () => {
+    const records =
+      getLiteApiOfferRecords({
+        roomRates: [
+          {
+            offerId:
+              "one-room-rate",
+            roomName:
+              "Standard room",
+            offerRetailRate: {
+              amount:
+                95,
+              currency:
+                "EUR",
+            },
+          },
+        ],
+      });
+
+    assert.equal(
+      records.length,
+      1
+    );
+  }
+);
+
+test(
+  "LiteAPI prebook aggregates split multi-room records when the full selection fingerprint matches",
+  () => {
+    const selectedRate =
+      createMultiRoomRate({
+        duplicateAliases:
+          true,
+      });
+
+    const originalOffer =
+      createMultiRoomOriginalOffer(
+        selectedRate
+      );
+
+    const [firstRoom, secondRoom] =
+      selectedRate.rates;
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-multi-room-prebook",
+          roomTypes: [
+            createSplitPrebookRoom(
+              secondRoom,
+              {
+                offerId:
+                  "rotated-room-b",
+                amount:
+                  99,
+              }
+            ),
+            createSplitPrebookRoom(
+              firstRoom,
+              {
+                offerId:
+                  "rotated-room-a",
+                amount:
+                  101,
+              }
+            ),
+          ],
+        },
+        originalOffer,
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(mapped);
+
+    assert.equal(
+      mapped.providerBookingReference,
+      "private-multi-room-prebook"
+    );
+
+    assert.equal(
+      mapped.offer
+        .providerOfferReference,
+      "multi-room-offer"
+    );
+
+    assert.equal(
+      mapped.offer.price,
+      200
+    );
+
+    assert.equal(
+      mapped.offer.mealPlan,
+      "Breakfast included"
+    );
+  }
+);
+
+test(
+  "LiteAPI multi-room aggregation fails closed when one room condition changes",
+  () => {
+    const selectedRate =
+      createMultiRoomRate();
+
+    const [firstRoom, secondRoom] =
+      selectedRate.rates;
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-multi-room-prebook",
+          roomTypes: [
+            createSplitPrebookRoom(
+              firstRoom,
+              {
+                offerId:
+                  "multi-room-offer",
+              }
+            ),
+            createSplitPrebookRoom(
+              secondRoom,
+              {
+                boardName:
+                  "Room only",
+              }
+            ),
+          ],
+        },
+        originalOffer:
+          createMultiRoomOriginalOffer(
+            selectedRate
+          ),
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.equal(
+      mapped,
+      null
+    );
+  }
+);
+
+test(
+  "LiteAPI multi-room aggregation fails closed when Prebook adds an unmatched room",
+  () => {
+    const selectedRate =
+      createMultiRoomRate();
+
+    const [firstRoom, secondRoom] =
+      selectedRate.rates;
+
+    const extraRoom = {
+      ...secondRoom,
+      roomName:
+        "Suite",
+      roomTypeId:
+        "room-type-extra",
+      offerId:
+        "room-offer-extra",
+    };
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-multi-room-prebook",
+          roomTypes: [
+            createSplitPrebookRoom(
+              firstRoom
+            ),
+            createSplitPrebookRoom(
+              secondRoom
+            ),
+            createSplitPrebookRoom(
+              extraRoom
+            ),
+          ],
+        },
+        originalOffer:
+          createMultiRoomOriginalOffer(
+            selectedRate
+          ),
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.equal(
+      mapped,
+      null
+    );
+  }
+);
+
+test(
+  "LiteAPI multi-room aggregation fails closed when room currencies disagree",
+  () => {
+    const selectedRate =
+      createMultiRoomRate();
+
+    const [firstRoom, secondRoom] =
+      selectedRate.rates;
+
+    const secondPrebookRoom =
+      createSplitPrebookRoom(
+        secondRoom
+      );
+
+    secondPrebookRoom
+      .rates[0]
+      .offerRetailRate
+      .currency = "USD";
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-multi-room-prebook",
+          roomTypes: [
+            createSplitPrebookRoom(
+              firstRoom
+            ),
+            secondPrebookRoom,
+          ],
+        },
+        originalOffer:
+          createMultiRoomOriginalOffer(
+            selectedRate
+          ),
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.equal(
+      mapped,
+      null
+    );
+  }
+);
+
+test(
+  "LiteAPI multi-room aggregation preserves the multiplicity of identical rooms",
+  () => {
+    const identicalRoom = {
+      offerId:
+        "room-offer-identical",
+      roomName:
+        "Standard room",
+      roomTypeId:
+        "room-type-identical",
+      boardName:
+        "Breakfast included",
+      refundableTag:
+        "RFN",
+      refundable:
+        true,
+      adults:
+        2,
+      childCount:
+        0,
+      offerRetailRate: {
+        amount:
+          95,
+        currency:
+          "EUR",
+      },
+    };
+
+    const selectedRate = {
+      offerId:
+        "two-identical-rooms",
+      offerRetailRate: {
+        amount:
+          190,
+        currency:
+          "EUR",
+      },
+      rates: [
+        {...identicalRoom},
+        {...identicalRoom},
+      ],
+    };
+
+    const mapped =
+      createLiteApiPrebookOffer({
+        data: {
+          prebookId:
+            "private-identical-rooms",
+          roomTypes: [
+            createSplitPrebookRoom(
+              identicalRoom,
+              {
+                offerId:
+                  "rotated-identical-a",
+              }
+            ),
+            createSplitPrebookRoom(
+              identicalRoom,
+              {
+                offerId:
+                  "rotated-identical-b",
+              }
+            ),
+          ],
+        },
+        originalOffer:
+          createMultiRoomOriginalOffer(
+            selectedRate
+          ),
+        hotelId:
+          "hotel-1",
+        sourceProvider:
+          "liteapi",
+        providerName:
+          "LiteAPI",
+      });
+
+    assert.ok(mapped);
+
+    assert.equal(
+      mapped.offer.price,
+      190
     );
   }
 );

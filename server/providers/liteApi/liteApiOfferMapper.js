@@ -4,6 +4,7 @@ const {
   createLiteApiSelectionFingerprint,
   getLiteApiPublicPriceFloor,
   getLiteApiRetailSellingPrice,
+  getLiteApiSelectionRoomCount,
 } = require(
   "./liteApiCommercialPricing"
 );
@@ -227,15 +228,25 @@ function getNestedRates(container) {
     return [];
   }
 
-  return [
+  const candidates = [
     container.rates,
     container.rate,
     container.offers,
     container.availableRates,
     container.roomRates,
-  ]
-    .flatMap(asArray)
-    .filter(isPlainObject);
+  ];
+
+  for (const candidate of candidates) {
+    const nestedRates =
+      asArray(candidate)
+        .filter(isPlainObject);
+
+    if (nestedRates.length > 0) {
+      return nestedRates;
+    }
+  }
+
+  return [];
 }
 
 function getPublicPrice(rate) {
@@ -588,7 +599,6 @@ function getLiteApiOfferRecords(
       record.rates,
       record.rate,
       record.availableRates,
-      record.roomRates,
     ]
   ) {
     for (
@@ -1286,6 +1296,11 @@ function createLiteApiOffer({
         createLiteApiSelectionFingerprint(
           rate
         ),
+
+      selectionRoomCount:
+        getLiteApiSelectionRoomCount(
+          rate
+        ),
     },
 
     commercialPricing:
@@ -1371,6 +1386,117 @@ function getOfferReferenceCandidates(
   ].filter(Boolean);
 }
 
+function createPrebookAggregateRecord({
+  payload,
+  records,
+  originalOffer,
+} = {}) {
+  if (
+    !Array.isArray(records) ||
+    records.length < 2
+  ) {
+    return null;
+  }
+
+  const fallbackCurrency =
+    asString(
+      originalOffer?.currency
+    ) ||
+    getCheckoutCurrency(
+      payload,
+      "EUR"
+    );
+
+  const prices = [];
+  const currencies = [];
+
+  for (const record of records) {
+    const price =
+      getCheckoutPrice(record);
+
+    if (
+      price === null ||
+      price <= 0
+    ) {
+      return null;
+    }
+
+    prices.push(price);
+
+    currencies.push(
+      getCheckoutCurrency(
+        record,
+        fallbackCurrency
+      )
+    );
+  }
+
+  const uniqueCurrencies =
+    [...new Set(
+      currencies
+        .map(asString)
+        .filter(Boolean)
+    )];
+
+  if (
+    uniqueCurrencies.length !== 1 ||
+    (
+      fallbackCurrency &&
+      uniqueCurrencies[0] !==
+        fallbackCurrency
+    )
+  ) {
+    return null;
+  }
+
+  const payloadPrice =
+    getCheckoutPrice(payload);
+
+  const aggregatePrice =
+    payloadPrice !== null &&
+    payloadPrice > 0
+      ? payloadPrice
+      : roundMoney(
+          prices.reduce(
+            (total, price) =>
+              total + price,
+            0
+          )
+        );
+
+  if (
+    !Number.isFinite(
+      aggregatePrice
+    ) ||
+    aggregatePrice <= 0
+  ) {
+    return null;
+  }
+
+  const aggregate = {
+    __liteApiPrebookAggregate:
+      true,
+
+    rates:
+      records,
+
+    offerRetailRate: {
+      amount:
+        aggregatePrice,
+      currency:
+        uniqueCurrencies[0],
+    },
+  };
+
+  return {
+    ...aggregate,
+    roomName:
+      buildRoomName(
+        aggregate
+      ),
+  };
+}
+
 function selectPrebookOfferRecord({
   payload,
   originalOffer,
@@ -1393,7 +1519,25 @@ function selectPrebookOfferRecord({
         ?.selectionFingerprint
     );
 
+  const selectionRoomCountCandidate =
+    Number(
+      originalOffer
+        ?.providerOfferContext
+        ?.selectionRoomCount
+    );
+
+  const expectedSelectionRoomCount =
+    Number.isInteger(
+      selectionRoomCountCandidate
+    ) &&
+    selectionRoomCountCandidate > 0
+      ? selectionRoomCountCandidate
+      : null;
+
   let exactReferenceIsAmbiguous =
+    false;
+
+  let fingerprintIsAmbiguous =
     false;
 
   if (expectedReference) {
@@ -1410,7 +1554,19 @@ function selectPrebookOfferRecord({
     if (
       exactMatches.length === 1
     ) {
-      return exactMatches[0];
+      const exactMatchRoomCount =
+        getLiteApiSelectionRoomCount(
+          exactMatches[0]
+        );
+
+      if (
+        expectedSelectionRoomCount ===
+          null ||
+        exactMatchRoomCount ===
+          expectedSelectionRoomCount
+      ) {
+        return exactMatches[0];
+      }
     }
 
     exactReferenceIsAmbiguous =
@@ -1438,11 +1594,34 @@ function selectPrebookOfferRecord({
     if (
       fingerprintMatches.length > 1
     ) {
-      return null;
+      fingerprintIsAmbiguous =
+        true;
+    }
+
+    const aggregateRecord =
+      createPrebookAggregateRecord({
+        payload,
+        records,
+        originalOffer,
+      });
+
+    if (
+      aggregateRecord &&
+      asString(
+        createLiteApiSelectionFingerprint(
+          aggregateRecord
+        )
+      ) ===
+        expectedSelectionFingerprint
+    ) {
+      return aggregateRecord;
     }
   }
 
-  if (exactReferenceIsAmbiguous) {
+  if (
+    exactReferenceIsAmbiguous ||
+    fingerprintIsAmbiguous
+  ) {
     return null;
   }
 
