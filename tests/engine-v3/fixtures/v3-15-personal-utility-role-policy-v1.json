@@ -1,0 +1,245 @@
+{
+  "fixtureVersion": "3.0.0-personal-utility-role-policy-fixture.1",
+  "candidateSets": {
+    "profile-divergence": [
+      {
+        "solutionId": "profile-premium",
+        "solutionType": "single-stay",
+        "totalCost": 980,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 94, "evidenceIds": ["evidence-premium-quality"]},
+          "comfort": {"score": 95, "evidenceIds": ["evidence-premium-comfort"]},
+          "location": {"score": 91, "evidenceIds": ["evidence-premium-location"]},
+          "room": {"score": 94, "evidenceIds": ["evidence-premium-room"]},
+          "flexibility": {"score": 80, "evidenceIds": ["evidence-premium-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-profile-set"]
+      },
+      {
+        "solutionId": "profile-mid",
+        "solutionType": "single-stay",
+        "totalCost": 620,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 86, "evidenceIds": ["evidence-mid-quality"]},
+          "comfort": {"score": 83, "evidenceIds": ["evidence-mid-comfort"]},
+          "location": {"score": 87, "evidenceIds": ["evidence-mid-location"]},
+          "room": {"score": 84, "evidenceIds": ["evidence-mid-room"]},
+          "flexibility": {"score": 78, "evidenceIds": ["evidence-mid-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-profile-set"]
+      },
+      {
+        "solutionId": "profile-value",
+        "solutionType": "single-stay",
+        "totalCost": 370,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 68, "evidenceIds": ["evidence-value-quality"]},
+          "comfort": {"score": 66, "evidenceIds": ["evidence-value-comfort"]},
+          "location": {"score": 72, "evidenceIds": ["evidence-value-location"]},
+          "room": {"score": 70, "evidenceIds": ["evidence-value-room"]},
+          "flexibility": {"score": 62, "evidenceIds": ["evidence-value-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-profile-set"]
+      }
+    ],
+    "bounded-saving": [
+      {
+        "solutionId": "saving-choice",
+        "solutionType": "single-stay",
+        "totalCost": 700,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 85, "evidenceIds": ["evidence-saving-choice-quality"]},
+          "comfort": {"score": 85, "evidenceIds": ["evidence-saving-choice-comfort"]},
+          "location": {"score": 85, "evidenceIds": ["evidence-saving-choice-location"]},
+          "room": {"score": 85, "evidenceIds": ["evidence-saving-choice-room"]},
+          "flexibility": {"score": 85, "evidenceIds": ["evidence-saving-choice-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-bounded-saving"]
+      },
+      {
+        "solutionId": "saving-bounded",
+        "solutionType": "single-stay",
+        "totalCost": 500,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 79, "evidenceIds": ["evidence-saving-bounded-quality"]},
+          "comfort": {"score": 79, "evidenceIds": ["evidence-saving-bounded-comfort"]},
+          "location": {"score": 80, "evidenceIds": ["evidence-saving-bounded-location"]},
+          "room": {"score": 78, "evidenceIds": ["evidence-saving-bounded-room"]},
+          "flexibility": {"score": 80, "evidenceIds": ["evidence-saving-bounded-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-bounded-saving"]
+      }
+    ],
+    "free-better": [
+      {
+        "solutionId": "free-materially-better",
+        "solutionType": "single-stay",
+        "totalCost": 0,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 92, "evidenceIds": ["evidence-free-quality"]},
+          "comfort": {"score": 92, "evidenceIds": ["evidence-free-comfort"]},
+          "location": {"score": 92, "evidenceIds": ["evidence-free-location"]},
+          "room": {"score": 92, "evidenceIds": ["evidence-free-room"]},
+          "flexibility": {"score": 92, "evidenceIds": ["evidence-free-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-free-better"]
+      },
+      {
+        "solutionId": "paid-weaker",
+        "solutionType": "single-stay",
+        "totalCost": 300,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 80, "evidenceIds": ["evidence-paid-quality"]},
+          "comfort": {"score": 80, "evidenceIds": ["evidence-paid-comfort"]},
+          "location": {"score": 80, "evidenceIds": ["evidence-paid-location"]},
+          "room": {"score": 80, "evidenceIds": ["evidence-paid-room"]},
+          "flexibility": {"score": 80, "evidenceIds": ["evidence-paid-flexibility"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-free-better"]
+      }
+    ],
+    "dominated": [
+      {
+        "solutionId": "dominant",
+        "solutionType": "single-stay",
+        "totalCost": 600,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 82, "evidenceIds": ["evidence-dominance"]},
+          "comfort": {"score": 82, "evidenceIds": ["evidence-dominance"]},
+          "location": {"score": 82, "evidenceIds": ["evidence-dominance"]},
+          "room": {"score": 82, "evidenceIds": ["evidence-dominance"]},
+          "flexibility": {"score": 82, "evidenceIds": ["evidence-dominance"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-dominance"]
+      },
+      {
+        "solutionId": "dominated",
+        "solutionType": "single-stay",
+        "totalCost": 700,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 72, "evidenceIds": ["evidence-dominance"]},
+          "comfort": {"score": 72, "evidenceIds": ["evidence-dominance"]},
+          "location": {"score": 72, "evidenceIds": ["evidence-dominance"]},
+          "room": {"score": 72, "evidenceIds": ["evidence-dominance"]},
+          "flexibility": {"score": 72, "evidenceIds": ["evidence-dominance"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-dominance"]
+      }
+    ],
+    "missing-neutral": [
+      {
+        "solutionId": "missing-location",
+        "solutionType": "single-stay",
+        "totalCost": 500,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "comfort": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "location": {"score": null, "evidenceIds": []},
+          "room": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "flexibility": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-missing-neutral"]
+      },
+      {
+        "solutionId": "complete-equal",
+        "solutionType": "single-stay",
+        "totalCost": 600,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "comfort": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "location": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "room": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "flexibility": {"score": 80, "evidenceIds": ["evidence-neutral"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-missing-neutral"]
+      }
+    ],
+    "no-good-option": [
+      {
+        "solutionId": "below-quality-floor",
+        "solutionType": "single-stay",
+        "totalCost": 300,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "verified",
+        "dimensions": {
+          "quality": {"score": 50, "evidenceIds": ["evidence-no-good"]},
+          "comfort": {"score": 60, "evidenceIds": ["evidence-no-good"]},
+          "location": {"score": 60, "evidenceIds": ["evidence-no-good"]},
+          "room": {"score": 60, "evidenceIds": ["evidence-no-good"]},
+          "flexibility": {"score": 60, "evidenceIds": ["evidence-no-good"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-no-good"]
+      },
+      {
+        "solutionId": "unverified-option",
+        "solutionType": "single-stay",
+        "totalCost": 450,
+        "currency": "EUR",
+        "hardConstraintsSatisfied": true,
+        "offerIntegrity": "partial",
+        "dimensions": {
+          "quality": {"score": 80, "evidenceIds": ["evidence-no-good"]},
+          "comfort": {"score": 80, "evidenceIds": ["evidence-no-good"]},
+          "location": {"score": 80, "evidenceIds": ["evidence-no-good"]},
+          "room": {"score": 80, "evidenceIds": ["evidence-no-good"]},
+          "flexibility": {"score": 80, "evidenceIds": ["evidence-no-good"]},
+          "long-stays": {"score": null, "evidenceIds": []}
+        },
+        "evidenceIds": ["evidence-no-good"]
+      }
+    ]
+  },
+  "profileExpectations": {
+    "maximum-comfort": "profile-premium",
+    "comfort": "profile-premium",
+    "balanced": "profile-mid",
+    "savings": "profile-value",
+    "maximum-savings": "profile-value"
+  }
+}
