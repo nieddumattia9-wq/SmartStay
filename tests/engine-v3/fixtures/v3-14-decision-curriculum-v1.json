@@ -1,0 +1,346 @@
+{
+  "lessons": [
+    {
+      "id": "lesson-profile-semantics",
+      "version": "1.0.0",
+      "title": "Five profile decision semantics",
+      "objective": "Keep experience, price and minimum-quality behavior distinct across all five approved profiles.",
+      "caseIds": ["case-balanced-marginal-value", "case-comfort-room-upgrade", "case-maximum-comfort-budget", "case-maximum-savings-minimum", "case-savings-quality-loss"],
+      "claimIds": ["claim-budget-constraint-modeling", "claim-choice-attributes-context-bound", "claim-comfort-varies-by-trip-and-party", "claim-quality-importance-varies-by-segment", "claim-review-score-needs-volume-context", "claim-room-attributes-context-sensitive"],
+      "profiles": ["maximum-comfort", "comfort", "balanced", "savings", "maximum-savings"],
+      "roles": ["best-choice", "best-sensible-saving", "worthwhile-comfort-upgrade"],
+      "successCriteria": ["The same price signal does not create identical behavior for every profile", "Saving and upgrade remain separate from Best Choice", "Hard minimum quality remains non-negotiable"]
+    },
+    {
+      "id": "lesson-counterfactual-reasoning",
+      "version": "1.0.0",
+      "title": "Decision-changing counterfactuals",
+      "objective": "Require one explicit changed variable to explain why a matched decision changes.",
+      "caseIds": ["case-balanced-location-counterfactual", "case-balanced-marginal-value"],
+      "claimIds": ["claim-choice-attributes-context-bound", "claim-location-is-trip-specific", "claim-quality-importance-varies-by-segment"],
+      "profiles": ["balanced"],
+      "roles": ["best-choice"],
+      "successCriteria": ["The counterfactual references its base case", "Unchanged facts remain stable", "The decisive variable is stated without inventing a global weight"]
+    },
+    {
+      "id": "lesson-confidence-and-abstention",
+      "version": "1.0.0",
+      "title": "Confidence, near tie and no-good-option",
+      "objective": "Abstain when material evidence or a defensible difference is missing.",
+      "caseIds": ["case-balanced-near-tie", "case-comfort-no-good-option"],
+      "claimIds": ["claim-choice-attributes-context-bound", "claim-location-is-trip-specific", "claim-room-attributes-context-sensitive"],
+      "profiles": ["balanced", "comfort"],
+      "roles": ["abstention"],
+      "successCriteria": ["Low or absent confidence cannot recommend", "Near ties are not forced", "Invalid and hard-constraint-failing options are never selected"]
+    },
+    {
+      "id": "lesson-split-net-value",
+      "version": "1.0.0",
+      "title": "Split saving versus switching friction",
+      "objective": "Keep a split candidate offline and explicit about saving, room capability and switching friction.",
+      "caseIds": ["case-savings-split-low-friction"],
+      "claimIds": ["claim-long-stay-capabilities-exploratory", "claim-room-attributes-context-sensitive"],
+      "profiles": ["savings"],
+      "roles": ["split"],
+      "successCriteria": ["Split uses verified complete-stay facts", "Switching friction remains explicit", "No industry percentage becomes a ranking weight"]
+    }
+  ],
+  "cases": [
+    {
+      "id": "case-maximum-comfort-budget",
+      "version": "1.0.0",
+      "title": "Maximum Comfort does not reward unused budget by itself",
+      "caseType": "adversarial",
+      "origin": "synthetic-controlled",
+      "profile": "maximum-comfort",
+      "decisionRole": "best-choice",
+      "learningObjective": "Treat budget as an admissibility ceiling when both options are comfortably affordable.",
+      "teacherPrompt": "Choose the best experience for Maximum Comfort and separate any sensible saving.",
+      "context": {"duration":"short-stay","leadTime":"medium","destination":"urban","travelParty":"couple","coverage":"high","nights":3,"budget":1200,"currency":"EUR","hardConstraints":["quiet-room","refundable"]},
+      "options": [
+        {"optionId":"mc-premium","kind":"single-stay","totalCost":930,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":62,"quality":94,"comfort":96,"location":91,"room":95,"flexibility":90,"long-stays":null},"evidenceLimitations":["Synthetic controlled scores require later human validation"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"mc-value","kind":"single-stay","totalCost":610,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":92,"quality":78,"comfort":74,"location":83,"room":76,"flexibility":90,"long-stays":null},"evidenceLimitations":["Synthetic controlled scores require later human validation"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-budget-constraint-modeling"],
+      "testIds": ["test-budget-constraint-nonlinearity"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-comfort-room-upgrade",
+      "version": "1.0.0",
+      "title": "Comfort profile room-quality upgrade",
+      "caseType": "synthetic-controlled",
+      "origin": "synthetic-controlled",
+      "profile": "comfort",
+      "decisionRole": "worthwhile-comfort-upgrade",
+      "learningObjective": "Recognize a material room and sleep improvement without converting one study into a universal premium.",
+      "teacherPrompt": "Choose Best Choice and identify whether the quieter room is a worthwhile upgrade.",
+      "context": {"duration":"medium-stay","leadTime":"long","destination":"urban","travelParty":"solo","coverage":"high","nights":5,"budget":1100,"currency":"EUR","hardConstraints":["desk","quiet-room"]},
+      "options": [
+        {"optionId":"comfort-basic","kind":"single-stay","totalCost":720,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":88,"quality":76,"comfort":68,"location":86,"room":70,"flexibility":72,"long-stays":55},"evidenceLimitations":["Noise evidence comes from a verified category rather than continuous measurement"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"comfort-quiet","kind":"single-stay","totalCost":850,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":76,"quality":89,"comfort":94,"location":85,"room":92,"flexibility":72,"long-stays":68},"evidenceLimitations":["Synthetic room difference requires later outcome validation"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-comfort-varies-by-trip-and-party", "claim-room-attributes-context-sensitive"],
+      "testIds": ["test-room-comfort-context-sensitive"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-balanced-marginal-value",
+      "version": "1.0.0",
+      "title": "Balanced marginal value",
+      "caseType": "synthetic-controlled",
+      "origin": "synthetic-controlled",
+      "profile": "balanced",
+      "decisionRole": "best-choice",
+      "learningObjective": "Prefer the option with the strongest overall trade-off rather than the cheapest or most luxurious extreme.",
+      "teacherPrompt": "Choose the Balanced Best Choice and state the marginal value trade-off.",
+      "context": {"duration":"short-stay","leadTime":"medium","destination":"urban","travelParty":"couple","coverage":"high","nights":3,"budget":900,"currency":"EUR","hardConstraints":["private-bathroom"]},
+      "options": [
+        {"optionId":"balanced-cheap","kind":"single-stay","totalCost":460,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":96,"quality":66,"comfort":64,"location":69,"room":67,"flexibility":58,"long-stays":null},"evidenceLimitations":["Synthetic controlled case"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"balanced-mid","kind":"single-stay","totalCost":640,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":82,"quality":84,"comfort":82,"location":88,"room":83,"flexibility":78,"long-stays":null},"evidenceLimitations":["Synthetic controlled case"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"balanced-premium","kind":"single-stay","totalCost":880,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":57,"quality":92,"comfort":91,"location":90,"room":91,"flexibility":80,"long-stays":null},"evidenceLimitations":["Incremental experience gain is deliberately smaller than the price increase"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-choice-attributes-context-bound", "claim-quality-importance-varies-by-segment"],
+      "testIds": ["test-context-segment-heterogeneity"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-savings-quality-loss",
+      "version": "1.0.0",
+      "title": "Savings with explicit quality-loss tolerance",
+      "caseType": "synthetic-controlled",
+      "origin": "synthetic-controlled",
+      "profile": "savings",
+      "decisionRole": "best-sensible-saving",
+      "learningObjective": "Select the lower cost only when the experience loss remains bounded and explained.",
+      "teacherPrompt": "Identify Best Choice and Best Sensible Saving without silently replacing one role with the other.",
+      "context": {"duration":"short-stay","leadTime":"short","destination":"resort","travelParty":"couple","coverage":"high","nights":4,"budget":1000,"currency":"EUR","hardConstraints":["review-reliability"]},
+      "options": [
+        {"optionId":"savings-low","kind":"single-stay","totalCost":590,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":94,"quality":78,"comfort":76,"location":79,"room":77,"flexibility":68,"long-stays":null},"evidenceLimitations":["Synthetic quality-loss boundary"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"savings-choice","kind":"single-stay","totalCost":760,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":78,"quality":84,"comfort":84,"location":82,"room":83,"flexibility":72,"long-stays":null},"evidenceLimitations":["Synthetic quality-loss boundary"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-budget-constraint-modeling", "claim-quality-importance-varies-by-segment"],
+      "testIds": ["test-budget-constraint-nonlinearity", "test-context-segment-heterogeneity"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-maximum-savings-minimum",
+      "version": "1.0.0",
+      "title": "Maximum Savings keeps the non-negotiable floor",
+      "caseType": "historical-error",
+      "origin": "historical-pattern-redacted",
+      "profile": "maximum-savings",
+      "decisionRole": "best-sensible-saving",
+      "learningObjective": "Reject the absolute cheapest option when it violates a hard safety or minimum-quality constraint.",
+      "teacherPrompt": "Find the cheapest sensible option after hard constraints, not before them.",
+      "context": {"duration":"short-stay","leadTime":"short","destination":"urban","travelParty":"solo","coverage":"high","nights":2,"budget":420,"currency":"EUR","hardConstraints":["private-bathroom","usable-review-evidence"]},
+      "options": [
+        {"optionId":"maximum-savings-unsafe","kind":"single-stay","totalCost":180,"hardConstraintsSatisfied":false,"offerIntegrity":"partial","dimensions":{"budget":100,"quality":40,"comfort":42,"location":72,"room":35,"flexibility":30,"long-stays":null},"evidenceLimitations":["Private bathroom evidence is missing", "Review evidence is below the declared usable floor"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"maximum-savings-minimum","kind":"single-stay","totalCost":245,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":96,"quality":62,"comfort":58,"location":70,"room":61,"flexibility":45,"long-stays":null},"evidenceLimitations":["Minimum-quality example remains a curriculum hypothesis"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-budget-constraint-modeling", "claim-review-score-needs-volume-context"],
+      "testIds": ["test-budget-constraint-nonlinearity", "test-review-score-requires-volume-context"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-balanced-location-counterfactual",
+      "version": "1.0.0",
+      "title": "Balanced trip-specific location counterfactual",
+      "caseType": "counterfactual",
+      "origin": "synthetic-controlled",
+      "profile": "balanced",
+      "decisionRole": "best-choice",
+      "learningObjective": "Change the decision only after the traveler-specific destination anchor changes.",
+      "teacherPrompt": "Re-evaluate the base case after the required point of interest moves near the premium option.",
+      "context": {"duration":"short-stay","leadTime":"medium","destination":"urban","travelParty":"couple","coverage":"high","nights":3,"budget":900,"currency":"EUR","hardConstraints":["private-bathroom","twelve-minute-event-travel"]},
+      "options": [
+        {"optionId":"balanced-cheap","kind":"single-stay","totalCost":460,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":96,"quality":66,"comfort":64,"location":54,"room":67,"flexibility":58,"long-stays":null},"evidenceLimitations":["Travel time uses a controlled destination anchor"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"balanced-mid","kind":"single-stay","totalCost":640,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":82,"quality":84,"comfort":82,"location":73,"room":83,"flexibility":78,"long-stays":null},"evidenceLimitations":["Travel time uses a controlled destination anchor"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"balanced-premium","kind":"single-stay","totalCost":880,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":57,"quality":92,"comfort":91,"location":99,"room":91,"flexibility":80,"long-stays":null},"evidenceLimitations":["Location gain is specific to the changed event anchor"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-choice-attributes-context-bound", "claim-location-is-trip-specific"],
+      "testIds": ["test-context-segment-heterogeneity", "test-location-uses-trip-specific-travel-time"],
+      "counterfactualOfCaseId": "case-balanced-marginal-value",
+      "changedVariables": ["hard-constraint:event-travel-time", "location:traveler-specific-anchor"],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-balanced-near-tie",
+      "version": "1.0.0",
+      "title": "Balanced near tie",
+      "caseType": "near-tie",
+      "origin": "synthetic-controlled",
+      "profile": "balanced",
+      "decisionRole": "abstention",
+      "learningObjective": "Avoid forcing a winner when observed differences are immaterial and fragile.",
+      "teacherPrompt": "Decide whether the available evidence supports a stable recommendation.",
+      "context": {"duration":"short-stay","leadTime":"medium","destination":"urban","travelParty":"couple","coverage":"medium","nights":2,"budget":700,"currency":"EUR","hardConstraints":["refundable"]},
+      "options": [
+        {"optionId":"near-tie-a","kind":"single-stay","totalCost":520,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":82,"quality":82,"comfort":80,"location":84,"room":81,"flexibility":86,"long-stays":null},"evidenceLimitations":["Room noise evidence is not available"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"near-tie-b","kind":"single-stay","totalCost":525,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":81,"quality":83,"comfort":81,"location":83,"room":82,"flexibility":86,"long-stays":null},"evidenceLimitations":["Room noise evidence is not available"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-choice-attributes-context-bound"],
+      "testIds": ["test-context-segment-heterogeneity"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-comfort-no-good-option",
+      "version": "1.0.0",
+      "title": "Comfort no-good-option with accessibility constraint",
+      "caseType": "no-good-option",
+      "origin": "synthetic-controlled",
+      "profile": "comfort",
+      "decisionRole": "abstention",
+      "learningObjective": "Refuse every option when accessibility or room evidence fails a hard requirement.",
+      "teacherPrompt": "Determine whether any option can be responsibly recommended.",
+      "context": {"duration":"medium-stay","leadTime":"long","destination":"urban","travelParty":"solo","coverage":"low","nights":5,"budget":1000,"currency":"EUR","hardConstraints":["step-free-access","accessible-bathroom"]},
+      "options": [
+        {"optionId":"no-good-steps","kind":"single-stay","totalCost":650,"hardConstraintsSatisfied":false,"offerIntegrity":"verified","dimensions":{"budget":85,"quality":82,"comfort":80,"location":88,"room":70,"flexibility":76,"long-stays":60},"evidenceLimitations":["Entrance requires stairs"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"no-good-unknown-bathroom","kind":"single-stay","totalCost":720,"hardConstraintsSatisfied":null,"offerIntegrity":"partial","dimensions":{"budget":78,"quality":86,"comfort":null,"location":84,"room":null,"flexibility":80,"long-stays":64},"evidenceLimitations":["Accessible bathroom evidence is missing"],"splitMoveCount":0,"splitFriction":"none"}
+      ],
+      "claimIds": ["claim-location-is-trip-specific", "claim-room-attributes-context-sensitive"],
+      "testIds": ["test-location-uses-trip-specific-travel-time", "test-room-comfort-context-sensitive"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    },
+    {
+      "id": "case-savings-split-low-friction",
+      "version": "1.0.0",
+      "title": "Savings split with material saving and low friction",
+      "caseType": "split",
+      "origin": "synthetic-controlled",
+      "profile": "savings",
+      "decisionRole": "split",
+      "learningObjective": "Represent material split saving and switching friction without authorizing public SPLIT.",
+      "teacherPrompt": "Compare the best single stay with the verified split and state the switching sacrifice.",
+      "context": {"duration":"long-stay","leadTime":"long","destination":"urban","travelParty":"couple","coverage":"high","nights":10,"budget":1600,"currency":"EUR","hardConstraints":["kitchen-access","complete-night-coverage"]},
+      "options": [
+        {"optionId":"split-best-single","kind":"single-stay","totalCost":1480,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":61,"quality":84,"comfort":84,"location":82,"room":86,"flexibility":72,"long-stays":88},"evidenceLimitations":["Synthetic long-stay capability evidence"],"splitMoveCount":0,"splitFriction":"none"},
+        {"optionId":"split-low-friction","kind":"split-stay","totalCost":1120,"hardConstraintsSatisfied":true,"offerIntegrity":"verified","dimensions":{"budget":90,"quality":82,"comfort":80,"location":80,"room":84,"flexibility":66,"long-stays":84},"evidenceLimitations":["One midday move remains a material traveler-specific cost", "Industry long-stay evidence remains exploratory"],"splitMoveCount":1,"splitFriction":"low"}
+      ],
+      "claimIds": ["claim-long-stay-capabilities-exploratory", "claim-room-attributes-context-sensitive"],
+      "testIds": ["test-long-stay-capabilities-no-global-weight", "test-room-comfort-context-sensitive"],
+      "counterfactualOfCaseId": null,
+      "changedVariables": [],
+      "piiIncluded": false,
+      "engineLabelsVisibleToTeacher": false,
+      "groundTruthStatus": "unresolved"
+    }
+  ],
+  "teacherJudgments": [
+    {
+      "id":"judgment-maximum-comfort-budget","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-maximum-comfort-budget","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"mc-premium","status":"selected","rationaleCodes":["experience-first-within-budget","premium-quality-material"]},"bestSensibleSaving":{"optionId":"mc-value","status":"selected","rationaleCodes":["saving-separated-from-choice"]},"worthwhileComfortUpgrade":{"optionId":null,"status":"not-applicable","rationaleCodes":["choice-already-premium"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"The Best Choice spends more of the available budget.","decisiveVariable":"Material room and comfort quality within the declared ceiling.","choiceChangingCounterfactual":"Choose mc-value if the premium option exceeds budget or loses the quiet-room constraint.",
+      "confidence":{"level":"high","evidenceCoverage":"high","materialUnknowns":[],"rationale":"Both options are verified and the controlled quality difference is material."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-budget-constraint-modeling"],"limitations":["Candidate supervision requires later human and outcome validation"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-comfort-room-upgrade","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-comfort-room-upgrade","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"comfort-quiet","status":"selected","rationaleCodes":["quiet-room-hard-fit","room-quality-material"]},"bestSensibleSaving":{"optionId":"comfort-basic","status":"selected","rationaleCodes":["saving-has-explicit-comfort-loss"]},"worthwhileComfortUpgrade":{"optionId":"comfort-quiet","status":"selected","rationaleCodes":["upgrade-improves-sleep-context"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"The quiet room costs EUR 130 more.","decisiveVariable":"Verified quiet-room fit over five nights.","choiceChangingCounterfactual":"Choose comfort-basic if quiet-room evidence disappears or the price gap becomes unaffordable.",
+      "confidence":{"level":"high","evidenceCoverage":"high","materialUnknowns":[],"rationale":"Hard needs and room evidence are complete in the controlled case."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-comfort-varies-by-trip-and-party","claim-room-attributes-context-sensitive"],"limitations":["No universal willingness-to-pay premium is inferred"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-balanced-marginal-value","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-balanced-marginal-value","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"balanced-mid","status":"selected","rationaleCodes":["balanced-marginal-value"]},"bestSensibleSaving":{"optionId":"balanced-cheap","status":"selected","rationaleCodes":["saving-separated-with-quality-loss"]},"worthwhileComfortUpgrade":{"optionId":null,"status":"not-applicable","rationaleCodes":["premium-gain-not-yet-proven-worthwhile"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"The mid option forgoes some premium quality and some maximum saving.","decisiveVariable":"The largest combined experience gain before sharply diminishing marginal value.","choiceChangingCounterfactual":"Choose balanced-premium if a traveler-specific location constraint makes its gain decisive.",
+      "confidence":{"level":"high","evidenceCoverage":"high","materialUnknowns":[],"rationale":"The controlled options expose the complete trade-off."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-choice-attributes-context-bound","claim-quality-importance-varies-by-segment"],"limitations":["Marginal value is a case judgment, not a production coefficient"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-savings-quality-loss","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-savings-quality-loss","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"savings-low","status":"selected","rationaleCodes":["saving-profile-bounded-loss"]},"bestSensibleSaving":{"optionId":"savings-low","status":"selected","rationaleCodes":["material-saving-acceptable-loss"]},"worthwhileComfortUpgrade":{"optionId":"savings-choice","status":"selected","rationaleCodes":["upgrade-separated-from-saving"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"The saving gives up a bounded amount of comfort and quality.","decisiveVariable":"EUR 170 saving while remaining above the controlled experience floor.","choiceChangingCounterfactual":"Choose savings-choice if the cheaper option falls below the minimum quality floor.",
+      "confidence":{"level":"high","evidenceCoverage":"high","materialUnknowns":[],"rationale":"Price, quality and hard constraints are fully represented."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-budget-constraint-modeling","claim-quality-importance-varies-by-segment"],"limitations":["The acceptable-loss boundary must be calibrated in V3-15"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-maximum-savings-minimum","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-maximum-savings-minimum","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"maximum-savings-minimum","status":"selected","rationaleCodes":["cheapest-hard-valid"]},"bestSensibleSaving":{"optionId":"maximum-savings-minimum","status":"selected","rationaleCodes":["minimum-quality-preserved"]},"worthwhileComfortUpgrade":{"optionId":null,"status":"not-applicable","rationaleCodes":["upgrade-outside-question"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"The valid option costs EUR 65 more than the invalid minimum.","decisiveVariable":"Private bathroom and usable review evidence are hard constraints.","choiceChangingCounterfactual":"Choose the cheaper option only after both hard constraints become verified.",
+      "confidence":{"level":"high","evidenceCoverage":"high","materialUnknowns":[],"rationale":"The invalid option is explicitly disqualified and the alternative is verified."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-budget-constraint-modeling","claim-review-score-needs-volume-context"],"limitations":["The historical pattern is redacted and requires independent replay"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-balanced-location-counterfactual","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-balanced-location-counterfactual","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"balanced-premium","status":"selected","rationaleCodes":["traveler-anchor-hard-fit","counterfactual-change-explained"]},"bestSensibleSaving":{"optionId":"balanced-mid","status":"selected","rationaleCodes":["saving-separated-location-sacrifice"]},"worthwhileComfortUpgrade":{"optionId":"balanced-premium","status":"selected","rationaleCodes":["location-and-quality-upgrade"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"The traveler-specific location fit consumes nearly the full budget.","decisiveVariable":"Travel time to the required event anchor.","choiceChangingCounterfactual":"Return to balanced-mid when the event anchor constraint is removed.",
+      "confidence":{"level":"moderate","evidenceCoverage":"high","materialUnknowns":["Real traveler tolerance for the price gap"],"rationale":"The location constraint is explicit, but price tolerance still needs human validation."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-choice-attributes-context-bound","claim-location-is-trip-specific"],"limitations":["This is a controlled counterfactual, not evidence of a global location premium"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-balanced-near-tie","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-balanced-near-tie","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":null,"status":"abstained","rationaleCodes":["near-tie-fragile"]},"bestSensibleSaving":{"optionId":null,"status":"abstained","rationaleCodes":["saving-immaterial"]},"worthwhileComfortUpgrade":{"optionId":null,"status":"abstained","rationaleCodes":["upgrade-immaterial"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"A forced choice would overstate negligible observed differences.","decisiveVariable":"Missing room-noise evidence prevents a stable distinction.","choiceChangingCounterfactual":"Recommend only after material differentiating evidence is verified.",
+      "confidence":{"level":"low","evidenceCoverage":"medium","materialUnknowns":["Comparative room noise"],"rationale":"The observed deltas are small and one relevant dimension is missing."},"abstention":{"abstain":true,"reason":"near-tie"},
+      "claimIds":["claim-choice-attributes-context-bound"],"limitations":["Human preferences may still break the tie"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-comfort-no-good-option","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-comfort-no-good-option","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":null,"status":"abstained","rationaleCodes":["no-hard-valid-option"]},"bestSensibleSaving":{"optionId":null,"status":"abstained","rationaleCodes":["no-hard-valid-option"]},"worthwhileComfortUpgrade":{"optionId":null,"status":"abstained","rationaleCodes":["no-hard-valid-option"]},"split":{"optionId":null,"status":"not-applicable","rationaleCodes":["no-split-option"]}},
+      "mainSacrifice":"No available option proves both accessibility requirements.","decisiveVariable":"Step-free access and accessible bathroom are non-negotiable.","choiceChangingCounterfactual":"Recommend only after one option verifies every accessibility constraint.",
+      "confidence":{"level":"none","evidenceCoverage":"low","materialUnknowns":["Accessible bathroom compatibility"],"rationale":"One option fails and the other lacks material accessibility evidence."},"abstention":{"abstain":true,"reason":"no-good-option"},
+      "claimIds":["claim-location-is-trip-specific","claim-room-attributes-context-sensitive"],"limitations":["Accessibility fit requires traveler-specific confirmation"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    },
+    {
+      "id":"judgment-savings-split-low-friction","version":"1.0.0","schemaVersion":"3.0.0-teacher-judgment-schema.1","caseId":"case-savings-split-low-friction","teacherVersion":"teacher-lab-v1",
+      "roleSelections":{"bestChoice":{"optionId":"split-low-friction","status":"selected","rationaleCodes":["material-net-saving","verified-complete-stay"]},"bestSensibleSaving":{"optionId":"split-low-friction","status":"selected","rationaleCodes":["saving-after-friction-explicit"]},"worthwhileComfortUpgrade":{"optionId":"split-best-single","status":"selected","rationaleCodes":["single-stay-avoids-move"]},"split":{"optionId":"split-low-friction","status":"selected","rationaleCodes":["one-move-low-friction"]}},
+      "mainSacrifice":"The split requires one midday property change.","decisiveVariable":"EUR 360 verified saving while preserving complete coverage and required kitchen access.","choiceChangingCounterfactual":"Choose the single stay if move friction becomes high or saving falls below a material traveler-approved level.",
+      "confidence":{"level":"moderate","evidenceCoverage":"high","materialUnknowns":["Traveler-specific switching tolerance"],"rationale":"Offer facts are complete but friction remains personal."},"abstention":{"abstain":false,"reason":"not-required"},
+      "claimIds":["claim-long-stay-capabilities-exploratory","claim-room-attributes-context-sensitive"],"limitations":["SPLIT remains offline and requires V3-18 validation before any promotion"],"supervisionStatus":"candidate-supervision-only","automaticGroundTruthAllowed":false,"humanReviewRequired":true,"publicPolicyUseAllowed":false
+    }
+  ],
+  "disagreements": [
+    {
+      "id":"disagreement-balanced-marginal","caseId":"case-balanced-marginal-value","role":"best-choice","provenance":"controlled-lab",
+      "observations":{"teacher":{"state":"selected","optionId":"balanced-mid","confidence":"high"},"v2":{"state":"selected","optionId":"balanced-premium","confidence":"not-recorded"},"v3":{"state":"selected","optionId":"balanced-mid","confidence":"not-recorded"},"human":{"state":"selected","optionId":"balanced-mid","confidence":"moderate"}},
+      "disagreementKinds":["teacher-v2","v2-human","v2-v3"],"resolutionStatus":"human-reviewed-non-ground-truth","uncertaintyNotes":["One controlled human observation cannot establish ground truth"],"automaticResolutionAllowed":false,"groundTruthPromoted":false
+    },
+    {
+      "id":"disagreement-comfort-upgrade","caseId":"case-comfort-room-upgrade","role":"worthwhile-comfort-upgrade","provenance":"redacted-diagnostic-pattern",
+      "observations":{"teacher":{"state":"selected","optionId":"comfort-quiet","confidence":"high"},"v2":{"state":"selected","optionId":"comfort-quiet","confidence":"not-recorded"},"v3":{"state":"selected","optionId":"comfort-basic","confidence":"not-recorded"},"human":{"state":"selected","optionId":"comfort-quiet","confidence":"moderate"}},
+      "disagreementKinds":["teacher-v3","v2-v3","v3-human"],"resolutionStatus":"human-reviewed-non-ground-truth","uncertaintyNotes":["Redacted diagnostic pattern is not a replay of an identified traveler"],"automaticResolutionAllowed":false,"groundTruthPromoted":false
+    },
+    {
+      "id":"disagreement-maximum-savings-floor","caseId":"case-maximum-savings-minimum","role":"best-sensible-saving","provenance":"controlled-lab",
+      "observations":{"teacher":{"state":"selected","optionId":"maximum-savings-minimum","confidence":"high"},"v2":{"state":"selected","optionId":"maximum-savings-minimum","confidence":"not-recorded"},"v3":{"state":"selected","optionId":"maximum-savings-unsafe","confidence":"not-recorded"},"human":{"state":"selected","optionId":"maximum-savings-minimum","confidence":"high"}},
+      "disagreementKinds":["teacher-v3","v2-v3","v3-human"],"resolutionStatus":"human-reviewed-non-ground-truth","uncertaintyNotes":["The invalid V3 observation is retained only as an adversarial diagnostic"],"automaticResolutionAllowed":false,"groundTruthPromoted":false
+    },
+    {
+      "id":"disagreement-near-tie","caseId":"case-balanced-near-tie","role":"abstention","provenance":"controlled-lab",
+      "observations":{"teacher":{"state":"abstained","optionId":null,"confidence":"low"},"v2":{"state":"selected","optionId":"near-tie-a","confidence":"not-recorded"},"v3":{"state":"selected","optionId":"near-tie-b","confidence":"not-recorded"},"human":{"state":"abstained","optionId":null,"confidence":"low"}},
+      "disagreementKinds":["teacher-v2","teacher-v3","v2-human","v2-v3","v3-human"],"resolutionStatus":"human-reviewed-non-ground-truth","uncertaintyNotes":["Abstention agreement remains candidate supervision and not an automatic label"],"automaticResolutionAllowed":false,"groundTruthPromoted":false
+    }
+  ]
+}
