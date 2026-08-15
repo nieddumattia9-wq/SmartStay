@@ -1,0 +1,14 @@
+{
+  "datasetId": "golden-dataset-v3-17a-diagnostic-inventory",
+  "cases": [],
+  "judgments": [],
+  "diagnosticInventories": [
+    {
+      "inventoryId": "diagnostic-inventory-current-fifteen",
+      "sourceFingerprint": "fnv1a32-2f4876d1",
+      "judgmentCount": 15,
+      "classification": "legacy-diagnostic",
+      "statisticalUseAllowed": false
+    }
+  ]
+}
