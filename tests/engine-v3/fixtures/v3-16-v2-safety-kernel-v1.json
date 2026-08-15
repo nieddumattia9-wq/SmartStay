@@ -1,0 +1,26 @@
+{
+  "fixtureVersion": "3.0.0-v2-safety-kernel-fixture.1",
+  "v2": {
+    "policyVersion": "2.0.0-public-authoritative",
+    "publicOutput": {
+      "decision": "profile-mid",
+      "headline": "Scelta SmartStay V2",
+      "price": 620,
+      "currency": "EUR"
+    },
+    "roles": [
+      {"role": "best-choice", "status": "selected", "solutionId": "profile-mid"},
+      {"role": "best-sensible-saving", "status": "not-applicable", "solutionId": null},
+      {"role": "worthwhile-comfort-upgrade", "status": "selected", "solutionId": "profile-premium"},
+      {"role": "split", "status": "disabled", "solutionId": null}
+    ]
+  },
+  "expectedCriticalVetoes": [
+    "kill-switch-engaged",
+    "v3-import-failure",
+    "v3-timeout",
+    "v3-exception",
+    "v3-result-invalid",
+    "public-promotion-disabled"
+  ]
+}
