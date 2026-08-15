@@ -675,3 +675,18 @@ export {
   type StayOptiGoldenControlledLiveFailureCodeV3,
   type StayOptiGoldenControlledLiveSearchScenarioV3,
 } from "./evaluation/goldenControlledLiveCaptureV3";
+
+export {
+  STAYOPTI_GOLDEN_PILOT_RECEIPT_CHECKPOINT_V3,
+  STAYOPTI_GOLDEN_REAL_EVIDENCE_CHECKPOINT_AUDIT_V3,
+  STAYOPTI_GOLDEN_REAL_EVIDENCE_CHECKPOINT_SCHEMA_VERSION_V3,
+  STAYOPTI_GOLDEN_REAL_EVIDENCE_CHECKPOINT_VERSION_V3,
+  createGoldenPilotReceiptCheckpointV3,
+  createGoldenRealEvidenceCheckpointV3,
+  resumeGoldenCollectionCampaignFromCheckpointV3,
+  validateGoldenRealEvidenceCheckpointV3,
+  verifyGoldenRealEvidenceCheckpointReplayV3,
+  type StayOptiGoldenRealEvidenceCheckpointInputV3,
+  type StayOptiGoldenRealEvidenceCheckpointSourceV3,
+  type StayOptiGoldenRealEvidenceCheckpointV3,
+} from "./evaluation/goldenRealEvidenceCheckpointV3";
