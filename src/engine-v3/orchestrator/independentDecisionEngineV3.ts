@@ -805,30 +805,29 @@ export function deriveBoundPublicRateConsistencyV3(
     return "failed";
   }
 
-  const amounts = [
-    solution.totalCost
-      .amount,
-    evidence.ratesTotal,
-    evidence.prebookTotal,
-    evidence.retrievedPrebookTotal,
-  ];
+  const ratesMatchSelectedSolution =
+    Math.abs(
+      solution.totalCost
+        .amount -
+        evidence.ratesTotal
+    ) <=
+      STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3;
 
-  return amounts.every(
-    (
-      amount,
-      index
-    ) =>
-      index ===
-        0 ||
-      Math.abs(
-        amount -
-          amounts[
-            index -
-              1
-          ]
-      ) <=
-        STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3
-  )
+  const prebookDoesNotIncreaseTravelerPrice =
+    evidence.prebookTotal <=
+      evidence.ratesTotal +
+        STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3;
+
+  const retrievedPrebookConfirmsPrebook =
+    Math.abs(
+      evidence.retrievedPrebookTotal -
+        evidence.prebookTotal
+    ) <=
+      STAYOPTI_PUBLIC_RATE_MAX_DELTA_V3;
+
+  return ratesMatchSelectedSolution &&
+    prebookDoesNotIncreaseTravelerPrice &&
+    retrievedPrebookConfirmsPrebook
     ? "verified"
     : "failed";
 }

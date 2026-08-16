@@ -1026,6 +1026,207 @@ test(
 );
 
 test(
+  "public-rate verification accepts a positive traveler-favorable Prebook decrease confirmed by GET",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const comparable =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const baseline =
+      createVerifiedPublicRateEvidence();
+
+    const favorablePrebookTotal =
+      Number(
+        (
+          baseline.ratesTotal /
+          2
+        ).toFixed(
+          2
+        )
+      );
+
+    const evidence =
+      createBoundPublicRateEvidenceV3({
+        evidenceType:
+          baseline.evidenceType,
+        decisionFingerprint:
+          baseline.decisionFingerprint,
+        hotelSelectionToken:
+          baseline.hotelSelectionToken,
+        currency:
+          baseline.currency,
+        ratesTotal:
+          baseline.ratesTotal,
+        prebookTotal:
+          favorablePrebookTotal,
+        retrievedPrebookTotal:
+          favorablePrebookTotal,
+      });
+
+    assert.ok(
+      favorablePrebookTotal >
+        0
+    );
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+        evidence,
+      }),
+      "verified"
+    );
+  }
+);
+
+test(
+  "public-rate verification rejects a Prebook increase beyond the frozen tolerance",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const comparable =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const baseline =
+      createVerifiedPublicRateEvidence();
+
+    const increasedTotal =
+      baseline.ratesTotal +
+      0.03;
+
+    const evidence =
+      createBoundPublicRateEvidenceV3({
+        evidenceType:
+          baseline.evidenceType,
+        decisionFingerprint:
+          baseline.decisionFingerprint,
+        hotelSelectionToken:
+          baseline.hotelSelectionToken,
+        currency:
+          baseline.currency,
+        ratesTotal:
+          baseline.ratesTotal,
+        prebookTotal:
+          increasedTotal,
+        retrievedPrebookTotal:
+          increasedTotal,
+      });
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+        evidence,
+      }),
+      "failed"
+    );
+  }
+);
+
+test(
+  "public-rate verification keeps the selected Rates total and POST GET parity fail closed",
+  () => {
+    const {
+      result,
+      decision,
+    } = createSource();
+
+    const comparable =
+      createIndependentV3ComparableDecisionV3(
+        decision,
+        result.recommendationRoles
+          .bestChoiceHotelId
+      );
+
+    const baseline =
+      createVerifiedPublicRateEvidence();
+
+    const favorablePrebookTotal =
+      Number(
+        (
+          baseline.ratesTotal /
+          2
+        ).toFixed(
+          2
+        )
+      );
+
+    const mismatchedGet =
+      createBoundPublicRateEvidenceV3({
+        evidenceType:
+          baseline.evidenceType,
+        decisionFingerprint:
+          baseline.decisionFingerprint,
+        hotelSelectionToken:
+          baseline.hotelSelectionToken,
+        currency:
+          baseline.currency,
+        ratesTotal:
+          baseline.ratesTotal,
+        prebookTotal:
+          favorablePrebookTotal,
+        retrievedPrebookTotal:
+          favorablePrebookTotal +
+          1,
+      });
+
+    const mismatchedRates =
+      createBoundPublicRateEvidenceV3({
+        evidenceType:
+          baseline.evidenceType,
+        decisionFingerprint:
+          baseline.decisionFingerprint,
+        hotelSelectionToken:
+          baseline.hotelSelectionToken,
+        currency:
+          baseline.currency,
+        ratesTotal:
+          baseline.ratesTotal /
+          2,
+        prebookTotal:
+          baseline.ratesTotal /
+          4,
+        retrievedPrebookTotal:
+          baseline.ratesTotal /
+          4,
+      });
+
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+        evidence:
+          mismatchedGet,
+      }),
+      "failed"
+    );
+    assert.equal(
+      deriveBoundPublicRateConsistencyV3({
+        decision,
+        comparable,
+        evidence:
+          mismatchedRates,
+      }),
+      "failed"
+    );
+  }
+);
+
+test(
   "decision-bound abstention evidence is not applicable to rates and cannot mask a recommendation",
   () => {
     const abstention =
