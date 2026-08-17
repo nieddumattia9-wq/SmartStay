@@ -717,3 +717,22 @@ export {
   type StayOptiSourceNoUsableInventoryObservationV3,
   type StayOptiVerifiedRecheckTotalIncreaseObservationV3,
 } from "./evaluation/negativeOutcomeRecheckEvidenceV3";
+
+export {
+  STAYOPTI_GOLDEN_NEGATIVE_OUTCOME_BASELINE_AUDIT_V3,
+  STAYOPTI_GOLDEN_NEGATIVE_OUTCOME_BASELINE_SCHEMA_VERSION_V3,
+  STAYOPTI_GOLDEN_NEGATIVE_OUTCOME_BASELINE_VERSION_V3,
+  createGoldenNegativeOutcomeBaselineV3,
+  validateGoldenNegativeOutcomeBaselineV3,
+  verifyGoldenNegativeOutcomeBaselineReplayV3,
+  type StayOptiGoldenNegativeOutcomeBaselineCountsV3,
+  type StayOptiGoldenNegativeOutcomeBaselineV3,
+  type StayOptiGoldenNegativeOutcomeBaselineValidationV3,
+  type StayOptiGoldenNegativeOutcomeBudgetBandV3,
+  type StayOptiGoldenNegativeOutcomeDecisionContextV3,
+  type StayOptiGoldenNegativeOutcomeDestinationMarketV3,
+  type StayOptiGoldenNegativeOutcomeLeadTimeClassV3,
+  type StayOptiGoldenNegativeOutcomePartyClassV3,
+  type StayOptiGoldenNegativeOutcomeProfileV3,
+  type StayOptiGoldenNegativeOutcomeStayLengthClassV3,
+} from "./evaluation/goldenNegativeOutcomeBaselineV3";
