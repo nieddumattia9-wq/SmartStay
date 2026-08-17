@@ -1,0 +1,122 @@
+{
+  "capsuleId": "capsule-technical-measurement-foundation-001",
+  "technicalDiagnosticOnly": true,
+  "context": {
+    "destination": {
+      "label": "Technical destination",
+      "countryCode": "IT",
+      "latitude": 45.0703,
+      "longitude": 7.6869
+    },
+    "checkIn": "2026-10-10",
+    "checkOut": "2026-10-13",
+    "nights": 3,
+    "occupancy": {
+      "adults": 2,
+      "childAges": [],
+      "rooms": 1
+    },
+    "budget": {
+      "total": 800,
+      "currency": "EUR"
+    },
+    "maximumDistanceKm": 5,
+    "profile": "maximum-savings"
+  },
+  "alternatives": [
+    {
+      "alternativeId": "local-alternative-technical-a",
+      "totalPrice": 510,
+      "currency": "EUR",
+      "mandatoryCostStatus": "complete",
+      "mandatoryCostAbsenceReason": null,
+      "cancellation": {
+        "refundability": "non-refundable",
+        "freeCancellationUntil": null,
+        "penaltyAmount": 510,
+        "penaltyCurrency": "EUR",
+        "evidenceState": "available",
+        "absenceReason": null
+      },
+      "quality": {
+        "starCategory": 3,
+        "reviewScore": 8.1,
+        "reviewScale": 10,
+        "reviewCount": 420
+      },
+      "distanceKm": 1.8,
+      "featureCodes": [
+        "wifi",
+        "air-conditioning"
+      ],
+      "availabilityState": "available",
+      "recheckState": "verified",
+      "evidence": {
+        "state": "available",
+        "reliability": "high",
+        "freshness": "fresh",
+        "observedAt": "2026-08-17T12:00:00Z",
+        "validUntil": "2026-08-17T12:30:00Z",
+        "absenceReason": null
+      }
+    },
+    {
+      "alternativeId": "local-alternative-technical-b",
+      "totalPrice": 558,
+      "currency": "EUR",
+      "mandatoryCostStatus": "complete",
+      "mandatoryCostAbsenceReason": null,
+      "cancellation": {
+        "refundability": "refundable",
+        "freeCancellationUntil": "2026-10-08T18:00:00Z",
+        "penaltyAmount": 0,
+        "penaltyCurrency": "EUR",
+        "evidenceState": "available",
+        "absenceReason": null
+      },
+      "quality": {
+        "starCategory": 3,
+        "reviewScore": 8.2,
+        "reviewScale": 10,
+        "reviewCount": 388
+      },
+      "distanceKm": 1.9,
+      "featureCodes": [
+        "wifi",
+        "air-conditioning"
+      ],
+      "availabilityState": "available",
+      "recheckState": "verified",
+      "evidence": {
+        "state": "available",
+        "reliability": "high",
+        "freshness": "fresh",
+        "observedAt": "2026-08-17T12:00:00Z",
+        "validUntil": "2026-08-17T12:30:00Z",
+        "absenceReason": null
+      }
+    }
+  ],
+  "versions": {
+    "adapterVersion": "technical-adapter.1",
+    "normalizerVersion": "technical-normalizer.1",
+    "policyVersion": "technical-policy.1"
+  },
+  "collectedAt": "2026-08-17T12:00:00Z",
+  "sourceArtifact": {
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "byteLength": 2048,
+    "mediaType": "application/vnd.stayopti.technical-diagnostic+json"
+  },
+  "provenanceManifest": {
+    "manifestId": "manifest-technical-measurement-foundation-001",
+    "sourceArtifactSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "transformations": [
+      {
+        "transformationId": "transform-technical-normalize-001",
+        "version": "1.0.0",
+        "description": "Contract-only normalization used to verify the measurement foundation without decision evidence."
+      }
+    ]
+  }
+}

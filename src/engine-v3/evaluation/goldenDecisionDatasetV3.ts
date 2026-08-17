@@ -13,6 +13,12 @@ export const STAYOPTI_GOLDEN_DECISION_DATASET_VERSION_V3 =
 export const STAYOPTI_GOLDEN_DECISION_DATASET_SCHEMA_VERSION_V3 =
   "3.0.0-golden-decision-dataset-schema.1" as const;
 
+export const STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_VERSION_V3 =
+  "3.0.0-golden-external-baseline-registry.1" as const;
+
+export const STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_SCHEMA_VERSION_V3 =
+  "3.0.0-golden-external-baseline-registry-schema.1" as const;
+
 export const STAYOPTI_GOLDEN_DECISION_CASE_KINDS_V3 = [
   "baseline",
   "adversarial",
@@ -110,8 +116,44 @@ export interface StayOptiGoldenDecisionCaseV3 {
   segment: StayOptiGoldenDecisionSegmentV3;
   role: StayOptiGoldenDecisionRoleV3;
   parentCaseId: string | null;
+  externalParentReference?: StayOptiGoldenExternalParentReferenceV3 | null;
+  technicalDiagnosticOnly?: true;
   sourceEvidenceFingerprints: string[];
   measurement: StayOptiGoldenDecisionMeasurementV3 | null;
+}
+
+export interface StayOptiGoldenExternalParentReferenceV3 {
+  registryId: string;
+  caseId: string;
+  contentHash: string;
+  datasetVersion: string;
+  schemaVersion: string;
+}
+
+export interface StayOptiGoldenExternalBaselineRegistryEntryV3 {
+  caseId: string;
+  contentHash: string;
+  datasetVersion: string;
+  schemaVersion: string;
+  kind: "baseline";
+  statisticalEligibility: StayOptiGoldenStatisticalEligibilityV3;
+}
+
+export interface StayOptiGoldenExternalBaselineRegistryInputV3 {
+  registryId: string;
+  entries: StayOptiGoldenExternalBaselineRegistryEntryV3[];
+}
+
+export interface StayOptiGoldenExternalBaselineRegistryV3
+  extends StayOptiGoldenExternalBaselineRegistryInputV3 {
+  registryVersion: typeof STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_VERSION_V3;
+  schemaVersion: typeof STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_SCHEMA_VERSION_V3;
+  application: "offline-canonical-parent-resolution-only";
+  fingerprint: string;
+}
+
+export interface StayOptiGoldenDecisionDatasetValidationOptionsV3 {
+  externalParentRegistry?: StayOptiGoldenExternalBaselineRegistryV3;
 }
 
 export interface StayOptiGoldenBlindJudgmentV3 {
@@ -258,6 +300,14 @@ function canonicalInput(
     cases: input.cases
       .map((candidate) => ({
         ...candidate,
+        ...(candidate.externalParentReference === undefined
+          ? {}
+          : {
+              externalParentReference:
+                candidate.externalParentReference === null
+                  ? null
+                  : { ...candidate.externalParentReference },
+            }),
         sourceEvidenceFingerprints: uniqueSorted(
           candidate.sourceEvidenceFingerprints
         ),
@@ -279,6 +329,103 @@ function datasetFingerprint(
   return createStableHashV3(payload, "stayopti-v3-golden-decision-dataset");
 }
 
+function canonicalExternalRegistryInput(
+  input: StayOptiGoldenExternalBaselineRegistryInputV3
+): StayOptiGoldenExternalBaselineRegistryInputV3 {
+  return {
+    registryId: input.registryId,
+    entries: input.entries
+      .map((entry) => ({ ...entry }))
+      .sort((left, right) => {
+        const caseOrder = left.caseId.localeCompare(right.caseId);
+        return caseOrder !== 0
+          ? caseOrder
+          : left.contentHash.localeCompare(right.contentHash);
+      }),
+  };
+}
+
+function externalRegistryFingerprint(
+  registry: Omit<StayOptiGoldenExternalBaselineRegistryV3, "fingerprint">
+): string {
+  return createStableHashV3(
+    registry,
+    "stayopti-v3-golden-external-baseline-registry"
+  );
+}
+
+function externalContentHashValid(value: string): boolean {
+  return /^sha256-[0-9a-f]{64}$/.test(value);
+}
+
+export function validateGoldenExternalBaselineRegistryV3(
+  registry: StayOptiGoldenExternalBaselineRegistryV3
+): StayOptiGoldenDatasetValidationV3 {
+  const violations: string[] = [];
+  if (
+    registry.registryVersion !==
+      STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_VERSION_V3 ||
+    registry.schemaVersion !==
+      STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_SCHEMA_VERSION_V3 ||
+    registry.application !== "offline-canonical-parent-resolution-only" ||
+    !/^golden-parent-registry-[a-z0-9-]+$/.test(registry.registryId)
+  ) {
+    violations.push(`external-registry-contract-invalid:${registry.registryId}`);
+  }
+
+  const caseIds = new Set<string>();
+  for (const entry of registry.entries) {
+    if (caseIds.has(entry.caseId)) {
+      violations.push(`external-registry-parent-ambiguous:${entry.caseId}`);
+    }
+    caseIds.add(entry.caseId);
+    if (
+      !/^golden-case-[a-z0-9-]+$/.test(entry.caseId) ||
+      !externalContentHashValid(entry.contentHash) ||
+      !/^[a-z0-9][a-z0-9.-]+$/i.test(entry.datasetVersion) ||
+      !/^[a-z0-9][a-z0-9.-]+$/i.test(entry.schemaVersion) ||
+      entry.kind !== "baseline" ||
+      !["eligible", "diagnostic-only"].includes(entry.statisticalEligibility)
+    ) {
+      violations.push(`external-registry-entry-invalid:${entry.caseId}`);
+    }
+  }
+
+  const { fingerprint: _fingerprint, ...payload } = registry;
+  if (
+    !isStableHashV3(registry.fingerprint) ||
+    registry.fingerprint !== externalRegistryFingerprint(payload)
+  ) {
+    violations.push(`external-registry-fingerprint-invalid:${registry.registryId}`);
+  }
+  return { valid: violations.length === 0, violations: uniqueSorted(violations) };
+}
+
+export function createGoldenExternalBaselineRegistryV3(
+  input: StayOptiGoldenExternalBaselineRegistryInputV3
+): StayOptiGoldenExternalBaselineRegistryV3 {
+  const canonical = canonicalExternalRegistryInput(input);
+  const payload: Omit<StayOptiGoldenExternalBaselineRegistryV3, "fingerprint"> = {
+    registryVersion: STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_VERSION_V3,
+    schemaVersion:
+      STAYOPTI_GOLDEN_EXTERNAL_BASELINE_REGISTRY_SCHEMA_VERSION_V3,
+    registryId: canonical.registryId,
+    application: "offline-canonical-parent-resolution-only",
+    entries: canonical.entries,
+  };
+  const registry = {
+    ...payload,
+    fingerprint: externalRegistryFingerprint(payload),
+  };
+  const validation = validateGoldenExternalBaselineRegistryV3(registry);
+  if (!validation.valid) {
+    throw new Error(
+      `Golden external baseline registry invalid: ${validation.violations.join(", ")}`
+    );
+  }
+  return registry;
+}
+
 function gateFingerprint(
   payload: Omit<StayOptiGoldenDatasetGateV3, "fingerprint">
 ): string {
@@ -286,7 +433,10 @@ function gateFingerprint(
 }
 
 function caseOriginMatches(candidate: StayOptiGoldenDecisionCaseV3): boolean {
-  if (candidate.statisticalEligibility === "diagnostic-only") {
+  if (
+    candidate.statisticalEligibility === "diagnostic-only" &&
+    candidate.technicalDiagnosticOnly !== true
+  ) {
     return candidate.origin === "legacy-diagnostic";
   }
   if (candidate.kind === "baseline") {
@@ -312,7 +462,8 @@ function measurementValid(
 }
 
 export function validateGoldenDecisionDatasetV3(
-  dataset: StayOptiGoldenDecisionDatasetV3
+  dataset: StayOptiGoldenDecisionDatasetV3,
+  options: StayOptiGoldenDecisionDatasetValidationOptionsV3 = {}
 ): StayOptiGoldenDatasetValidationV3 {
   const violations: string[] = [];
   const add = (code: string, entityId: string) => {
@@ -340,6 +491,16 @@ export function validateGoldenDecisionDatasetV3(
   }
 
   const caseById = new Map(dataset.cases.map((candidate) => [candidate.caseId, candidate]));
+  const externalRegistry = options.externalParentRegistry;
+  const externalRegistryValidation =
+    externalRegistry === undefined
+      ? null
+      : validateGoldenExternalBaselineRegistryV3(externalRegistry);
+  if (externalRegistryValidation !== null && !externalRegistryValidation.valid) {
+    for (const violation of externalRegistryValidation.violations) {
+      add("external-parent-registry-invalid", violation);
+    }
+  }
   if (caseById.size !== dataset.cases.length) {
     add("duplicate-case", dataset.datasetId);
   }
@@ -361,23 +522,74 @@ export function validateGoldenDecisionDatasetV3(
     }
 
     if (candidate.kind === "baseline") {
-      if (candidate.parentCaseId !== null) {
+      if (
+        candidate.parentCaseId !== null ||
+        (candidate.externalParentReference !== undefined &&
+          candidate.externalParentReference !== null)
+      ) {
         add("baseline-parent-invalid", candidate.caseId);
       }
     } else {
-      const parent = candidate.parentCaseId === null
-        ? undefined
-        : caseById.get(candidate.parentCaseId);
-      if (
-        parent === undefined ||
-        parent.caseId === candidate.caseId ||
-        parent.kind !== "baseline" ||
-        parent.statisticalEligibility !== candidate.statisticalEligibility
-      ) {
-        add("derived-parent-invalid", candidate.caseId);
+      const parent =
+        candidate.parentCaseId === null
+          ? undefined
+          : caseById.get(candidate.parentCaseId);
+      if (parent !== undefined) {
+        if (
+          parent.caseId === candidate.caseId ||
+          parent.kind !== "baseline" ||
+          parent.statisticalEligibility !== candidate.statisticalEligibility ||
+          (candidate.externalParentReference !== undefined &&
+            candidate.externalParentReference !== null)
+        ) {
+          add("derived-parent-invalid", candidate.caseId);
+        }
+      } else {
+        const reference = candidate.externalParentReference;
+        if (
+          candidate.parentCaseId === null ||
+          reference === undefined ||
+          reference === null ||
+          externalRegistry === undefined ||
+          externalRegistryValidation === null ||
+          !externalRegistryValidation.valid
+        ) {
+          add("external-derived-parent-unresolved", candidate.caseId);
+        } else {
+          const matches = externalRegistry.entries.filter(
+            (entry) => entry.caseId === reference.caseId
+          );
+          if (matches.length !== 1) {
+            add(
+              matches.length === 0
+                ? "external-derived-parent-unknown"
+                : "external-derived-parent-ambiguous",
+              candidate.caseId
+            );
+          } else {
+            const [entry] = matches;
+            if (
+              reference.registryId !== externalRegistry.registryId ||
+              reference.caseId !== candidate.parentCaseId ||
+              reference.contentHash !== entry.contentHash ||
+              reference.datasetVersion !== entry.datasetVersion ||
+              reference.schemaVersion !== entry.schemaVersion ||
+              entry.kind !== "baseline" ||
+              entry.statisticalEligibility !== candidate.statisticalEligibility
+            ) {
+              add("external-derived-parent-mismatch", candidate.caseId);
+            }
+          }
+        }
       }
     }
 
+    if (
+      candidate.technicalDiagnosticOnly === true &&
+      candidate.statisticalEligibility !== "diagnostic-only"
+    ) {
+      add("technical-diagnostic-eligibility-invalid", candidate.caseId);
+    }
     if (candidate.statisticalEligibility === "diagnostic-only") {
       if (candidate.measurement !== null) {
         add("diagnostic-measurement-forbidden", candidate.caseId);
@@ -418,6 +630,9 @@ export function validateGoldenDecisionDatasetV3(
     ) {
       add("blind-judgment-invalid", judgment.judgmentId);
     }
+    if (candidate?.technicalDiagnosticOnly === true) {
+      add("technical-diagnostic-judgment-forbidden", judgment.judgmentId);
+    }
   }
 
   const inventoryIds = new Set<string>();
@@ -453,7 +668,8 @@ export function validateGoldenDecisionDatasetV3(
 }
 
 export function createGoldenDecisionDatasetV3(
-  input: StayOptiGoldenDecisionDatasetInputV3
+  input: StayOptiGoldenDecisionDatasetInputV3,
+  options: StayOptiGoldenDecisionDatasetValidationOptionsV3 = {}
 ): StayOptiGoldenDecisionDatasetV3 {
   const canonical = canonicalInput(input);
   const inputFingerprint = createStableHashV3(
@@ -477,7 +693,7 @@ export function createGoldenDecisionDatasetV3(
     inputFingerprint,
   };
   const dataset = { ...payload, fingerprint: datasetFingerprint(payload) };
-  const validation = validateGoldenDecisionDatasetV3(dataset);
+  const validation = validateGoldenDecisionDatasetV3(dataset, options);
   if (!validation.valid) {
     throw new Error(
       `Golden Decision Dataset V3 invalid: ${validation.violations.join(", ")}`
@@ -655,9 +871,10 @@ function metricsFor(
 }
 
 export function evaluateGoldenDecisionDatasetGateV3(
-  dataset: StayOptiGoldenDecisionDatasetV3
+  dataset: StayOptiGoldenDecisionDatasetV3,
+  options: StayOptiGoldenDecisionDatasetValidationOptionsV3 = {}
 ): StayOptiGoldenDatasetGateV3 {
-  const validation = validateGoldenDecisionDatasetV3(dataset);
+  const validation = validateGoldenDecisionDatasetV3(dataset, options);
   if (!validation.valid) {
     throw new Error(
       `Cannot evaluate invalid Golden Decision Dataset V3: ${validation.violations.join(", ")}`
@@ -785,9 +1002,10 @@ export function validateGoldenDecisionDatasetGateV3(
 
 export function verifyGoldenDecisionDatasetReplayV3(
   input: StayOptiGoldenDecisionDatasetInputV3,
-  expected: StayOptiGoldenDecisionDatasetV3
+  expected: StayOptiGoldenDecisionDatasetV3,
+  options: StayOptiGoldenDecisionDatasetValidationOptionsV3 = {}
 ): boolean {
-  const replay = createGoldenDecisionDatasetV3(input);
+  const replay = createGoldenDecisionDatasetV3(input, options);
   return (
     replay.inputFingerprint === expected.inputFingerprint &&
     replay.fingerprint === expected.fingerprint &&

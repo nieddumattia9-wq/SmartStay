@@ -5,6 +5,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | ID | Date | Decision | Status | Record |
 |---|---|---|---|---|
 | D-0001 | 2026-08-17 | Store product memory, original sources, current state, and operating rules inside the repository and make Codex read them via `AGENTS.md`. | Accepted | `decisions/0001-persistent-project-memory.md` |
+| D-0002 | 2026-08-17 | Repair the V3-17 measurement foundation with forward-only normalized source capsules, role-independent blind review and fail-closed external baseline parent resolution, without creating or counting decision evidence. | Accepted | `decisions/0002-v3-17-measurement-foundation.md` |
 
 ## Required fields for a new decision
 
