@@ -2,6 +2,12 @@ import {
   createStableHashV3,
 } from "../contract/stableHashV3";
 
+import {
+  buildQualifiedClaimIdentityOverlayV3,
+  type QualifiedClaimExactResolverV3,
+  type QualifiedClaimIdentityOverlayV3,
+} from "./qualifiedClaimIdentityOverlayV3";
+
 export const STAYOPTI_DECISION_SCIENCE_REGISTRY_LIBRARY_VERSION_V3 =
   "1.1.0" as const;
 
@@ -30,6 +36,7 @@ export type StayOptiDecisionScienceRegistryIssueCodeV3 =
   | "package-manifest-invalid"
   | "path-invalid"
   | "primitive-required"
+  | "qualified-identity-invalid"
   | "ranking-influence-forbidden"
   | "record-invalid"
   | "unexpected-field"
@@ -96,6 +103,8 @@ export interface StayOptiDecisionScienceOpaqueRegistryV3 {
   publicImportAllowed: false;
   counts: Readonly<StayOptiDecisionScienceRegistryCountsV3>;
   records: Readonly<Record<string, unknown>>;
+  qualifiedClaimIdentityOverlay: Readonly<QualifiedClaimIdentityOverlayV3>;
+  qualifiedClaimResolver: QualifiedClaimExactResolverV3;
 }
 
 export interface StayOptiDecisionScienceRegistryLoadResultV3 {
@@ -2160,8 +2169,39 @@ async function loadDecisionScienceRegistryOnlyUncheckedV3(
     );
     issues.push(...validation.issues);
   }
+  let qualifiedClaimIdentityOverlay:
+    Readonly<QualifiedClaimIdentityOverlayV3> | null = null;
+  let qualifiedClaimResolver: QualifiedClaimExactResolverV3 | null = null;
+  if (issues.length === 0) {
+    const overlayResult = await buildQualifiedClaimIdentityOverlayV3({
+      libraryRelease:
+        STAYOPTI_DECISION_SCIENCE_REGISTRY_LIBRARY_VERSION_V3,
+      packageFingerprint:
+        STAYOPTI_DECISION_SCIENCE_REGISTRY_PACKAGE_FINGERPRINT_V3,
+      manifestAssets: manifest.assets.map((asset) => ({
+        path: asset.path,
+        role: asset.role,
+        sha256: asset.sha256,
+      })),
+      records,
+    });
+    if (overlayResult.status === "blocked") {
+      issues.push(...overlayResult.issues.map((issue) => ({
+        code: "qualified-identity-invalid" as const,
+        path: issue.path,
+        detail: `${issue.code}: ${issue.detail}`,
+      })));
+    } else {
+      qualifiedClaimIdentityOverlay = overlayResult.overlay;
+      qualifiedClaimResolver = overlayResult.resolver;
+    }
+  }
   issues.sort(compareIssues);
-  if (issues.length > 0) {
+  if (
+    issues.length > 0 ||
+    qualifiedClaimIdentityOverlay === null ||
+    qualifiedClaimResolver === null
+  ) {
     return baseLoadResult(requestedMode, resolvedMode, "blocked", issues, null);
   }
 
@@ -2181,6 +2221,8 @@ async function loadDecisionScienceRegistryOnlyUncheckedV3(
       ...expected,
     },
     records,
+    qualifiedClaimIdentityOverlay,
+    qualifiedClaimResolver,
   });
 
   return baseLoadResult(
