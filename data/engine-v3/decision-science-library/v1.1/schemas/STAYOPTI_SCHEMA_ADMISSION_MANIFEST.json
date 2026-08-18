@@ -1,0 +1,80 @@
+{
+  "admissionNamespace": "stayopti.dsl.schema-admission@1",
+  "schemaVersion": "1.0.0",
+  "libraryRelease": "1.1.0",
+  "sourceArchive": {
+    "fileName": "StayOpti_Decision_Science_Library_v1.1_2026-08-17.zip",
+    "sha256": "d0bd932106d6784a1a0245a5ddb71cbb6b9fa643aa201cca51afe171906dae99"
+  },
+  "packageFingerprint": "sha256-aaa3e1b20345751ac435100e8a7d6ba025c950779e2888d5698bbd65b2b56907",
+  "runtime": {
+    "ajvVersion": "8.20.0",
+    "ajvFormatsVersion": "3.0.1",
+    "options": {
+      "strict": true,
+      "strictSchema": true,
+      "strictNumbers": true,
+      "validateSchema": true,
+      "validateFormats": true,
+      "allErrors": true,
+      "coerceTypes": false,
+      "useDefaults": false,
+      "removeAdditional": false,
+      "$data": false,
+      "ownProperties": true,
+      "messages": false,
+      "verbose": false,
+      "logger": false,
+      "formatMode": "full",
+      "formats": [
+        "date",
+        "date-time"
+      ],
+      "formatKeywords": false,
+      "customKeywords": false,
+      "compileAsync": false,
+      "loadSchema": false,
+      "remoteResolution": false
+    },
+    "runtimeOptionsFingerprintSha256": "sha256-d1e8da20371ffac9318822774924d7224577a6ec3a06eae0f1e4d93357da40df",
+    "resourceProfileVersion": "stayopti.dsl.schema-admission.resources@1"
+  },
+  "mode": {
+    "maximum": "registry-only",
+    "rankingInfluence": "none",
+    "publicImportAllowed": false,
+    "traceAllowed": false,
+    "decisionImportAllowed": false
+  },
+  "schemas": [
+    {
+      "path": "schemas/accommodation_offer_identity.schema.json",
+      "bytes": 4021,
+      "sha256": "413e41e0d5b5e42ebc908b24c886bee236849b8227a37efd03b7c1591e4f49cc",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "draftUri": "https://json-schema.org/draft/2020-12/schema"
+    },
+    {
+      "path": "schemas/shared_space_map.schema.json",
+      "bytes": 1622,
+      "sha256": "6f6cd95fd47249d2205be7731b164a973bd90746f4321da950e390ad22822812",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "draftUri": "https://json-schema.org/draft/2020-12/schema"
+    },
+    {
+      "path": "schemas/local_market_night_snapshot.schema.json",
+      "bytes": 3438,
+      "sha256": "278d0fb43d26770b4ff94fe8152f6f1d393e41fcfda1a3ae0d1fcfa1751df90e",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "draftUri": "https://json-schema.org/draft/2020-12/schema"
+    },
+    {
+      "path": "schemas/market_dataset_legal_ledger.schema.json",
+      "bytes": 2087,
+      "sha256": "d3f4392eb150c9b638e66e93fdc648eec4be3cbff315cf58f1e6d85c6693b513",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "draftUri": "https://json-schema.org/draft/2020-12/schema"
+    }
+  ],
+  "bundleFingerprintSha256": "sha256-7569a00ac0d5671c6c48ea32b63d330541baf9da3048959eb50235bb92a215fc"
+}

@@ -1,0 +1,4638 @@
+{
+  "schemaVersion": "stayopti-v3-13b2b2-schema-admission-corpus:v1",
+  "sourceEvidence": "B2B1 PROBE_CORPUS_RESULTS.json",
+  "counts": {
+    "total": 149,
+    "positiveAdmitted": 74,
+    "schemaBlocked": 62,
+    "semanticBlocked": 8,
+    "admittedIndeterminate": 5
+  },
+  "cases": [
+    {
+      "id": "id-pos-minimum",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-full",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Refundable double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1",
+          "source:2"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-leap-day",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2028-02-28",
+          "checkOut": "2028-02-29"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-hotel",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-serviced-apartment",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "serviced-apartment",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "entire-unit",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-vacation-rental-entire-unit",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "vacation-rental-entire-unit",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "entire-unit",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-vacation-rental-private-room",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "vacation-rental-private-room",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-private-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-bed-and-breakfast-or-guesthouse",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "bed-and-breakfast-or-guesthouse",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-hostel-private-room",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hostel-private-room",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-private-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-hostel-dorm-bed",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hostel-dorm-bed",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "shared-room-or-dorm",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-resort",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "resort",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "entire-unit",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-campground-pitch",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "campground-pitch",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-site-or-pitch",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-campground-rental-unit",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "campground-rental-unit",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "entire-unit",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-holiday-park",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "holiday-park",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "shared-site-or-pitch",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-glamping-unit",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "glamping-unit",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-site-or-pitch",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-other",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "unknown",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-type-unknown",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "unknown",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "unknown",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-entire-unit",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "entire-unit",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-private-room-shared-common-space",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-private-room-private-common-space",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-private-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-shared-room-or-dorm",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "shared-room-or-dorm",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-private-site-or-pitch",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-site-or-pitch",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-shared-site-or-pitch",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "shared-site-or-pitch",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-share-unknown",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "other",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "unknown",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-pos-null-capacity",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": null,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-required-missing",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-extra-root",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none",
+        "unexpectedField": true
+      }
+    },
+    {
+      "id": "id-neg-extra-stay",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19",
+          "extra": true
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-wrong-type",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": "2",
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-empty-string",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-enum",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "capsule-hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-version",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.2.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-ranking",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "direct"
+      }
+    },
+    {
+      "id": "id-neg-impossible-date",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-02-30",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-date-time",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18 12:00",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-duplicate-provenance",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1",
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-occupancy-zero",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 0,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-children-negative",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": -1,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-units-zero",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 0
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-incompatible-hotel",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "entire-unit",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-gap-incompatible-resort",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "admitted-indeterminate",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "resort",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "shared-room-or-dorm",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-gap-party-sum",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 1,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-gap-capacity",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 1,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-gap-date-order",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-19",
+          "checkOut": "2026-11-12"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "id-neg-key-affiliateCommission",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none",
+        "affiliateCommission": "affiliateCommission"
+      }
+    },
+    {
+      "id": "id-neg-key-__proto__",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none",
+        "__proto__": "__proto__"
+      }
+    },
+    {
+      "id": "id-neg-key-prototype",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none",
+        "prototype": "prototype"
+      }
+    },
+    {
+      "id": "id-neg-key-constructor",
+      "schema": "identity",
+      "schemaId": "https://stayopti.example/schemas/v1.1/accommodation_offer_identity.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "identityModelVersion": "accommodation-identity:v1.1",
+        "propertyIdentity": "property:1",
+        "unitOrBedOrSiteIdentity": "unit:1",
+        "rateOfferIdentity": "offer:1",
+        "rawDeclaredLabel": "Double room",
+        "canonicalProductType": "hotel",
+        "taxonomyAuthority": "stayopti",
+        "taxonomyVersion": "1.1.0",
+        "shareScope": "private-room-shared-common-space",
+        "statedCapacity": 2,
+        "requestedOccupancy": 2,
+        "stayBinding": {
+          "checkIn": "2026-11-12",
+          "checkOut": "2026-11-19"
+        },
+        "partyBinding": {
+          "adults": 2,
+          "children": 0,
+          "requestedUnits": 1
+        },
+        "observationTimestamp": "2026-08-18T12:00:00Z",
+        "identityProvenanceRefs": [
+          "source:1"
+        ],
+        "rankingInfluence": "none",
+        "constructor": "constructor"
+      }
+    },
+    {
+      "id": "shared-pos-minimum",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-full-spaces",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "not-applicable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:0"
+            ]
+          },
+          {
+            "space": "bathroom",
+            "scope": "shared-with-guests",
+            "lockability": "not-applicable",
+            "accessHours": "24h",
+            "provenanceRefs": [
+              "source:1"
+            ]
+          },
+          {
+            "space": "kitchen",
+            "scope": "exclusive-to-party",
+            "lockability": "not-applicable",
+            "accessHours": "24h",
+            "provenanceRefs": [
+              "source:2"
+            ]
+          },
+          {
+            "space": "entrance",
+            "scope": "shared-with-guests",
+            "lockability": "not-applicable",
+            "accessHours": "24h",
+            "provenanceRefs": [
+              "source:3"
+            ]
+          },
+          {
+            "space": "circulation-or-common-area",
+            "scope": "exclusive-to-party",
+            "lockability": "not-applicable",
+            "accessHours": "24h",
+            "provenanceRefs": [
+              "source:4"
+            ]
+          },
+          {
+            "space": "outdoor-area",
+            "scope": "shared-with-guests",
+            "lockability": "not-applicable",
+            "accessHours": "24h",
+            "provenanceRefs": [
+              "source:5"
+            ]
+          },
+          {
+            "space": "work-area",
+            "scope": "exclusive-to-party",
+            "lockability": "not-applicable",
+            "accessHours": "24h",
+            "provenanceRefs": [
+              "source:6"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-exclusive-to-party",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-dedicated-private",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "dedicated-private",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-shared-with-guests",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "shared-with-guests",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-shared-with-host",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "shared-with-host",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-public",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "public",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-unknown",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "unknown",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-scope-not-applicable",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "not-applicable",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-lock-verified-lockable",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-lock-not-lockable",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "not-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-lock-unknown",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "unknown",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-lock-not-applicable",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "not-applicable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-pos-access-string",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": "06:00-23:00",
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-required",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-extra-root",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none",
+        "extra": true
+      }
+    },
+    {
+      "id": "shared-neg-extra-observation",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ],
+            "extra": true
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-primitive",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          null
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-empty-version",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-space",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "pool",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-scope",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "semi-private",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-lock",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "sometimes",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-empty-access",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": "",
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-empty-provenance",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": []
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-dup-provenance",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "a",
+              "a"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-neg-ranking",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "policy"
+      }
+    },
+    {
+      "id": "shared-neg-commercial",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none",
+        "affiliateCommission": 1
+      }
+    },
+    {
+      "id": "shared-gap-duplicate-space",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          },
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "shared-gap-partial-map",
+      "schema": "shared",
+      "schemaId": "https://stayopti.example/schemas/v1.1/shared_space_map.schema.json",
+      "kind": "negative",
+      "expectedStage": "admitted-indeterminate",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "mapVersion": "shared-space-map:v1",
+        "observations": [
+          {
+            "space": "sleeping-area",
+            "scope": "exclusive-to-party",
+            "lockability": "verified-lockable",
+            "accessHours": null,
+            "provenanceRefs": [
+              "source:1"
+            ]
+          }
+        ],
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-pos-minimum",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-full",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "shareScope": "private-room-shared-common-space",
+        "categoryScheme": "local-stars",
+        "privacyPreservingPropertyRef": "p:hash",
+        "privacyPreservingUnitOfferRef": "u:hash",
+        "mealOrInclusionCode": "room-only",
+        "cancellationCode": "refundable",
+        "paymentCode": "pay-later",
+        "mandatoryNightCost": 150,
+        "censoringNotes": "none"
+      }
+    },
+    {
+      "id": "snap-pos-leap",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2028-02-29",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-inventory-available",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-inventory-unavailable",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "other",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-inventory-closed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "closed",
+        "unavailableReason": "property-closed",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-inventory-not-listed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "not-listed",
+        "unavailableReason": "not-disclosed",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-inventory-provider-error",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "provider-error",
+        "unavailableReason": "provider-failure",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-inventory-unknown",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unknown",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-sold-out-evidenced",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "sold-out-evidenced",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-closed-to-arrival",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "closed-to-arrival",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-minimum-stay",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "minimum-stay",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-stop-sell",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "stop-sell",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-rate-plan-closed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "rate-plan-closed",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-property-closed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "property-closed",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-channel-suppressed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "channel-suppressed",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-request-invalid",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "request-invalid",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-provider-failure",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "provider-failure",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-not-disclosed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "not-disclosed",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-reason-other",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": "other",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-cost-complete",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-cost-partial",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "partial",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": null
+      }
+    },
+    {
+      "id": "snap-pos-cost-unknown",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "unknown",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": null
+      }
+    },
+    {
+      "id": "snap-pos-cost-not-observable",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "not-observable",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": null
+      }
+    },
+    {
+      "id": "snap-pos-collection-success",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-collection-partial",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "partial",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-pos-collection-failed",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "unknown",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "failed",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-required",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-extra",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "extra": true
+      }
+    },
+    {
+      "id": "snap-neg-type",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": "2",
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-empty",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-version",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "2",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-ranking",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "direct"
+      }
+    },
+    {
+      "id": "snap-neg-date",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-02-30",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-date-time",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18 12:00",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-currency",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "eur",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-occupancy",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 0,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-los",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 0,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-lead",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": -1,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-cost",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": -1
+      }
+    },
+    {
+      "id": "snap-neg-dup-events",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [
+          "e",
+          "e"
+        ],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-dup-provenance",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "p",
+          "p"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-available-reason",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": "other",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-neg-soldout-state",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "closed",
+        "unavailableReason": "sold-out-evidenced",
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-gap-unavailable-null",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "admitted-indeterminate",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "unavailable",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 120
+      }
+    },
+    {
+      "id": "snap-gap-complete-null-cost",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": null
+      }
+    },
+    {
+      "id": "snap-gap-complete-missing-cost",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "snap-gap-failed-with-cost",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "failed",
+        "rankingInfluence": "none",
+        "mandatoryNightCost": 100
+      }
+    },
+    {
+      "id": "snap-neg-commercial",
+      "schema": "snapshot",
+      "schemaId": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "snapshotId": "snapshot:1",
+        "observedAt": "2026-08-18T12:00:00Z",
+        "stayNight": "2026-11-12",
+        "marketCellId": "cell:lisbon:1",
+        "marketCellVersion": "1.0.0",
+        "accommodationType": "hotel",
+        "peerDefinitionVersion": "peer:v1",
+        "occupancy": 2,
+        "lengthOfStay": 7,
+        "leadTimeDays": 86,
+        "inventoryState": "available",
+        "unavailableReason": null,
+        "mandatoryCostStatus": "complete",
+        "currency": "EUR",
+        "eventRefs": [],
+        "provenanceRefs": [
+          "source:1"
+        ],
+        "collectionStatus": "success",
+        "rankingInfluence": "none",
+        "partnerRevenue": 20
+      }
+    },
+    {
+      "id": "legal-pos-minimum",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-full",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research",
+          "quality-audit"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": "2027-12-31",
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-leap",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2028-02-29",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-status-approved",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-status-conditional",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "conditional",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-status-expired",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "expired",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-status-prohibited",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "prohibited",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-pos-status-unknown",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "positive",
+      "expectedStage": "admitted",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "unknown",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-required",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-extra",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none",
+        "extra": true
+      }
+    },
+    {
+      "id": "legal-neg-type",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": "research",
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-empty",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-version",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.0.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-ranking",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "shadow"
+      }
+    },
+    {
+      "id": "legal-neg-date",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-02-30",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-date-time",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18 12:00",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-dup-purpose",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research",
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-empty-purpose",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          ""
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-empty-purposes",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-gap-date-order",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "semantic-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2027-01-01",
+        "effectiveTo": "2026-12-31",
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-gap-expired-future",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "admitted-indeterminate",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": "2027-12-31",
+        "reviewOwner": "legal-review",
+        "legalStatus": "expired",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-gap-approved-past",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "admitted-indeterminate",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2025-12-31",
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none"
+      }
+    },
+    {
+      "id": "legal-neg-commercial",
+      "schema": "legal",
+      "schemaId": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+      "kind": "negative",
+      "expectedStage": "schema-blocked",
+      "payload": {
+        "schemaVersion": "1.1.0",
+        "datasetId": "dataset:1",
+        "dataOwner": "owner",
+        "controllerOrProvider": "controller",
+        "contractOrLicenceId": "licence:1",
+        "permittedPurposes": [
+          "research"
+        ],
+        "retention": "30 days",
+        "territory": "EU",
+        "attribution": "required",
+        "personalDataBasis": "none",
+        "databaseRightsReview": "reviewed",
+        "collectionMethod": "licensed feed",
+        "rateLimitPolicy": "contractual",
+        "deletionObligations": "delete on expiry",
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null,
+        "reviewOwner": "legal-review",
+        "legalStatus": "approved",
+        "reviewedAt": "2026-08-18T12:00:00Z",
+        "rankingInfluence": "none",
+        "takeRate": 0.1
+      }
+    }
+  ]
+}

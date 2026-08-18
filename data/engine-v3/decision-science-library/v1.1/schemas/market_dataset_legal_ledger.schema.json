@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stayopti.example/schemas/v1.1/market_dataset_legal_ledger.schema.json",
+  "title": "StayOpti historical market dataset legal and provenance ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "datasetId",
+    "dataOwner",
+    "controllerOrProvider",
+    "contractOrLicenceId",
+    "permittedPurposes",
+    "retention",
+    "territory",
+    "attribution",
+    "personalDataBasis",
+    "databaseRightsReview",
+    "collectionMethod",
+    "rateLimitPolicy",
+    "deletionObligations",
+    "effectiveFrom",
+    "effectiveTo",
+    "reviewOwner",
+    "legalStatus",
+    "reviewedAt",
+    "rankingInfluence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.1.0" },
+    "datasetId": { "type": "string", "minLength": 1 },
+    "dataOwner": { "type": "string", "minLength": 1 },
+    "controllerOrProvider": { "type": "string", "minLength": 1 },
+    "contractOrLicenceId": { "type": "string", "minLength": 1 },
+    "permittedPurposes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "retention": { "type": "string", "minLength": 1 },
+    "territory": { "type": "string", "minLength": 1 },
+    "attribution": { "type": "string", "minLength": 1 },
+    "personalDataBasis": { "type": "string", "minLength": 1 },
+    "databaseRightsReview": { "type": "string", "minLength": 1 },
+    "collectionMethod": { "type": "string", "minLength": 1 },
+    "rateLimitPolicy": { "type": "string", "minLength": 1 },
+    "deletionObligations": { "type": "string", "minLength": 1 },
+    "effectiveFrom": { "type": "string", "format": "date" },
+    "effectiveTo": { "type": ["string", "null"], "format": "date" },
+    "reviewOwner": { "type": "string", "minLength": 1 },
+    "legalStatus": {
+      "enum": ["approved", "conditional", "expired", "prohibited", "unknown"]
+    },
+    "reviewedAt": { "type": "string", "format": "date-time" },
+    "rankingInfluence": { "const": "none" }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stayopti.example/schemas/v1.1/local_market_night_snapshot.schema.json",
+  "title": "StayOpti local market nightly historical snapshot contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "snapshotId",
+    "observedAt",
+    "stayNight",
+    "marketCellId",
+    "marketCellVersion",
+    "accommodationType",
+    "peerDefinitionVersion",
+    "occupancy",
+    "lengthOfStay",
+    "leadTimeDays",
+    "inventoryState",
+    "unavailableReason",
+    "mandatoryCostStatus",
+    "currency",
+    "eventRefs",
+    "provenanceRefs",
+    "collectionStatus",
+    "rankingInfluence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.1.0" },
+    "snapshotId": { "type": "string", "minLength": 1 },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "stayNight": { "type": "string", "format": "date" },
+    "marketCellId": { "type": "string", "minLength": 1 },
+    "marketCellVersion": { "type": "string", "minLength": 1 },
+    "accommodationType": { "type": "string", "minLength": 1 },
+    "shareScope": { "type": ["string", "null"] },
+    "categoryScheme": { "type": ["string", "null"] },
+    "peerDefinitionVersion": { "type": "string", "minLength": 1 },
+    "privacyPreservingPropertyRef": { "type": ["string", "null"] },
+    "privacyPreservingUnitOfferRef": { "type": ["string", "null"] },
+    "occupancy": { "type": "integer", "minimum": 1 },
+    "lengthOfStay": { "type": "integer", "minimum": 1 },
+    "leadTimeDays": { "type": "integer", "minimum": 0 },
+    "mealOrInclusionCode": { "type": ["string", "null"] },
+    "cancellationCode": { "type": ["string", "null"] },
+    "paymentCode": { "type": ["string", "null"] },
+    "inventoryState": {
+      "enum": ["available", "unavailable", "closed", "not-listed", "provider-error", "unknown"]
+    },
+    "unavailableReason": {
+      "enum": [
+        null,
+        "sold-out-evidenced",
+        "closed-to-arrival",
+        "minimum-stay",
+        "stop-sell",
+        "rate-plan-closed",
+        "property-closed",
+        "channel-suppressed",
+        "request-invalid",
+        "provider-failure",
+        "not-disclosed",
+        "other"
+      ]
+    },
+    "mandatoryNightCost": {
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "mandatoryCostStatus": { "enum": ["complete", "partial", "unknown", "not-observable"] },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "eventRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "provenanceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "collectionStatus": { "enum": ["success", "partial", "failed"] },
+    "censoringNotes": { "type": ["string", "null"] },
+    "rankingInfluence": { "const": "none" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "inventoryState": { "const": "available" } } },
+      "then": { "properties": { "unavailableReason": { "const": null } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "unavailableReason": { "const": "sold-out-evidenced" }
+        },
+        "required": ["unavailableReason"]
+      },
+      "then": { "properties": { "inventoryState": { "const": "unavailable" } } }
+    }
+  ]
+}
