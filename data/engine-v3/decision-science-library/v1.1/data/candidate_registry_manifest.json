@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.1.0",
+  "pipelineId": "stayopti-candidate-registry-extractor-v1.1",
+  "validationStatus": "pass",
+  "recordStatus": "candidate-second-pass-required",
+  "rankingInfluence": "none",
+  "deterministic": true,
+  "inputs": [
+    {
+      "path": "research/behavioral_decision_science.md",
+      "sha256": "678d71a2af68e2867340e041e9cfb2fd260d16b1f03f7f219dc3e1b3d44dab36",
+      "sources": 35,
+      "claims": 29
+    },
+    {
+      "path": "research/hospitality_guest_experience.md",
+      "sha256": "a0b0e531cec4322c358e2dc1890dc5c07574002afa0517383fef5204a3045503",
+      "sources": 34,
+      "claims": 30
+    },
+    {
+      "path": "research/travel_value_risk.md",
+      "sha256": "41f17335f9e1978f0bce8221b21d6822c1d1d8277314ffe11e7b3d1be38c5ede",
+      "sources": 35,
+      "claims": 21
+    },
+    {
+      "path": "research/season_local_market_context.md",
+      "sha256": "ccef84e512295b7d2a1f688631aa2c18119daa226be05accfb0652d47745aec3",
+      "sources": 42,
+      "claims": 30
+    },
+    {
+      "path": "research/accommodation_types_decision_science.md",
+      "sha256": "e3714d3ca970ebb8fac83f37ad1a1feab66cc5123a942d1c50daae3d5c9a5c10",
+      "sources": 48,
+      "claims": 35
+    }
+  ],
+  "expectedCounts": {
+    "sources": 194,
+    "globalSources": 179,
+    "claims": 145
+  },
+  "actualCounts": {
+    "sources": 194,
+    "globalSources": 179,
+    "claims": 145
+  },
+  "trackCounts": {
+    "behavioral-decision-science": {
+      "sources": 35,
+      "claims": 29
+    },
+    "hospitality-guest-experience": {
+      "sources": 34,
+      "claims": 30
+    },
+    "travel-value-risk": {
+      "sources": 35,
+      "claims": 21
+    },
+    "season-and-local-market": {
+      "sources": 42,
+      "claims": 30
+    },
+    "accommodation-types-and-unit": {
+      "sources": 48,
+      "claims": 35
+    }
+  },
+  "checks": {
+    "sourceIdsUnique": true,
+    "claimIdsUnique": true,
+    "canonicalUrlsValid": true,
+    "sourceRefsResolved": true,
+    "unresolvedSourceRefs": 0,
+    "resolvedSourceRefCount": 553,
+    "everyRecordSecondPassRequired": true,
+    "everyRecordHasNoRankingInfluence": true,
+    "globalSourceIdentityDeduplicated": true,
+    "everyTrackSourceHasOneGlobalAlias": true
+  },
+  "outputs": [
+    {
+      "path": "data/candidate_source_registry.json",
+      "sha256": "53973757d99013e878dcb12be31df6db7f5c90634b852ba3184f0d43a4a75d4c",
+      "records": 194
+    },
+    {
+      "path": "data/candidate_claim_registry.json",
+      "sha256": "0e96c7f99896b8bd3e4d2ee34d94105f8bb996b2a0c1b2e36f46ad575c554950",
+      "records": 145
+    },
+    {
+      "path": "data/global_candidate_source_registry.json",
+      "sha256": "9e3d6fcff8136e4115d85d97dee9e2fcb3fefaadad9f7d2c882a22af446ef72b",
+      "records": 179,
+      "aliases": 194
+    }
+  ]
+}

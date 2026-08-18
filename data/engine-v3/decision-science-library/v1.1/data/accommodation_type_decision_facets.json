@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.1.0",
+  "status": "candidate-second-pass-required",
+  "rankingInfluence": "none",
+  "decisionUnit": "property × exact room/unit/bed/site × exact rate-offer × stay × party",
+  "evidenceTargetSelection": {
+    "matrix": "canonical_product_type × requested_role × party_and_need",
+    "severityVocabulary": ["universal-hard", "conditional-hard", "role-decisive", "explanatory"],
+    "rule": "Evidence targets are candidates for materiality selection, not universal hard requirements and not a mandatory user questionnaire.",
+    "missingIrrelevantTargetEffect": "none",
+    "missingMateriallyReversibleTargetEffect": "targeted-recheck-or-abstention"
+  },
+  "universalHardIdentity": [
+    "property_identity",
+    "unit_or_bed_or_site_identity",
+    "rate_offer_identity",
+    "requested_occupancy",
+    "capacity_compatibility",
+    "share_scope",
+    "identity_provenance"
+  ],
+  "types": [
+    {
+      "typeId": "hotel",
+      "evidenceTargets": ["room_configuration", "meal_plan", "service_schedule"]
+    },
+    {
+      "typeId": "serviced-apartment",
+      "evidenceTargets": ["unit_layout", "kitchen_functionality", "housekeeping_frequency"]
+    },
+    {
+      "typeId": "vacation-rental-entire-unit",
+      "evidenceTargets": ["entire_unit_confirmation", "cleaning_obligations", "deposit_and_house_rules", "access_handoff"]
+    },
+    {
+      "typeId": "vacation-rental-private-room",
+      "evidenceTargets": ["shared_space_scope", "bathroom_sharing", "host_presence_and_access", "house_rules"]
+    },
+    {
+      "typeId": "bed-and-breakfast-or-guesthouse",
+      "evidenceTargets": ["bathroom_sharing", "breakfast_scope", "arrival_and_host_availability"]
+    },
+    {
+      "typeId": "hostel-private-room",
+      "evidenceTargets": ["bathroom_sharing", "common_space_and_quiet_rules", "access_hours"]
+    },
+    {
+      "typeId": "hostel-dorm-bed",
+      "evidenceTargets": ["bed_and_dorm_identity", "dorm_occupancy_and_restrictions", "locker_and_bathroom_access", "curfew_or_access_hours"]
+    },
+    {
+      "typeId": "resort",
+      "evidenceTargets": ["mandatory_resort_fees", "facility_operating_schedule", "on_site_mobility", "meal_or_access_package"]
+    },
+    {
+      "typeId": "campground-pitch",
+      "evidenceTargets": ["pitch_or_site_class", "vehicle_tent_constraints", "utility_hookups", "sanitation_access", "seasonal_operation"]
+    },
+    {
+      "typeId": "campground-rental-unit",
+      "evidenceTargets": ["rental_unit_layout", "bathroom_and_sanitation_scope", "utilities", "seasonal_operation"]
+    },
+    {
+      "typeId": "holiday-park",
+      "evidenceTargets": ["unit_or_site_class", "facility_operating_schedule", "mandatory_park_fees", "on_site_mobility"]
+    },
+    {
+      "typeId": "glamping-unit",
+      "evidenceTargets": ["weather_protection", "bathroom_and_sanitation_scope", "heating_cooling", "electricity", "seasonal_operation"]
+    }
+  ],
+  "prohibitedInferences": [
+    "Do not apply hotel-star semantics to a non-hotel type without a named compatible scheme.",
+    "Do not treat the existence of a kitchen, pool, locker, hookup or bathroom as proof that it is private, usable, included, open or fit.",
+    "Do not compare an entire unit, a private room, a dorm bed and a pitch as interchangeable inventory.",
+    "Do not convert missing type-specific evidence into a quality penalty or a favorable assumption."
+  ]
+}

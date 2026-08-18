@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.1.0",
+  "status": "candidate-second-pass-required",
+  "rankingInfluence": "none",
+  "historyRequirement": "HIST_REQUIRED",
+  "orthogonalAxes": {
+    "priceRegime": ["LOW", "NORMAL", "HIGH", "UNKNOWN"],
+    "availabilityPressure": ["LOW", "NORMAL", "HIGH", "UNKNOWN"],
+    "eventAttribution": ["ATTRIBUTED", "NOT_ATTRIBUTED", "INDETERMINATE"],
+    "axisSufficiency": ["SUFFICIENT", "INSUFFICIENT", "INVALID"],
+    "stayComposition": ["MIXED"]
+  },
+  "compositeLabelProhibition": "EVENT_SPIKE and UNKNOWN are not outcomes in the same probability simplex as LOW/NORMAL/HIGH. Event attribution and evidence sufficiency remain separate axes.",
+  "classificationUnit": "local market cell × accommodation type × individual stay night × lead-time context",
+  "requiredOutputFields": [
+    "price_regime",
+    "price_regime_probabilities",
+    "availability_pressure",
+    "availability_pressure_probabilities",
+    "event_attribution",
+    "event_attribution_probability",
+    "axis_sufficiency",
+    "confidence",
+    "as_of_utc",
+    "stay_night",
+    "microzone_version",
+    "peer_cohort_version",
+    "model_version",
+    "evidence_window",
+    "sufficiency_gate_results",
+    "provenance_refs",
+    "counterfactual_explanation"
+  ],
+  "availabilityStateVocabulary": [
+    "available",
+    "unavailable",
+    "closed",
+    "not-listed",
+    "provider-error",
+    "unknown"
+  ],
+  "unavailabilityReasonVocabulary": [
+    "sold-out-evidenced",
+    "closed-to-arrival",
+    "minimum-stay",
+    "stop-sell",
+    "rate-plan-closed",
+    "property-closed",
+    "channel-suppressed",
+    "request-invalid",
+    "provider-failure",
+    "not-disclosed",
+    "other"
+  ],
+  "requiredDimensions": [
+    "stay_night",
+    "observation_timestamp",
+    "market_cell",
+    "accommodation_type",
+    "compatible_peer_definition",
+    "lead_time",
+    "weekday_and_calendar_context",
+    "event_context",
+    "price_history",
+    "availability_history_including_sold_out_states",
+    "coverage_and_censoring",
+    "provenance"
+  ],
+  "separateLatentContexts": [
+    "calendar_season_regime",
+    "event_regime",
+    "booking_horizon_regime",
+    "market_compression",
+    "weather_or_climate_context_when_supported"
+  ],
+  "aggregationRules": [
+    "Classify each consumed night from check-in through the day before check-out.",
+    "Aggregate price and availability axes separately; a stay with different known nightly states is MIXED on that axis only.",
+    "Any material night without sufficient local evidence makes the affected stay axis UNKNOWN.",
+    "INDETERMINATE is required for event attribution when identification or provenance is insufficient.",
+    "Event existence alone does not prove ATTRIBUTED impact; a local counterfactual and uncertainty are required."
+  ],
+  "prohibitedInferences": [
+    "No citywide month label is a universal local-season truth.",
+    "No fixed global percentile or price threshold defines a low or high local price regime.",
+    "No composite EVENT_SPIKE probability may mix causal attribution with price state or evidence sufficiency.",
+    "Local market context is not a numeric ranking contribution.",
+    "A high-season price is not automatically good value and a low-season price is not automatically a deal.",
+    "A sold-out-evidenced property is censored market evidence, not a zero-price or ignorable observation.",
+    "An unavailable or absent result is not sold out unless the reason is explicitly evidenced.",
+    "No universal book-now, wait or book-early rule may be emitted without calibrated historical paths."
+  ],
+  "allowedInitialUses": [
+    "registry-only",
+    "trace-only",
+    "evidence sufficiency",
+    "historical data collection design",
+    "shadow classification evaluation"
+  ]
+}

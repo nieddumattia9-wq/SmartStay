@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0.0",
+  "importId": "stayopti-v3-13b1-decision-science-library-v1.1-registry-only",
+  "libraryVersion": "1.1.0",
+  "sourceArchive": {
+    "fileName": "StayOpti_Decision_Science_Library_v1.1_2026-08-17.zip",
+    "sha256": "d0bd932106d6784a1a0245a5ddb71cbb6b9fa643aa201cca51afe171906dae99"
+  },
+  "packageFingerprint": "sha256-aaa3e1b20345751ac435100e8a7d6ba025c950779e2888d5698bbd65b2b56907",
+  "mode": {
+    "default": "off",
+    "allowed": [
+      "off",
+      "registry-only"
+    ],
+    "rankingInfluence": "none",
+    "decisionCoreImportAllowed": false,
+    "publicImportAllowed": false,
+    "traceAllowed": false
+  },
+  "expectedCounts": {
+    "packageFiles": 49,
+    "coreSources": 13,
+    "coreClaims": 5,
+    "candidateSourceAliases": 194,
+    "globalCandidateSources": 179,
+    "globalCandidateSourceAliases": 194,
+    "candidateClaims": 145,
+    "resolvedCandidateSourceRefs": 553,
+    "booksManualsAndStandards": 59,
+    "crossTrackConstructs": 21,
+    "accommodationTypes": 12,
+    "marketContextAxes": 4,
+    "potentialSecretFindings": 0,
+    "goldenIncrement": 0,
+    "adversarialIncrement": 0,
+    "counterfactualIncrement": 0,
+    "humanJudgmentIncrement": 0,
+    "expertJudgmentIncrement": 0,
+    "aiJudgmentIncrement": 0
+  },
+  "assets": [
+    {
+      "path": "data/accommodation_type_decision_facets.json",
+      "bytes": 3394,
+      "sha256": "cce88af6cd06b3039c68a2b2a870a8f6ab581ed9bcbf4c64f686e0f548d17c64",
+      "role": "candidate-accommodation-contract"
+    },
+    {
+      "path": "data/candidate_claim_registry.json",
+      "bytes": 139569,
+      "sha256": "0e96c7f99896b8bd3e4d2ee34d94105f8bb996b2a0c1b2e36f46ad575c554950",
+      "role": "candidate-claim-registry"
+    },
+    {
+      "path": "data/candidate_registry_manifest.json",
+      "bytes": 2776,
+      "sha256": "43cf3c2342c6d1ea3d8d2bcf6f79360e34ea564ff2e53b41b62c9bc72afc351e",
+      "role": "candidate-registry-manifest"
+    },
+    {
+      "path": "data/candidate_source_registry.json",
+      "bytes": 116997,
+      "sha256": "53973757d99013e878dcb12be31df6db7f5c90634b852ba3184f0d43a4a75d4c",
+      "role": "candidate-source-registry"
+    },
+    {
+      "path": "data/claim_registry.json",
+      "bytes": 11103,
+      "sha256": "5849adb5059a843aa44155abb04bc2a62f6733a994d980e8e3dee30dba597b38",
+      "role": "appraised-core-claim-registry"
+    },
+    {
+      "path": "data/claim_relationship_registry.json",
+      "bytes": 17046,
+      "sha256": "d905f9a8fb55e9185a16c5e1ebacc72297caee9b3ea53e3844417f09c58ff496",
+      "role": "candidate-relationship-membership-registry"
+    },
+    {
+      "path": "data/global_candidate_source_registry.json",
+      "bytes": 152625,
+      "sha256": "9e3d6fcff8136e4115d85d97dee9e2fcb3fefaadad9f7d2c882a22af446ef72b",
+      "role": "candidate-global-source-alias-registry"
+    },
+    {
+      "path": "data/package_validation_manifest.json",
+      "bytes": 9906,
+      "sha256": "bcce551c182e5b449c2a8727449b7f95ae3964041ee29b5ce8e242ee47e5a658",
+      "role": "frozen-package-validation-manifest"
+    },
+    {
+      "path": "data/season_local_market_context_contract.json",
+      "bytes": 3764,
+      "sha256": "875f4da2e1ab64bc0bf6bbcaab6b89c517986715a01d161651dea6196b48bcd5",
+      "role": "candidate-market-context-contract"
+    },
+    {
+      "path": "data/source_registry.json",
+      "bytes": 10557,
+      "sha256": "af3588ebbf5886196943a668b76d3ff9b9ee82ae281a71f697db6f19f82ad62c",
+      "role": "appraised-core-source-registry"
+    }
+  ],
+  "registryFingerprint": "fnv1a32-e6c34818"
+}

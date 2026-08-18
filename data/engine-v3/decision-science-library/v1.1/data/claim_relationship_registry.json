@@ -1,0 +1,425 @@
+{
+  "schemaVersion": "1.1.0",
+  "status": "candidate-second-pass-required",
+  "rankingInfluence": "none",
+  "purpose": "Consolidate cross-track constructs and prevent multiple policy contributions from claims describing the same evidence or downside.",
+  "relationshipVocabulary": [
+    "consolidates",
+    "supports",
+    "constrains",
+    "depends-on",
+    "conflicts-with",
+    "nonportable-from"
+  ],
+  "contributionRule": "A decision evidence atom has one primary contribution path. Member claims may constrain, calibrate, explain or change confidence, but cannot each add an independent score contribution unless a dependency audit proves distinct constructs.",
+  "constructs": [
+    {
+      "constructId": "CST-PREFERENCE-PRIOR-001",
+      "name": "Preference and segment prior",
+      "memberClaimRefs": [
+        "CLM-BEH-010",
+        "CLM-BEH-016",
+        "CLM-BEH-017",
+        "CLM-BEH-018",
+        "CLM-BEH-019",
+        "CLM-BEH-020",
+        "CLM-HOS-020",
+        "CLM-HOS-021",
+        "CLM-HOS-022",
+        "CLM-HOS-023",
+        "CLM-TRV-017",
+        "CLM-ACC-009",
+        "CLM-ACC-027"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "explicit hard constraint or preference; otherwise a weak, uncertainty-labelled prior",
+      "antiDoubleCount": "Trip purpose, party label, profile and demographic context cannot each add a bonus for the same inferred need.",
+      "promotionRequirement": "Explicit-preference override and subgroup fairness tests"
+    },
+    {
+      "constructId": "CST-MISSINGNESS-001",
+      "name": "Missingness, ambiguity and evidence readiness",
+      "memberClaimRefs": [
+        "CLM-BEH-009",
+        "CLM-BEH-027",
+        "CLM-HOS-029",
+        "CLM-TRV-012",
+        "CLM-TRV-013",
+        "CLM-ACC-035",
+        "CLM-SEA-009",
+        "CLM-SEA-010",
+        "CLM-SEA-024",
+        "CLM-SEA-029"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "observation confidence and decision readiness",
+      "antiDoubleCount": "Unknown evidence cannot also act as a negative quality or risk event unless a separately observed downside exists.",
+      "promotionRequirement": "Missing/false/present metamorphic suite and selective-prediction curve"
+    },
+    {
+      "constructId": "CST-CATEGORY-001",
+      "name": "Category expectation and classification provenance",
+      "memberClaimRefs": [
+        "CLM-HOS-001",
+        "CLM-HOS-002",
+        "CLM-HOS-003",
+        "CLM-TRV-005",
+        "CLM-ACC-001",
+        "CLM-ACC-003",
+        "CLM-SEA-002"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "scheme-specific expectation context and peer eligibility",
+      "antiDoubleCount": "Stars, the facilities implied by the scheme and individually observed amenities cannot be rewarded three times.",
+      "promotionRequirement": "Scheme/version provenance, feature-level fit and cross-system holdout"
+    },
+    {
+      "constructId": "CST-REVIEWS-001",
+      "name": "Review evidence and uncertainty",
+      "memberClaimRefs": [
+        "CLM-BEH-027",
+        "CLM-BEH-028",
+        "CLM-HOS-025",
+        "CLM-HOS-026",
+        "CLM-HOS-027",
+        "CLM-HOS-028",
+        "CLM-HOS-029",
+        "CLM-TRV-014",
+        "CLM-TRV-015",
+        "CLM-TRV-016",
+        "CLM-ACC-017",
+        "CLM-ACC-018",
+        "CLM-ACC-019",
+        "CLM-ACC-020"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "aspect-level experienced-quality evidence with provenance and uncertainty",
+      "antiDoubleCount": "Overall rating, count, topics and provenance are inputs to one evidence object, not independent quality bonuses.",
+      "promotionRequirement": "Platform/time holdout, denominator checks, aspect annotation and calibration"
+    },
+    {
+      "constructId": "CST-PRICE-REFERENCE-001",
+      "name": "Price state, peer distribution and reference point",
+      "memberClaimRefs": [
+        "CLM-BEH-007",
+        "CLM-BEH-014",
+        "CLM-TRV-001",
+        "CLM-TRV-005",
+        "CLM-TRV-006",
+        "CLM-TRV-007",
+        "CLM-ACC-006",
+        "CLM-ACC-034",
+        "CLM-SEA-001",
+        "CLM-SEA-003",
+        "CLM-SEA-004",
+        "CLM-SEA-005",
+        "CLM-SEA-006",
+        "CLM-SEA-007",
+        "CLM-SEA-008",
+        "CLM-SEA-027",
+        "CLM-SEA-028"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "complete total placed in a compatible, coverage-labelled distribution",
+      "antiDoubleCount": "Budget under-run, peer percentile, displayed anchor and absolute saving must remain distinct and cannot all reward the same low price.",
+      "promotionRequirement": "Canonical histories, compatible peer tiers and anchor-provenance tests"
+    },
+    {
+      "constructId": "CST-CANCELLATION-001",
+      "name": "Cancellation loss, option value and preference",
+      "memberClaimRefs": [
+        "CLM-BEH-008",
+        "CLM-BEH-009",
+        "CLM-BEH-011",
+        "CLM-BEH-012",
+        "CLM-TRV-011",
+        "CLM-TRV-012"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "time-indexed monetary loss scenarios followed by separately calibrated risk/liquidity adjustment",
+      "antiDoubleCount": "Refundability bonus, expected loss, loss aversion and regret cannot be added as four versions of the same downside.",
+      "promotionRequirement": "Exact schedule parser, date-certainty sensitivity and consented outcome calibration"
+    },
+    {
+      "constructId": "CST-DURATION-001",
+      "name": "Duration and recurring exposure",
+      "memberClaimRefs": [
+        "CLM-BEH-011",
+        "CLM-HOS-008",
+        "CLM-HOS-024",
+        "CLM-HOS-025",
+        "CLM-TRV-018",
+        "CLM-ACC-012",
+        "CLM-ACC-023",
+        "CLM-ACC-024",
+        "CLM-SEA-003",
+        "CLM-SEA-028"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "explicit fixed, per-night, per-use, threshold or diminishing interaction",
+      "antiDoubleCount": "Stay length cannot multiply every comfort, location and risk component implicitly.",
+      "promotionRequirement": "One-to-28-night metamorphic series and prospective use/outcome data"
+    },
+    {
+      "constructId": "CST-GROUP-001",
+      "name": "Group fit, preferences and vetoes",
+      "memberClaimRefs": [
+        "CLM-BEH-018",
+        "CLM-BEH-019",
+        "CLM-BEH-020",
+        "CLM-HOS-020",
+        "CLM-HOS-021",
+        "CLM-HOS-023",
+        "CLM-TRV-017",
+        "CLM-ACC-013",
+        "CLM-ACC-014",
+        "CLM-ACC-022",
+        "CLM-ACC-025"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "per-member hard fit followed by an explicit aggregation rule",
+      "antiDoubleCount": "Party label and member-specific needs cannot both contribute the same preference; hard vetoes cannot be averaged away.",
+      "promotionRequirement": "Veto preservation, chooser/companion outcomes and group fairness metrics"
+    },
+    {
+      "constructId": "CST-DECISION-STATE-001",
+      "name": "Pareto frontier, near tie and abstention",
+      "memberClaimRefs": [
+        "CLM-BEH-005",
+        "CLM-BEH-029",
+        "CLM-HOS-029",
+        "CLM-HOS-030",
+        "CLM-TRV-020",
+        "CLM-TRV-021",
+        "CLM-ACC-035",
+        "CLM-SEA-024",
+        "CLM-SEA-029",
+        "CLM-SEA-030"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "one decision-state machine after eligibility, sensitivity and robustness",
+      "antiDoubleCount": "Near tie, insufficient evidence, no eligible option and excessive risk are distinct states, not score penalties.",
+      "promotionRequirement": "Frozen state labels, abstention precision/coverage and robustness tests"
+    },
+    {
+      "constructId": "CST-CALIBRATION-001",
+      "name": "Confidence, reliance and outcome calibration",
+      "memberClaimRefs": [
+        "CLM-BEH-021",
+        "CLM-BEH-022",
+        "CLM-BEH-024",
+        "CLM-BEH-028",
+        "CLM-HOS-029",
+        "CLM-TRV-021",
+        "CLM-SEA-022",
+        "CLM-SEA-023",
+        "CLM-SEA-024",
+        "CLM-SEA-029",
+        "CLM-SEA-030"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "defined outcome probabilities and separate reliance metrics",
+      "antiDoubleCount": "Literature certainty, observation confidence and decision calibration are separate quantities.",
+      "promotionRequirement": "Brier/reliability, hard-error, drift and subgroup validation"
+    },
+    {
+      "constructId": "CST-OFFER-FRESHNESS-001",
+      "name": "Exact offer identity, delivery and recheck",
+      "memberClaimRefs": [
+        "CLM-HOS-007",
+        "CLM-HOS-019",
+        "CLM-TRV-001",
+        "CLM-TRV-013",
+        "CLM-ACC-002",
+        "CLM-ACC-004",
+        "CLM-ACC-005",
+        "CLM-ACC-010",
+        "CLM-ACC-011",
+        "CLM-ACC-016",
+        "CLM-SEA-005",
+        "CLM-SEA-025",
+        "CLM-SEA-027"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "property × room × rate-offer identity plus decision-level recheck diff",
+      "antiDoubleCount": "Freshness changes confidence/bookability; it is not a quality bonus and cannot hide a substituted room or policy.",
+      "promotionRequirement": "Identity-swap, term-change, sellout and recheck failure tests"
+    },
+    {
+      "constructId": "CST-LOW-EFFORT-001",
+      "name": "Adaptive low-effort elicitation",
+      "memberClaimRefs": [
+        "CLM-BEH-001",
+        "CLM-BEH-003",
+        "CLM-BEH-023",
+        "CLM-HOS-020",
+        "CLM-HOS-021",
+        "CLM-HOS-022",
+        "CLM-TRV-009",
+        "CLM-TRV-011",
+        "CLM-ACC-010",
+        "CLM-ACC-035"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "provider/provenance retrieval first, then one question with material expected decision value",
+      "antiDoubleCount": "The Library's full facet schema must not become a mandatory questionnaire.",
+      "promotionRequirement": "Question-value, burden, error and correction evaluation"
+    },
+    {
+      "constructId": "CST-ACCOMMODATION-PRODUCT-001",
+      "name": "Accommodation product type, allocation and scheme",
+      "memberClaimRefs": [
+        "CLM-ACC-001",
+        "CLM-ACC-002",
+        "CLM-ACC-003",
+        "CLM-ACC-004",
+        "CLM-ACC-005",
+        "CLM-SEA-002"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "type selects the evidence ontology and compatible cohort; exact sellable-space and allocation identity establish the product",
+      "antiDoubleCount": "Type, scheme grade, allocation mode and unit identity are context and integrity evidence, never four independent quality bonuses.",
+      "promotionRequirement": "Cross-type label-null, exact-unit swap, allocation-range and cross-scheme tests"
+    },
+    {
+      "constructId": "CST-PRIVACY-SHAREDNESS-001",
+      "name": "Private and shared space fit",
+      "memberClaimRefs": [
+        "CLM-ACC-008",
+        "CLM-ACC-009",
+        "CLM-ACC-013",
+        "CLM-ACC-022",
+        "CLM-ACC-025",
+        "CLM-ACC-027",
+        "CLM-ACC-028"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "per-space exclusivity and temporal access matched to explicit party requirements",
+      "antiDoubleCount": "Private room, bathroom, entrance, host presence and dorm labels cannot each reward the same privacy preference.",
+      "promotionRequirement": "Per-space isolation, paired-profile, curfew and capacity-preserving tests"
+    },
+    {
+      "constructId": "CST-OPERATIONS-FACILITIES-001",
+      "name": "Operational delivery and usable facilities",
+      "memberClaimRefs": [
+        "CLM-ACC-007",
+        "CLM-ACC-010",
+        "CLM-ACC-012",
+        "CLM-ACC-016",
+        "CLM-ACC-022",
+        "CLM-ACC-023",
+        "CLM-ACC-033",
+        "CLM-ACC-034"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "exact-offer service calendar, operating constraints and party-specific usable facility set",
+      "antiDoubleCount": "A facility catalogue, included benefit, service cadence and property label cannot independently reward one promised service.",
+      "promotionRequirement": "Offer-link, calendar, closure, arrival-boundary and fee-partition metamorphic tests"
+    },
+    {
+      "constructId": "CST-ACCESS-SAFETY-EVIDENCE-001",
+      "name": "Accessibility, safety and belongings evidence",
+      "memberClaimRefs": [
+        "CLM-ACC-014",
+        "CLM-ACC-015",
+        "CLM-ACC-021",
+        "CLM-ACC-026",
+        "CLM-ACC-029",
+        "CLM-ACC-030",
+        "CLM-ACC-031"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "feature-and-route compatibility or scoped evidence sufficiency; never an opaque safety score",
+      "antiDoubleCount": "Badges, type, self-report, reviews and appearance cannot separately imply compliance, trustworthiness or safety.",
+      "promotionRequirement": "End-to-end route, unknown-vs-fail, portrait-invariance, equipment compatibility and official-warning tests"
+    },
+    {
+      "constructId": "CST-OUTDOOR-STAY-001",
+      "name": "Camping, glamping and outdoor-site fit",
+      "memberClaimRefs": [
+        "CLM-ACC-029",
+        "CLM-ACC-030",
+        "CLM-ACC-031",
+        "CLM-ACC-032"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "exact site/unit geometry, utilities, sanitation, weather protection and operating state",
+      "antiDoubleCount": "Camping/glamping label, hookup icon, bathroom icon and nature/luxury copy cannot substitute for exact capabilities.",
+      "promotionRequirement": "Vehicle boundary, connector/amperage, sanitation route, hazard recheck and label-null tests"
+    },
+    {
+      "constructId": "CST-SEASON-MARKET-REGIME-001",
+      "name": "Local nightly season and market regime",
+      "memberClaimRefs": [
+        "CLM-SEA-001",
+        "CLM-SEA-002",
+        "CLM-SEA-003",
+        "CLM-SEA-004",
+        "CLM-SEA-005",
+        "CLM-SEA-006",
+        "CLM-SEA-007",
+        "CLM-SEA-008",
+        "CLM-SEA-013",
+        "CLM-SEA-017",
+        "CLM-SEA-020",
+        "CLM-SEA-021",
+        "CLM-SEA-022",
+        "CLM-SEA-023",
+        "CLM-SEA-028"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "night-specific compatible conditional distributions with explicit uncertainty and MIXED aggregation",
+      "antiDoubleCount": "Month, weekday, lead time, peer percentile, type and regional prior are covariates of one local regime, not additive deal bonuses.",
+      "promotionRequirement": "Rolling-origin, city/microzone/property/type holdouts, calibration and no-leakage tests"
+    },
+    {
+      "constructId": "CST-AVAILABILITY-CENSORING-001",
+      "name": "Availability, censoring and latent demand",
+      "memberClaimRefs": [
+        "CLM-SEA-009",
+        "CLM-SEA-010",
+        "CLM-SEA-011",
+        "CLM-SEA-012",
+        "CLM-SEA-024",
+        "CLM-SEA-029"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "granular observed state first; latent demand only under an identified and validated censoring model",
+      "antiDoubleCount": "Sold-out evidence, market compression, booking pace and unconstrained demand cannot each amplify the same missing inventory.",
+      "promotionRequirement": "Provider-outage, restriction, available-only, synthetic recovery, drift and UNKNOWN tests"
+    },
+    {
+      "constructId": "CST-EVENT-WEATHER-CONTEXT-001",
+      "name": "Event, calendar and weather context",
+      "memberClaimRefs": [
+        "CLM-SEA-013",
+        "CLM-SEA-014",
+        "CLM-SEA-015",
+        "CLM-SEA-016",
+        "CLM-SEA-017",
+        "CLM-SEA-018",
+        "CLM-SEA-019"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "versioned covariates and attributable local counterfactual impact, otherwise no event/weather regime claim",
+      "antiDoubleCount": "Calendar presence, venue distance, weather, observed price and availability pressure cannot each create an event-spike bonus.",
+      "promotionRequirement": "Cancelled/null/overlapping event, catchment, issue-time, grid and feature-ablation tests"
+    },
+    {
+      "constructId": "CST-PROVENANCE-LAWFUL-USE-001",
+      "name": "Feature provenance and lawful data use",
+      "memberClaimRefs": [
+        "CLM-ACC-014",
+        "CLM-ACC-015",
+        "CLM-ACC-017",
+        "CLM-SEA-025",
+        "CLM-SEA-026",
+        "CLM-SEA-030"
+      ],
+      "relationship": "consolidates",
+      "primaryContributionPath": "hard dataset/feature admissibility and replay lineage; explanatory confidence only after admission",
+      "antiDoubleCount": "Provenance, licence and confidence do not prove truth or add utility, and one lawful source cannot be counted again through aliases.",
+      "promotionRequirement": "Expired-purpose, deletion propagation, lineage/hash mutation and ranking-isolation tests"
+    }
+  ]
+}

@@ -1,0 +1,5389 @@
+{
+  "schemaVersion": "1.1.0",
+  "pipelineId": "stayopti-candidate-registry-extractor-v1.1",
+  "status": "candidate-second-pass-required",
+  "rankingInfluence": "none",
+  "generatedBy": "scripts/build_candidate_registries.mjs",
+  "deterministic": true,
+  "inputs": [
+    {
+      "path": "research/behavioral_decision_science.md",
+      "sha256": "678d71a2af68e2867340e041e9cfb2fd260d16b1f03f7f219dc3e1b3d44dab36",
+      "sources": 35,
+      "claims": 29
+    },
+    {
+      "path": "research/hospitality_guest_experience.md",
+      "sha256": "a0b0e531cec4322c358e2dc1890dc5c07574002afa0517383fef5204a3045503",
+      "sources": 34,
+      "claims": 30
+    },
+    {
+      "path": "research/travel_value_risk.md",
+      "sha256": "41f17335f9e1978f0bce8221b21d6822c1d1d8277314ffe11e7b3d1be38c5ede",
+      "sources": 35,
+      "claims": 21
+    },
+    {
+      "path": "research/season_local_market_context.md",
+      "sha256": "ccef84e512295b7d2a1f688631aa2c18119daa226be05accfb0652d47745aec3",
+      "sources": 42,
+      "claims": 30
+    },
+    {
+      "path": "research/accommodation_types_decision_science.md",
+      "sha256": "e3714d3ca970ebb8fac83f37ad1a1feab66cc5123a942d1c50daae3d5c9a5c10",
+      "sources": 48,
+      "claims": 35
+    }
+  ],
+  "registryType": "global-candidate-source-alias-registry",
+  "expectedCount": 179,
+  "actualCount": 179,
+  "trackAliasCount": 194,
+  "globalSources": [
+    {
+      "globalSourceId": "GSRC-4cbbc0880320c66b",
+      "identityKey": "doi:10.1002/bdm.414",
+      "canonicalUrl": "https://doi.org/10.1002/bdm.414",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-013",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S13",
+          "year": 2002,
+          "sourceType": "scale development and validation",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2002
+        ],
+        "sourceTypes": [
+          "scale development and validation"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-fd357a5cdb5e5a41",
+      "identityKey": "doi:10.1002/jcpy.1047",
+      "canonicalUrl": "https://doi.org/10.1002/jcpy.1047",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-011",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S11",
+          "year": 2018,
+          "sourceType": "critical review",
+          "certainty": "X"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "critical review"
+        ],
+        "certainties": [
+          "X"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-14de2e312aa93bec",
+      "identityKey": "doi:10.1006/obhd.1996.0013",
+      "canonicalUrl": "https://doi.org/10.1006/obhd.1996.0013",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-015",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S15",
+          "year": 1996,
+          "sourceType": "controlled experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1996
+        ],
+        "sourceTypes": [
+          "controlled experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-3332740802d3d642",
+      "identityKey": "doi:10.1007/s11002-020-09546-4",
+      "canonicalUrl": "https://doi.org/10.1007/s11002-020-09546-4",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-035",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "peer-reviewed-observational-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "peer-reviewed-observational-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-2ab03996bced4b82",
+      "identityKey": "doi:10.1007/s11129-017-9194-9",
+      "canonicalUrl": "https://doi.org/10.1007/s11129-017-9194-9",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-033",
+          "track": "travel-value-risk",
+          "sourceAlias": "S33",
+          "year": 2018,
+          "sourceType": "structural rating-aggregation study",
+          "certainty": "A-adjacent"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "structural rating-aggregation study"
+        ],
+        "certainties": [
+          "A-adjacent"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-a19f8c66baad8d06",
+      "identityKey": "doi:10.1007/s11257-011-9117-5",
+      "canonicalUrl": "https://doi.org/10.1007/s11257-011-9117-5",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-032",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S32",
+          "year": 2012,
+          "sourceType": "methodological review and experiments",
+          "certainty": "A/B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2012
+        ],
+        "sourceTypes": [
+          "methodological review and experiments"
+        ],
+        "certainties": [
+          "A/B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-4bce80df093181a2",
+      "identityKey": "doi:10.1007/s11747-019-00666-6",
+      "canonicalUrl": "https://doi.org/10.1007/s11747-019-00666-6",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-019",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S19",
+          "year": 2020,
+          "sourceType": "meta-analysis",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "meta-analysis"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6f88083a59db5fe9",
+      "identityKey": "doi:10.1007/s12525-014-0161-y",
+      "canonicalUrl": "https://doi.org/10.1007/s12525-014-0161-y",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-019",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2015,
+          "sourceType": "exploratory_conjoint_case",
+          "certainty": "low_moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "exploratory_conjoint_case"
+        ],
+        "certainties": [
+          "low_moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e59a127d2d470697",
+      "identityKey": "doi:10.1007/s40558-018-0106-y",
+      "canonicalUrl": "https://doi.org/10.1007/s40558-018-0106-y",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-023",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S23",
+          "year": 2018,
+          "sourceType": "observational tourism group study",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "observational tourism group study"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-32879dd3eb7bbc91",
+      "identityKey": "doi:10.1016/j.annals.2011.02.007",
+      "canonicalUrl": "https://doi.org/10.1016/j.annals.2011.02.007",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-019",
+          "track": "travel-value-risk",
+          "sourceAlias": "S19",
+          "year": 2011,
+          "sourceType": "GPS tourist activity study",
+          "certainty": "A-direct/observed"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2011
+        ],
+        "sourceTypes": [
+          "GPS tourist activity study"
+        ],
+        "certainties": [
+          "A-direct/observed"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8f1a1b356092b5fc",
+      "identityKey": "doi:10.1016/j.annals.2022.103495",
+      "canonicalUrl": "https://doi.org/10.1016/j.annals.2022.103495",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-027",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2022,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-008",
+          "track": "travel-value-risk",
+          "sourceAlias": "S08",
+          "year": 2022,
+          "sourceType": "time-varying hotel model",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2022
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "time-varying hotel model"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-70ed559952e5ff5f",
+      "identityKey": "doi:10.1016/j.csda.2011.03.006",
+      "canonicalUrl": "https://doi.org/10.1016/j.csda.2011.03.006",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-036",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2011,
+          "sourceType": "primary-methods-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2011
+        ],
+        "sourceTypes": [
+          "primary-methods-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-b5f78947cbb8782e",
+      "identityKey": "doi:10.1016/j.enbuild.2017.05.043",
+      "canonicalUrl": "https://doi.org/10.1016/j.enbuild.2017.05.043",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-027",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "scientific_review",
+          "certainty": "moderate_high_indirect"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "scientific_review"
+        ],
+        "certainties": [
+          "moderate_high_indirect"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-f7f76408f6e3c652",
+      "identityKey": "doi:10.1016/j.heliyon.2021.e08222",
+      "canonicalUrl": "https://doi.org/10.1016/j.heliyon.2021.e08222",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-037",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "peer-reviewed-systematic-review",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "peer-reviewed-systematic-review"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-7a5892111c36fb66",
+      "identityKey": "doi:10.1016/j.heliyon.2023.e16337",
+      "canonicalUrl": "https://doi.org/10.1016/j.heliyon.2023.e16337",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-013",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "observational_hotel_data",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-014",
+          "track": "travel-value-risk",
+          "sourceAlias": "S14",
+          "year": 2023,
+          "sourceType": "hotel stars-versus-reviews study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "observational_hotel_data",
+          "hotel stars-versus-reviews study"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9a8713495f94c2f7",
+      "identityKey": "doi:10.1016/j.ijforecast.2010.10.004",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijforecast.2010.10.004",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-016",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2011,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2011
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ba3ef9212280ab2d",
+      "identityKey": "doi:10.1016/j.ijforecast.2019.07.001",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijforecast.2019.07.001",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-038",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2020,
+          "sourceType": "primary-methods-research",
+          "certainty": "moderate-high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "primary-methods-research"
+        ],
+        "certainties": [
+          "moderate-high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-5ec513bc25464996",
+      "identityKey": "doi:10.1016/j.ijforecast.2021.03.004",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijforecast.2021.03.004",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-037",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "primary-methods-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "primary-methods-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9701d643576237e7",
+      "identityKey": "doi:10.1016/j.ijhm.2010.04.008",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2010.04.008",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-025",
+          "track": "travel-value-risk",
+          "sourceAlias": "S25",
+          "year": 2011,
+          "sourceType": "hotel booking experiment",
+          "certainty": "B-direct/experiment"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2011
+        ],
+        "sourceTypes": [
+          "hotel booking experiment"
+        ],
+        "certainties": [
+          "B-direct/experiment"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e78669ee4092c30c",
+      "identityKey": "doi:10.1016/j.ijhm.2011.06.003",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2011.06.003",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-022",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2012,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-003",
+          "track": "travel-value-risk",
+          "sourceAlias": "S03",
+          "year": 2012,
+          "sourceType": "multi-city hotel panel",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2012
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "multi-city hotel panel"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-4c191291d37b4b9e",
+      "identityKey": "doi:10.1016/j.ijhm.2012.01.008",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2012.01.008",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-032",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2012,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2012
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-374532b13c36e643",
+      "identityKey": "doi:10.1016/j.ijhm.2014.01.006",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2014.01.006",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-033",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2014,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2014
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-b802e45339b1a6fc",
+      "identityKey": "doi:10.1016/j.ijhm.2014.10.013",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2014.10.013",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-014",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2015,
+          "sourceType": "large_review_text_analysis",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "large_review_text_analysis"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9caa8b6139e94c3d",
+      "identityKey": "doi:10.1016/j.ijhm.2015.06.001",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2015.06.001",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-020",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S20",
+          "year": 2015,
+          "sourceType": "hotel-specific discrete-choice study",
+          "certainty": "B/C"
+        },
+        {
+          "sourceId": "SRC-TRV-016",
+          "track": "travel-value-risk",
+          "sourceAlias": "S16",
+          "year": 2015,
+          "sourceType": "hotel discrete-choice experiment",
+          "certainty": "B-direct/stated"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "hotel-specific discrete-choice study",
+          "hotel discrete-choice experiment"
+        ],
+        "certainties": [
+          "B/C",
+          "B-direct/stated"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-2558d1ede44f8a65",
+      "identityKey": "doi:10.1016/j.ijhm.2015.06.009",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2015.06.009",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-029",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2015,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-013",
+          "track": "travel-value-risk",
+          "sourceAlias": "S13",
+          "year": 2015,
+          "sourceType": "booking quantile regression",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "booking quantile regression"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-188863def601ea7d",
+      "identityKey": "doi:10.1016/j.ijhm.2016.03.003",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2016.03.003",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-015",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2016,
+          "sourceType": "review_text_mining",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2016
+        ],
+        "sourceTypes": [
+          "review_text_mining"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-5e98bcab794f0387",
+      "identityKey": "doi:10.1016/j.ijhm.2017.05.002",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2017.05.002",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-025",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-006",
+          "track": "travel-value-risk",
+          "sourceAlias": "S06",
+          "year": 2017,
+          "sourceType": "daily hotel-rate panel",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "daily hotel-rate panel"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-db112c53f3d2e5d4",
+      "identityKey": "doi:10.1016/j.ijhm.2017.09.001",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2017.09.001",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-024",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-005",
+          "track": "travel-value-risk",
+          "sourceAlias": "S05",
+          "year": 2017,
+          "sourceType": "hotel pricing-behavior study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "hotel pricing-behavior study"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-445d2da95fe18a6b",
+      "identityKey": "doi:10.1016/j.ijhm.2018.04.004",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2018.04.004",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-039",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "peer-reviewed-review-text-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "peer-reviewed-review-text-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-07080561c55761a8",
+      "identityKey": "doi:10.1016/j.ijhm.2018.12.014",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2018.12.014",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-028",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-011",
+          "track": "travel-value-risk",
+          "sourceAlias": "S11",
+          "year": 2019,
+          "sourceType": "multi-country quantile hotel study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "multi-country quantile hotel study"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-221e2d887ae87fb5",
+      "identityKey": "doi:10.1016/j.ijhm.2019.01.007",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2019.01.007",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-030",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-d244323ea8891ca1",
+      "identityKey": "doi:10.1016/j.ijhm.2019.102414",
+      "canonicalUrl": "https://doi.org/10.1016/j.ijhm.2019.102414",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-012",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2020,
+          "sourceType": "primary_sem",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "primary_sem"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-12a614d0a946f89a",
+      "identityKey": "doi:10.1016/j.jcps.2014.08.002",
+      "canonicalUrl": "https://doi.org/10.1016/j.jcps.2014.08.002",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-004",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S04",
+          "year": 2015,
+          "sourceType": "conceptual review and meta-analysis",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "conceptual review and meta-analysis"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9c1be6843aa670da",
+      "identityKey": "doi:10.1016/j.jhtm.2020.08.014",
+      "canonicalUrl": "https://doi.org/10.1016/j.jhtm.2020.08.014",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-017",
+          "track": "travel-value-risk",
+          "sourceAlias": "S17",
+          "year": 2020,
+          "sourceType": "latent-class hotel conjoint",
+          "certainty": "B-direct/stated"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "latent-class hotel conjoint"
+        ],
+        "certainties": [
+          "B-direct/stated"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-933f27385d872db5",
+      "identityKey": "doi:10.1016/j.jort.2017.01.005",
+      "canonicalUrl": "https://doi.org/10.1016/j.jort.2017.01.005",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-047",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "peer-reviewed-mixed-method-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "peer-reviewed-mixed-method-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8c60eea2a141029a",
+      "identityKey": "doi:10.1016/j.obhdp.2018.12.005",
+      "canonicalUrl": "https://doi.org/10.1016/j.obhdp.2018.12.005",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-025",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S25",
+          "year": 2019,
+          "sourceType": "multi-study controlled experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "multi-study controlled experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-30b44e1bd91688cc",
+      "identityKey": "doi:10.1016/j.tmp.2015.08.004",
+      "canonicalUrl": "https://doi.org/10.1016/j.tmp.2015.08.004",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-021",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2015,
+          "sourceType": "demographic_review_analysis",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "demographic_review_analysis"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9a1fbef68fbbce50",
+      "identityKey": "doi:10.1016/j.tourman.2007.12.001",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2007.12.001",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-022",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S22",
+          "year": 2008,
+          "sourceType": "travel-specific dyadic field study",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2008
+        ],
+        "sourceTypes": [
+          "travel-specific dyadic field study"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ba24257babfdf659",
+      "identityKey": "doi:10.1016/j.tourman.2009.08.010",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2009.08.010",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-008",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2010,
+          "sourceType": "primary_survey",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2010
+        ],
+        "sourceTypes": [
+          "primary_survey"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-13813b38e349d0d3",
+      "identityKey": "doi:10.1016/j.tourman.2016.01.013",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2016.01.013",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-040",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2016,
+          "sourceType": "peer-reviewed-observational-and-experimental-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2016
+        ],
+        "sourceTypes": [
+          "peer-reviewed-observational-and-experimental-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-d636e1880b7ca10a",
+      "identityKey": "doi:10.1016/j.tourman.2016.02.006",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2016.02.006",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-023",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2016,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-004",
+          "track": "travel-value-risk",
+          "sourceAlias": "S04",
+          "year": 2016,
+          "sourceType": "dynamic hedonic hotel study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2016
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "dynamic hedonic hotel study"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-db188161eb632810",
+      "identityKey": "doi:10.1016/j.tourman.2016.11.021",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2016.11.021",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-042",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "peer-reviewed-multi-city-observational-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "peer-reviewed-multi-city-observational-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-fcd601e9ee698def",
+      "identityKey": "doi:10.1016/j.tourman.2018.12.002",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2018.12.002",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-018",
+          "track": "travel-value-risk",
+          "sourceAlias": "S18",
+          "year": 2019,
+          "sourceType": "hotel-location stated choice",
+          "certainty": "B-direct/stated"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "hotel-location stated choice"
+        ],
+        "certainties": [
+          "B-direct/stated"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-85a667fc29394b10",
+      "identityKey": "doi:10.1016/j.tourman.2019.01.002",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2019.01.002",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-017",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "complaint_topic_model",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "complaint_topic_model"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ed67b74c81c8267c",
+      "identityKey": "doi:10.1016/j.tourman.2021.104341",
+      "canonicalUrl": "https://doi.org/10.1016/j.tourman.2021.104341",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-026",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "primary-research",
+          "certainty": "moderate-high"
+        },
+        {
+          "sourceId": "SRC-TRV-007",
+          "track": "travel-value-risk",
+          "sourceAlias": "S07",
+          "year": 2021,
+          "sourceType": "multi-channel booking study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "multi-channel booking study"
+        ],
+        "certainties": [
+          "moderate-high",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8800f913f4a3bdd1",
+      "identityKey": "doi:10.1016/j.tra.2018.01.016",
+      "canonicalUrl": "https://doi.org/10.1016/j.tra.2018.01.016",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-022",
+          "track": "travel-value-risk",
+          "sourceAlias": "S22",
+          "year": 2018,
+          "sourceType": "empirical transfer-penalty study",
+          "certainty": "B-transfer"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "empirical transfer-penalty study"
+        ],
+        "certainties": [
+          "B-transfer"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-fd76972c54f12a3e",
+      "identityKey": "doi:10.1016/s0169-2070(00)00065-0",
+      "canonicalUrl": "https://doi.org/10.1016/S0169-2070(00)00065-0",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-040",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2000,
+          "sourceType": "review-methods-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2000
+        ],
+        "sourceTypes": [
+          "review-methods-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-c3f7ebd552273524",
+      "identityKey": "doi:10.1016/s0169-2070(02)00011-0",
+      "canonicalUrl": "https://doi.org/10.1016/S0169-2070(02)00011-0",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-015",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2003,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        },
+        {
+          "sourceId": "SRC-TRV-002",
+          "track": "travel-value-risk",
+          "sourceAlias": "S02",
+          "year": 2003,
+          "sourceType": "hotel forecast comparison",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2003
+        ],
+        "sourceTypes": [
+          "primary-research",
+          "hotel forecast comparison"
+        ],
+        "certainties": [
+          "moderate",
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-64c4a8072d35fe53",
+      "identityKey": "doi:10.1017/bpp.2018.43",
+      "canonicalUrl": "https://doi.org/10.1017/bpp.2018.43",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-035",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S35",
+          "year": 2019,
+          "sourceType": "meta-analysis",
+          "certainty": "A/X"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "meta-analysis"
+        ],
+        "certainties": [
+          "A/X"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-584e2efca0cd75ae",
+      "identityKey": "doi:10.1037/0278-7393.14.3.534",
+      "canonicalUrl": "https://doi.org/10.1037/0278-7393.14.3.534",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-002",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S02",
+          "year": 1988,
+          "sourceType": "controlled experiments and simulation",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1988
+        ],
+        "sourceTypes": [
+          "controlled experiments and simulation"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8f21cd417cb6f89d",
+      "identityKey": "doi:10.1037/xge0000033",
+      "canonicalUrl": "https://doi.org/10.1037/xge0000033",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-024",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S24",
+          "year": 2015,
+          "sourceType": "multi-study controlled experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "multi-study controlled experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-81e90ce22290f073",
+      "identityKey": "doi:10.1038/sdata.2016.18",
+      "canonicalUrl": "https://doi.org/10.1038/sdata.2016.18",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-010",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2016,
+          "sourceType": "primary-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2016
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-2188d101675a2f69",
+      "identityKey": "doi:10.1073/pnas.1913678117",
+      "canonicalUrl": "https://doi.org/10.1073/pnas.1913678117",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-031",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S31",
+          "year": 2020,
+          "sourceType": "online and field experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "online and field experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-2ffdd91c48ee3c15",
+      "identityKey": "doi:10.1080/09669582.2018.1529771",
+      "canonicalUrl": "https://doi.org/10.1080/09669582.2018.1529771",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-035",
+          "track": "travel-value-risk",
+          "sourceAlias": "S35",
+          "year": 2018,
+          "sourceType": "multi-destination length-of-stay analysis",
+          "certainty": "B-context"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "multi-destination length-of-stay analysis"
+        ],
+        "certainties": [
+          "B-context"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-234d5cd32d0ded99",
+      "identityKey": "doi:10.1080/10548408.2015.1063826",
+      "canonicalUrl": "https://doi.org/10.1080/10548408.2015.1063826",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-017",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2015,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-3a8c47e11edde8c8",
+      "identityKey": "doi:10.1080/1528008x.2016.1230037",
+      "canonicalUrl": "https://doi.org/10.1080/1528008X.2016.1230037",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-011",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "primary_survey_sem",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "primary_survey_sem"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-d087134229910d4a",
+      "identityKey": "doi:10.1080/1528008x.2020.1814935",
+      "canonicalUrl": "https://doi.org/10.1080/1528008X.2020.1814935",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-030",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "hotel_amenity_observational",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "hotel_amenity_observational"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-737d5893510b2f45",
+      "identityKey": "doi:10.1086/208899",
+      "canonicalUrl": "https://doi.org/10.1086/208899",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-007",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S07",
+          "year": 1982,
+          "sourceType": "controlled experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1982
+        ],
+        "sourceTypes": [
+          "controlled experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e76b7745f41a8dd8",
+      "identityKey": "doi:10.1086/209088",
+      "canonicalUrl": "https://doi.org/10.1086/209088",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-021",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S21",
+          "year": 1987,
+          "sourceType": "couple decision experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1987
+        ],
+        "sourceTypes": [
+          "couple decision experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-06ef12d6c4f8e5e6",
+      "identityKey": "doi:10.1086/209506",
+      "canonicalUrl": "https://doi.org/10.1086/209506",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-006",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S06",
+          "year": 1997,
+          "sourceType": "controlled experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1997
+        ],
+        "sourceTypes": [
+          "controlled experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-c3b2c0155eb3a457",
+      "identityKey": "doi:10.1086/380283",
+      "canonicalUrl": "https://doi.org/10.1086/380283",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-005",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S05",
+          "year": 2004,
+          "sourceType": "controlled experiments and simulation",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2004
+        ],
+        "sourceTypes": [
+          "controlled experiments and simulation"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-5c6aff3a0510184d",
+      "identityKey": "doi:10.1086/651235",
+      "canonicalUrl": "https://doi.org/10.1086/651235",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-003",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S03",
+          "year": 2010,
+          "sourceType": "meta-analysis",
+          "certainty": "A/X"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2010
+        ],
+        "sourceTypes": [
+          "meta-analysis"
+        ],
+        "certainties": [
+          "A/X"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-4ec52663238ca655",
+      "identityKey": "doi:10.1098/rsos.181870",
+      "canonicalUrl": "https://doi.org/10.1098/rsos.181870",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-030",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S30",
+          "year": 2019,
+          "sourceType": "interdisciplinary review and framework",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "interdisciplinary review and framework"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-c68ecf580f6c26d8",
+      "identityKey": "doi:10.1108/09596111111167551",
+      "canonicalUrl": "https://doi.org/10.1108/09596111111167551",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-012",
+          "track": "travel-value-risk",
+          "sourceAlias": "S12",
+          "year": 2011,
+          "sourceType": "city hotel-price determinant study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2011
+        ],
+        "sourceTypes": [
+          "city hotel-price determinant study"
+        ],
+        "certainties": [
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-aa66bf38fa10c3dd",
+      "identityKey": "doi:10.1108/09604529910257920",
+      "canonicalUrl": "https://doi.org/10.1108/09604529910257920",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-010",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 1999,
+          "sourceType": "primary_survey_scale",
+          "certainty": "low_moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1999
+        ],
+        "sourceTypes": [
+          "primary_survey_scale"
+        ],
+        "certainties": [
+          "low_moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-7a396a702782854c",
+      "identityKey": "doi:10.1108/ijchm-03-2014-0145",
+      "canonicalUrl": "https://doi.org/10.1108/IJCHM-03-2014-0145",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-041",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2015,
+          "sourceType": "peer-reviewed-type-specific-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "peer-reviewed-type-specific-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-adfacb048958f5f6",
+      "identityKey": "doi:10.1108/ijchm-04-2022-0437",
+      "canonicalUrl": "https://doi.org/10.1108/IJCHM-04-2022-0437",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-045",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "peer-reviewed-observational-study",
+          "certainty": "moderate-contextual"
+        },
+        {
+          "sourceId": "SRC-HOS-033",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "matched_observational_reviews",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "peer-reviewed-observational-study",
+          "matched_observational_reviews"
+        ],
+        "certainties": [
+          "moderate-contextual",
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-72c4aedcd92fa53f",
+      "identityKey": "doi:10.1108/ijchm-05-2021-0659",
+      "canonicalUrl": "https://doi.org/10.1108/IJCHM-05-2021-0659",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-034",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2022,
+          "sourceType": "review_text_metadata_analysis",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2022
+        ],
+        "sourceTypes": [
+          "review_text_metadata_analysis"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-68ca082a33f09530",
+      "identityKey": "doi:10.1108/ijchm-06-2019-0581",
+      "canonicalUrl": "https://doi.org/10.1108/IJCHM-06-2019-0581",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-016",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2020,
+          "sourceType": "large_review_asymmetry_analysis",
+          "certainty": "moderate_high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "large_review_asymmetry_analysis"
+        ],
+        "certainties": [
+          "moderate_high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-59c8822bf0b996a2",
+      "identityKey": "doi:10.1108/ijchm-07-2020-0749",
+      "canonicalUrl": "https://doi.org/10.1108/IJCHM-07-2020-0749",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-034",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-7b5e2cec83d59314",
+      "identityKey": "doi:10.1108/ijcthr-03-2019-0048",
+      "canonicalUrl": "https://doi.org/10.1108/IJCTHR-03-2019-0048",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-029",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "systematic_review",
+          "certainty": "moderate_high_gap_evidence"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "systematic_review"
+        ],
+        "certainties": [
+          "moderate_high_gap_evidence"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-5980c7c4f1b75e28",
+      "identityKey": "doi:10.1108/jhti-11-2017-0015",
+      "canonicalUrl": "https://doi.org/10.1108/JHTI-11-2017-0015",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-024",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2018,
+          "sourceType": "business_traveler_sleep_survey",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "business_traveler_sleep_survey"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8034dc934ac702cc",
+      "identityKey": "doi:10.1108/yc-08-2017-00730",
+      "canonicalUrl": "https://doi.org/10.1108/YC-08-2017-00730",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-032",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2018,
+          "sourceType": "qualitative_interviews",
+          "certainty": "low_moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "qualitative_interviews"
+        ],
+        "certainties": [
+          "low_moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-f3e60b0f4e2cc83e",
+      "identityKey": "doi:10.1111/j.1937-5956.2007.tb00292.x",
+      "canonicalUrl": "https://doi.org/10.1111/j.1937-5956.2007.tb00292.x",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-019",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2007,
+          "sourceType": "primary-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2007
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-acaa53b790ac4798",
+      "identityKey": "doi:10.1137/1.9781611972771.42",
+      "canonicalUrl": "https://doi.org/10.1137/1.9781611972771.42",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-042",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2007,
+          "sourceType": "primary-methods-research",
+          "certainty": "moderate-high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2007
+        ],
+        "sourceTypes": [
+          "primary-methods-research"
+        ],
+        "certainties": [
+          "moderate-high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6d5b2c7364d95003",
+      "identityKey": "doi:10.1145/2523813",
+      "canonicalUrl": "https://doi.org/10.1145/2523813",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-041",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2014,
+          "sourceType": "systematic-methods-review",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2014
+        ],
+        "sourceTypes": [
+          "systematic-methods-review"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-0e69d670216178da",
+      "identityKey": "doi:10.1145/2764468.2764528",
+      "canonicalUrl": "https://doi.org/10.1145/2764468.2764528",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-031",
+          "track": "travel-value-risk",
+          "sourceAlias": "S31",
+          "year": 2015,
+          "sourceType": "Airbnb field experiments",
+          "certainty": "A-adjacent/field"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "Airbnb field experiments"
+        ],
+        "certainties": [
+          "A-adjacent/field"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-df98246d0d446a98",
+      "identityKey": "doi:10.1145/2858036.2858402",
+      "canonicalUrl": "https://doi.org/10.1145/2858036.2858402",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-033",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S33",
+          "year": 2016,
+          "sourceType": "field experiment",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2016
+        ],
+        "sourceTypes": [
+          "field experiment"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ca0f63784d3dfe9b",
+      "identityKey": "doi:10.1155/2012/270910",
+      "canonicalUrl": "https://doi.org/10.1155/2012/270910",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-020",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2012,
+          "sourceType": "review-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2012
+        ],
+        "sourceTypes": [
+          "review-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-43aa5ccffe5a51ee",
+      "identityKey": "doi:10.1175/1520-0493(1950)078<0001:vofeit>2.0.co;2",
+      "canonicalUrl": "https://doi.org/10.1175/1520-0493%281950%29078%3C0001%3AVOFEIT%3E2.0.CO%3B2",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-034",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S34",
+          "year": 1950,
+          "sourceType": "foundational scoring-rule paper",
+          "certainty": "F"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1950
+        ],
+        "sourceTypes": [
+          "foundational scoring-rule paper"
+        ],
+        "certainties": [
+          "F"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-0460d74bb10eca7e",
+      "identityKey": "doi:10.1177/0010880403260110",
+      "canonicalUrl": "https://doi.org/10.1177/0010880403260110",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-018",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2004,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2004
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-7afca1a0f1a91a6b",
+      "identityKey": "doi:10.1177/0018720810376055",
+      "canonicalUrl": "https://doi.org/10.1177/0018720810376055",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-029",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S29",
+          "year": 2010,
+          "sourceType": "integrative review",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2010
+        ],
+        "sourceTypes": [
+          "integrative review"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-69d459cf754ac872",
+      "identityKey": "doi:10.1177/0018720814547570",
+      "canonicalUrl": "https://doi.org/10.1177/0018720814547570",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-028",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S28",
+          "year": 2015,
+          "sourceType": "systematic review and model",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "systematic review and model"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-d2fa9466ca4443d2",
+      "identityKey": "doi:10.1177/0022243719851788",
+      "canonicalUrl": "https://doi.org/10.1177/0022243719851788",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-026",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S26",
+          "year": 2019,
+          "sourceType": "laboratory and field experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "laboratory and field experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ca10c680b12a8edb",
+      "identityKey": "doi:10.1177/0092070302250897",
+      "canonicalUrl": "https://doi.org/10.1177/0092070302250897",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-034",
+          "track": "travel-value-risk",
+          "sourceAlias": "S34",
+          "year": 2003,
+          "sourceType": "switching-cost typology study",
+          "certainty": "B-transfer"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2003
+        ],
+        "sourceTypes": [
+          "switching-cost typology study"
+        ],
+        "certainties": [
+          "B-transfer"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-081845d6530c2488",
+      "identityKey": "doi:10.1177/03611981241252837",
+      "canonicalUrl": "https://doi.org/10.1177/03611981241252837",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-023",
+          "track": "travel-value-risk",
+          "sourceAlias": "S23",
+          "year": 2024,
+          "sourceType": "vacation mode-choice study",
+          "certainty": "B-adjacent"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "vacation mode-choice study"
+        ],
+        "certainties": [
+          "B-adjacent"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-a0319554c2b053b7",
+      "identityKey": "doi:10.1177/1096348019854792",
+      "canonicalUrl": "https://doi.org/10.1177/1096348019854792",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-023",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "hotel_sleep_primary_study",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "hotel_sleep_primary_study"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9ecc16753a108c29",
+      "identityKey": "doi:10.1177/1354816620901953",
+      "canonicalUrl": "https://doi.org/10.1177/1354816620901953",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-035",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "primary-research",
+          "certainty": "moderate-high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate-high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-003b7c2b61462aa6",
+      "identityKey": "doi:10.1177/1354816620959901",
+      "canonicalUrl": "https://doi.org/10.1177/1354816620959901",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-020",
+          "track": "travel-value-risk",
+          "sourceAlias": "S20",
+          "year": 2022,
+          "sourceType": "tourism discrete-choice experiment",
+          "certainty": "B-direct/stated"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2022
+        ],
+        "sourceTypes": [
+          "tourism discrete-choice experiment"
+        ],
+        "certainties": [
+          "B-direct/stated"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-1977c9afc272c0ec",
+      "identityKey": "doi:10.1177/1467358420961544",
+      "canonicalUrl": "https://doi.org/10.1177/1467358420961544",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-022",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "hotel_sleep_primary_study",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "hotel_sleep_primary_study"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-864e23b4892fc215",
+      "identityKey": "doi:10.1177/1938965516686114",
+      "canonicalUrl": "https://doi.org/10.1177/1938965516686114",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-018",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "large_multilevel_review_analysis",
+          "certainty": "moderate_high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "large_multilevel_review_analysis"
+        ],
+        "certainties": [
+          "moderate_high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-c25c81f64a9d6937",
+      "identityKey": "doi:10.1198/016214506000001437",
+      "canonicalUrl": "https://doi.org/10.1198/016214506000001437",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-039",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2007,
+          "sourceType": "primary-methods-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2007
+        ],
+        "sourceTypes": [
+          "primary-methods-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-db57623c3fdb61ca",
+      "identityKey": "doi:10.1257/002205102320161311",
+      "canonicalUrl": "https://doi.org/10.1257/002205102320161311",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-014",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S14",
+          "year": 2002,
+          "sourceType": "critical review",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2002
+        ],
+        "sourceTypes": [
+          "critical review"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-3b5fad45e5d8a98b",
+      "identityKey": "doi:10.1257/aer.104.8.2421",
+      "canonicalUrl": "https://doi.org/10.1257/aer.104.8.2421",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-029",
+          "track": "travel-value-risk",
+          "sourceAlias": "S29",
+          "year": 2014,
+          "sourceType": "hotel review-manipulation study",
+          "certainty": "A-direct"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2014
+        ],
+        "sourceTypes": [
+          "hotel review-manipulation study"
+        ],
+        "certainties": [
+          "A-direct"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e8a194eeb0017a8a",
+      "identityKey": "doi:10.1257/jel.20221698",
+      "canonicalUrl": "https://doi.org/10.1257/jel.20221698",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-010",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S10",
+          "year": 2024,
+          "sourceType": "large meta-analysis",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "large meta-analysis"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-2354a7defca326ab",
+      "identityKey": "doi:10.1287/educ.1053.0019",
+      "canonicalUrl": "https://doi.org/10.1287/educ.1053.0019",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-001",
+          "track": "travel-value-risk",
+          "sourceAlias": "S01",
+          "year": 2005,
+          "sourceType": "OR tutorial",
+          "certainty": "A-theory"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2005
+        ],
+        "sourceTypes": [
+          "OR tutorial"
+        ],
+        "certainties": [
+          "A-theory"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-f573a07c82a12001",
+      "identityKey": "doi:10.1287/mksc.14.3.g161",
+      "canonicalUrl": "https://doi.org/10.1287/mksc.14.3.G161",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-017",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S17",
+          "year": 1995,
+          "sourceType": "empirical synthesis",
+          "certainty": "A"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1995
+        ],
+        "sourceTypes": [
+          "empirical synthesis"
+        ],
+        "certainties": [
+          "A"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-70d48af4db5cde8f",
+      "identityKey": "doi:10.1287/mksc.16.2.97",
+      "canonicalUrl": "https://doi.org/10.1287/mksc.16.2.97",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-016",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S16",
+          "year": 1997,
+          "sourceType": "formal model and choice experiment",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1997
+        ],
+        "sourceTypes": [
+          "formal model and choice experiment"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-b3a92abeb577069c",
+      "identityKey": "doi:10.1287/mksc.2021.1311",
+      "canonicalUrl": "https://doi.org/10.1287/mksc.2021.1311",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-036",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "peer-reviewed-field-experiment",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "peer-reviewed-field-experiment"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ab9c29e10242b6ba",
+      "identityKey": "doi:10.1287/mksc.2022.0275",
+      "canonicalUrl": "https://doi.org/10.1287/mksc.2022.0275",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-032",
+          "track": "travel-value-risk",
+          "sourceAlias": "S32",
+          "year": 2023,
+          "sourceType": "large-scale Airbnb field experiment",
+          "certainty": "A-adjacent/field"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "large-scale Airbnb field experiment"
+        ],
+        "certainties": [
+          "A-adjacent/field"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ad862e578d0d6f05",
+      "identityKey": "doi:10.1287/mksc.4.3.199",
+      "canonicalUrl": "https://doi.org/10.1287/mksc.4.3.199",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-018",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S18",
+          "year": 1985,
+          "sourceType": "foundational model and experiments",
+          "certainty": "F/B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1985
+        ],
+        "sourceTypes": [
+          "foundational model and experiments"
+        ],
+        "certainties": [
+          "F/B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8ba75de4fcffa349",
+      "identityKey": "doi:10.1287/mksc.8.3.248",
+      "canonicalUrl": "https://doi.org/10.1287/mksc.8.3.248",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-024",
+          "track": "travel-value-risk",
+          "sourceAlias": "S24",
+          "year": 1989,
+          "sourceType": "economic reservation theory",
+          "certainty": "A-theory"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1989
+        ],
+        "sourceTypes": [
+          "economic reservation theory"
+        ],
+        "certainties": [
+          "A-theory"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6c310fc1e85c25f3",
+      "identityKey": "doi:10.1287/mnsc.2016.2643",
+      "canonicalUrl": "https://doi.org/10.1287/mnsc.2016.2643",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-027",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S27",
+          "year": 2018,
+          "sourceType": "multi-study controlled experiments",
+          "certainty": "B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "multi-study controlled experiments"
+        ],
+        "certainties": [
+          "B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-633bacdfdb5a10a7",
+      "identityKey": "doi:10.1287/opre.1110.1012",
+      "canonicalUrl": "https://doi.org/10.1287/opre.1110.1012",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-021",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2012,
+          "sourceType": "primary-research",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2012
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-72dde1f1321b4ec9",
+      "identityKey": "doi:10.1287/serv.2022.0080",
+      "canonicalUrl": "https://doi.org/10.1287/serv.2022.0080",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-043",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "peer-reviewed-review-based-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "peer-reviewed-review-based-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-41b5e3c02ee1eec2",
+      "identityKey": "doi:10.1289/ehp10197",
+      "canonicalUrl": "https://doi.org/10.1289/EHP10197",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-026",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2022,
+          "sourceType": "systematic_review_meta_analysis",
+          "certainty": "high_empirical_indirect"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2022
+        ],
+        "sourceTypes": [
+          "systematic_review_meta_analysis"
+        ],
+        "certainties": [
+          "high_empirical_indirect"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-cc281c1190ff8717",
+      "identityKey": "doi:10.1515/eng-2024-0042",
+      "canonicalUrl": "https://doi.org/10.1515/eng-2024-0042",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-028",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "comprehensive_review",
+          "certainty": "low_moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "comprehensive_review"
+        ],
+        "certainties": [
+          "low_moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-155e8359aa83f553",
+      "identityKey": "doi:10.2307/1884324",
+      "canonicalUrl": "https://doi.org/10.2307/1884324",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-012",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S12",
+          "year": 1961,
+          "sourceType": "foundational theory and experiment",
+          "certainty": "F/B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1961
+        ],
+        "sourceTypes": [
+          "foundational theory and experiment"
+        ],
+        "certainties": [
+          "F/B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-13ff8bbc33afb321",
+      "identityKey": "doi:10.2307/1884852",
+      "canonicalUrl": "https://doi.org/10.2307/1884852",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-001",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S01",
+          "year": 1955,
+          "sourceType": "foundational theory",
+          "certainty": "F"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1955
+        ],
+        "sourceTypes": [
+          "foundational theory"
+        ],
+        "certainties": [
+          "F"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6e2fa2f3c3906059",
+      "identityKey": "doi:10.2307/2937956",
+      "canonicalUrl": "https://doi.org/10.2307/2937956",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-009",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S09",
+          "year": 1991,
+          "sourceType": "formal model and experiments",
+          "certainty": "F/B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1991
+        ],
+        "sourceTypes": [
+          "formal model and experiments"
+        ],
+        "certainties": [
+          "F/B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-bca7ac762bf73737",
+      "identityKey": "doi:10.25300/misq/2017/41.2.06",
+      "canonicalUrl": "https://doi.org/10.25300/MISQ/2017/41.2.06",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-030",
+          "track": "travel-value-risk",
+          "sourceAlias": "S30",
+          "year": 2017,
+          "sourceType": "review-selection model/empirics",
+          "certainty": "A-adjacent"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "review-selection model/empirics"
+        ],
+        "certainties": [
+          "A-adjacent"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ae88fc3e462aa8c8",
+      "identityKey": "doi:10.3386/w28878",
+      "canonicalUrl": "https://doi.org/10.3386/w28878",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-026",
+          "track": "travel-value-risk",
+          "sourceAlias": "S26",
+          "year": 2021,
+          "sourceType": "platform policy causal study",
+          "certainty": "A-adjacent/causal"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "platform policy causal study"
+        ],
+        "certainties": [
+          "A-adjacent/causal"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-66df1b6b241e5a78",
+      "identityKey": "doi:10.3389/fpsyg.2021.659481",
+      "canonicalUrl": "https://doi.org/10.3389/fpsyg.2021.659481",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-038",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "peer-reviewed-review-topic-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "peer-reviewed-review-topic-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-cb0405f82f4f099a",
+      "identityKey": "doi:10.3390/su132011303",
+      "canonicalUrl": "https://doi.org/10.3390/su132011303",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-044",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "peer-reviewed-review-topic-study",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "peer-reviewed-review-topic-study"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-4e9bf5b875464aa3",
+      "identityKey": "doi:10.3390/su142215090",
+      "canonicalUrl": "https://doi.org/10.3390/su142215090",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-048",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2022,
+          "sourceType": "peer-reviewed-survey-study",
+          "certainty": "contested-heterogeneous"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2022
+        ],
+        "sourceTypes": [
+          "peer-reviewed-survey-study"
+        ],
+        "certainties": [
+          "contested-heterogeneous"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-1b4dcf2824cd66a2",
+      "identityKey": "doi:10.37741/t.71.1.1",
+      "canonicalUrl": "https://doi.org/10.37741/t.71.1.1",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-020",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "review_penalty_reward_analysis",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "review_penalty_reward_analysis"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-66251b5d1a0c16ba",
+      "identityKey": "doi:10.5367/te.2012.0145",
+      "canonicalUrl": "https://doi.org/10.5367/te.2012.0145",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-031",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2012,
+          "sourceType": "primary-research",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2012
+        ],
+        "sourceTypes": [
+          "primary-research"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-cc55d95f149d117a",
+      "identityKey": "url:https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels",
+      "canonicalUrl": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-007",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-dataset",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026
+        ],
+        "sourceTypes": [
+          "official-dataset"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-32b719b8ea52bfbf",
+      "identityKey": "url:https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/enforcement-consumer-protection/coordinated-actions/accommodation-booking_en",
+      "canonicalUrl": "https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/enforcement-consumer-protection/coordinated-actions/accommodation-booking_en",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-014",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-enforcement-guidance",
+          "certainty": "high"
+        },
+        {
+          "sourceId": "SRC-TRV-028",
+          "track": "travel-value-risk",
+          "sourceAlias": "S28",
+          "year": "living; accessed 2026-08-17",
+          "sourceType": "official living enforcement page",
+          "certainty": "A-official"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026,
+          "living; accessed 2026-08-17"
+        ],
+        "sourceTypes": [
+          "official-enforcement-guidance",
+          "official living enforcement page"
+        ],
+        "certainties": [
+          "high",
+          "A-official"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ae1838cccd34ca46",
+      "identityKey": "url:https://community.wmo.int/site/knowledge-hub/programmes-and-initiatives/climate-services/wmo-climatological-normals",
+      "canonicalUrl": "https://community.wmo.int/site/knowledge-hub/programmes-and-initiatives/climate-services/wmo-climatological-normals",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-006",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-standard",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026
+        ],
+        "sourceTypes": [
+          "official-standard"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-fee9967f5daf6b54",
+      "identityKey": "url:https://ec.europa.eu/commission/presscorner/detail/en/ip_18_4453",
+      "canonicalUrl": "https://ec.europa.eu/commission/presscorner/detail/en/ip_18_4453",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-007",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2018,
+          "sourceType": "official-enforcement-communication",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "official-enforcement-communication"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-d9953b61e33c6169",
+      "identityKey": "url:https://ec.europa.eu/eurostat/cache/metadata/en/tour_occ_esms.htm",
+      "canonicalUrl": "https://ec.europa.eu/eurostat/cache/metadata/en/tour_occ_esms.htm",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-003",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-metadata",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026
+        ],
+        "sourceTypes": [
+          "official-metadata"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-16e2c5c56caabd44",
+      "identityKey": "url:https://ec.europa.eu/eurostat/cache/metadata/EN/tour_occ_esmssp_li.htm",
+      "canonicalUrl": "https://ec.europa.eu/eurostat/cache/metadata/EN/tour_occ_esmssp_li.htm",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-010",
+          "track": "travel-value-risk",
+          "sourceAlias": "S10",
+          "year": "living; accessed 2026-08-17",
+          "sourceType": "official living metadata standard",
+          "certainty": "A-official"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living; accessed 2026-08-17"
+        ],
+        "sourceTypes": [
+          "official living metadata standard"
+        ],
+        "certainties": [
+          "A-official"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-72ee8e87d2c1011c",
+      "identityKey": "url:https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Glossary%3ATourist_accommodation_establishment",
+      "canonicalUrl": "https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Glossary%3ATourist_accommodation_establishment",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-003",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "official-living-glossary",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "official-living-glossary"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-142372b9d847ae34",
+      "identityKey": "url:https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Seasonality_in_the_tourist_accommodation_sector",
+      "canonicalUrl": "https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Seasonality_in_the_tourist_accommodation_sector",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-001",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-statistics",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026
+        ],
+        "sourceTypes": [
+          "official-statistics"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ef4587db9b802dc0",
+      "identityKey": "url:https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Tourism_statistics_-_seasonality_at_regional_level",
+      "canonicalUrl": "https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Tourism_statistics_-_seasonality_at_regional_level",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-002",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-statistics",
+          "certainty": "high"
+        },
+        {
+          "sourceId": "SRC-TRV-009",
+          "track": "travel-value-risk",
+          "sourceAlias": "S09",
+          "year": "living; accessed 2026-08-17",
+          "sourceType": "official living statistics page",
+          "certainty": "A-official"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026,
+          "living; accessed 2026-08-17"
+        ],
+        "sourceTypes": [
+          "official-statistics",
+          "official living statistics page"
+        ],
+        "certainties": [
+          "high",
+          "A-official"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-02bf0c23a976bb80",
+      "identityKey": "url:https://eur-lex.europa.eu/eli/dir/1996/9/oj/eng",
+      "canonicalUrl": "https://eur-lex.europa.eu/eli/dir/1996/9/oj/eng",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-012",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 1996,
+          "sourceType": "authoritative-law",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1996
+        ],
+        "sourceTypes": [
+          "authoritative-law"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-7a39b65c8650b89b",
+      "identityKey": "url:https://eur-lex.europa.eu/eli/dir/2019/1024/oj/eng",
+      "canonicalUrl": "https://eur-lex.europa.eu/eli/dir/2019/1024/oj/eng",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-013",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "authoritative-law",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "authoritative-law"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9f51d91f0ac2d8b9",
+      "identityKey": "url:https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng",
+      "canonicalUrl": "https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-011",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2016,
+          "sourceType": "authoritative-law",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2016
+        ],
+        "sourceTypes": [
+          "authoritative-law"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6f3a44d4c071c942",
+      "identityKey": "url:https://eur-lex.europa.eu/eli/reg/2024/1028/oj/eng",
+      "canonicalUrl": "https://eur-lex.europa.eu/eli/reg/2024/1028/oj/eng",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-001",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "primary-law",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "primary-law"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ab13b1c5cd03b83c",
+      "identityKey": "url:https://europa.eu/youreurope/citizens/consumers/shopping/shopping-consumer-rights/index_en.htm",
+      "canonicalUrl": "https://europa.eu/youreurope/citizens/consumers/shopping/shopping-consumer-rights/index_en.htm",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-027",
+          "track": "travel-value-risk",
+          "sourceAlias": "S27",
+          "year": "living; accessed 2026-08-17",
+          "sourceType": "official living EU guidance",
+          "certainty": "A-official"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living; accessed 2026-08-17"
+        ],
+        "sourceTypes": [
+          "official living EU guidance"
+        ],
+        "certainties": [
+          "A-official"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-db20ab02421ea0f5",
+      "identityKey": "url:https://eurydice.eacea.ec.europa.eu/data-and-visuals/european-school-calendars",
+      "canonicalUrl": "https://eurydice.eacea.ec.europa.eu/data-and-visuals/european-school-calendars",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-005",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2025,
+          "sourceType": "official-calendar",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2025
+        ],
+        "sourceTypes": [
+          "official-calendar"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-16c1da5184181b95",
+      "identityKey": "url:https://industry.visitwales.com/sites/tourism/files/2024-03/Serviced-apartments-criteria-WG49317-EN.pdf",
+      "canonicalUrl": "https://industry.visitwales.com/sites/tourism/files/2024-03/Serviced-apartments-criteria-WG49317-EN.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-017",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "official-classification-manual",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6e24e9bf570f89a0",
+      "identityKey": "url:https://joint-research-centre.ec.europa.eu/projects-and-activities/peseta-climate-change-projects/jrc-peseta-v_en",
+      "canonicalUrl": "https://joint-research-centre.ec.europa.eu/projects-and-activities/peseta-climate-change-projects/jrc-peseta-v_en",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-008",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "official-research-report",
+          "certainty": "moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "official-research-report"
+        ],
+        "certainties": [
+          "moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9e1d489388b342da",
+      "identityKey": "url:https://periodicos.ufjf.br/index.php/abet/article/view/41469",
+      "canonicalUrl": "https://periodicos.ufjf.br/index.php/abet/article/view/41469",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-009",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "systematic_review",
+          "certainty": "moderate_high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "systematic_review"
+        ],
+        "certainties": [
+          "moderate_high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9df2f2e1ae0876d9",
+      "identityKey": "url:https://single-market-economy.ec.europa.eu/system/files/2022-11/SWD_2022_350_2_EN_impact_assessment_part1_v1.pdf",
+      "canonicalUrl": "https://single-market-economy.ec.europa.eu/system/files/2022-11/SWD_2022_350_2_EN_impact_assessment_part1_v1.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-004",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2022,
+          "sourceType": "official-policy-analysis",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2022
+        ],
+        "sourceTypes": [
+          "official-policy-analysis"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-0988ba2fac890fd3",
+      "identityKey": "url:https://unstats.un.org/unsd/tradeserv/tourism/08-40120%20irts%202008_web_final%20version%20_22%20february%202010.pdf",
+      "canonicalUrl": "https://unstats.un.org/unsd/tradeserv/tourism/08-40120%20irts%202008_web_final%20version%20_22%20february%202010.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-002",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2008,
+          "sourceType": "official-statistical-standard",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2008
+        ],
+        "sourceTypes": [
+          "official-statistical-standard"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9bac5ac0420287c6",
+      "identityKey": "url:https://visitenglandassessmentservices.com/our-schemes/hostels",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/our-schemes/hostels/",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-012",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "official-scheme-page",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "official-scheme-page"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-00181e16cbf6d707",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2017/11/Holiday-Village-Standards-2017.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2017/11/Holiday-Village-Standards-2017.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-016",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "official-classification-manual",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-b8da2813855a9a68",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2017/12/Serviced-Apartments-Standards-2017.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2017/12/Serviced-Apartments-Standards-2017.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-011",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "official-classification-manual",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-911e633d2a44540b",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_BB.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_BB.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-010",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "official-classification-manual",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-057d72894fbf059f",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_Caravan-and-Camping-1.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_Caravan-and-Camping-1.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-013",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "official-classification-manual",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-60d70a7ac40a20a9",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_Glamping.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_Glamping.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-014",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "official-classification-manual",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-4a34748ec0e2983f",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_Self-Catering-1.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2024/02/VisitEngland-QualityStandards_Self-Catering-1.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-009",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "official-classification-manual",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-a695f33c90cf73a4",
+      "identityKey": "url:https://visitenglandassessmentservices.com/wp-content/uploads/2026/06/VisitEngland-QualityStandards_Holiday-Parks_v5.pdf",
+      "canonicalUrl": "https://visitenglandassessmentservices.com/wp-content/uploads/2026/06/VisitEngland-QualityStandards_Holiday-Parks_v5.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-015",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2026,
+          "sourceType": "official-classification-manual",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2026
+        ],
+        "sourceTypes": [
+          "official-classification-manual"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-779eff0e4f6797f3",
+      "identityKey": "url:https://www.access-board.gov/aba/guides/chapter-10-outdoor",
+      "canonicalUrl": "https://www.access-board.gov/aba/guides/chapter-10-outdoor/",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-020",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "official-accessibility-guide",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "official-accessibility-guide"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-7973776ae7456983",
+      "identityKey": "url:https://www.access-board.gov/ada/chapter/ch08",
+      "canonicalUrl": "https://www.access-board.gov/ada/chapter/ch08/",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-007",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2010,
+          "sourceType": "government_technical_standard",
+          "certainty": "high_normative_us_scope"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2010
+        ],
+        "sourceTypes": [
+          "government_technical_standard"
+        ],
+        "certainties": [
+          "high_normative_us_scope"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-db9eb11e5f1a5f30",
+      "identityKey": "url:https://www.ada.gov/law-and-regs/regulations/title-iii-regulations",
+      "canonicalUrl": "https://www.ada.gov/law-and-regs/regulations/title-iii-regulations/",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-006",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": "current",
+          "sourceType": "government_regulation",
+          "certainty": "high_normative_us_scope"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "current"
+        ],
+        "sourceTypes": [
+          "government_regulation"
+        ],
+        "certainties": [
+          "high_normative_us_scope"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-96b50efc3d08cd32",
+      "identityKey": "url:https://www.airbnb.com/help/article/13",
+      "canonicalUrl": "https://www.airbnb.com/help/article/13",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-032",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-review-mechanics",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-review-mechanics"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-419395e0b7941c8b",
+      "identityKey": "url:https://www.airbnb.com/help/article/140",
+      "canonicalUrl": "https://www.airbnb.com/help/article/140",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-030",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-policy",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-policy"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-38539716fa440cee",
+      "identityKey": "url:https://www.airbnb.com/help/article/1961",
+      "canonicalUrl": "https://www.airbnb.com/help/article/1961",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-031",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-field-semantics",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-field-semantics"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-6775f3588b065195",
+      "identityKey": "url:https://www.airbnb.com/help/article/2141",
+      "canonicalUrl": "https://www.airbnb.com/help/article/2141",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-026",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-help",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-help"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-1bf0149dbf11dc5e",
+      "identityKey": "url:https://www.airbnb.com/help/article/2673",
+      "canonicalUrl": "https://www.airbnb.com/help/article/2673",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-033",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-review-policy",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-review-policy"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e43b63a668e40bd2",
+      "identityKey": "url:https://www.airbnb.com/help/article/2827",
+      "canonicalUrl": "https://www.airbnb.com/help/article/2827",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-029",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-policy",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-policy"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9bc849bf068514fc",
+      "identityKey": "url:https://www.airbnb.com/help/article/3424",
+      "canonicalUrl": "https://www.airbnb.com/help/article/3424",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-025",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-help",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-help"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-0d0caa087aa51c74",
+      "identityKey": "url:https://www.airbnb.com/help/article/3542",
+      "canonicalUrl": "https://www.airbnb.com/help/article/3542",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-027",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-help",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-help"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-72dc3399c61b57f8",
+      "identityKey": "url:https://www.airbnb.com/help/article/472",
+      "canonicalUrl": "https://www.airbnb.com/help/article/472",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-028",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-policy",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-policy"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-551db04b61693ac8",
+      "identityKey": "url:https://www.airbnb.com/help/article/5",
+      "canonicalUrl": "https://www.airbnb.com/help/article/5",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-024",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-help",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-help"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e9169eebbf257307",
+      "identityKey": "url:https://www.airbnb.com/help/article/829",
+      "canonicalUrl": "https://www.airbnb.com/help/article/829",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-034",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "provider-primary-badge-semantics",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "provider-primary-badge-semantics"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-947301bd83a73388",
+      "identityKey": "url:https://www.bu.edu/bhr/2019/03/20/a-detailed-study-of-the-expected-and-actual-use-of-hotel-amenities",
+      "canonicalUrl": "https://www.bu.edu/bhr/2019/03/20/a-detailed-study-of-the-expected-and-actual-use-of-hotel-amenities/",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-031",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2019,
+          "sourceType": "institutional_applied_research",
+          "certainty": "low_moderate"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2019
+        ],
+        "sourceTypes": [
+          "institutional_applied_research"
+        ],
+        "certainties": [
+          "low_moderate"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-92ea26ed512b76e9",
+      "identityKey": "url:https://www.cdc.gov/drinking-water/prevention/water-treatment-hiking-camping-traveling.html",
+      "canonicalUrl": "https://www.cdc.gov/drinking-water/prevention/water-treatment-hiking-camping-traveling.html",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-022",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "living",
+          "sourceType": "public-health-guidance",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "living"
+        ],
+        "sourceTypes": [
+          "public-health-guidance"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-0c022799709da6e0",
+      "identityKey": "url:https://www.e-unwto.org/doi/book/10.18111/9789284416325",
+      "canonicalUrl": "https://www.e-unwto.org/doi/book/10.18111/9789284416325",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-003",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2014,
+          "sourceType": "authoritative_institutional_report",
+          "certainty": "moderate_high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2014
+        ],
+        "sourceTypes": [
+          "authoritative_institutional_report"
+        ],
+        "certainties": [
+          "moderate_high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-fe163539a70029cd",
+      "identityKey": "url:https://www.ftc.gov/business-guidance/resources/rule-unfair-or-deceptive-fees-frequently-asked-questions",
+      "canonicalUrl": "https://www.ftc.gov/business-guidance/resources/rule-unfair-or-deceptive-fees-frequently-asked-questions",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-005",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2025,
+          "sourceType": "regulator-guidance",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2025
+        ],
+        "sourceTypes": [
+          "regulator-guidance"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-22e01844ae51eed6",
+      "identityKey": "url:https://www.ftc.gov/news-events/news/press-releases/2024/08/federal-trade-commission-announces-final-rule-banning-fake-reviews-testimonials",
+      "canonicalUrl": "https://www.ftc.gov/news-events/news/press-releases/2024/08/federal-trade-commission-announces-final-rule-banning-fake-reviews-testimonials",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-008",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2024,
+          "sourceType": "regulator-primary-source",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2024
+        ],
+        "sourceTypes": [
+          "regulator-primary-source"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-0fd6ce49c27e383a",
+      "identityKey": "url:https://www.ftc.gov/system/files/documents/reports/economic-analysis-hotel-resort-fees/p115503_hotel_resort_fees_economic_issues_paper.pdf",
+      "canonicalUrl": "https://www.ftc.gov/system/files/documents/reports/economic-analysis-hotel-resort-fees/p115503_hotel_resort_fees_economic_issues_paper.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-006",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2017,
+          "sourceType": "regulator-economic-analysis",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2017
+        ],
+        "sourceTypes": [
+          "regulator-economic-analysis"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-97ce92973e60f1cc",
+      "identityKey": "url:https://www.gov.uk/government/publications/making-your-small-paying-guest-accommodation-safe-from-fire/making-your-small-paying-guest-accommodation-safe-from-fire-accessible",
+      "canonicalUrl": "https://www.gov.uk/government/publications/making-your-small-paying-guest-accommodation-safe-from-fire/making-your-small-paying-guest-accommodation-safe-from-fire-accessible",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-019",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2025,
+          "sourceType": "official-safety-guide",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2025
+        ],
+        "sourceTypes": [
+          "official-safety-guide"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-9248e378061cdbbe",
+      "identityKey": "url:https://www.gov.uk/guidance/camping-and-caravan-sites-minimise-your-flood-risk",
+      "canonicalUrl": "https://www.gov.uk/guidance/camping-and-caravan-sites-minimise-your-flood-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-021",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2023,
+          "sourceType": "official-hazard-guidance",
+          "certainty": "robust-scoped"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2023
+        ],
+        "sourceTypes": [
+          "official-hazard-guidance"
+        ],
+        "certainties": [
+          "robust-scoped"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-8f3ba1d9d0009479",
+      "identityKey": "url:https://www.hotelstars.eu/about-us/our-scheme",
+      "canonicalUrl": "https://www.hotelstars.eu/about-us/our-scheme",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-001",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": "current",
+          "sourceType": "official_classification_scheme",
+          "certainty": "high_normative"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "current"
+        ],
+        "sourceTypes": [
+          "official_classification_scheme"
+        ],
+        "certainties": [
+          "high_normative"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-d7591a1aa8cfb998",
+      "identityKey": "url:https://www.hotelstars.eu/fileadmin/PORTAL/dokumente_downloads/HSU_classification_criteria_2025-2030_EN.pdf",
+      "canonicalUrl": "https://www.hotelstars.eu/fileadmin/PORTAL/dokumente_downloads/HSU_classification_criteria_2025-2030_EN.pdf",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-002",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2025,
+          "sourceType": "official_classification_criteria",
+          "certainty": "high_normative"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2025
+        ],
+        "sourceTypes": [
+          "official_classification_criteria"
+        ],
+        "certainties": [
+          "high_normative"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-5760e4c54ea659da",
+      "identityKey": "url:https://www.iso.org/standard/72126.html",
+      "canonicalUrl": "https://www.iso.org/standard/72126.html",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 2,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-023",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "official-standard-metadata",
+          "certainty": "robust-scoped"
+        },
+        {
+          "sourceId": "SRC-HOS-005",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "international_standard",
+          "certainty": "high_normative"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "official-standard-metadata",
+          "international_standard"
+        ],
+        "certainties": [
+          "robust-scoped",
+          "high_normative"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-21981949e7e744de",
+      "identityKey": "url:https://www.iso.org/standard/73315.html",
+      "canonicalUrl": "https://www.iso.org/standard/73315.html",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-004",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2020,
+          "sourceType": "international_standard",
+          "certainty": "high_normative"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2020
+        ],
+        "sourceTypes": [
+          "international_standard"
+        ],
+        "certainties": [
+          "high_normative"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-01f88f518d71e0c1",
+      "identityKey": "url:https://www.itf-oecd.org/valuing-convenience-public-transport",
+      "canonicalUrl": "https://www.itf-oecd.org/valuing-convenience-public-transport",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-021",
+          "track": "travel-value-risk",
+          "sourceAlias": "S21",
+          "year": 2014,
+          "sourceType": "official transport evidence synthesis",
+          "certainty": "A-synthesis"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2014
+        ],
+        "sourceTypes": [
+          "official transport evidence synthesis"
+        ],
+        "certainties": [
+          "A-synthesis"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-25be955c4f563c86",
+      "identityKey": "url:https://www.jstor.org/stable/1914185",
+      "canonicalUrl": "https://www.jstor.org/stable/1914185",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-BEH-008",
+          "track": "behavioral-decision-science",
+          "sourceAlias": "S08",
+          "year": 1979,
+          "sourceType": "foundational theory and experiments",
+          "certainty": "F/B"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          1979
+        ],
+        "sourceTypes": [
+          "foundational theory and experiments"
+        ],
+        "certainties": [
+          "F/B"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-4e3a7b43f3d11faf",
+      "identityKey": "url:https://www.sciencedirect.com/science/article/abs/pii/S2213078021000013",
+      "canonicalUrl": "https://www.sciencedirect.com/science/article/abs/pii/S2213078021000013",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-046",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": 2021,
+          "sourceType": "peer-reviewed-exploratory-study",
+          "certainty": "gap-design-hypothesis"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2021
+        ],
+        "sourceTypes": [
+          "peer-reviewed-exploratory-study"
+        ],
+        "certainties": [
+          "gap-design-hypothesis"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-e143b16b4108367c",
+      "identityKey": "url:https://www.untourism.int/archive/europe/publication/hotel-classification-systems-recurrence-criteria-4-and-5-star-hotels",
+      "canonicalUrl": "https://www.untourism.int/archive/europe/publication/hotel-classification-systems-recurrence-criteria-4-and-5-star-hotels",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-TRV-015",
+          "track": "travel-value-risk",
+          "sourceAlias": "S15",
+          "year": 2015,
+          "sourceType": "official classification comparison",
+          "certainty": "A-official"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2015
+        ],
+        "sourceTypes": [
+          "official classification comparison"
+        ],
+        "certainties": [
+          "A-official"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-ebb09cae4db645aa",
+      "identityKey": "url:https://www.unwto.org/tourism-statistics/on-basic-tourism-statistics-irts-2008",
+      "canonicalUrl": "https://www.unwto.org/tourism-statistics/on-basic-tourism-statistics-irts-2008",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-004",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2008,
+          "sourceType": "official-standard",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2008
+        ],
+        "sourceTypes": [
+          "official-standard"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-631ce215a23c4cee",
+      "identityKey": "url:https://www.visitbritain.org/media/2735/download?attachment=",
+      "canonicalUrl": "https://www.visitbritain.org/media/2735/download?attachment=",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-ACC-018",
+          "track": "accommodation-types-and-unit",
+          "sourceAlias": null,
+          "year": "undated",
+          "sourceType": "official-advisory-checklist",
+          "certainty": "moderate-contextual"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          "undated"
+        ],
+        "sourceTypes": [
+          "official-advisory-checklist"
+        ],
+        "certainties": [
+          "moderate-contextual"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-16af379548cafdd9",
+      "identityKey": "url:https://www.w3.org/TR/prov-o",
+      "canonicalUrl": "https://www.w3.org/TR/prov-o/",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-SEA-009",
+          "track": "season-and-local-market",
+          "sourceAlias": null,
+          "year": 2013,
+          "sourceType": "official-standard",
+          "certainty": "high"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2013
+        ],
+        "sourceTypes": [
+          "official-standard"
+        ],
+        "certainties": [
+          "high"
+        ]
+      }
+    },
+    {
+      "globalSourceId": "GSRC-50bdc5939bef1474",
+      "identityKey": "url:https://www.who.int/europe/publications/i/item/9789289053563",
+      "canonicalUrl": "https://www.who.int/europe/publications/i/item/9789289053563",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "aliasCount": 1,
+      "trackAliases": [
+        {
+          "sourceId": "SRC-HOS-025",
+          "track": "hospitality-guest-experience",
+          "sourceAlias": null,
+          "year": 2018,
+          "sourceType": "public_health_guideline",
+          "certainty": "high_normative_indirect"
+        }
+      ],
+      "metadataVariation": {
+        "years": [
+          2018
+        ],
+        "sourceTypes": [
+          "public_health_guideline"
+        ],
+        "certainties": [
+          "high_normative_indirect"
+        ]
+      }
+    }
+  ]
+}

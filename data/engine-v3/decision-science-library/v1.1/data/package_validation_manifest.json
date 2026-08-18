@@ -1,0 +1,291 @@
+{
+  "schemaVersion": "1.1.0",
+  "validationStatus": "PASS",
+  "validationDate": "2026-08-17",
+  "packageStatus": "research-foundation-no-ranking-influence",
+  "counts": {
+    "files": 49,
+    "coreSources": 13,
+    "coreClaims": 5,
+    "candidateSources": 194,
+    "globalCandidateSources": 179,
+    "globalCandidateSourceAliases": 194,
+    "candidateClaims": 145,
+    "resolvedCandidateSourceRefs": 553,
+    "booksManualsAndStandards": 59,
+    "crossTrackConstructs": 21,
+    "accommodationTypes": 12,
+    "marketContextAxes": 4,
+    "potentialSecretFindings": 0
+  },
+  "checks": {
+    "requiredFilesPresent": true,
+    "candidateRegistryCurrent": true,
+    "typescriptSyntaxOnly": true,
+    "standaloneTypecheckExecuted": false,
+    "realRepositoryTypecheckRequiredBeforeIntegration": true,
+    "sufficiencyGateBehaviorTests": "9/9 PASS",
+    "accommodationAndMarketContextTests": "31/31 PASS",
+    "rankNeutralTraceTests": "3/3 PASS",
+    "crossPlatformPathTests": "4/4 PASS",
+    "candidateRegistryPipelineTests": "6/6 PASS",
+    "jsonParsed": true,
+    "coreSourceRefsResolved": true,
+    "coreClaimsHaveTests": true,
+    "candidateIdsAndSourceRefsValidated": true,
+    "globalCandidateSourcesDeduplicated": true,
+    "crossTrackClaimRelationshipsResolved": true,
+    "candidateRankingInfluenceNone": true,
+    "lisbonPlumbingOnlyInvalidAndNotGolden": true,
+    "potentialSecretsAbsent": true,
+    "accommodationAndSeasonContractsCandidateOnly": true
+  },
+  "packageFingerprint": "sha256-aaa3e1b20345751ac435100e8a7d6ba025c950779e2888d5698bbd65b2b56907",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 4293,
+      "sha256": "c388b5db7aa36408c5b2c77b6efe416f98dec5411e89bfb7ca8b5cdbdaec6fec"
+    },
+    {
+      "path": "data/accommodation_type_decision_facets.json",
+      "bytes": 3394,
+      "sha256": "cce88af6cd06b3039c68a2b2a870a8f6ab581ed9bcbf4c64f686e0f548d17c64"
+    },
+    {
+      "path": "data/candidate_claim_registry.json",
+      "bytes": 139569,
+      "sha256": "0e96c7f99896b8bd3e4d2ee34d94105f8bb996b2a0c1b2e36f46ad575c554950"
+    },
+    {
+      "path": "data/candidate_registry_manifest.json",
+      "bytes": 2776,
+      "sha256": "43cf3c2342c6d1ea3d8d2bcf6f79360e34ea564ff2e53b41b62c9bc72afc351e"
+    },
+    {
+      "path": "data/candidate_source_registry.json",
+      "bytes": 116997,
+      "sha256": "53973757d99013e878dcb12be31df6db7f5c90634b852ba3184f0d43a4a75d4c"
+    },
+    {
+      "path": "data/claim_registry.json",
+      "bytes": 11103,
+      "sha256": "5849adb5059a843aa44155abb04bc2a62f6733a994d980e8e3dee30dba597b38"
+    },
+    {
+      "path": "data/claim_relationship_registry.json",
+      "bytes": 17046,
+      "sha256": "d905f9a8fb55e9185a16c5e1ebacc72297caee9b3ea53e3844417f09c58ff496"
+    },
+    {
+      "path": "data/coverage_matrix.json",
+      "bytes": 5887,
+      "sha256": "032d817fe488f60a0ddcf7e908e9e01a3c51c4b2442566d848f939c15f94b572"
+    },
+    {
+      "path": "data/global_candidate_source_registry.json",
+      "bytes": 152625,
+      "sha256": "9e3d6fcff8136e4115d85d97dee9e2fcb3fefaadad9f7d2c882a22af446ef72b"
+    },
+    {
+      "path": "data/lisbon_pilot_001_sufficiency_receipt.json",
+      "bytes": 5038,
+      "sha256": "ba1e44b294a7ad0c37f1efaf8fbf16159b3b2198c43baf20120f682ac7a163d7"
+    },
+    {
+      "path": "data/season_local_market_context_contract.json",
+      "bytes": 3764,
+      "sha256": "875f4da2e1ab64bc0bf6bbcaab6b89c517986715a01d161651dea6196b48bcd5"
+    },
+    {
+      "path": "data/source_registry.json",
+      "bytes": 10557,
+      "sha256": "af3588ebbf5886196943a668b76d3ff9b9ee82ae281a71f697db6f19f82ad62c"
+    },
+    {
+      "path": "docs/ACCOMMODATION_TYPE_DECISION_MODEL.md",
+      "bytes": 10098,
+      "sha256": "d17d3be2d6b60569ff59346ee8be67c52cc62919d3ce70f4436b8c9c374bcd3f"
+    },
+    {
+      "path": "docs/BOOKS_AND_STANDARDS_CATALOG.md",
+      "bytes": 39230,
+      "sha256": "302e7c69f0e125f8e91aafeee0dacb4afd8b57dbfcb691ba4d509350a8588760"
+    },
+    {
+      "path": "docs/CODE_INTEGRATION_SPEC.md",
+      "bytes": 9018,
+      "sha256": "ef73ab63159bd10c5f93a996f67913d6ecb130199994eed9ad7969c9e5b2bf79"
+    },
+    {
+      "path": "docs/CURRICULUM_DESIGN.md",
+      "bytes": 5141,
+      "sha256": "96474d3b4f348077cd9b9b8421cb9ccbbaec3e515673ceb11a1bce70ebe949aa"
+    },
+    {
+      "path": "docs/DECISION_EVIDENCE_SUFFICIENCY_GATE.md",
+      "bytes": 5782,
+      "sha256": "f2b3de74dbc31940b8d19d26e2646897b35ae5f199e8ae5ef8f865a28ffd7907"
+    },
+    {
+      "path": "docs/HISTORICAL_MARKET_DATA_PROGRAM.md",
+      "bytes": 6515,
+      "sha256": "ba445c62436e97e5ef792aef23bb7edbb47083fc7cb51d3767004a6d104ce95a"
+    },
+    {
+      "path": "docs/LOCAL_CODEX_INTEGRATION_RUNBOOK.md",
+      "bytes": 7633,
+      "sha256": "4a9e5b6821b092fbb7b1669287f801268ded2dd5db0e541b33bee89df71e521c"
+    },
+    {
+      "path": "docs/POLICY_TRANSLATION_RULES.md",
+      "bytes": 6789,
+      "sha256": "3f9b14ed9a45cd7a474ac78006ee33f5048834ea36de60a751ea53c6fd4d6efb"
+    },
+    {
+      "path": "docs/RESEARCH_PROTOCOL.md",
+      "bytes": 5981,
+      "sha256": "292a4dce6f45b11414edc280e8d622baa65226f0c5bb2c8951f723fcb67aec38"
+    },
+    {
+      "path": "docs/SEASON_LOCAL_MARKET_ENGINE_SPEC.md",
+      "bytes": 9409,
+      "sha256": "a616fd9da6624cd88ff51dba8d49e503e4092dfd3bbdcea52f1198a0cbf93672"
+    },
+    {
+      "path": "docs/TAXONOMY.md",
+      "bytes": 7370,
+      "sha256": "053c44fbe7ac5b88785a53b38a20d7224efa03e21491442ce44c719b1b1bec17"
+    },
+    {
+      "path": "docs/V1_1_INTEGRATION_AUDIT_MAPPING.md",
+      "bytes": 52641,
+      "sha256": "80457ba1f761cf3fe55a8410f928fa8df6b61d97c7c2bdaabd9d7611650bfb20"
+    },
+    {
+      "path": "MASTER_SYNTHESIS.md",
+      "bytes": 24968,
+      "sha256": "9382dd2ff1437bf31936584d7eb9efdba550b0d78dabf6a6a648361e1165c0a4"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7240,
+      "sha256": "ef84325ed3b1b3a029ca6c8bfda7a7b2143b35f4ee4b033a527532c4eee5dd0f"
+    },
+    {
+      "path": "research/accommodation_types_decision_science.md",
+      "bytes": 118276,
+      "sha256": "e3714d3ca970ebb8fac83f37ad1a1feab66cc5123a942d1c50daae3d5c9a5c10"
+    },
+    {
+      "path": "research/behavioral_decision_science.md",
+      "bytes": 74805,
+      "sha256": "678d71a2af68e2867340e041e9cfb2fd260d16b1f03f7f219dc3e1b3d44dab36"
+    },
+    {
+      "path": "research/cross_track_red_team.md",
+      "bytes": 29425,
+      "sha256": "d81a16662870953138833b972f8a82bc1feb579135412c50db777a9a8ceeaa26"
+    },
+    {
+      "path": "research/hospitality_guest_experience.md",
+      "bytes": 71185,
+      "sha256": "a0b0e531cec4322c358e2dc1890dc5c07574002afa0517383fef5204a3045503"
+    },
+    {
+      "path": "research/season_local_market_context.md",
+      "bytes": 65592,
+      "sha256": "ccef84e512295b7d2a1f688631aa2c18119daa226be05accfb0652d47745aec3"
+    },
+    {
+      "path": "research/travel_value_risk.md",
+      "bytes": 97655,
+      "sha256": "41f17335f9e1978f0bce8221b21d6822c1d1d8277314ffe11e7b3d1be38c5ede"
+    },
+    {
+      "path": "research/v1_1_extension_red_team.md",
+      "bytes": 29278,
+      "sha256": "7ecc215b783941bd32f0156ef3c3e59f310556da6b7ec94a451b94923d860b18"
+    },
+    {
+      "path": "schemas/accommodation_offer_identity.schema.json",
+      "bytes": 4021,
+      "sha256": "413e41e0d5b5e42ebc908b24c886bee236849b8227a37efd03b7c1591e4f49cc"
+    },
+    {
+      "path": "schemas/local_market_night_snapshot.schema.json",
+      "bytes": 3438,
+      "sha256": "278d0fb43d26770b4ff94fe8152f6f1d393e41fcfda1a3ae0d1fcfa1751df90e"
+    },
+    {
+      "path": "schemas/market_dataset_legal_ledger.schema.json",
+      "bytes": 2087,
+      "sha256": "d3f4392eb150c9b638e66e93fdc648eec4be3cbff315cf58f1e6d85c6693b513"
+    },
+    {
+      "path": "schemas/shared_space_map.schema.json",
+      "bytes": 1622,
+      "sha256": "6f6cd95fd47249d2205be7731b164a973bd90746f4321da950e390ad22822812"
+    },
+    {
+      "path": "scripts/build_candidate_registries.mjs",
+      "bytes": 29752,
+      "sha256": "87f0f74cd8d9fdb6d1c3f38a798e3f84ac305a7142b0102f1548a7edf78954b0"
+    },
+    {
+      "path": "scripts/portablePaths.mjs",
+      "bytes": 616,
+      "sha256": "5ee13c609303d9ab51566b12bbdb5f2427ed4ffc0005534cf45887db030e2e8f"
+    },
+    {
+      "path": "scripts/validate_package.mjs",
+      "bytes": 13493,
+      "sha256": "7f9b0c4acc0ff9dc9b9b39eebba9a54f652eb0d219289283a926426499fcf6cd"
+    },
+    {
+      "path": "scripts/validate_v1_1_extensions.mjs",
+      "bytes": 7460,
+      "sha256": "cb7c9ee9c858e7dcc2a60e7b3a7383050f9da0b46fd1bf5961fc5392d2b3d9a1"
+    },
+    {
+      "path": "src/accommodationMarketContext.ts",
+      "bytes": 40930,
+      "sha256": "2f2d339d21554c72d5a87bbbbd950bc92223f36ac2625836dba7cf35676fc0d9"
+    },
+    {
+      "path": "src/contracts.ts",
+      "bytes": 11210,
+      "sha256": "1fdc30bb537ffa8d8d79dde86c12555957862632bcf70eb4440d90c88597dc5e"
+    },
+    {
+      "path": "src/sufficiencyGate.ts",
+      "bytes": 8504,
+      "sha256": "8041b80f62220b6216804f339bf5cc3fe4052f2e0eeaaf06875aef93c75feee8"
+    },
+    {
+      "path": "tests/accommodationMarketContext.behavior.test.ts",
+      "bytes": 23193,
+      "sha256": "0d9a6d89659bb99ec67d7e903d4296d530500fbe7b82be207b9d9eed4e070608"
+    },
+    {
+      "path": "tests/candidateRegistryPipeline.behavior.test.mjs",
+      "bytes": 4174,
+      "sha256": "d14a2c0ac15de9a3455739a77ff6b54fb31d0bd6e7bae9f840647555e8fbc1ad"
+    },
+    {
+      "path": "tests/libraryDecisionTrace.behavior.test.ts",
+      "bytes": 1919,
+      "sha256": "bb48925efd5cee6ba9c8cd4ed312e899bd21258ecfbf86f663ab770193b3f2f2"
+    },
+    {
+      "path": "tests/portablePaths.behavior.test.mjs",
+      "bytes": 1070,
+      "sha256": "abb38e69e1fe46f831eacfb5ad68d903698abf9df4e10b640886b49e8cec1667"
+    },
+    {
+      "path": "tests/sufficiencyGate.behavior.test.ts",
+      "bytes": 6770,
+      "sha256": "958ed489e9a55377495fa1e93cef124a8a9e238ef0e47c96cd7dcdd3c9af185b"
+    }
+  ]
+}

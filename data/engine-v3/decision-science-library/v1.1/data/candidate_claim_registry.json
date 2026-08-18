@@ -1,0 +1,4106 @@
+{
+  "schemaVersion": "1.1.0",
+  "pipelineId": "stayopti-candidate-registry-extractor-v1.1",
+  "status": "candidate-second-pass-required",
+  "rankingInfluence": "none",
+  "generatedBy": "scripts/build_candidate_registries.mjs",
+  "deterministic": true,
+  "inputs": [
+    {
+      "path": "research/behavioral_decision_science.md",
+      "sha256": "678d71a2af68e2867340e041e9cfb2fd260d16b1f03f7f219dc3e1b3d44dab36",
+      "sources": 35,
+      "claims": 29
+    },
+    {
+      "path": "research/hospitality_guest_experience.md",
+      "sha256": "a0b0e531cec4322c358e2dc1890dc5c07574002afa0517383fef5204a3045503",
+      "sources": 34,
+      "claims": 30
+    },
+    {
+      "path": "research/travel_value_risk.md",
+      "sha256": "41f17335f9e1978f0bce8221b21d6822c1d1d8277314ffe11e7b3d1be38c5ede",
+      "sources": 35,
+      "claims": 21
+    },
+    {
+      "path": "research/season_local_market_context.md",
+      "sha256": "ccef84e512295b7d2a1f688631aa2c18119daa226be05accfb0652d47745aec3",
+      "sources": 42,
+      "claims": 30
+    },
+    {
+      "path": "research/accommodation_types_decision_science.md",
+      "sha256": "e3714d3ca970ebb8fac83f37ad1a1feab66cc5123a942d1c50daae3d5c9a5c10",
+      "sources": 48,
+      "claims": 35
+    }
+  ],
+  "registryType": "candidate-claim-registry",
+  "expectedCount": 145,
+  "actualCount": 145,
+  "claims": [
+    {
+      "claimId": "CLM-ACC-001",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "type-label-non-equivalence",
+      "sourceRefs": [
+        "SRC-ACC-001",
+        "SRC-ACC-002",
+        "SRC-ACC-003",
+        "SRC-ACC-004",
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "declared_type",
+        "taxonomy_authority",
+        "taxonomy_version",
+        "jurisdiction",
+        "operating_model",
+        "sellable_space_type"
+      ],
+      "effectType": "Preserve raw type and map capabilities; type label contributes no scalar quality or rank effect.",
+      "boundaries": "Do not infer service level, privacy, legality, safety, luxury or fit from a commercial type label.",
+      "testIdea": "Rename an otherwise identical offer across type labels and require decision attributes to remain invariant."
+    },
+    {
+      "claimId": "CLM-ACC-002",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "exact-decision-object",
+      "sourceRefs": [
+        "SRC-ACC-001",
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017",
+        "SRC-ACC-024",
+        "SRC-ACC-025"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "extends StaySolution identity to non-hotel sellable spaces",
+      "requiredFacets": [
+        "property_id",
+        "sellable_space_id",
+        "sellable_space_type",
+        "offer_id",
+        "stay_dates",
+        "party_signature",
+        "evidence_scope"
+      ],
+      "effectType": "Reject or quarantine evidence joins that do not match property, sellable space, offer, stay and party scope.",
+      "boundaries": "Property-level evidence cannot automatically apply to every apartment, room, bed, pitch or offer.",
+      "testIdea": "Swap the exact room, bed or pitch while holding property fixed and verify scoped evidence detaches."
+    },
+    {
+      "claimId": "CLM-ACC-003",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "scheme-star-scope",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "scheme_authority",
+        "scheme_name",
+        "scheme_edition",
+        "accommodation_type",
+        "jurisdiction",
+        "grade",
+        "validity_date"
+      ],
+      "effectType": "Display only a qualified scheme label; prohibit a global star conversion.",
+      "boundaries": "A numeric grade has meaning only inside its named scheme, type, edition and jurisdiction.",
+      "testIdea": "Cross-scheme fixtures with identical numeric stars must never be merged into one universal quality value."
+    },
+    {
+      "claimId": "CLM-ACC-004",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "allocation-semantics",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-011",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017",
+        "SRC-ACC-024"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "assignment_mode",
+        "guaranteed_unit_or_class",
+        "eligible_unit_set",
+        "facet_ranges",
+        "mapping_confidence",
+        "representative_media_flag"
+      ],
+      "effectType": "Use facet ranges or recheck when an exact physical unit is not guaranteed.",
+      "boundaries": "Do not infer exact view, floor, bed, pitch position or equipment from sample media or category labels.",
+      "testIdea": "Remove an exact-unit guarantee and require confidence to fall or ranges to widen without inventing a representative unit."
+    },
+    {
+      "claimId": "CLM-ACC-005",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "non-hotel-dedup",
+      "sourceRefs": [
+        "SRC-ACC-001",
+        "SRC-ACC-004",
+        "SRC-ACC-024",
+        "SRC-ACC-025",
+        "SRC-ACC-026",
+        "SRC-ACC-027"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "extends canonicalization to multi-unit and multi-space inventory",
+      "requiredFacets": [
+        "operator_id",
+        "property_id",
+        "address_precision",
+        "coordinates_precision",
+        "unit_or_space_id",
+        "offer_fingerprint",
+        "alias_evidence"
+      ],
+      "effectType": "Build a probabilistic entity graph and abstain from ambiguous merges.",
+      "boundaries": "Similar names are not proof of identity and different marketing names are not proof of difference.",
+      "testIdea": "One building with two distinct units plus one cross-provider alias must resolve to one property and two units."
+    },
+    {
+      "claimId": "CLM-ACC-006",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "mandatory-total-and-exposure",
+      "sourceRefs": [
+        "SRC-ACC-005",
+        "SRC-ACC-006",
+        "SRC-ACC-007",
+        "SRC-ACC-029",
+        "SRC-ACC-030"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "extends true-cost integrity to non-hotel charges",
+      "requiredFacets": [
+        "base_price",
+        "taxes",
+        "service_fee",
+        "cleaning_fee",
+        "resort_fee",
+        "utility_fee",
+        "linen_fee",
+        "mandatory_on_site_fee",
+        "payment_timing",
+        "refundable_deposit",
+        "contingent_liability"
+      ],
+      "effectType": "Compute mandatory total and cash schedule while reporting refundable holds and contingent exposure separately.",
+      "boundaries": "A separately collected fee is not automatically optional and a refundable deposit is not expected spend.",
+      "testIdea": "Move cost between nightly rate and mandatory cleaning fee and require mandatory total invariance."
+    },
+    {
+      "claimId": "CLM-ACC-007",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "house-rule-compatibility",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-028"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "check_in_out_rules",
+        "quiet_hours",
+        "visitor_policy",
+        "event_policy",
+        "smoking_policy",
+        "pet_policy",
+        "child_policy",
+        "cooking_policy",
+        "waste_or_exit_tasks",
+        "vehicle_or_fire_rules",
+        "penalties",
+        "provenance"
+      ],
+      "effectType": "Represent explicit rule conflicts as eligibility or friction candidates after party matching.",
+      "boundaries": "Do not infer strictness, friendliness or hostility from writing tone.",
+      "testIdea": "A no-pets rule must exclude a party with a pet and leave an otherwise identical no-pet party unaffected."
+    },
+    {
+      "claimId": "CLM-ACC-008",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "per-space-sharedness",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-024",
+        "SRC-ACC-025",
+        "SRC-ACC-038",
+        "SRC-ACC-039"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "bedroom_sharedness",
+        "bathroom_sharedness",
+        "kitchen_sharedness",
+        "entrance_sharedness",
+        "circulation_sharedness",
+        "living_space_sharedness",
+        "outdoor_space_sharedness",
+        "lockability",
+        "access_hours"
+      ],
+      "effectType": "Match each space independently to explicit privacy and access needs.",
+      "boundaries": "Private room does not imply private bathroom, entrance, kitchen or whole-stay privacy.",
+      "testIdea": "Mutate only bathroom privacy and require only bathroom-related evidence and fit to change."
+    },
+    {
+      "claimId": "CLM-ACC-009",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "host-presence-tradeoff",
+      "sourceRefs": [
+        "SRC-ACC-037",
+        "SRC-ACC-038",
+        "SRC-ACC-039",
+        "SRC-ACC-043",
+        "SRC-ACC-044"
+      ],
+      "certainty": "contested-heterogeneous",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "host_presence",
+        "presence_schedule",
+        "shared_residence",
+        "interaction_mode",
+        "support_hours",
+        "autonomy_preference",
+        "contact_preference"
+      ],
+      "effectType": "Expose a personalized privacy-support-social trade-off only after explicit profile evidence.",
+      "boundaries": "Do not infer desired sociability from age, nationality, solo status or accommodation type.",
+      "testIdea": "Move the host off-site and test opposite effects for profiles explicitly preferring privacy versus on-site support."
+    },
+    {
+      "claimId": "CLM-ACC-010",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "arrival-access-feasibility",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017",
+        "SRC-ACC-028"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "arrival_eta_interval",
+        "latest_check_in",
+        "access_method",
+        "staffed_hours",
+        "credential_release_time",
+        "identity_or_deposit_step",
+        "late_fee",
+        "network_dependency",
+        "fallback_support"
+      ],
+      "effectType": "Apply a temporal feasibility check and target unknown fallback details for recheck.",
+      "boundaries": "Self check-in or reception does not imply 24-hour feasible access.",
+      "testIdea": "Delay arrival beyond staffed hours and require feasibility only when a verified fallback exists."
+    },
+    {
+      "claimId": "CLM-ACC-011",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "location-precision",
+      "sourceRefs": [
+        "SRC-ACC-026",
+        "SRC-ACC-027"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "coordinate_precision",
+        "uncertainty_radius",
+        "verification_scope",
+        "address_release_time",
+        "route_mode",
+        "distance_interval",
+        "travel_time_interval"
+      ],
+      "effectType": "Propagate coordinate uncertainty into distance and travel-time intervals.",
+      "boundaries": "Approximate pins do not support exact building, distance, micro-location or route claims; location verification does not verify descriptions.",
+      "testIdea": "Increase location uncertainty radius and require wider route intervals and lower exact-distance confidence."
+    },
+    {
+      "claimId": "CLM-ACC-012",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "functional-kitchen-laundry",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-011",
+        "SRC-ACC-015",
+        "SRC-ACC-017",
+        "SRC-ACC-038",
+        "SRC-ACC-039",
+        "SRC-ACC-045"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "kitchen_sharedness",
+        "hob",
+        "oven",
+        "microwave",
+        "fridge",
+        "freezer",
+        "cookware",
+        "dishware",
+        "laundry_sharedness",
+        "washer",
+        "dryer",
+        "hours",
+        "fees",
+        "detergent",
+        "evidence_date"
+      ],
+      "effectType": "Represent concrete cooking, food-storage and wash-dry task coverage instead of binary amenity flags.",
+      "boundaries": "Kitchenette does not imply a full kitchen and laundry available does not imply private, included or usable service.",
+      "testIdea": "Remove the hob and require a cooking-dependent long stay to fail while a one-night non-cooking stay remains unaffected."
+    },
+    {
+      "claimId": "CLM-ACC-013",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "occupancy-is-not-layout-fit",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017",
+        "SRC-ACC-024"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "party_composition",
+        "nominal_capacity",
+        "bed_types",
+        "bed_sizes",
+        "sofa_beds",
+        "bunks",
+        "bedrooms",
+        "pass_through_rooms",
+        "bathrooms",
+        "cot",
+        "setup_burden",
+        "accessibility_layout"
+      ],
+      "effectType": "Evaluate sleeping and layout feasibility separately from nominal capacity.",
+      "boundaries": "Sleeps N does not prove N comparable beds, bedrooms, bathrooms, privacy or accessibility.",
+      "testIdea": "Replace two beds with a sofa-bed while preserving nominal capacity and require layout evidence to change."
+    },
+    {
+      "claimId": "CLM-ACC-014",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "feature-route-accessibility",
+      "sourceRefs": [
+        "SRC-ACC-018",
+        "SRC-ACC-020",
+        "SRC-ACC-023",
+        "SRC-ACC-031"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "extends accessibility to every non-hotel sellable space",
+      "requiredFacets": [
+        "parking_or_dropoff",
+        "surface",
+        "gradient",
+        "thresholds",
+        "door_widths",
+        "lift",
+        "route_to_exact_space",
+        "route_to_required_facilities",
+        "bathroom_transfer",
+        "bed_transfer",
+        "sensory_features",
+        "measurements",
+        "provenance"
+      ],
+      "effectType": "Use conjunctive feature-and-route matching plus targeted verification for critical unknowns.",
+      "boundaries": "Generic accessible labels and self-reported fields do not establish legal compliance or exact-unit usability.",
+      "testIdea": "An accessible unit with an inaccessible route to a required facility must fail the end-to-end need."
+    },
+    {
+      "claimId": "CLM-ACC-015",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "scoped-safety-evidence",
+      "sourceRefs": [
+        "SRC-ACC-001",
+        "SRC-ACC-008",
+        "SRC-ACC-019",
+        "SRC-ACC-020",
+        "SRC-ACC-021",
+        "SRC-ACC-022",
+        "SRC-ACC-023"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "jurisdiction",
+        "applicable_authority",
+        "registration_or_licence_scope",
+        "assessment_type",
+        "issuer",
+        "inspection_or_review_date",
+        "expiry",
+        "potable_water_status",
+        "emergency_contact",
+        "unknowns"
+      ],
+      "effectType": "Use provenance to decide evidence sufficiency, recheck or abstention; do not create an opaque safety score.",
+      "boundaries": "Platform presence, badges, reviews or missing optional fields cannot prove safety, compliance or violation.",
+      "testIdea": "Remove verified evidence but retain listing prose and require unknown confidence rather than pass or fail imputation."
+    },
+    {
+      "claimId": "CLM-ACC-016",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "historical-operator-reliability",
+      "sourceRefs": [
+        "SRC-ACC-001",
+        "SRC-ACC-027",
+        "SRC-ACC-032",
+        "SRC-ACC-033",
+        "SRC-ACC-034",
+        "SRC-ACC-035",
+        "SRC-ACC-036"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "operator_identity_confidence",
+        "unit_vs_portfolio_scope",
+        "host_cancellations",
+        "response_sla",
+        "support_hours",
+        "incident_recency",
+        "review_denominator",
+        "badge_rules_version",
+        "management_change"
+      ],
+      "effectType": "Retain historical reliability only with entity scope, recency and platform-rule provenance.",
+      "boundaries": "Profile photo, name, prose, badge or another managed property cannot guarantee exact-unit future performance.",
+      "testIdea": "Move a unit to a new manager and require prior manager evidence to detach or downgrade."
+    },
+    {
+      "claimId": "CLM-ACC-017",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "review-system-provenance",
+      "sourceRefs": [
+        "SRC-ACC-008",
+        "SRC-ACC-032",
+        "SRC-ACC-033",
+        "SRC-ACC-035",
+        "SRC-ACC-036"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "extends evidence provenance to bilateral P2P reviews",
+      "requiredFacets": [
+        "platform",
+        "review_eligibility",
+        "bilateral_or_single_sided",
+        "reveal_timing",
+        "review_window",
+        "moderation_rules",
+        "incentive",
+        "score_scale",
+        "denominator",
+        "period",
+        "language",
+        "unit_scope"
+      ],
+      "effectType": "Keep review systems separate unless an explicit calibrated transform exists.",
+      "boundaries": "Scores and counts from different systems do not have automatically equal meaning.",
+      "testIdea": "Remove review-system metadata and require the aggregate to become non-comparable rather than silently merged."
+    },
+    {
+      "claimId": "CLM-ACC-018",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "rating-compression",
+      "sourceRefs": [
+        "SRC-ACC-035",
+        "SRC-ACC-036",
+        "SRC-ACC-043"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "rating_distribution",
+        "review_count",
+        "recency",
+        "variance",
+        "platform_baseline",
+        "type_baseline",
+        "place_time_baseline",
+        "review_rate_if_known"
+      ],
+      "effectType": "Represent uncertainty and within-system context; tiny decimal gaps get no automatic meaning.",
+      "boundaries": "A high compressed average is not precise latent quality and historical findings are not current-listing guarantees.",
+      "testIdea": "Compare equal means at n=8 and n=800 and require different confidence without forced quality ordering."
+    },
+    {
+      "claimId": "CLM-ACC-019",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "aspect-and-dissatisfaction-separation",
+      "sourceRefs": [
+        "SRC-ACC-038",
+        "SRC-ACC-039",
+        "SRC-ACC-041",
+        "SRC-ACC-042",
+        "SRC-ACC-043",
+        "SRC-ACC-044"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "type_specific_aspect",
+        "mention_denominator",
+        "polarity",
+        "mixed_or_neutral",
+        "recency",
+        "severity",
+        "entity_scope",
+        "verified_stay_status",
+        "language",
+        "model_confidence"
+      ],
+      "effectType": "Expose aspect evidence, contradictions and recheck triggers without importing aspect weights.",
+      "boundaries": "Absence of a complaint does not prove feature presence, function or lack of failure.",
+      "testIdea": "Hold overall rating fixed while adding repeated recent access failures and require access evidence to change."
+    },
+    {
+      "claimId": "CLM-ACC-020",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "type-specific-review-ontology",
+      "sourceRefs": [
+        "SRC-ACC-037",
+        "SRC-ACC-038",
+        "SRC-ACC-039",
+        "SRC-ACC-041",
+        "SRC-ACC-042",
+        "SRC-ACC-043",
+        "SRC-ACC-044",
+        "SRC-ACC-047"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "accommodation_type",
+        "subtype",
+        "urban_rural_context",
+        "sharedness",
+        "stay_length",
+        "party_context",
+        "model_provenance",
+        "out_of_distribution_score"
+      ],
+      "effectType": "Use a shared crosswalk plus type-specific aspect extensions and out-of-distribution checks.",
+      "boundaries": "Topic prevalence and model salience are not individual utility weights.",
+      "testIdea": "Audit a hotel-only extractor on hostel and camping corpora for lost security, social, pitch and nature aspects."
+    },
+    {
+      "claimId": "CLM-ACC-021",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "appearance-proxy-firewall",
+      "sourceRefs": [
+        "SRC-ACC-040"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [],
+      "effectType": "Exclude host and manager portraits from decision features and proxy pipelines.",
+      "boundaries": "Never infer honesty, competence, personality, protected traits or reliability from appearance.",
+      "testIdea": "Replace only the host portrait and require every decision output to remain invariant."
+    },
+    {
+      "claimId": "CLM-ACC-022",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "bnb-breakfast-offer",
+      "sourceRefs": [
+        "SRC-ACC-010",
+        "SRC-ACC-019",
+        "SRC-ACC-043",
+        "SRC-ACC-044"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "breakfast_included",
+        "breakfast_price",
+        "service_days",
+        "service_window",
+        "service_format",
+        "early_departure_option",
+        "dietary_request_evidence",
+        "cross_contact_evidence",
+        "food_safety_provenance"
+      ],
+      "effectType": "Treat breakfast as an exact-offer service with temporal feasibility and explicit uncertainty.",
+      "boundaries": "B&B does not imply complimentary, full, hot, timely or allergen-safe breakfast.",
+      "testIdea": "Move departure before breakfast service and require the benefit to disappear unless an alternative is verified."
+    },
+    {
+      "claimId": "CLM-ACC-023",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "serviced-apartment-cadence",
+      "sourceRefs": [
+        "SRC-ACC-011",
+        "SRC-ACC-017",
+        "SRC-ACC-045"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "housekeeping_cadence",
+        "linen_cadence",
+        "towel_cadence",
+        "replenishment",
+        "maintenance_sla",
+        "reception_hours",
+        "support_hours",
+        "utilities",
+        "waste_process",
+        "mid_stay_inspection",
+        "service_fees"
+      ],
+      "effectType": "Create a per-stay service calendar and cumulative exposure record; no service weight yet.",
+      "boundaries": "Serviced does not imply daily hotel service and apartment does not imply no service.",
+      "testIdea": "Change cleaning from daily to weekly and compare 3-night versus 28-night service calendars."
+    },
+    {
+      "claimId": "CLM-ACC-024",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "length-of-stay-moderator",
+      "sourceRefs": [
+        "SRC-ACC-009",
+        "SRC-ACC-011",
+        "SRC-ACC-017",
+        "SRC-ACC-045"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "extends length-of-stay logic to non-hotel utility and friction",
+      "requiredFacets": [
+        "nights",
+        "task_frequency",
+        "kitchen",
+        "laundry",
+        "storage",
+        "workspace",
+        "housekeeping_cadence",
+        "consumables",
+        "maintenance",
+        "utilities",
+        "recurring_fees",
+        "extension_terms"
+      ],
+      "effectType": "Compute exposure counts and scenarios only; learn any preference effects from StayOpti outcomes.",
+      "boundaries": "Longer is not universally worse and serviced apartments are not automatically best for long stays.",
+      "testIdea": "Replay 2 and 21 nights and verify laundry benefits and repeated noise or no-cleaning friction scale separately."
+    },
+    {
+      "claimId": "CLM-ACC-025",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "hostel-bed-identity",
+      "sourceRefs": [
+        "SRC-ACC-012",
+        "SRC-ACC-041",
+        "SRC-ACC-042"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "bed_vs_private_room",
+        "dorm_capacity",
+        "dorm_composition",
+        "bunk_position_guarantee",
+        "room_class",
+        "bathroom_sharedness",
+        "linen",
+        "towel",
+        "bed_privacy",
+        "group_same_room_guarantee"
+      ],
+      "effectType": "Canonicalize and validate the exact bed or private-room offer separately from the hostel property.",
+      "boundaries": "Hostel name does not imply private room, chosen bunk or same-room placement for a group.",
+      "testIdea": "Swap a 4-bed dorm offer for a 12-bed dorm offer and require product evidence to change while property evidence stays."
+    },
+    {
+      "claimId": "CLM-ACC-026",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "hostel-security-facets",
+      "sourceRefs": [
+        "SRC-ACC-012",
+        "SRC-ACC-041",
+        "SRC-ACC-042"
+      ],
+      "certainty": "moderate-contextual",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "locker_dimensions",
+        "locker_location",
+        "lock_included_or_required",
+        "secure_charging",
+        "room_access_control",
+        "building_access_control",
+        "night_staff",
+        "luggage_storage",
+        "incident_recency",
+        "bed_privacy"
+      ],
+      "effectType": "Match concrete personal-security requirements and preserve unknowns instead of one vague score.",
+      "boundaries": "Price, nationality, dorm type or reviews cannot establish objective neighborhood or personal safety probability.",
+      "testIdea": "A laptop larger than the locker must invalidate nominal locker coverage for that task."
+    },
+    {
+      "claimId": "CLM-ACC-027",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "hostel-social-quiet-tradeoff",
+      "sourceRefs": [
+        "SRC-ACC-041",
+        "SRC-ACC-042"
+      ],
+      "certainty": "contested-heterogeneous",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "explicit_social_preference",
+        "explicit_quiet_preference",
+        "quiet_hours",
+        "bar_or_events",
+        "quiet_zones",
+        "dorm_location",
+        "recent_noise_aspects",
+        "sound_control",
+        "stay_purpose"
+      ],
+      "effectType": "Expose social-versus-quiet trade-off only after explicit traveler evidence.",
+      "boundaries": "Solo, young or backpacker labels do not imply a desire to party or socialize.",
+      "testIdea": "Use paired explicit profiles for social events and early sleep and allow fit to invert without demographic proxies."
+    },
+    {
+      "claimId": "CLM-ACC-028",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "curfew-and-night-access",
+      "sourceRefs": [
+        "SRC-ACC-012",
+        "SRC-ACC-028",
+        "SRC-ACC-041"
+      ],
+      "certainty": "gap-design-hypothesis",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "curfew",
+        "lockout_policy",
+        "late_check_in",
+        "night_entrance",
+        "staffed_hours",
+        "arrival_eta_interval",
+        "fallback",
+        "late_fee"
+      ],
+      "effectType": "Apply an interval-based temporal feasibility gate for arrival and planned activities.",
+      "boundaries": "Self check-in or central location does not prove no curfew or unrestricted night access.",
+      "testIdea": "Delay a flight beyond latest check-in and require recheck or failure unless fallback is evidenced."
+    },
+    {
+      "claimId": "CLM-ACC-029",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "pitch-and-vehicle-compatibility",
+      "sourceRefs": [
+        "SRC-ACC-013",
+        "SRC-ACC-020",
+        "SRC-ACC-046",
+        "SRC-ACC-048"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "pitch_assignment_mode",
+        "pitch_dimensions",
+        "surface",
+        "slope",
+        "tent_dimensions",
+        "awning_dimensions",
+        "vehicle_dimensions",
+        "weight_or_axle_limits",
+        "access_road",
+        "setup_window",
+        "checkout_window"
+      ],
+      "effectType": "Use geometric and equipment compatibility as eligibility evidence, with ranges for pitch classes.",
+      "boundaries": "Camping pitch does not imply compatibility with every tent, caravan or motorhome.",
+      "testIdea": "Increase vehicle length across the pitch or route boundary and require ineligibility despite unchanged occupancy."
+    },
+    {
+      "claimId": "CLM-ACC-030",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "camping-utilities-and-sanitation",
+      "sourceRefs": [
+        "SRC-ACC-013",
+        "SRC-ACC-020",
+        "SRC-ACC-022"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "voltage",
+        "amperage",
+        "connector",
+        "hookup_type",
+        "hookup_distance",
+        "water_potability",
+        "grey_water",
+        "black_or_chemical_waste",
+        "toilet_distance",
+        "shower_distance",
+        "facility_accessibility",
+        "hours",
+        "fees",
+        "seasonal_operation"
+      ],
+      "effectType": "Check equipment compatibility and required-facility routes as separate capabilities.",
+      "boundaries": "Water point does not imply potable, electric does not imply full hookup, and bathroom does not imply private sanitation.",
+      "testIdea": "Change connector or amperage while retaining an electric-hookup label and require incompatibility to be detected."
+    },
+    {
+      "claimId": "CLM-ACC-031",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "weather-flood-season-recheck",
+      "sourceRefs": [
+        "SRC-ACC-021",
+        "SRC-ACC-048"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "operating_dates",
+        "seasonal_closures",
+        "official_warning",
+        "hazard_authority",
+        "warning_timestamp",
+        "flood_plan_evidence",
+        "evacuation_route",
+        "emergency_contact",
+        "cancellation_or_rebooking",
+        "party_weather_sensitivity"
+      ],
+      "effectType": "Trigger time-bounded recheck or abstention on material official hazard or closure evidence.",
+      "boundaries": "Do not infer unsafe from regional stereotypes or safe from normal historical climate.",
+      "testIdea": "Inject an official warning after capture and require dynamic suspension without rewriting static quality."
+    },
+    {
+      "claimId": "CLM-ACC-032",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "glamping-label-null",
+      "sourceRefs": [
+        "SRC-ACC-014",
+        "SRC-ACC-047"
+      ],
+      "certainty": "contested-heterogeneous",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "structure_type",
+        "insulation",
+        "heating",
+        "cooling",
+        "sanitation_sharedness",
+        "bed",
+        "linen",
+        "weatherproofing",
+        "power",
+        "water",
+        "food",
+        "activities",
+        "nature_exposure",
+        "access_path"
+      ],
+      "effectType": "Represent glamping as a facet vector; the word itself has no quality or rank effect.",
+      "boundaries": "Glamping does not guarantee hotel-equivalent luxury, private plumbing, climate control or all-weather use.",
+      "testIdea": "Rename a basic tent as luxury glamping without changing facets and require output invariance."
+    },
+    {
+      "claimId": "CLM-ACC-033",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "usable-resort-facility-set",
+      "sourceRefs": [
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-020"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "facility",
+        "opening_calendar",
+        "hours",
+        "included_or_fee",
+        "age_or_height_rules",
+        "access_rules",
+        "reservation_required",
+        "capacity",
+        "distance",
+        "accessible_route",
+        "maintenance_closure",
+        "offer_link"
+      ],
+      "effectType": "Compute the party-specific usable facility set for the exact dates and offer.",
+      "boundaries": "A property-level facility icon does not prove inclusion, operation, capacity or party usability.",
+      "testIdea": "Close a kids club for exact dates and require family usable facilities to change while property catalogue stays fixed."
+    },
+    {
+      "claimId": "CLM-ACC-034",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "resort-fee-and-benefit-separation",
+      "sourceRefs": [
+        "SRC-ACC-005",
+        "SRC-ACC-006",
+        "SRC-ACC-007",
+        "SRC-ACC-029",
+        "SRC-ACC-030"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "new-in-v1.1",
+      "requiredFacets": [
+        "mandatory_fee_flag",
+        "fee_amount",
+        "fee_basis",
+        "tax",
+        "collection_time",
+        "included_benefits",
+        "waiver_conditions",
+        "optional_activity_fees",
+        "deposit"
+      ],
+      "effectType": "Include mandatory fee in total while evaluating any benefits separately and preventing double count.",
+      "boundaries": "On-site collection does not imply optional and fee price does not establish benefit value.",
+      "testIdea": "Repartition the same total between room and resort fee and require total-cost invariance."
+    },
+    {
+      "claimId": "CLM-ACC-035",
+      "track": "accommodation-types-and-unit",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/accommodation_types_decision_science.md",
+      "claimAlias": "critical-unknown-abstention",
+      "sourceRefs": [
+        "SRC-ACC-001",
+        "SRC-ACC-005",
+        "SRC-ACC-009",
+        "SRC-ACC-010",
+        "SRC-ACC-011",
+        "SRC-ACC-012",
+        "SRC-ACC-013",
+        "SRC-ACC-014",
+        "SRC-ACC-015",
+        "SRC-ACC-016",
+        "SRC-ACC-017",
+        "SRC-ACC-018",
+        "SRC-ACC-019",
+        "SRC-ACC-020",
+        "SRC-ACC-021",
+        "SRC-ACC-022",
+        "SRC-ACC-023",
+        "SRC-ACC-024",
+        "SRC-ACC-025",
+        "SRC-ACC-026",
+        "SRC-ACC-027",
+        "SRC-ACC-028",
+        "SRC-ACC-029",
+        "SRC-ACC-030",
+        "SRC-ACC-031",
+        "SRC-ACC-032",
+        "SRC-ACC-033",
+        "SRC-ACC-034"
+      ],
+      "certainty": "robust-scoped",
+      "historyRequirement": null,
+      "historyNotes": "extends V3 abstention to type-specific critical evidence",
+      "requiredFacets": [
+        "critical_unknown",
+        "plausible_values",
+        "decision_sensitivity",
+        "eligibility_sensitivity",
+        "recheck_path",
+        "recheck_cost",
+        "freshness",
+        "decision_deadline"
+      ],
+      "effectType": "Queue targeted recheck and abstain when unresolved plausible values can reverse eligibility or the decision.",
+      "boundaries": "Unknown is neither present nor absent; never impute safety, privacy, accessibility or mandatory cost from a type average.",
+      "testIdea": "Evaluate every plausible value and require abstention whenever the candidate choice flips before resolution."
+    },
+    {
+      "claimId": "CLM-BEH-001",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CHOICE-001",
+      "sourceRefs": [
+        "SRC-BEH-001",
+        "SRC-BEH-002"
+      ],
+      "certainty": "B/F",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "choice_set_size",
+        "attribute_count",
+        "attribute_conflict",
+        "interaction_effort",
+        "decision_outcome"
+      ],
+      "effectType": "UX guardrail and adaptive shortlist",
+      "boundaries": "general multi-attribute tasks; no travel-optimal card threshold",
+      "testIdea": "randomize shortlist depth; score blind decision quality, effort, abandonment and trade-off recall"
+    },
+    {
+      "claimId": "CLM-BEH-002",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CHOICE-002",
+      "sourceRefs": [
+        "SRC-BEH-003",
+        "SRC-BEH-004"
+      ],
+      "certainty": "A/X",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "choice_set_size",
+        "task_complexity",
+        "preference_uncertainty",
+        "goal_clarity",
+        "user_experience"
+      ],
+      "effectType": "anti-universalization guardrail",
+      "boundaries": "high heterogeneity across products, tasks and moderators",
+      "testIdea": "factorial card-count by complexity by profile; reject fixed overload threshold"
+    },
+    {
+      "claimId": "CLM-BEH-003",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CHOICE-003",
+      "sourceRefs": [
+        "SRC-BEH-004"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "task_difficulty",
+        "preference_uncertainty",
+        "goal_clarity",
+        "pareto_conflict",
+        "destination_familiarity"
+      ],
+      "effectType": "adaptive elicitation candidate",
+      "boundaries": "moderators do not supply ready travel cutoffs",
+      "testIdea": "measure value-of-information and winner flip per adaptive question against burden"
+    },
+    {
+      "claimId": "CLM-BEH-004",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CHOICE-004",
+      "sourceRefs": [
+        "SRC-BEH-005"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "attribute_entropy",
+        "attribute_dispersion",
+        "missingness",
+        "comparability",
+        "measurement_units"
+      ],
+      "effectType": "comparison-structure guardrail",
+      "boundaries": "limited experimental product domains",
+      "testIdea": "hold card count fixed; vary information structure; test errors, time and missing-data comprehension"
+    },
+    {
+      "claimId": "CLM-BEH-005",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CHOICE-005",
+      "sourceRefs": [
+        "SRC-BEH-006"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "evidence_sufficiency",
+        "dominance_gap",
+        "urgency",
+        "recheck_status",
+        "price_trend_reliability"
+      ],
+      "effectType": "abstention and deferral policy",
+      "boundaries": "no direct estimate of economic cost of waiting for hotels",
+      "testIdea": "compare forced choice and abstention on later regret, violations and recovery quality"
+    },
+    {
+      "claimId": "CLM-BEH-006",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CHOICE-006",
+      "sourceRefs": [
+        "SRC-BEH-007"
+      ],
+      "certainty": "B/X",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "dominance_graph",
+        "presented_set",
+        "card_order",
+        "role_assignment",
+        "commission"
+      ],
+      "effectType": "decoy and set-invariance guardrail",
+      "boundaries": "effect magnitude and ecology vary",
+      "testIdea": "add/remove dominated options and shuffle order; latent scores and unrelated roles must remain invariant"
+    },
+    {
+      "claimId": "CLM-BEH-007",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-RISK-001",
+      "sourceRefs": [
+        "SRC-BEH-008",
+        "SRC-BEH-009"
+      ],
+      "certainty": "F/B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "declared_budget",
+        "observed_history",
+        "viewed_alternatives",
+        "peer_price",
+        "sunk_commitments"
+      ],
+      "effectType": "reference-point sensitivity candidate",
+      "boundaries": "reference point must be observed or uncertainty-labelled",
+      "testIdea": "inject legitimate versus irrelevant anchors; only provenance-backed references may affect sensitivity"
+    },
+    {
+      "claimId": "CLM-BEH-008",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-RISK-002",
+      "sourceRefs": [
+        "SRC-BEH-008",
+        "SRC-BEH-009",
+        "SRC-BEH-010",
+        "SRC-BEH-011"
+      ],
+      "certainty": "A/X",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "comparable_past_choices",
+        "cancellation_history",
+        "overrides",
+        "trip_specific_risk_preference"
+      ],
+      "effectType": "no universal loss-aversion coefficient",
+      "boundaries": "cross-domain mean is not an individual travel parameter; active debate",
+      "testIdea": "sweep coefficient ranges and require winner robustness; calibrate only on consented comparable behavior"
+    },
+    {
+      "claimId": "CLM-BEH-009",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-RISK-003",
+      "sourceRefs": [
+        "SRC-BEH-012"
+      ],
+      "certainty": "F/B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "fee_completeness",
+        "policy_completeness",
+        "recheck",
+        "freshness",
+        "provenance",
+        "empirical_failure_rate"
+      ],
+      "effectType": "unknown-not-bad and confidence guardrail",
+      "boundaries": "abstract ambiguity paradigm; no hotel risk premium",
+      "testIdea": "remove cancellation data; system must mark unknown or recheck, never silently map to non-refundable"
+    },
+    {
+      "claimId": "CLM-BEH-010",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-RISK-004",
+      "sourceRefs": [
+        "SRC-BEH-013"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "travel_cancellation_preference",
+        "location_risk_preference",
+        "schedule_risk_preference",
+        "past_travel_behavior"
+      ],
+      "effectType": "domain-specific personalization candidate",
+      "boundaries": "self-report scale is not hotel-specific",
+      "testIdea": "within-user cross-domain divergence and stability by trip purpose; prohibit demographic proxying"
+    },
+    {
+      "claimId": "CLM-BEH-011",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-TIME-001",
+      "sourceRefs": [
+        "SRC-BEH-014"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "lead_time",
+        "free_cancel_deadline",
+        "change_probability",
+        "amount_at_risk",
+        "date_certainty",
+        "cashflow_timing"
+      ],
+      "effectType": "contextual flexibility valuation candidate",
+      "boundaries": "review does not define a hotel cancellation curve",
+      "testIdea": "lead-time and deadline counterfactuals tied to realized cancellations and rebook outcomes"
+    },
+    {
+      "claimId": "CLM-BEH-012",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-REGRET-001",
+      "sourceRefs": [
+        "SRC-BEH-015"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "future_feedback_visibility",
+        "reversibility",
+        "economic_downside",
+        "quality_downside",
+        "justifiability"
+      ],
+      "effectType": "regret taxonomy candidate",
+      "boundaries": "gambling experiments; regret minimization is not always safety",
+      "testIdea": "vary counterfactual feedback and collect cause-specific anticipated and realized regret"
+    },
+    {
+      "claimId": "CLM-BEH-013",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-REGRET-002",
+      "sourceRefs": [
+        "SRC-BEH-016"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "chosen_outcome",
+        "expected_outcome",
+        "considered_set",
+        "later_prices",
+        "override_reason"
+      ],
+      "effectType": "post-choice learning and outcome separation",
+      "boundaries": "lottery choice experiment; privacy-sensitive considered set",
+      "testIdea": "measure stay satisfaction and decision regret separately; test predictive validity for reuse and override"
+    },
+    {
+      "claimId": "CLM-BEH-014",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-PRICE-001",
+      "sourceRefs": [
+        "SRC-BEH-017"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "stay_dates",
+        "micro_location",
+        "category",
+        "room",
+        "cancellation_policy",
+        "occupancy",
+        "price_history",
+        "coverage"
+      ],
+      "effectType": "peer-price validity guardrail",
+      "boundaries": "brand-product generalization; hotel seasonality and parity require new evidence",
+      "testIdea": "leak dates, room or flexibility from peer set; invalid anchors must be rejected"
+    },
+    {
+      "claimId": "CLM-BEH-015",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-PRICE-002",
+      "sourceRefs": [
+        "SRC-BEH-018"
+      ],
+      "certainty": "F/B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "total_trip_budget",
+        "lodging_budget",
+        "onsite_fees",
+        "payment_timing",
+        "stay_length"
+      ],
+      "effectType": "total-cost and budget-composition guardrail",
+      "boundaries": "mental accounts vary; no universal partition",
+      "testIdea": "repartition identical total between now/later and fees; economic ranking must remain total-cost invariant"
+    },
+    {
+      "claimId": "CLM-BEH-016",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-WTP-001",
+      "sourceRefs": [
+        "SRC-BEH-019"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "stated_wtp",
+        "revealed_choices",
+        "price_gap",
+        "considered_set",
+        "purchase_or_abandon",
+        "trip_segment"
+      ],
+      "effectType": "weak-prior and learning guardrail",
+      "boundaries": "mean hypothetical bias does not transfer to hotels or persons",
+      "testIdea": "holdout calibration of stated versus revealed WTP with selection-bias audit"
+    },
+    {
+      "claimId": "CLM-BEH-017",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-WTP-002",
+      "sourceRefs": [
+        "SRC-BEH-020"
+      ],
+      "certainty": "B/C",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "trip_purpose",
+        "property_familiarity",
+        "room_attributes",
+        "policy",
+        "price"
+      ],
+      "effectType": "attribute-interaction research candidate",
+      "boundaries": "single-property stated-choice study; no universal magnitudes",
+      "testIdea": "hierarchical subgroup model with cold-start abstention, calibration and fairness checks"
+    },
+    {
+      "claimId": "CLM-BEH-018",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-GROUP-001",
+      "sourceRefs": [
+        "SRC-BEH-021"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "member_preferences",
+        "preference_intensity",
+        "hard_vetoes",
+        "payer",
+        "booker",
+        "consented_history"
+      ],
+      "effectType": "group fairness and veto guardrail",
+      "boundaries": "dated couple experiment; influence is culture- and context-sensitive",
+      "testIdea": "compare average, least-misery and consensus while preserving accessibility and other hard vetoes"
+    },
+    {
+      "claimId": "CLM-BEH-019",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-GROUP-002",
+      "sourceRefs": [
+        "SRC-BEH-022"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "members",
+        "subdecision_preferences",
+        "disagreement",
+        "nonnegotiables",
+        "compromise_willingness"
+      ],
+      "effectType": "dyadic adaptive-elicitation candidate",
+      "boundaries": "country and period specific; family forms under-covered",
+      "testIdea": "measure proxy error and decision improvement from one conflict-targeted question versus burden"
+    },
+    {
+      "claimId": "CLM-BEH-020",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-GROUP-003",
+      "sourceRefs": [
+        "SRC-BEH-023"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "group_size",
+        "relationships",
+        "individual_preferences",
+        "conflict",
+        "discussion_process",
+        "overrides"
+      ],
+      "effectType": "contextual aggregation-policy candidate",
+      "boundaries": "small destination-choice study; destination is not hotel",
+      "testIdea": "simulate and field-test aggregation rules on minimum, mean and dispersion of satisfaction/regret"
+    },
+    {
+      "claimId": "CLM-BEH-021",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-TRUST-001",
+      "sourceRefs": [
+        "SRC-BEH-028",
+        "SRC-BEH-029"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "segment_accuracy",
+        "observed_errors",
+        "provenance",
+        "reliance",
+        "overrides",
+        "outcomes"
+      ],
+      "effectType": "calibrated-trust and routing guardrail",
+      "boundaries": "much evidence from safety-critical automation",
+      "testIdea": "compare reliance against measured capability; score misuse and disuse, not trust alone"
+    },
+    {
+      "claimId": "CLM-BEH-022",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-TRUST-002",
+      "sourceRefs": [
+        "SRC-BEH-024",
+        "SRC-BEH-025",
+        "SRC-BEH-026"
+      ],
+      "certainty": "B/X",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "error_history",
+        "task_subjectivity",
+        "user_expertise",
+        "performance_evidence",
+        "prior_overrides"
+      ],
+      "effectType": "non-directional algorithm-reliance model",
+      "boundaries": "forecast tasks; adoption is not outcome quality",
+      "testIdea": "longitudinal recovery after visible error across objective and subjective tasks; score choice quality"
+    },
+    {
+      "claimId": "CLM-BEH-023",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-TRUST-003",
+      "sourceRefs": [
+        "SRC-BEH-027"
+      ],
+      "certainty": "B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "override_type",
+        "change_magnitude",
+        "override_reason",
+        "outcome",
+        "interaction_burden"
+      ],
+      "effectType": "bounded user-control candidate",
+      "boundaries": "forecast evidence; control can reduce accuracy",
+      "testIdea": "compare no control, bounded critique and free override on accuracy, adoption, burden and regret"
+    },
+    {
+      "claimId": "CLM-BEH-024",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-TRUST-004",
+      "sourceRefs": [
+        "SRC-BEH-029"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "fault_injection",
+        "contradictory_evidence",
+        "reliance",
+        "hard_constraints"
+      ],
+      "effectType": "automation-bias safety guardrail",
+      "boundaries": "operational domains are higher stakes than travel",
+      "testIdea": "inject fluent but constraint-violating recommendations; independent governor must block them"
+    },
+    {
+      "claimId": "CLM-BEH-025",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-XAI-001",
+      "sourceRefs": [
+        "SRC-BEH-032"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "explanation_goal",
+        "comprehension",
+        "correction_success",
+        "trust",
+        "decision_quality",
+        "time"
+      ],
+      "effectType": "explanation-goal separation guardrail",
+      "boundaries": "review and studies in non-travel recommenders",
+      "testIdea": "detect persuasion-quality divergence using sacrifice recall, factuality and error correction"
+    },
+    {
+      "claimId": "CLM-BEH-026",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-XAI-002",
+      "sourceRefs": [
+        "SRC-BEH-033"
+      ],
+      "certainty": "B/X",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "surprise_or_error",
+        "explanation_depth",
+        "user_expertise",
+        "time",
+        "comprehension"
+      ],
+      "effectType": "progressive-disclosure candidate",
+      "boundaries": "single educational field context; transparency effect is non-monotonic",
+      "testIdea": "factorial explanation depth by expectation violation; measure load, correction and outcome quality"
+    },
+    {
+      "claimId": "CLM-BEH-027",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-UNC-001",
+      "sourceRefs": [
+        "SRC-BEH-030",
+        "SRC-BEH-031"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "uncertainty_type",
+        "range_or_probability",
+        "provenance",
+        "numeracy",
+        "decision_impact"
+      ],
+      "effectType": "uncertainty-communication candidate",
+      "boundaries": "public facts and numbers, not hotel recommendations",
+      "testIdea": "compare verbal label, numeric range and range-plus-cause on comprehension, trust and decision quality"
+    },
+    {
+      "claimId": "CLM-BEH-028",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-CAL-001",
+      "sourceRefs": [
+        "SRC-BEH-034",
+        "SRC-BEH-028",
+        "SRC-BEH-030",
+        "SRC-BEH-031"
+      ],
+      "certainty": "F",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "preregistered_prediction",
+        "defined_outcome",
+        "segment",
+        "timestamp",
+        "evidence_grade"
+      ],
+      "effectType": "confidence-calibration gate",
+      "boundaries": "requires defined events, enough outcomes and distribution-shift monitoring",
+      "testIdea": "Brier and reliability by role and segment with holdout, intervals and calibration-drift alarms"
+    },
+    {
+      "claimId": "CLM-BEH-029",
+      "track": "behavioral-decision-science",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/behavioral_decision_science.md",
+      "claimAlias": "BDS-UX-001",
+      "sourceRefs": [
+        "SRC-BEH-035"
+      ],
+      "certainty": "A/X",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "default_treatment",
+        "alternative_set",
+        "preference_alignment",
+        "outcome",
+        "commission"
+      ],
+      "effectType": "Best-Choice default ethics gate",
+      "boundaries": "heterogeneous domains; choice share does not establish welfare",
+      "testIdea": "randomize badge/default; require outcome or regret benefit, commission neutrality and informed override"
+    },
+    {
+      "claimId": "CLM-HOS-001",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-001",
+        "SRC-HOS-002",
+        "SRC-HOS-003"
+      ],
+      "certainty": "high_normative",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "scheme_id",
+        "scheme_version",
+        "jurisdiction",
+        "audit_validity",
+        "category"
+      ],
+      "effectType": "context_only",
+      "boundaries": "not a universal quality scalar",
+      "testIdea": "scheme-swap monotonicity"
+    },
+    {
+      "claimId": "CLM-HOS-002",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-003",
+        "SRC-HOS-004",
+        "SRC-HOS-013"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "category_provenance",
+        "experienced_aspects",
+        "room_offer"
+      ],
+      "effectType": "separate_evidence_channels",
+      "boundaries": "neither channel substitutes for the other",
+      "testIdea": "classification-review conflict set"
+    },
+    {
+      "claimId": "CLM-HOS-003",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-012",
+        "SRC-HOS-015",
+        "SRC-HOS-016",
+        "SRC-HOS-017",
+        "SRC-HOS-030"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "category",
+        "type",
+        "peer_cohort",
+        "aspect"
+      ],
+      "effectType": "context_conditioned_weight",
+      "boundaries": "coefficients do not transport automatically",
+      "testIdea": "hierarchical out-of-context holdout"
+    },
+    {
+      "claimId": "CLM-HOS-004",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-004",
+        "SRC-HOS-009",
+        "SRC-HOS-010",
+        "SRC-HOS-011"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "technical_aspects",
+        "functional_aspects"
+      ],
+      "effectType": "multidimensional",
+      "boundaries": "no cross-dimension masking of severe failures",
+      "testIdea": "2x2 physical-service scenarios"
+    },
+    {
+      "claimId": "CLM-HOS-005",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-015",
+        "SRC-HOS-016",
+        "SRC-HOS-020"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "aspect",
+        "polarity",
+        "severity",
+        "context"
+      ],
+      "effectType": "asymmetric_penalty_reward",
+      "boundaries": "Kano class is context dependent",
+      "testIdea": "re-estimated penalty-reward curves"
+    },
+    {
+      "claimId": "CLM-HOS-006",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-004",
+        "SRC-HOS-016",
+        "SRC-HOS-017",
+        "SRC-HOS-020"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "cleanliness",
+        "maintenance",
+        "severity",
+        "recency",
+        "recurrence",
+        "denominator",
+        "room_match"
+      ],
+      "effectType": "hard_gate_or_nonlinear_penalty",
+      "boundaries": "missing is not failure",
+      "testIdea": "severity-recency false-positive audit"
+    },
+    {
+      "claimId": "CLM-HOS-007",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-006",
+        "SRC-HOS-007",
+        "SRC-HOS-008"
+      ],
+      "certainty": "high_normative",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "property_id",
+        "room_type_id",
+        "rate_offer_id",
+        "feature_provenance"
+      ],
+      "effectType": "decision_unit_gate",
+      "boundaries": "property feature does not prove offered-room feature",
+      "testIdea": "room-feature swap"
+    },
+    {
+      "claimId": "CLM-HOS-008",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-022",
+        "SRC-HOS-023",
+        "SRC-HOS-024"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "sleep_sensitivity",
+        "bed",
+        "linen",
+        "pillow",
+        "hvac_noise",
+        "blackout",
+        "thermal_control"
+      ],
+      "effectType": "contextual_risk_utility",
+      "boundaries": "self-report; no universal mattress rule",
+      "testIdea": "sensitivity-by-duration prospective outcome"
+    },
+    {
+      "claimId": "CLM-HOS-009",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-022",
+        "SRC-HOS-024",
+        "SRC-HOS-025",
+        "SRC-HOS-026"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "external_noise",
+        "internal_noise",
+        "hvac_noise",
+        "room_orientation",
+        "soundproofing",
+        "sensitivity"
+      ],
+      "effectType": "source_specific_risk",
+      "boundaries": "WHO values are not hotel-room thresholds",
+      "testIdea": "noise-source ablation"
+    },
+    {
+      "claimId": "CLM-HOS-010",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-027",
+        "SRC-HOS-028"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "season",
+        "climate",
+        "temperature_control",
+        "ventilation",
+        "thermal_complaints",
+        "sensitivity"
+      ],
+      "effectType": "contextual_fit",
+      "boundaries": "no universal ideal setpoint",
+      "testIdea": "season-climate interaction"
+    },
+    {
+      "claimId": "CLM-HOS-011",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-007",
+        "SRC-HOS-022",
+        "SRC-HOS-023"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "occupancy",
+        "bed_count",
+        "bed_type",
+        "bed_width",
+        "cot_extra_bed_guarantee"
+      ],
+      "effectType": "hard_gate_plus_soft_comfort",
+      "boundaries": "request is not guarantee",
+      "testIdea": "bed-layout mutation"
+    },
+    {
+      "claimId": "CLM-HOS-012",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-006",
+        "SRC-HOS-007",
+        "SRC-HOS-016",
+        "SRC-HOS-017"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "bathroom_type",
+        "access_features",
+        "water_fixtures",
+        "cleanliness",
+        "maintenance",
+        "room_mapping"
+      ],
+      "effectType": "hard_gate_or_risk",
+      "boundaries": "category alone cannot establish bathroom fit",
+      "testIdea": "exact-feature missing-vs-false"
+    },
+    {
+      "claimId": "CLM-HOS-013",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-023",
+        "SRC-HOS-027",
+        "SRC-HOS-028"
+      ],
+      "certainty": "low_moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "odor",
+        "smoke",
+        "mold",
+        "ventilation",
+        "blackout",
+        "lighting",
+        "view",
+        "explicit_need"
+      ],
+      "effectType": "risk_or_contextual_utility",
+      "boundaries": "IEQ hotel weights are weak",
+      "testIdea": "facet ablation"
+    },
+    {
+      "claimId": "CLM-HOS-014",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-029",
+        "SRC-HOS-030"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "included",
+        "hours",
+        "quality",
+        "diet_fit",
+        "schedule",
+        "substitutes",
+        "intended_use"
+      ],
+      "effectType": "use_conditioned_utility_cost",
+      "boundaries": "under-researched does not mean unimportant",
+      "testIdea": "planned-vs-actual-use"
+    },
+    {
+      "claimId": "CLM-HOS-015",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-001",
+        "SRC-HOS-002",
+        "SRC-HOS-030",
+        "SRC-HOS-031"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "exists",
+        "included",
+        "availability",
+        "hours",
+        "condition",
+        "accessibility",
+        "restriction",
+        "intended_use"
+      ],
+      "effectType": "use_conditioned_utility",
+      "boundaries": "no amenity-count bonus",
+      "testIdea": "unused-amenity invariance"
+    },
+    {
+      "claimId": "CLM-HOS-016",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-004",
+        "SRC-HOS-009",
+        "SRC-HOS-010",
+        "SRC-HOS-011",
+        "SRC-HOS-012"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "reliability",
+        "responsiveness",
+        "assurance",
+        "empathy",
+        "waiting",
+        "recovery",
+        "recency"
+      ],
+      "effectType": "multidimensional_service_risk_utility",
+      "boundaries": "no universal employee coefficient",
+      "testIdea": "service-dimension isolation"
+    },
+    {
+      "claimId": "CLM-HOS-017",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-004",
+        "SRC-HOS-014",
+        "SRC-HOS-016",
+        "SRC-HOS-017"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "facility_presence",
+        "condition",
+        "availability",
+        "verification_time"
+      ],
+      "effectType": "false_savings_risk",
+      "boundaries": "present does not mean usable",
+      "testIdea": "presence-condition cross-product"
+    },
+    {
+      "claimId": "CLM-HOS-018",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-005",
+        "SRC-HOS-006",
+        "SRC-HOS-007",
+        "SRC-HOS-008"
+      ],
+      "certainty": "high_normative",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "person_needs",
+        "room_specific_access_features",
+        "dimensions",
+        "route",
+        "common_areas",
+        "photos_floorplan",
+        "provenance"
+      ],
+      "effectType": "hard_gate_or_abstain",
+      "boundaries": "generic accessible label insufficient",
+      "testIdea": "expert-reviewed access matrix"
+    },
+    {
+      "claimId": "CLM-HOS-019",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-006",
+        "SRC-HOS-007",
+        "SRC-HOS-008"
+      ],
+      "certainty": "high_normative_us_scope",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "room_feature_mapping",
+        "inventory",
+        "block_status",
+        "guarantee_status",
+        "recheck"
+      ],
+      "effectType": "delivery_confidence_gate",
+      "boundaries": "US law not globally portable",
+      "testIdea": "booking-path and arrival-mismatch tests"
+    },
+    {
+      "claimId": "CLM-HOS-020",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-016",
+        "SRC-HOS-018",
+        "SRC-HOS-019",
+        "SRC-HOS-020",
+        "SRC-HOS-021"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "traveler_type",
+        "trip_purpose",
+        "party",
+        "explicit_preferences"
+      ],
+      "effectType": "retrieval_normalization_prior",
+      "boundaries": "individual preference overrides segment",
+      "testIdea": "explicit-preference override fairness"
+    },
+    {
+      "claimId": "CLM-HOS-021",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-002",
+        "SRC-HOS-007",
+        "SRC-HOS-032"
+      ],
+      "certainty": "low_moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "child_ages",
+        "occupancy",
+        "cot_beds",
+        "connecting_guarantee",
+        "safety",
+        "diet_schedule",
+        "planned_programs"
+      ],
+      "effectType": "hard_gate_plus_contextual_utility",
+      "boundaries": "family is heterogeneous",
+      "testIdea": "age-layout scenario suite"
+    },
+    {
+      "claimId": "CLM-HOS-022",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-018",
+        "SRC-HOS-019",
+        "SRC-HOS-023",
+        "SRC-HOS-024"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "trip_purpose",
+        "workspace",
+        "wifi_reliability",
+        "quiet",
+        "schedule",
+        "service_needs"
+      ],
+      "effectType": "elicitation_prior_then_personal_fit",
+      "boundaries": "business label alone sets no weight",
+      "testIdea": "purpose-only residual test"
+    },
+    {
+      "claimId": "CLM-HOS-023",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-018",
+        "SRC-HOS-021"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "reviewer_party",
+        "current_party",
+        "category",
+        "destination",
+        "time"
+      ],
+      "effectType": "review_normalization_only",
+      "boundaries": "no traveler-label utility",
+      "testIdea": "group-label counterfactual fairness"
+    },
+    {
+      "claimId": "CLM-HOS-024",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-031",
+        "SRC-HOS-033"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "nights",
+        "issue_recurrence",
+        "housekeeping_cadence",
+        "room_control",
+        "long_stay_needs"
+      ],
+      "effectType": "duration_scaled_exposure",
+      "boundaries": "no blanket LoS penalty",
+      "testIdea": "repeated-exposure simulation"
+    },
+    {
+      "claimId": "CLM-HOS-025",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-034"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "reviewer_los",
+        "text_specificity",
+        "corroboration",
+        "verified_status",
+        "recency"
+      ],
+      "effectType": "diagnosticity_adjustment",
+      "boundaries": "length is not truth",
+      "testIdea": "human accuracy with LoS-length ablation"
+    },
+    {
+      "claimId": "CLM-HOS-026",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-014",
+        "SRC-HOS-015",
+        "SRC-HOS-016",
+        "SRC-HOS-017",
+        "SRC-HOS-020"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "aspect",
+        "polarity",
+        "severity",
+        "specificity",
+        "date",
+        "room_type",
+        "traveler_type",
+        "los",
+        "denominator"
+      ],
+      "effectType": "aspect_level_evidence",
+      "boundaries": "overall score and non-mention are insufficient",
+      "testIdea": "aspect annotation and explanation faithfulness"
+    },
+    {
+      "claimId": "CLM-HOS-027",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-012",
+        "SRC-HOS-016",
+        "SRC-HOS-018",
+        "SRC-HOS-021"
+      ],
+      "certainty": "moderate_high",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "platform_scale_version",
+        "traveler_context",
+        "scheme_category",
+        "destination",
+        "time"
+      ],
+      "effectType": "hierarchical_peer_normalization",
+      "boundaries": "raw scores not cross-context comparable",
+      "testIdea": "cross-platform-city temporal holdout"
+    },
+    {
+      "claimId": "CLM-HOS-028",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-014",
+        "SRC-HOS-017",
+        "SRC-HOS-018",
+        "SRC-HOS-034"
+      ],
+      "certainty": "design_hypothesis_supported",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "mention_count",
+        "relevant_denominator",
+        "time_window",
+        "severity",
+        "verified_duplicate_flags",
+        "stay_volume_proxy"
+      ],
+      "effectType": "uncertainty_aware_prevalence",
+      "boundaries": "mention count is not prevalence",
+      "testIdea": "count-vs-rate empirical-Bayes calibration"
+    },
+    {
+      "claimId": "CLM-HOS-029",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-001",
+        "SRC-HOS-004",
+        "SRC-HOS-006",
+        "SRC-HOS-007"
+      ],
+      "certainty": "design_hypothesis_normatively_supported",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "verification_time",
+        "provenance",
+        "contradiction",
+        "room_match",
+        "decision_margin",
+        "criticality"
+      ],
+      "effectType": "confidence_abstention_recheck",
+      "boundaries": "missing is not automatically bad",
+      "testIdea": "coverage-vs-hard-need-error curve"
+    },
+    {
+      "claimId": "CLM-HOS-030",
+      "track": "hospitality-guest-experience",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/hospitality_guest_experience.md",
+      "claimAlias": null,
+      "sourceRefs": [
+        "SRC-HOS-001",
+        "SRC-HOS-003",
+        "SRC-HOS-012",
+        "SRC-HOS-013",
+        "SRC-HOS-016"
+      ],
+      "certainty": "synthesis",
+      "historyRequirement": null,
+      "historyNotes": null,
+      "requiredFacets": [
+        "dimension_utility",
+        "dimension_risk",
+        "category_expectation",
+        "evidence_confidence"
+      ],
+      "effectType": "pareto_explanation",
+      "boundaries": "do not force scalar winner under preference-sensitive trade-off",
+      "testIdea": "preference-reversal and explanation-completeness"
+    },
+    {
+      "claimId": "CLM-SEA-001",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "local-seasonality",
+      "sourceRefs": [
+        "SRC-SEA-001",
+        "SRC-SEA-002",
+        "SRC-SEA-003"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "microzone_version",
+        "stay_night",
+        "accommodation_type",
+        "local_history"
+      ],
+      "effectType": "Infer and explain a local night-specific regime only; never import a national/month label.",
+      "boundaries": "Official regions are contextual and may remain too coarse; no universal seasonal threshold.",
+      "testIdea": "Compare city-wide and microzone models under leave-one-microzone-out validation."
+    },
+    {
+      "claimId": "CLM-SEA-002",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "type-season-interaction",
+      "sourceRefs": [
+        "SRC-SEA-001",
+        "SRC-SEA-003",
+        "SRC-SEA-024",
+        "SRC-SEA-031"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "accommodation_type",
+        "category_system",
+        "capacity",
+        "price_history",
+        "night_history"
+      ],
+      "effectType": "Use type/category-aware baselines or hierarchical interactions.",
+      "boundaries": "Direction is supported but effect size varies by market and classification system.",
+      "testIdea": "Pooled-versus-stratified temporal/geographic holdout with calibration by type."
+    },
+    {
+      "claimId": "CLM-SEA-003",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "night-first",
+      "sourceRefs": [
+        "SRC-SEA-025",
+        "SRC-SEA-032",
+        "SRC-SEA-033",
+        "SRC-SEA-035"
+      ],
+      "certainty": "moderate-high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "per_night_price",
+        "per_night_availability",
+        "weekday",
+        "event_exposure"
+      ],
+      "effectType": "Infer per night, then aggregate; permit MIXED for heterogeneous stays.",
+      "boundaries": "A provider total cannot be allocated to nights without source allocation or an explicit uncertainty-bearing model.",
+      "testIdea": "Construct stays crossing weekday, weekend and event nights and verify the per-night trace survives aggregation."
+    },
+    {
+      "claimId": "CLM-SEA-004",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "lead-time-state",
+      "sourceRefs": [
+        "SRC-SEA-015",
+        "SRC-SEA-016",
+        "SRC-SEA-017",
+        "SRC-SEA-022",
+        "SRC-SEA-026"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "observed_at_utc",
+        "stay_date",
+        "lead_time_days",
+        "comparable_snapshots"
+      ],
+      "effectType": "Condition price/availability distributions and booking pace on search date and lead time.",
+      "boundaries": "No universal early, normal or late booking band.",
+      "testIdea": "Lead-time ablation plus rolling-origin evaluation at multiple horizons."
+    },
+    {
+      "claimId": "CLM-SEA-005",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "nonmonotonic-price-path",
+      "sourceRefs": [
+        "SRC-SEA-022",
+        "SRC-SEA-024",
+        "SRC-SEA-025",
+        "SRC-SEA-026",
+        "SRC-SEA-027"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "repeated_offer_snapshots",
+        "offer_identity",
+        "availability_state",
+        "lead_time_days"
+      ],
+      "effectType": "Model a distribution of price paths; prohibit deterministic book-early/book-late rules.",
+      "boundaries": "Posted rates can be uniform, increasing, decreasing or irregular; market and offer scope matter.",
+      "testIdea": "Hold out properties/stay dates and score predicted change direction and interval coverage."
+    },
+    {
+      "claimId": "CLM-SEA-006",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "channel-terms-normalization",
+      "sourceRefs": [
+        "SRC-SEA-026",
+        "SRC-SEA-029",
+        "SRC-SEA-014"
+      ],
+      "certainty": "moderate-high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "channel_id",
+        "room_id",
+        "occupancy_signature",
+        "refundability",
+        "meal_plan",
+        "mandatory_total"
+      ],
+      "effectType": "Compare only compatible channel/room/rate products or model terms explicitly.",
+      "boundaries": "Same property and date do not imply the same product.",
+      "testIdea": "Inject channel, cancellation, meal and fee mismatches and require cohort rejection."
+    },
+    {
+      "claimId": "CLM-SEA-007",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "peer-compatibility",
+      "sourceRefs": [
+        "SRC-SEA-023",
+        "SRC-SEA-024",
+        "SRC-SEA-028",
+        "SRC-SEA-029",
+        "SRC-SEA-031"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "microzone",
+        "accommodation_type",
+        "category",
+        "room_rate_terms",
+        "channel",
+        "competition_set"
+      ],
+      "effectType": "Build versioned compatible cohorts, with explicit hierarchical fallback.",
+      "boundaries": "Widening geography or product definitions can create false cheap/expensive signals.",
+      "testIdea": "Leave-cohort-out evaluation and adversarial inclusion of incompatible peers."
+    },
+    {
+      "claimId": "CLM-SEA-008",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "dated-distributional-benchmark",
+      "sourceRefs": [
+        "SRC-SEA-022",
+        "SRC-SEA-025",
+        "SRC-SEA-026",
+        "SRC-SEA-028"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "cohort_history",
+        "snapshot_timestamp",
+        "price_distribution",
+        "availability_distribution"
+      ],
+      "effectType": "Report a timestamped interval/percentile against compatible observations, not a timeless mean.",
+      "boundaries": "Averages can conceal multimodality, dynamic pricing and sold-out selection.",
+      "testIdea": "Compare mean-only versus distributional forecasts under regime and stale-history stress tests."
+    },
+    {
+      "claimId": "CLM-SEA-009",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "unavailable-not-soldout",
+      "sourceRefs": [
+        "SRC-SEA-019",
+        "SRC-SEA-020",
+        "SRC-SEA-021"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "availability_state",
+        "unavailable_reason",
+        "provider_health",
+        "restriction_evidence"
+      ],
+      "effectType": "Preserve granular availability states and infer sold out only from explicit evidence.",
+      "boundaries": "Empty or missing provider responses are observationally ambiguous.",
+      "testIdea": "Replay provider outage, stop-sell, minimum-stay and true sold-out cases."
+    },
+    {
+      "claimId": "CLM-SEA-010",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "available-only-censoring",
+      "sourceRefs": [
+        "SRC-SEA-019",
+        "SRC-SEA-020",
+        "SRC-SEA-021",
+        "SRC-SEA-027"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "scheduled_queries",
+        "available_and_unavailable_states",
+        "inventory_controls",
+        "provider_health"
+      ],
+      "effectType": "Restrict inference to observed supply or apply an explicitly validated censoring model.",
+      "boundaries": "Available-only price panels cannot identify the missing supply or latent demand distribution.",
+      "testIdea": "Simulate known latent demand with capacity closure and quantify available-only bias."
+    },
+    {
+      "claimId": "CLM-SEA-011",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "unconstrained-demand-assumptions",
+      "sourceRefs": [
+        "SRC-SEA-019",
+        "SRC-SEA-020",
+        "SRC-SEA-021"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "capacity_or_restrictions",
+        "booking_curve",
+        "cancellations",
+        "substitution_candidates"
+      ],
+      "effectType": "Estimate latent demand only with uncertainty and model-assumption disclosure.",
+      "boundaries": "Unconstraining methods are assumption-sensitive and need not be identifiable from public rates.",
+      "testIdea": "Synthetic recovery under varying substitution, censoring and misspecification."
+    },
+    {
+      "claimId": "CLM-SEA-012",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "comparable-booking-pace",
+      "sourceRefs": [
+        "SRC-SEA-015",
+        "SRC-SEA-016",
+        "SRC-SEA-017"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "bookings_on_hand",
+        "cancellations",
+        "lead_time",
+        "stay_night_type",
+        "cohort_history"
+      ],
+      "effectType": "Compute booking-pace residuals only versus comparable historical curves.",
+      "boundaries": "A raw pickup count is not intrinsically fast or slow across markets and seasons.",
+      "testIdea": "Apply wrong-weekday, wrong-season and wrong-type curves and verify degradation/abstention."
+    },
+    {
+      "claimId": "CLM-SEA-013",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "versioned-calendars",
+      "sourceRefs": [
+        "SRC-SEA-005",
+        "SRC-SEA-001",
+        "SRC-SEA-002"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "calendar_jurisdiction",
+        "school_level",
+        "calendar_year",
+        "calendar_version",
+        "origin_mix_if_lawful"
+      ],
+      "effectType": "Use official holidays/school calendars as versioned covariates, not labels.",
+      "boundaries": "Demand effects depend on origin population, destination and year; causal magnitude is not universal.",
+      "testIdea": "Shift dates/jurisdictions and perform feature ablation on held-out years."
+    },
+    {
+      "claimId": "CLM-SEA-014",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "event-not-spike",
+      "sourceRefs": [
+        "SRC-SEA-033",
+        "SRC-SEA-034",
+        "SRC-SEA-035"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "verified_event_id",
+        "event_status",
+        "venue_time",
+        "local_price_availability_history",
+        "counterfactual"
+      ],
+      "effectType": "Require attributable local excess before emitting EVENT_SPIKE.",
+      "boundaries": "Events can have small, null or heterogeneous hotel effects.",
+      "testIdea": "Fake, cancelled and empirically null events must not produce EVENT_SPIKE."
+    },
+    {
+      "claimId": "CLM-SEA-015",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "event-catchment-night",
+      "sourceRefs": [
+        "SRC-SEA-033",
+        "SRC-SEA-034",
+        "SRC-SEA-035"
+      ],
+      "certainty": "moderate-high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "venue_geometry",
+        "hotel_geometry",
+        "transport_catchment",
+        "event_schedule",
+        "stay_night"
+      ],
+      "effectType": "Estimate event exposure and lift per night and geographic catchment.",
+      "boundaries": "Simple city membership or straight-line distance may miss transport and venue-specific exposure.",
+      "testIdea": "Relocate venue, permute event days and use distance/catchment interactions in holdout."
+    },
+    {
+      "claimId": "CLM-SEA-016",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "overlapping-events",
+      "sourceRefs": [
+        "SRC-SEA-033",
+        "SRC-SEA-034",
+        "SRC-SEA-035"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "complete_event_set",
+        "overlap_intervals",
+        "exposure_measures",
+        "counterfactual_periods"
+      ],
+      "effectType": "Use multi-treatment attribution or abstain when event effects are not separately identifiable.",
+      "boundaries": "Reviewed single-event designs do not establish identification under dense overlaps.",
+      "testIdea": "Simulate co-located events with correlated timing and evaluate attribution/UNKNOWN rate."
+    },
+    {
+      "claimId": "CLM-SEA-017",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "weekday-segment-interaction",
+      "sourceRefs": [
+        "SRC-SEA-022",
+        "SRC-SEA-025",
+        "SRC-SEA-032",
+        "SRC-SEA-033"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "weekday",
+        "destination_type",
+        "business_leisure_proxies",
+        "accommodation_type",
+        "lead_time"
+      ],
+      "effectType": "Model local weekday interactions; prohibit a fixed weekend premium/discount.",
+      "boundaries": "Signs and magnitudes can reverse across business, leisure and event markets.",
+      "testIdea": "Geographic holdout including business/leisure destination reversal."
+    },
+    {
+      "claimId": "CLM-SEA-018",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "climate-normal-not-forecast",
+      "sourceRefs": [
+        "SRC-SEA-006",
+        "SRC-SEA-007"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "normal_period",
+        "weather_product_version",
+        "grid_or_station"
+      ],
+      "effectType": "Allow climate normals as long-run context only.",
+      "boundaries": "Normals do not predict weather on a specific future stay night.",
+      "testIdea": "Schema and feature-lineage assertion rejects use of a normal as an issued night forecast."
+    },
+    {
+      "claimId": "CLM-SEA-019",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "weather-incremental-only",
+      "sourceRefs": [
+        "SRC-SEA-007",
+        "SRC-SEA-008",
+        "SRC-SEA-030"
+      ],
+      "certainty": "moderate",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "forecast_issue_time",
+        "forecast_valid_time",
+        "grid_cell",
+        "destination_type",
+        "local_outcomes"
+      ],
+      "effectType": "Admit weather only if it adds calibrated out-of-sample value beyond calendar and booking pace.",
+      "boundaries": "Climate/tourism effects vary by destination type and are not necessarily causal at hotel-night level.",
+      "testIdea": "Weather ablation, wrong-issue-time leakage and wrong-grid adversarial tests."
+    },
+    {
+      "claimId": "CLM-SEA-020",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "hierarchical-cold-start",
+      "sourceRefs": [
+        "SRC-SEA-036",
+        "SRC-SEA-037",
+        "SRC-SEA-038"
+      ],
+      "certainty": "moderate-high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "series_hierarchy",
+        "market_features",
+        "property_features",
+        "related_series_history"
+      ],
+      "effectType": "Evaluate partial pooling/global related-series models for sparse markets and new properties.",
+      "boundaries": "General forecasting evidence does not prove hotel-domain transfer or one model family.",
+      "testIdea": "Leave-one-city, microzone, property and accommodation-type-out evaluation."
+    },
+    {
+      "claimId": "CLM-SEA-021",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "forecast-reconciliation",
+      "sourceRefs": [
+        "SRC-SEA-036",
+        "SRC-SEA-037"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "valid_hierarchy",
+        "consistent_measurement",
+        "base_forecasts",
+        "aggregation_map"
+      ],
+      "effectType": "Reconcile property, microzone and city forecasts when the measures truly aggregate.",
+      "boundaries": "Reconciliation cannot repair incompatible channels, cohorts or definitions and does not guarantee accuracy.",
+      "testIdea": "Break aggregation definitions and require gate failure; compare coherent forecast accuracy."
+    },
+    {
+      "claimId": "CLM-SEA-022",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "probabilistic-output",
+      "sourceRefs": [
+        "SRC-SEA-038",
+        "SRC-SEA-039"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "predictive_distribution",
+        "realized_outcome",
+        "calibration_groups"
+      ],
+      "effectType": "Emit label probabilities, intervals and confidence; evaluate with proper scores and coverage.",
+      "boundaries": "A proper score does not choose the business decision threshold or ensure subgroup calibration.",
+      "testIdea": "CRPS/log/Brier and empirical coverage by market, type, lead time and label."
+    },
+    {
+      "claimId": "CLM-SEA-023",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "honest-holdouts",
+      "sourceRefs": [
+        "SRC-SEA-040",
+        "SRC-SEA-036",
+        "SRC-SEA-037"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "timestamped_partitions",
+        "geographic_ids",
+        "property_ids",
+        "event_ids"
+      ],
+      "effectType": "Require rolling-origin plus geographic/property/event holdouts for promotion evidence.",
+      "boundaries": "Random row splits leak repeated properties, stay dates and future information.",
+      "testIdea": "Quantify random-split optimism versus rolling-origin and leave-group-out results."
+    },
+    {
+      "claimId": "CLM-SEA-024",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "drift-abstention",
+      "sourceRefs": [
+        "SRC-SEA-027",
+        "SRC-SEA-041",
+        "SRC-SEA-042"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "feature_stream",
+        "residual_stream",
+        "provider_schema_version",
+        "drift_detector_version"
+      ],
+      "effectType": "Trigger UNKNOWN, quarantine or frozen fallback when drift exits the validated envelope.",
+      "boundaries": "Detector thresholds are local; an alarm is not automatic permission to retrain or relabel.",
+      "testIdea": "Abrupt, gradual, recurring and provider-schema drift with false-alarm measurement."
+    },
+    {
+      "claimId": "CLM-SEA-025",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "feature-provenance",
+      "sourceRefs": [
+        "SRC-SEA-009",
+        "SRC-SEA-010"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "raw_payload_hash",
+        "entity_activity_agent_lineage",
+        "source_version",
+        "derived_feature_version"
+      ],
+      "effectType": "Make replayable provenance a hard gate for every feature and inference.",
+      "boundaries": "Provenance records support audit but do not establish accuracy or legal permission by themselves.",
+      "testIdea": "Hash, version and lineage mutation must break deterministic replay and fail the gate."
+    },
+    {
+      "claimId": "CLM-SEA-026",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "lawful-use-gate",
+      "sourceRefs": [
+        "SRC-SEA-011",
+        "SRC-SEA-012",
+        "SRC-SEA-013"
+      ],
+      "certainty": "high",
+      "historyRequirement": "not-required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "contract_or_licence_id",
+        "permitted_purpose",
+        "retention",
+        "territory",
+        "legal_review_status"
+      ],
+      "effectType": "Exclude data and dependent features when lawful-use metadata is absent, expired or incompatible.",
+      "boundaries": "This report is not legal advice; provider and jurisdiction facts control.",
+      "testIdea": "Expired licence, prohibited model-training purpose and deletion-request propagation tests."
+    },
+    {
+      "claimId": "CLM-SEA-027",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "total-price-comparability",
+      "sourceRefs": [
+        "SRC-SEA-014",
+        "SRC-SEA-026",
+        "SRC-SEA-029"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "mandatory_total",
+        "tax_fee_status",
+        "currency",
+        "fx_timestamp",
+        "occupancy",
+        "stay_nights"
+      ],
+      "effectType": "Exclude incomplete-price offers from price-regime estimation or mark them non-comparable.",
+      "boundaries": "Mandatory charge treatment and presentation can vary by jurisdiction and provider context.",
+      "testIdea": "Hidden-fee, FX-time and per-night/total inconsistency mutations."
+    },
+    {
+      "claimId": "CLM-SEA-028",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "mixed-preserves-nights",
+      "sourceRefs": [
+        "SRC-SEA-025",
+        "SRC-SEA-032",
+        "SRC-SEA-033",
+        "SRC-SEA-035"
+      ],
+      "certainty": "moderate-high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "per_night_posteriors",
+        "stay_composition",
+        "event_calendar",
+        "weekday"
+      ],
+      "effectType": "Emit MIXED with a per-night explanation when regimes materially differ or signals conflict.",
+      "boundaries": "Materiality must be locally defined and pre-registered; no universal spread threshold.",
+      "testIdea": "Multi-night event/non-event and weekday/weekend stays; ensure averaging cannot erase the difference."
+    },
+    {
+      "claimId": "CLM-SEA-029",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "unknown-safety-outcome",
+      "sourceRefs": [
+        "SRC-SEA-003",
+        "SRC-SEA-019",
+        "SRC-SEA-039",
+        "SRC-SEA-041"
+      ],
+      "certainty": "high",
+      "historyRequirement": "required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "sufficiency_gate_results",
+        "ood_score",
+        "calibration_status",
+        "provenance_status"
+      ],
+      "effectType": "Return UNKNOWN when evidence, identification, provenance, calibration or distributional support fails.",
+      "boundaries": "UNKNOWN must not be silently imputed into LOW/NORMAL/HIGH.",
+      "testIdea": "Missing, corrupted, censored, stale and out-of-distribution cases must abstain at expected rates."
+    },
+    {
+      "claimId": "CLM-SEA-030",
+      "track": "season-and-local-market",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/season_local_market_context.md",
+      "claimAlias": "confidence-separate-no-ranking",
+      "sourceRefs": [
+        "SRC-SEA-009",
+        "SRC-SEA-039",
+        "SRC-SEA-040"
+      ],
+      "certainty": "high",
+      "historyRequirement": "not-required",
+      "historyNotes": null,
+      "requiredFacets": [
+        "label_probabilities",
+        "confidence",
+        "ranking_audit",
+        "sealed_decision_id"
+      ],
+      "effectType": "Use labels and confidence for explanation/shadow trace only; assert zero ranking influence.",
+      "boundaries": "This is a v1.1 governance constraint, not evidence that labels improve traveler outcomes.",
+      "testIdea": "Differential execution with the module enabled/disabled must produce identical scores, order and winner."
+    },
+    {
+      "claimId": "CLM-TRV-001",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-PRICE-STATE-001",
+      "sourceRefs": [
+        "SRC-TRV-001",
+        "SRC-TRV-003",
+        "SRC-TRV-004",
+        "SRC-TRV-005",
+        "SRC-TRV-006",
+        "SRC-TRV-007",
+        "SRC-TRV-008"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_REQUIRED",
+      "historyNotes": null,
+      "requiredFacets": [
+        "offer_id",
+        "stay_dates",
+        "search_time",
+        "lead_time",
+        "channel",
+        "terms",
+        "availability"
+      ],
+      "effectType": "eligibility/contextual value",
+      "boundaries": "price is not quality and not stable",
+      "testIdea": "same intrinsic hotel, altered time/channel/terms"
+    },
+    {
+      "claimId": "CLM-TRV-002",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-LEADTIME-001",
+      "sourceRefs": [
+        "SRC-TRV-003",
+        "SRC-TRV-006",
+        "SRC-TRV-007",
+        "SRC-TRV-008"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_REQUIRED",
+      "historyNotes": null,
+      "requiredFacets": [
+        "daily_price_path",
+        "booking_horizon",
+        "market",
+        "event",
+        "channel"
+      ],
+      "effectType": "forecast/abstention",
+      "boundaries": "no universal earlier/later rule",
+      "testIdea": "competing monotonic rules must fail on irregular paths"
+    },
+    {
+      "claimId": "CLM-TRV-003",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-SEASON-LOCAL-001",
+      "sourceRefs": [
+        "SRC-TRV-006",
+        "SRC-TRV-008",
+        "SRC-TRV-009",
+        "SRC-TRV-010"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_REQUIRED",
+      "historyNotes": null,
+      "requiredFacets": [
+        "destination_region",
+        "stay_month",
+        "day_of_week",
+        "event",
+        "segment"
+      ],
+      "effectType": "peer conditioning",
+      "boundaries": "month labels and low-season cutoffs are not global",
+      "testIdea": "cross-region/month reversal and event override"
+    },
+    {
+      "claimId": "CLM-TRV-004",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-FORECAST-001",
+      "sourceRefs": [
+        "SRC-TRV-002",
+        "SRC-TRV-007",
+        "SRC-TRV-008"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_REQUIRED",
+      "historyNotes": null,
+      "requiredFacets": [
+        "segmented_history",
+        "forecast_origin",
+        "actual",
+        "regime"
+      ],
+      "effectType": "model selection/monitoring",
+      "boundaries": "one best forecasting method is not defensible",
+      "testIdea": "rolling-origin error, calibration and change-point suite"
+    },
+    {
+      "claimId": "CLM-TRV-005",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-PEER-COMPAT-001",
+      "sourceRefs": [
+        "SRC-TRV-004",
+        "SRC-TRV-011",
+        "SRC-TRV-012",
+        "SRC-TRV-014",
+        "SRC-TRV-015"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "market",
+        "dates",
+        "occupancy",
+        "room",
+        "terms",
+        "star_system",
+        "location_access"
+      ],
+      "effectType": "peer-set gate",
+      "boundaries": "stars alone do not define a comp set",
+      "testIdea": "adversarial cheap peer with incompatible terms/system"
+    },
+    {
+      "claimId": "CLM-TRV-006",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-REFERENCE-DIST-001",
+      "sourceRefs": [
+        "SRC-TRV-003",
+        "SRC-TRV-004",
+        "SRC-TRV-011",
+        "SRC-TRV-013"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_REQUIRED",
+      "historyNotes": null,
+      "requiredFacets": [
+        "compatible_peer_prices",
+        "sample_size",
+        "coverage",
+        "quantiles",
+        "timestamps"
+      ],
+      "effectType": "percentile/uncertainty",
+      "boundaries": "isolated market average is invalid evidence",
+      "testIdea": "mean distorted by skew/outlier versus robust distribution"
+    },
+    {
+      "claimId": "CLM-TRV-007",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-TOTAL-PRICE-001",
+      "sourceRefs": [
+        "SRC-TRV-028"
+      ],
+      "certainty": "A-official",
+      "historyRequirement": "LIVE_SUFFICIENT",
+      "historyNotes": null,
+      "requiredFacets": [
+        "mandatory_base",
+        "tax",
+        "fee",
+        "occupancy",
+        "nights",
+        "currency"
+      ],
+      "effectType": "hard eligibility/ranking",
+      "boundaries": "mandatory stay total still excludes access and optional spend",
+      "testIdea": "hidden resort/cleaning/tax fee flips ranking"
+    },
+    {
+      "claimId": "CLM-TRV-008",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-GENERALIZED-COST-001",
+      "sourceRefs": [
+        "SRC-TRV-018",
+        "SRC-TRV-019",
+        "SRC-TRV-020",
+        "SRC-TRV-021",
+        "SRC-TRV-023"
+      ],
+      "certainty": "B/T",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "lodging_total",
+        "itinerary",
+        "access_time",
+        "fares",
+        "party",
+        "luggage",
+        "reliability"
+      ],
+      "effectType": "risk-adjusted net value",
+      "boundaries": "money-time conversion is traveler/context specific",
+      "testIdea": "cheaper room becomes worse after repeated access burden"
+    },
+    {
+      "claimId": "CLM-TRV-009",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-LOCATION-TIME-001",
+      "sourceRefs": [
+        "SRC-TRV-012",
+        "SRC-TRV-018",
+        "SRC-TRV-019",
+        "SRC-TRV-020",
+        "SRC-TRV-021"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": null,
+      "historyNotes": "LIVE_PLUS_CALIBRATION",
+      "requiredFacets": [
+        "poi_itinerary",
+        "time_by_mode",
+        "frequency",
+        "service_hours",
+        "accessibility"
+      ],
+      "effectType": "location utility",
+      "boundaries": "radius is only a weak proxy; no universal value/km",
+      "testIdea": "equal radius but different door-to-door time/network"
+    },
+    {
+      "claimId": "CLM-TRV-010",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-TRANSFER-PENALTY-001",
+      "sourceRefs": [
+        "SRC-TRV-021",
+        "SRC-TRV-022",
+        "SRC-TRV-023"
+      ],
+      "certainty": "B-transfer",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "transfer_count",
+        "wait",
+        "walk",
+        "reliability",
+        "crowding",
+        "luggage"
+      ],
+      "effectType": "extra disutility",
+      "boundaries": "published minute-equivalents cannot be ported",
+      "testIdea": "same clock time with direct versus transfer route"
+    },
+    {
+      "claimId": "CLM-TRV-011",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-CANCEL-OPTION-001",
+      "sourceRefs": [
+        "SRC-TRV-016",
+        "SRC-TRV-024",
+        "SRC-TRV-025",
+        "SRC-TRV-026"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "loss_schedule",
+        "trip_uncertainty",
+        "replacement_cost",
+        "traveler_risk",
+        "lead_time"
+      ],
+      "effectType": "option/risk adjustment",
+      "boundaries": "no universal fair flexibility premium",
+      "testIdea": "flexible offer wins only under plausible disruption states"
+    },
+    {
+      "claimId": "CLM-TRV-012",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-CANCEL-SCHEDULE-001",
+      "sourceRefs": [
+        "SRC-TRV-025",
+        "SRC-TRV-027"
+      ],
+      "certainty": "A",
+      "historyRequirement": "LIVE_SUFFICIENT",
+      "historyNotes": null,
+      "requiredFacets": [
+        "deadline",
+        "timezone",
+        "penalty_by_time",
+        "no_show",
+        "prepayment",
+        "jurisdiction"
+      ],
+      "effectType": "loss-state model/gate",
+      "boundaries": "refundable is not a sufficient boolean",
+      "testIdea": "two refundable offers with materially different deadlines/penalties"
+    },
+    {
+      "claimId": "CLM-TRV-013",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-FRESHNESS-RECHECK-001",
+      "sourceRefs": [
+        "SRC-TRV-001",
+        "SRC-TRV-003",
+        "SRC-TRV-006",
+        "SRC-TRV-007",
+        "SRC-TRV-008"
+      ],
+      "certainty": "A",
+      "historyRequirement": null,
+      "historyNotes": "HIST_REQUIRED_FOR_TTL",
+      "requiredFacets": [
+        "observed_at",
+        "availability",
+        "price",
+        "terms",
+        "volatility",
+        "decision_margin"
+      ],
+      "effectType": "recheck/abstention",
+      "boundaries": "no universal TTL; recheck is not proof of future availability",
+      "testIdea": "candidate winner changes after stale-price update"
+    },
+    {
+      "claimId": "CLM-TRV-014",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-REVIEW-UNCERTAINTY-001",
+      "sourceRefs": [
+        "SRC-TRV-029",
+        "SRC-TRV-030",
+        "SRC-TRV-031",
+        "SRC-TRV-033"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "mean",
+        "count",
+        "distribution",
+        "recency",
+        "platform",
+        "verification"
+      ],
+      "effectType": "quality uncertainty/risk",
+      "boundaries": "model-specific latent quality, not ground truth",
+      "testIdea": "raw mean versus calibrated shrinkage on held-out outcomes"
+    },
+    {
+      "claimId": "CLM-TRV-015",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-REVIEW-PROVENANCE-001",
+      "sourceRefs": [
+        "SRC-TRV-029",
+        "SRC-TRV-031",
+        "SRC-TRV-032"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": null,
+      "historyNotes": "LIVE_PLUS_HISTORY",
+      "requiredFacets": [
+        "verified_stay",
+        "review_mechanism",
+        "bilateral_blindness",
+        "incentive",
+        "platform"
+      ],
+      "effectType": "evidence reliability",
+      "boundaries": "risk indicators cannot label a specific review fake",
+      "testIdea": "same rating/count under different collection mechanisms"
+    },
+    {
+      "claimId": "CLM-TRV-016",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-REVIEW-VOLUME-001",
+      "sourceRefs": [
+        "SRC-TRV-030",
+        "SRC-TRV-032",
+        "SRC-TRV-033"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "count",
+        "variance",
+        "age",
+        "selection_model",
+        "source_mix"
+      ],
+      "effectType": "uncertainty, not automatic quality",
+      "boundaries": "count cannot erase systematic bias; no universal enough-count",
+      "testIdea": "high-volume biased sample versus smaller verified sample"
+    },
+    {
+      "claimId": "CLM-TRV-017",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-SEGMENT-HETEROGENEITY-001",
+      "sourceRefs": [
+        "SRC-TRV-013",
+        "SRC-TRV-016",
+        "SRC-TRV-017",
+        "SRC-TRV-018",
+        "SRC-TRV-020"
+      ],
+      "certainty": "A/B",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "trip_purpose",
+        "party",
+        "constraints",
+        "declared_preferences",
+        "choice_history"
+      ],
+      "effectType": "personalized priors",
+      "boundaries": "business/leisure labels do not fix utility",
+      "testIdea": "within-segment preference reversals and cold-start abstention"
+    },
+    {
+      "claimId": "CLM-TRV-018",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-LONGSTAY-RECURRING-001",
+      "sourceRefs": [
+        "SRC-TRV-019",
+        "SRC-TRV-020",
+        "SRC-TRV-035"
+      ],
+      "certainty": "C",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "nights",
+        "daily_itinerary",
+        "recurring_amenity",
+        "fixed_cost"
+      ],
+      "effectType": "duration interaction",
+      "boundaries": "direct causal lodging evidence is sparse; no long-stay cutoff",
+      "testIdea": "duplicate nights while separating fixed from recurring utility"
+    },
+    {
+      "claimId": "CLM-TRV-019",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-SPLIT-FRICTION-001",
+      "sourceRefs": [
+        "SRC-TRV-021",
+        "SRC-TRV-022",
+        "SRC-TRV-023",
+        "SRC-TRV-034"
+      ],
+      "certainty": "T/C",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "moves",
+        "checkout_gap",
+        "transfer",
+        "luggage",
+        "party",
+        "accessibility",
+        "uncertainty"
+      ],
+      "effectType": "split penalty interval",
+      "boundaries": "no direct validated hotel-switch coefficient",
+      "testIdea": "same monetary saving across solo/light versus family/heavy-luggage cases"
+    },
+    {
+      "claimId": "CLM-TRV-020",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-SPLIT-NETVALUE-001",
+      "sourceRefs": [
+        "SRC-TRV-021",
+        "SRC-TRV-023",
+        "SRC-TRV-034"
+      ],
+      "certainty": "T/C",
+      "historyRequirement": "HIST_CALIBRATION",
+      "historyNotes": null,
+      "requiredFacets": [
+        "split_saving",
+        "all_move_costs",
+        "burden_interval",
+        "availability_coupling",
+        "downside"
+      ],
+      "effectType": "conservative eligibility/abstention",
+      "boundaries": "no universal minimum saving or max moves",
+      "testIdea": "recommend only if lower-bound net value remains positive"
+    },
+    {
+      "claimId": "CLM-TRV-021",
+      "track": "travel-value-risk",
+      "status": "candidate-second-pass-required",
+      "rankingInfluence": "none",
+      "sourceReport": "research/travel_value_risk.md",
+      "claimAlias": "TVR-LOCAL-CALIBRATION-001",
+      "sourceRefs": [
+        "SRC-TRV-002",
+        "SRC-TRV-006",
+        "SRC-TRV-008",
+        "SRC-TRV-011",
+        "SRC-TRV-016",
+        "SRC-TRV-017",
+        "SRC-TRV-020",
+        "SRC-TRV-022"
+      ],
+      "certainty": "A",
+      "historyRequirement": "HIST_REQUIRED",
+      "historyNotes": null,
+      "requiredFacets": [
+        "market_history",
+        "traveler_outcomes",
+        "blind_labels",
+        "regime",
+        "calibration_error"
+      ],
+      "effectType": "governance/no universal constants",
+      "boundaries": "external coefficients are priors only",
+      "testIdea": "temporal/geographic holdout, subgroup calibration and policy rollback"
+    }
+  ]
+}
