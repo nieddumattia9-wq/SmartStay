@@ -25,6 +25,11 @@ import {
   createBudgetUtilityV3,
 } from "../../src/engine-v3/utility/personalUtilityV3";
 
+import {
+  STAYOPTI_LEGACY_DIAGNOSTIC_ALLOWED_USE_V3,
+  admitLegacyDiagnosticFixtureV3,
+} from "../../src/engine-v3/evaluation/legacyDiagnosticQuarantineV3";
+
 interface DiagnosticFixtureCase {
   diagnosticId:
     string;
@@ -123,15 +128,38 @@ interface DiagnosticFixture {
 }
 
 function loadFixture() {
-  return JSON.parse(
+  const fixtureJsonText =
     readFileSync(
       resolve(
         process.cwd(),
         "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.json"
       ),
       "utf8"
-    )
-  ) as DiagnosticFixture;
+    );
+  const manifestJsonText =
+    readFileSync(
+      resolve(
+        process.cwd(),
+        "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.quarantine.json"
+      ),
+      "utf8"
+    );
+  const admitted =
+    admitLegacyDiagnosticFixtureV3(
+      fixtureJsonText,
+      manifestJsonText,
+      STAYOPTI_LEGACY_DIAGNOSTIC_ALLOWED_USE_V3
+    );
+
+  if (
+    admitted.status !== "admitted"
+  ) {
+    assert.fail(
+      `Legacy diagnostic fixture blocked: ${admitted.issueCode}`
+    );
+  }
+
+  return admitted.fixture as unknown as DiagnosticFixture;
 }
 
 function collectObjectKeys(

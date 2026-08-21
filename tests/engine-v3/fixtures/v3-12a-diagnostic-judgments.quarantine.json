@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "stayopti.v3.legacy-diagnostic-quarantine@1",
+  "manualLegacyQuarantineDecision": "APPROVED",
+  "fixturePath": "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.json",
+  "fixtureSha256": "44c81f0a68f2551c53e6a348d963c1d1076ab2ac524a1723460463db7ca5fa20",
+  "caseIds": [
+    "diag-pilot-001",
+    "diag-pilot-002",
+    "diag-pilot-003",
+    "diag-batch-001",
+    "diag-batch-002",
+    "diag-batch-003",
+    "diag-batch-004",
+    "diag-batch-005",
+    "diag-batch-006",
+    "diag-batch-007",
+    "diag-batch-008",
+    "diag-batch-009",
+    "diag-batch-010",
+    "diag-batch-011",
+    "diag-batch-012"
+  ],
+  "provenanceStatus": "PARTIALLY_RECOVERED_NON_REPLAYABLE",
+  "quarantineStatus": "LEGACY_DIAGNOSTIC_QUARANTINED",
+  "allowedUse": "FROZEN_HISTORICAL_DIAGNOSTIC_CONTEXT_ONLY",
+  "prohibitedUses": [
+    "REPLAY_INPUT",
+    "GOLDEN",
+    "GROUND_TRUTH",
+    "CURRENT_HUMAN_JUDGMENT",
+    "TRAINING",
+    "TUNING",
+    "CALIBRATION",
+    "SCORING",
+    "RANKING",
+    "V2_V3_SUPERIORITY_BENCHMARK",
+    "TRACE_EVIDENCE",
+    "PROMOTION_EVIDENCE",
+    "V3_12B_INPUT",
+    "POLICY_WEIGHT_THRESHOLD_AUTHORIZATION"
+  ],
+  "reasonCodes": [
+    "SOURCE_CAPSULE_UNAVAILABLE",
+    "SOURCE_DIGEST_UNAVAILABLE",
+    "CASE_FINGERPRINT_DERIVATION_UNAVAILABLE",
+    "VERDICT_DEBLIND_RECEIPT_UNAVAILABLE"
+  ],
+  "evidenceSha256": {
+    "v3-12a0": "df3da0f6ef831d9e66887f7f0950ed9266cbc54dbd3f753386cd48f6e73f4942",
+    "v3-12a1": "3b18caad7c5933bcde37c7516621d8b97af8e524f09d2668f07de311c0674fb4",
+    "v3-12a2": "8b27692593d22df8d76acc262840352a7bbebba11de01e40da358adb7ab96af9"
+  }
+}
