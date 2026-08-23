@@ -1,0 +1,468 @@
+{
+  "schemaVersion": "stayopti.v3.fresh-role-aware-contract-fixture@1",
+  "technicalDiagnosticOnly": true,
+  "humanVerdictsIncluded": false,
+  "goldenAdmissionAllowed": false,
+  "baseCapsule": {
+    "schemaVersion": "stayopti.v3.fresh-role-aware-source-capsule@1",
+    "captureVersion": "synthetic-capture-v1",
+    "provenanceVersion": "synthetic-provenance-v1",
+    "canonicalizationVersion": "stayopti.canonical-json@1",
+    "createdAt": "2026-08-21T20:00:00.000Z",
+    "searchContext": {
+      "destination": {
+        "label": "Synthetic City",
+        "countryCode": "IT",
+        "latitude": 43.77,
+        "longitude": 11.25
+      },
+      "checkIn": "2026-10-10",
+      "checkOut": "2026-10-12",
+      "nights": 2,
+      "occupancy": {
+        "adults": 2,
+        "childAges": [],
+        "rooms": 1
+      },
+      "budget": {
+        "total": 750,
+        "currency": "EUR"
+      },
+      "maximumDistanceKm": 3
+    },
+    "preferences": {
+      "profile": "balanced",
+      "essentialFeatureCodes": [
+        "room:private"
+      ],
+      "preferredFeatureCodes": [
+        "comfort:quiet",
+        "flexibility:refundable"
+      ]
+    },
+    "hardConstraints": [
+      {
+        "constraintId": "constraint-budget",
+        "value": 750
+      },
+      {
+        "constraintId": "constraint-occupancy",
+        "value": 2
+      }
+    ],
+    "softConstraints": [
+      {
+        "preferenceId": "preference-comfort",
+        "weight": 4,
+        "value": "quiet"
+      }
+    ],
+    "sanitizedReplayInput": {
+      "mediaType": "application/json",
+      "sourceDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "byteLength": 512,
+      "representation": {
+        "fixture": "fresh-role-aware-contract-v1"
+      }
+    },
+    "provenance": {
+      "sourceKind": "synthetic-contract-fixture",
+      "capturedAt": "2026-08-21T20:00:00.000Z",
+      "freshness": "fresh",
+      "transformations": [
+        {
+          "transformationId": "transform-sanitize",
+          "version": "1.0.0",
+          "description": "Build a provider-neutral synthetic representation."
+        }
+      ],
+      "evidence": [
+        {
+          "evidenceId": "evidence-contract",
+          "fieldCodes": [
+            "availability",
+            "cancellation",
+            "comfort",
+            "location",
+            "price",
+            "quality",
+            "reviews"
+          ],
+          "observedAt": "2026-08-21T20:00:00.000Z",
+          "freshness": "fresh",
+          "reliability": "high"
+        }
+      ]
+    },
+    "engineBindings": [
+      {
+        "engineKey": "baseline-engine",
+        "policyVersion": "baseline-policy-v1",
+        "configHash": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      {
+        "engineKey": "candidate-engine",
+        "policyVersion": "candidate-policy-v1",
+        "configHash": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    ],
+    "expectedReplayPreconditions": {
+      "providerCallsRequired": false,
+      "networkRequired": false,
+      "samePolicyAndConfigRequired": true,
+      "sourceComplete": true
+    },
+    "assurances": {
+      "piiIncluded": false,
+      "secretsIncluded": false,
+      "providerPrivateIdentifiersIncluded": false,
+      "commercialSignalsIncluded": false,
+      "technicalDiagnosticOnly": true,
+      "humanVerdictIncluded": false,
+      "goldenAdmissionAllowed": false,
+      "tuningAllowed": false,
+      "scoringAllowed": false,
+      "rankingAllowed": false,
+      "promotionAllowed": false
+    }
+  },
+  "solutionTemplates": {
+    "single": [
+      {
+        "solutionId": "solution-single-a",
+        "segments": [
+          {
+            "segmentId": "segment-single-a",
+            "accommodationToken": "accommodation-a",
+            "checkIn": "2026-10-10",
+            "checkOut": "2026-10-12",
+            "nights": 2,
+            "offer": {
+              "canonicalOfferRef": "canonical-offer-a",
+              "cost": {
+                "total": 620,
+                "currency": "EUR",
+                "taxes": {
+                  "status": "complete",
+                  "amount": 24
+                },
+                "mandatoryCosts": {
+                  "status": "complete",
+                  "amount": 24
+                }
+              },
+              "room": {
+                "typeCode": "room:double",
+                "adults": 2,
+                "childAges": [],
+                "rooms": 1
+              },
+              "treatment": {
+                "boardCode": "board:breakfast",
+                "included": true
+              },
+              "cancellation": {
+                "refundability": "refundable",
+                "freeCancellationUntil": "2026-10-08T18:00:00.000Z",
+                "penaltyAmount": null,
+                "currency": null
+              },
+              "payment": {
+                "timing": "pay-later",
+                "status": "complete"
+              },
+              "availability": {
+                "state": "available",
+                "checkedAt": "2026-08-21T20:00:00.000Z"
+              }
+            }
+          }
+        ],
+        "totalCost": 620,
+        "currency": "EUR",
+        "quality": {
+          "starCategory": 4
+        },
+        "reviews": {
+          "score": 9.1,
+          "scale": 10,
+          "count": 1200
+        },
+        "location": {
+          "distanceKm": 0.8
+        },
+        "comfort": {
+          "featureCodes": [
+            "comfort:quiet",
+            "room:large"
+          ]
+        },
+        "dataStatus": {
+          "price": "known",
+          "taxes": "known",
+          "mandatoryCosts": "known",
+          "room": "known",
+          "treatment": "known",
+          "cancellation": "known",
+          "payment": "known",
+          "availability": "known",
+          "quality": "known",
+          "reviews": "known",
+          "location": "known",
+          "comfort": "known"
+        },
+        "evidenceRefs": [
+          "evidence-contract"
+        ]
+      },
+      {
+        "solutionId": "solution-single-b",
+        "segments": [
+          {
+            "segmentId": "segment-single-b",
+            "accommodationToken": "accommodation-b",
+            "checkIn": "2026-10-10",
+            "checkOut": "2026-10-12",
+            "nights": 2,
+            "offer": {
+              "canonicalOfferRef": "canonical-offer-b",
+              "cost": {
+                "total": 490,
+                "currency": "EUR",
+                "taxes": {
+                  "status": "complete",
+                  "amount": 20
+                },
+                "mandatoryCosts": {
+                  "status": "complete",
+                  "amount": 20
+                }
+              },
+              "room": {
+                "typeCode": "room:double",
+                "adults": 2,
+                "childAges": [],
+                "rooms": 1
+              },
+              "treatment": {
+                "boardCode": "board:none",
+                "included": false
+              },
+              "cancellation": {
+                "refundability": "non-refundable",
+                "freeCancellationUntil": null,
+                "penaltyAmount": 490,
+                "currency": "EUR"
+              },
+              "payment": {
+                "timing": "pay-now",
+                "status": "complete"
+              },
+              "availability": {
+                "state": "available",
+                "checkedAt": "2026-08-21T20:00:00.000Z"
+              }
+            }
+          }
+        ],
+        "totalCost": 490,
+        "currency": "EUR",
+        "quality": {
+          "starCategory": 3
+        },
+        "reviews": {
+          "score": 8.5,
+          "scale": 10,
+          "count": 800
+        },
+        "location": {
+          "distanceKm": 1.3
+        },
+        "comfort": {
+          "featureCodes": [
+            "room:standard"
+          ]
+        },
+        "dataStatus": {
+          "price": "known",
+          "taxes": "known",
+          "mandatoryCosts": "known",
+          "room": "known",
+          "treatment": "known",
+          "cancellation": "known",
+          "payment": "known",
+          "availability": "known",
+          "quality": "known",
+          "reviews": "known",
+          "location": "known",
+          "comfort": "estimated"
+        },
+        "evidenceRefs": [
+          "evidence-contract"
+        ]
+      }
+    ],
+    "split": [
+      {
+        "solutionId": "solution-split-a",
+        "segments": [
+          {
+            "segmentId": "segment-split-a1",
+            "accommodationToken": "accommodation-split-a1",
+            "checkIn": "2026-10-10",
+            "checkOut": "2026-10-11",
+            "nights": 1,
+            "offer": {
+              "canonicalOfferRef": "canonical-offer-split-a1",
+              "cost": {
+                "total": 260,
+                "currency": "EUR",
+                "taxes": { "status": "complete", "amount": 10 },
+                "mandatoryCosts": { "status": "complete", "amount": 10 }
+              },
+              "room": { "typeCode": "room:double", "adults": 2, "childAges": [], "rooms": 1 },
+              "treatment": { "boardCode": "board:none", "included": false },
+              "cancellation": { "refundability": "refundable", "freeCancellationUntil": "2026-10-08T18:00:00.000Z", "penaltyAmount": null, "currency": null },
+              "payment": { "timing": "pay-later", "status": "complete" },
+              "availability": { "state": "available", "checkedAt": "2026-08-21T20:00:00.000Z" }
+            }
+          },
+          {
+            "segmentId": "segment-split-a2",
+            "accommodationToken": "accommodation-split-a2",
+            "checkIn": "2026-10-11",
+            "checkOut": "2026-10-12",
+            "nights": 1,
+            "offer": {
+              "canonicalOfferRef": "canonical-offer-split-a2",
+              "cost": {
+                "total": 250,
+                "currency": "EUR",
+                "taxes": { "status": "complete", "amount": 10 },
+                "mandatoryCosts": { "status": "complete", "amount": 10 }
+              },
+              "room": { "typeCode": "room:double", "adults": 2, "childAges": [], "rooms": 1 },
+              "treatment": { "boardCode": "board:breakfast", "included": true },
+              "cancellation": { "refundability": "refundable", "freeCancellationUntil": "2026-10-08T18:00:00.000Z", "penaltyAmount": null, "currency": null },
+              "payment": { "timing": "pay-later", "status": "complete" },
+              "availability": { "state": "available", "checkedAt": "2026-08-21T20:00:00.000Z" }
+            }
+          }
+        ],
+        "totalCost": 510,
+        "currency": "EUR",
+        "quality": { "starCategory": 4 },
+        "reviews": { "score": 8.9, "scale": 10, "count": 900 },
+        "location": { "distanceKm": 1.1 },
+        "comfort": { "featureCodes": ["comfort:quiet", "split:verified-transfer"] },
+        "dataStatus": {
+          "price": "known", "taxes": "known", "mandatoryCosts": "known", "room": "known",
+          "treatment": "known", "cancellation": "known", "payment": "known", "availability": "known",
+          "quality": "known", "reviews": "known", "location": "known", "comfort": "estimated"
+        },
+        "evidenceRefs": ["evidence-contract"]
+      },
+      {
+        "solutionId": "solution-split-b",
+        "segments": [
+          {
+            "segmentId": "segment-split-b1",
+            "accommodationToken": "accommodation-split-b1",
+            "checkIn": "2026-10-10",
+            "checkOut": "2026-10-11",
+            "nights": 1,
+            "offer": {
+              "canonicalOfferRef": "canonical-offer-split-b1",
+              "cost": {
+                "total": 275,
+                "currency": "EUR",
+                "taxes": { "status": "complete", "amount": 11 },
+                "mandatoryCosts": { "status": "complete", "amount": 11 }
+              },
+              "room": { "typeCode": "room:double", "adults": 2, "childAges": [], "rooms": 1 },
+              "treatment": { "boardCode": "board:none", "included": false },
+              "cancellation": { "refundability": "refundable", "freeCancellationUntil": "2026-10-08T18:00:00.000Z", "penaltyAmount": null, "currency": null },
+              "payment": { "timing": "pay-later", "status": "complete" },
+              "availability": { "state": "available", "checkedAt": "2026-08-21T20:00:00.000Z" }
+            }
+          },
+          {
+            "segmentId": "segment-split-b2",
+            "accommodationToken": "accommodation-split-b2",
+            "checkIn": "2026-10-11",
+            "checkOut": "2026-10-12",
+            "nights": 1,
+            "offer": {
+              "canonicalOfferRef": "canonical-offer-split-b2",
+              "cost": {
+                "total": 275,
+                "currency": "EUR",
+                "taxes": { "status": "complete", "amount": 11 },
+                "mandatoryCosts": { "status": "complete", "amount": 11 }
+              },
+              "room": { "typeCode": "room:double", "adults": 2, "childAges": [], "rooms": 1 },
+              "treatment": { "boardCode": "board:breakfast", "included": true },
+              "cancellation": { "refundability": "refundable", "freeCancellationUntil": "2026-10-08T18:00:00.000Z", "penaltyAmount": null, "currency": null },
+              "payment": { "timing": "pay-later", "status": "complete" },
+              "availability": { "state": "available", "checkedAt": "2026-08-21T20:00:00.000Z" }
+            }
+          }
+        ],
+        "totalCost": 550,
+        "currency": "EUR",
+        "quality": { "starCategory": 4 },
+        "reviews": { "score": 9, "scale": 10, "count": 1100 },
+        "location": { "distanceKm": 0.9 },
+        "comfort": { "featureCodes": ["comfort:quiet", "split:verified-transfer"] },
+        "dataStatus": {
+          "price": "known", "taxes": "known", "mandatoryCosts": "known", "room": "known",
+          "treatment": "known", "cancellation": "known", "payment": "known", "availability": "known",
+          "quality": "known", "reviews": "known", "location": "known", "comfort": "known"
+        },
+        "evidenceRefs": ["evidence-contract"]
+      }
+    ]
+  },
+  "roleCases": [
+    {
+      "caseId": "fresh-choice-001",
+      "captureId": "capture-choice-001",
+      "role": "best-choice",
+      "question": "Which complete stay solution is the best overall fit for this trip?",
+      "profile": "balanced",
+      "solutionTemplate": "single"
+    },
+    {
+      "caseId": "fresh-saving-001",
+      "captureId": "capture-saving-001",
+      "role": "best-sensible-saving",
+      "question": "Which complete stay solution provides the most sensible saving without unacceptable experience loss?",
+      "profile": "savings",
+      "solutionTemplate": "single"
+    },
+    {
+      "caseId": "fresh-upgrade-001",
+      "captureId": "capture-upgrade-001",
+      "role": "worthwhile-comfort-upgrade",
+      "question": "Which complete stay solution provides enough material comfort gain to justify its premium?",
+      "profile": "comfort",
+      "solutionTemplate": "single"
+    },
+    {
+      "caseId": "fresh-split-001",
+      "captureId": "capture-split-001",
+      "role": "split-saver",
+      "question": "Which split solution creates more verified net value after switching friction and risk?",
+      "profile": "balanced",
+      "solutionTemplate": "split"
+    },
+    {
+      "caseId": "fresh-abstain-001",
+      "captureId": "capture-abstain-001",
+      "role": "abstention-near-tie",
+      "question": "Is the evidence sufficient to decide, or should the decision abstain?",
+      "profile": "balanced",
+      "solutionTemplate": "single"
+    }
+  ]
+}
