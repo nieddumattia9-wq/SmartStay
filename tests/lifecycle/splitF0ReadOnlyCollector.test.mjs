@@ -12,9 +12,11 @@ import {
   buildSplitF0LogicalSearchPlan,
   createSplitF0BudgetLedger,
   createSplitF0LiteApiTransport,
+  inspectSplitF0RatesPaymentFields,
   loadSplitF0ScenarioMatrix,
   parseSplitF0CollectorArguments,
   runSplitF0Collector,
+  replaySplitF0SanitizedDataset,
   stableStringifySplitF0,
   validateSplitF0BaseUrl,
   validateSplitF0SandboxKey,
@@ -271,6 +273,10 @@ test("normalized sandbox output fingerprints raw IDs, strips secrets and remains
   assert.equal(first.publicRecommendationAllowed, false);
   assert.equal(first.counters.normalizedOffers, 40);
   assert.equal(first.counters.scenariosWithComparableData, 8);
+  assert.equal(first.counters.strictComparableSplitPairs, 16);
+  assert.equal(first.counters.conditionalComparableSplitPairs, 0);
+  assert.equal(first.counters.scenariosWithStrictComparableData, 8);
+  assert.equal(first.counters.scenariosWithConditionalComparableData, 0);
   assert.equal(first.counters.sandboxLogicalSearches, 40);
   for (const forbidden of [
     SAFE_SANDBOX_KEY,
@@ -292,6 +298,33 @@ test("normalized sandbox output fingerprints raw IDs, strips secrets and remains
       assert.match(offer.propertyId, /^property\.[0-9a-f]{64}$/);
       assert.match(offer.offerSnapshotId, /^offer\.[0-9a-f]{64}$/);
     }
+  }
+});
+
+test("sanitized replay keeps strict and conditional comparison counts separate", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const captured = await executeWithTransport(matrix, successfulTransportFactory());
+  const paymentUnknown = structuredClone(captured);
+  for (const search of paymentUnknown.searches) {
+    for (const offer of search.offers) {
+      offer.paymentTiming = "unknown";
+    }
+  }
+  const first = replaySplitF0SanitizedDataset(matrix, paymentUnknown);
+  const second = replaySplitF0SanitizedDataset(matrix, paymentUnknown);
+  assert.equal(stableStringifySplitF0(first), stableStringifySplitF0(second));
+  assert.equal(first.counters.strictComparableSplitPairs, 0);
+  assert.equal(first.counters.conditionalComparableSplitPairs, 16);
+  assert.equal(first.counters.scenariosWithStrictComparableData, 0);
+  assert.equal(first.counters.scenariosWithConditionalComparableData, 8);
+  assert.equal(first.marketEvidence, false);
+  assert.equal(first.policyEligible, false);
+  assert.equal(first.publicRecommendationAllowed, false);
+  for (const comparison of first.comparisons) {
+    assert.equal(comparison.comparabilityLevel, "CONDITIONAL_COMPARABLE");
+    assert.equal(comparison.evidenceLimits.includes("payment-timing-unknown"), true);
+    assert.deepEqual(comparison.knownIncompatibilities, []);
+    assert.equal(comparison.publicRecommendationProduced, false);
   }
 });
 
@@ -335,7 +368,18 @@ test("Node 24 live transport is dependency-free and preserves key, endpoint, tim
         status: 200,
         redirected: false,
         url: String(url),
-        text: async () => JSON.stringify({ data: [] }),
+        text: async () =>
+          JSON.stringify({
+            data: [
+              {
+                roomTypes: [
+                  {
+                    rates: [{ paymentType: "pay-at-property" }],
+                  },
+                ],
+              },
+            ],
+          }),
       };
     },
     timeoutMs: 50,
@@ -347,6 +391,14 @@ test("Node 24 live transport is dependency-free and preserves key, endpoint, tim
   });
   assert.equal(response.status, 200);
   assert.deepEqual(response.hotels, []);
+  assert.equal(response.paymentFieldEvidence.fieldPresent, true);
+  assert.equal(response.paymentFieldEvidence.usableTimingPresent, true);
+  assert.deepEqual(response.paymentFieldEvidence.fields, [
+    {
+      fieldPath: "data.[].roomTypes.[].rates.[].paymentType",
+      classifications: ["pay-at-property"],
+    },
+  ]);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.redirect, "manual");
   assert.equal(calls[0].options.signal instanceof AbortSignal, true);
@@ -416,6 +468,31 @@ test("Node 24 live transport is dependency-free and preserves key, endpoint, tim
     invalidJson.request({ method: "POST", endpointPath: "/hotels/rates", logicalSearch }),
     (caught) => caught?.code === "INVALID_PROVIDER_JSON"
   );
+});
+
+test("payment-field inspection persists only safe paths and timing classifications", () => {
+  const evidence = inspectSplitF0RatesPaymentFields({
+    data: [
+      {
+        rooms: [
+          {
+            rates: [
+              { paymentTiming: "pay now" },
+              { paymentType: "deferred" },
+              { payAtHotel: true },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(evidence.fieldPresent, true);
+  assert.equal(evidence.usableTimingPresent, true);
+  assert.deepEqual(
+    [...new Set(evidence.fields.flatMap((field) => field.classifications))].sort(),
+    ["pay-at-property", "pay-later", "pay-now"]
+  );
+  assert.equal(JSON.stringify(evidence).includes("raw-"), false);
 });
 
 test("matrix is read deterministically from the committed F0B fixture", async () => {

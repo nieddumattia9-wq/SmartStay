@@ -138,7 +138,10 @@ test("comparability admits a complete matching bucket", () => {
     [first, second]
   );
   assert.equal(result.comparable, true);
+  assert.equal(result.comparabilityLevel, "STRICT_COMPARABLE");
   assert.deepEqual(result.issues, []);
+  assert.deepEqual(result.evidenceLimits, []);
+  assert.deepEqual(result.knownIncompatibilities, []);
   assert.equal(result.bucket?.currency, "EUR");
   assert.equal(result.bucket?.boardClass, "breakfast-included");
   assert.equal(result.bucket?.cancellationClass, "fully-refundable");
@@ -165,6 +168,8 @@ test("comparability fails closed for each material incompatibility", () => {
       first: { cancellationClass: "non-refundable" },
     },
     { issue: "payment-incompatible", first: { paymentTiming: "pay-now" } },
+    { issue: "room-class-incompatible", first: { roomClass: "other" } },
+    { issue: "room-class-incompatible", first: { roomClass: "unknown" } },
     { issue: "quality-floor-not-met", first: { rating: 1 } },
     { issue: "review-evidence-floor-not-met", first: { reviewCount: 0 } },
     {
@@ -187,8 +192,62 @@ test("comparability fails closed for each material incompatibility", () => {
       ]
     );
     assert.equal(classified.comparable, false, current.issue);
+    assert.equal(classified.comparabilityLevel, "NON_COMPARABLE", current.issue);
     assert.equal(classified.issues.includes(current.issue), true, current.issue);
+    assert.equal(
+      classified.knownIncompatibilities.includes(current.issue),
+      true,
+      current.issue
+    );
   }
+});
+
+test("payment evidence distinguishes strict, conditional and demonstrated incompatibility", () => {
+  const { scenario, segments, single, first, second } = comparableSetup();
+  const strict = classifySplitF0OfferComparabilityV1(
+    scenario,
+    segments,
+    single,
+    [first, second]
+  );
+  assert.equal(strict.comparabilityLevel, "STRICT_COMPARABLE");
+
+  const allUnknown = classifySplitF0OfferComparabilityV1(
+    scenario,
+    segments,
+    { ...single, paymentTiming: "unknown" },
+    [
+      { ...first, paymentTiming: "unknown" },
+      { ...second, paymentTiming: "unknown" },
+    ]
+  );
+  assert.equal(allUnknown.comparable, true);
+  assert.equal(allUnknown.comparabilityLevel, "CONDITIONAL_COMPARABLE");
+  assert.deepEqual(allUnknown.evidenceLimits, ["payment-timing-unknown"]);
+  assert.deepEqual(allUnknown.knownIncompatibilities, []);
+
+  const knownUnknown = classifySplitF0OfferComparabilityV1(
+    scenario,
+    segments,
+    single,
+    [
+      { ...first, paymentTiming: "unknown" },
+      { ...second, paymentTiming: "unknown" },
+    ]
+  );
+  assert.equal(knownUnknown.comparable, true);
+  assert.equal(knownUnknown.comparabilityLevel, "CONDITIONAL_COMPARABLE");
+  assert.deepEqual(knownUnknown.evidenceLimits, ["payment-timing-known-unknown"]);
+
+  const knownDifferent = classifySplitF0OfferComparabilityV1(
+    scenario,
+    segments,
+    single,
+    [{ ...first, paymentTiming: "pay-now" }, second]
+  );
+  assert.equal(knownDifferent.comparable, false);
+  assert.equal(knownDifferent.comparabilityLevel, "NON_COMPARABLE");
+  assert.deepEqual(knownDifferent.knownIncompatibilities, ["payment-incompatible"]);
 });
 
 test("evaluation uses the cheapest comparable single and exact gross metrics", () => {
@@ -209,6 +268,7 @@ test("evaluation uses the cheapest comparable single and exact gross metrics", (
   });
   assert.equal(result.technicalValidity, true);
   assert.equal(result.comparability, "COMPARABLE");
+  assert.equal(result.comparabilityLevel, "STRICT_COMPARABLE");
   assert.equal(result.singleOfferSnapshotId, single.offerSnapshotId);
   assert.equal(result.singleTotal, 500);
   assert.equal(result.splitTotal, 420);
@@ -229,6 +289,23 @@ test("evaluation uses the cheapest comparable single and exact gross metrics", (
       netSavingAtFriction,
     }))
   );
+  assert.equal(result.publicRecommendationProduced, false);
+});
+
+test("conditional comparisons retain economic analysis without policy or public eligibility", () => {
+  const { scenario, single, first, second } = comparableSetup();
+  const result = evaluateSplitF0EconomicOpportunityV1({
+    scenario,
+    splitPointId: scenario.splitPoints[0].splitPointId,
+    singleStayOffers: [{ ...single, paymentTiming: "unknown" }],
+    firstSegmentOffers: [{ ...first, paymentTiming: "unknown" }],
+    secondSegmentOffers: [{ ...second, paymentTiming: "unknown" }],
+  });
+  assert.equal(result.comparability, "COMPARABLE");
+  assert.equal(result.comparabilityLevel, "CONDITIONAL_COMPARABLE");
+  assert.equal(result.grossSavingAmount, 80);
+  assert.equal(result.evidenceLimits.includes("payment-timing-unknown"), true);
+  assert.deepEqual(result.knownIncompatibilities, []);
   assert.equal(result.publicRecommendationProduced, false);
 });
 

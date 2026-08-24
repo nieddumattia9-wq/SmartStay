@@ -469,6 +469,103 @@ function classifyPaymentTiming(offer) {
   return "unknown";
 }
 
+function classifyPaymentEvidenceValue(key, value) {
+  const normalizedKey = String(key ?? "").toLowerCase();
+  const normalizedValue =
+    typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+      ? String(value).toLowerCase()
+      : "";
+  const combined = `${normalizedKey}:${normalizedValue}`;
+  if (/pay.?at.?(hotel|property)|property.?pay|hotel.?pay/.test(combined)) {
+    return normalizedValue === "false" ? "unrecognized-present" : "pay-at-property";
+  }
+  if (/pay.?later|deferred|postpaid|post.?pay/.test(combined)) {
+    return normalizedValue === "false" ? "unrecognized-present" : "pay-later";
+  }
+  if (/pay.?now|prepaid|pre.?pay|immediate|merchant/.test(combined)) {
+    return normalizedValue === "false" ? "unrecognized-present" : "pay-now";
+  }
+  return "unrecognized-present";
+}
+
+export function inspectSplitF0RatesPaymentFields(payload) {
+  const pathValues = new Map();
+  const visit = (value, segments = []) => {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        visit(item, [...segments, "[]"]);
+      }
+      return;
+    }
+    if (value === null || typeof value !== "object") {
+      return;
+    }
+    for (const [key, child] of Object.entries(value)) {
+      const next = [...segments, key];
+      if (/payment|pay.?at|pay.?now|pay.?later|prepaid|postpaid|collect.?type/i.test(key)) {
+        const pathKey = next.join(".");
+        const current = pathValues.get(pathKey) ?? new Set();
+        const values = Array.isArray(child) ? child : [child];
+        for (const item of values) {
+          current.add(classifyPaymentEvidenceValue(key, item));
+        }
+        pathValues.set(pathKey, current);
+      }
+      visit(child, next);
+    }
+  };
+  visit(payload);
+  const fields = [...pathValues]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([fieldPath, classifications]) => ({
+      fieldPath,
+      classifications: [...classifications].sort(),
+    }));
+  return {
+    fieldPresent: fields.length > 0,
+    usableTimingPresent: fields.some((field) =>
+      field.classifications.some((value) =>
+        ["pay-now", "pay-later", "pay-at-property"].includes(value)
+      )
+    ),
+    fields,
+  };
+}
+
+function aggregateSplitF0PaymentFieldEvidence(observations) {
+  const paths = new Map();
+  let responsesWithPaymentFields = 0;
+  let responsesWithUsableTiming = 0;
+  for (const observation of observations) {
+    if (observation?.fieldPresent === true) {
+      responsesWithPaymentFields += 1;
+    }
+    if (observation?.usableTimingPresent === true) {
+      responsesWithUsableTiming += 1;
+    }
+    for (const field of observation?.fields ?? []) {
+      const values = paths.get(field.fieldPath) ?? new Set();
+      for (const classification of field.classifications) {
+        values.add(classification);
+      }
+      paths.set(field.fieldPath, values);
+    }
+  }
+  return {
+    responsesInspected: observations.length,
+    responsesWithPaymentFields,
+    responsesWithUsableTiming,
+    fieldPresent: paths.size > 0,
+    usableTimingPresent: responsesWithUsableTiming > 0,
+    fields: [...paths]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([fieldPath, classifications]) => ({
+        fieldPath,
+        classifications: [...classifications].sort(),
+      })),
+  };
+}
+
 function classifyRoom(roomName) {
   const value = String(roomName ?? "").toLowerCase();
   if (/apartment|studio/.test(value)) return "apartment";
@@ -612,21 +709,40 @@ function evaluationResults(matrix, searches) {
   return comparisons;
 }
 
-function aggregateResultCounters(searches, comparisons, network) {
-  const normalizedOffers = searches.reduce((total, search) => total + search.offers.length, 0);
-  const comparable = comparisons.filter((item) => item.comparability === "COMPARABLE");
-  const comparableSingles = new Set(comparable.map((item) => item.singleOfferSnapshotId).filter(Boolean));
-  const scenarioIdsWithComparable = new Set(comparable.map((item) => item.scenarioId));
-  const grossSavings = comparable
+function grossSavingStatistics(comparisons) {
+  const values = comparisons
     .map((item) => item.grossSavingAmount)
     .filter((value) => typeof value === "number" && value > 0)
     .sort((left, right) => left - right);
   const median =
-    grossSavings.length === 0
+    values.length === 0
       ? null
-      : grossSavings.length % 2 === 1
-        ? grossSavings[(grossSavings.length - 1) / 2]
-        : (grossSavings[grossSavings.length / 2 - 1] + grossSavings[grossSavings.length / 2]) / 2;
+      : values.length % 2 === 1
+        ? values[(values.length - 1) / 2]
+        : (values[values.length / 2 - 1] + values[values.length / 2]) / 2;
+  return {
+    count: values.length,
+    maximum: values.length === 0 ? null : values.at(-1),
+    median,
+  };
+}
+
+function aggregateResultCounters(searches, comparisons, network) {
+  const normalizedOffers = searches.reduce((total, search) => total + search.offers.length, 0);
+  const comparable = comparisons.filter((item) => item.comparability === "COMPARABLE");
+  const strict = comparable.filter((item) => item.comparabilityLevel === "STRICT_COMPARABLE");
+  const conditional = comparable.filter(
+    (item) => item.comparabilityLevel === "CONDITIONAL_COMPARABLE"
+  );
+  const comparableSingles = new Set(comparable.map((item) => item.singleOfferSnapshotId).filter(Boolean));
+  const strictSingles = new Set(strict.map((item) => item.singleOfferSnapshotId).filter(Boolean));
+  const conditionalSingles = new Set(
+    conditional.map((item) => item.singleOfferSnapshotId).filter(Boolean)
+  );
+  const scenarioIdsWithComparable = new Set(comparable.map((item) => item.scenarioId));
+  const allSavings = grossSavingStatistics(comparable);
+  const strictSavings = grossSavingStatistics(strict);
+  const conditionalSavings = grossSavingStatistics(conditional);
   const signalBands = {};
   for (const item of comparisons) {
     signalBands[item.economicSignal] = (signalBands[item.economicSignal] ?? 0) + 1;
@@ -650,10 +766,60 @@ function aggregateResultCounters(searches, comparisons, network) {
     scenariosWithGrossSaving: new Set(
       comparable.filter((item) => (item.grossSavingAmount ?? 0) > 0).map((item) => item.scenarioId)
     ).size,
-    maxGrossSavingEur: grossSavings.length === 0 ? null : grossSavings.at(-1),
-    medianGrossSavingEur: median,
+    maxGrossSavingEur: allSavings.maximum,
+    medianGrossSavingEur: allSavings.median,
+    strictComparableSingleOffers: strictSingles.size,
+    conditionalComparableSingleOffers: conditionalSingles.size,
+    strictComparableSplitPairs: strict.length,
+    conditionalComparableSplitPairs: conditional.length,
+    scenariosWithStrictComparableData: new Set(strict.map((item) => item.scenarioId)).size,
+    scenariosWithConditionalComparableData: new Set(
+      conditional.map((item) => item.scenarioId)
+    ).size,
+    scenariosWithStrictGrossSaving: new Set(
+      strict.filter((item) => (item.grossSavingAmount ?? 0) > 0).map((item) => item.scenarioId)
+    ).size,
+    scenariosWithConditionalGrossSaving: new Set(
+      conditional
+        .filter((item) => (item.grossSavingAmount ?? 0) > 0)
+        .map((item) => item.scenarioId)
+    ).size,
+    strictMaxGrossSavingEur: strictSavings.maximum,
+    strictMedianGrossSavingEur: strictSavings.median,
+    conditionalMaxGrossSavingEur: conditionalSavings.maximum,
+    conditionalMedianGrossSavingEur: conditionalSavings.median,
     signalBands,
   };
+}
+
+export function replaySplitF0SanitizedDataset(matrix, dataset) {
+  if (
+    dataset?.schemaVersion !== "stayopti.split-f0.sandbox-calibration@1" ||
+    dataset?.environment !== "sandbox" ||
+    dataset?.technicalCalibrationOnly !== true ||
+    dataset?.marketEvidence !== false ||
+    dataset?.policyEligible !== false ||
+    dataset?.publicRecommendationAllowed !== false ||
+    !Array.isArray(dataset?.searches)
+  ) {
+    throw new Error("split-f0-sanitized-replay-dataset-invalid");
+  }
+  const comparisons = evaluationResults(matrix, dataset.searches);
+  const network = dataset.network ?? {
+    httpRequests: 0,
+    retries: 0,
+    rateLimitResponses: 0,
+    timeouts: 0,
+    providerErrors: 0,
+    requestsByScenario: {},
+  };
+  const replay = {
+    ...dataset,
+    comparisons,
+    counters: aggregateResultCounters(dataset.searches, comparisons, network),
+  };
+  assertPersistedPayloadSafe(replay);
+  return replay;
 }
 
 export async function runSplitF0Collector({
@@ -686,6 +852,7 @@ export async function runSplitF0Collector({
       counters: null,
       searches: [],
       comparisons: [],
+      paymentFieldProbe: null,
     };
   }
   const keyValidation = validateSplitF0SandboxKey(apiKey);
@@ -711,6 +878,7 @@ export async function runSplitF0Collector({
       counters: null,
       searches: [],
       comparisons: [],
+      paymentFieldProbe: null,
     };
   }
   const baseValidation = validateSplitF0BaseUrl(options.baseUrl);
@@ -722,6 +890,7 @@ export async function runSplitF0Collector({
   const rateState = { lastStartedAt: Number.NEGATIVE_INFINITY };
   const collectedSearches = [];
   const rawIdentifiers = [];
+  const paymentFieldObservations = [];
   for (const search of plan) {
     const response = await requestWithPolicy({
       transport,
@@ -732,6 +901,9 @@ export async function runSplitF0Collector({
       rateState,
     });
     const normalized = normalizeMappedHotels(search, response.hotels, observedAt);
+    if (response.paymentFieldEvidence !== undefined) {
+      paymentFieldObservations.push(response.paymentFieldEvidence);
+    }
     rawIdentifiers.push(...normalized.rawIdentifiers);
     collectedSearches.push({
       scenarioId: search.scenarioId,
@@ -766,6 +938,7 @@ export async function runSplitF0Collector({
     network,
     searches: collectedSearches,
     comparisons,
+    paymentFieldProbe: aggregateSplitF0PaymentFieldEvidence(paymentFieldObservations),
     counters: aggregateResultCounters(collectedSearches, comparisons, network),
   };
   assertPersistedPayloadSafe(result, rawIdentifiers);
@@ -904,6 +1077,7 @@ export async function createSplitF0LiteApiTransport({
       }
       return {
         status: response.status,
+        paymentFieldEvidence: inspectSplitF0RatesPaymentFields(data),
         hotels: data === null
           ? []
           : mapLiteApiHotelResponse(
@@ -939,7 +1113,14 @@ function humanSummary(result) {
     `sandboxHttpRequests=${result.network?.httpRequests ?? 0}`,
     `sandboxRetries=${result.network?.retries ?? 0}`,
     `normalizedOffers=${result.counters?.normalizedOffers ?? 0}`,
-    `scenariosWithComparableData=${result.counters?.scenariosWithComparableData ?? 0}`,
+    `strictComparableSingleOffers=${result.counters?.strictComparableSingleOffers ?? 0}`,
+    `conditionalComparableSingleOffers=${result.counters?.conditionalComparableSingleOffers ?? 0}`,
+    `strictComparableSplitPairs=${result.counters?.strictComparableSplitPairs ?? 0}`,
+    `conditionalComparableSplitPairs=${result.counters?.conditionalComparableSplitPairs ?? 0}`,
+    `scenariosWithStrictComparableData=${result.counters?.scenariosWithStrictComparableData ?? 0}`,
+    `scenariosWithConditionalComparableData=${result.counters?.scenariosWithConditionalComparableData ?? 0}`,
+    `paymentFieldPresent=${result.paymentFieldProbe?.fieldPresent ?? false}`,
+    `paymentUsableTimingPresent=${result.paymentFieldProbe?.usableTimingPresent ?? false}`,
   ].join("\n") + "\n";
 }
 

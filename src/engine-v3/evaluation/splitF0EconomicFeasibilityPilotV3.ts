@@ -47,6 +47,11 @@ export type SplitF0PaymentTimingV1 =
   | "pay-at-property"
   | "unknown";
 
+export type SplitF0ComparabilityLevelV1 =
+  | "STRICT_COMPARABLE"
+  | "CONDITIONAL_COMPARABLE"
+  | "NON_COMPARABLE";
+
 export type SplitF0RoomClassV1 =
   | "standard"
   | "superior"
@@ -194,7 +199,7 @@ export interface SplitF0ComparabilityBucketV1 {
   occupancy: string;
   boardClass: Exclude<SplitF0BoardClassV1, "unknown">;
   cancellationClass: Exclude<SplitF0CancellationClassV1, "unknown">;
-  paymentTiming: Exclude<SplitF0PaymentTimingV1, "unknown">;
+  paymentTiming: SplitF0PaymentTimingV1;
   totalCostCompleteness: "complete";
   minimumRating: number;
   minimumReviewCount: number;
@@ -204,8 +209,11 @@ export interface SplitF0ComparabilityBucketV1 {
 
 export interface SplitF0ComparabilityResultV1 {
   comparable: boolean;
+  comparabilityLevel: SplitF0ComparabilityLevelV1;
   bucket: SplitF0ComparabilityBucketV1 | null;
   issues: SplitF0ComparabilityIssueV1[];
+  evidenceLimits: string[];
+  knownIncompatibilities: SplitF0ComparabilityIssueV1[];
 }
 
 export interface SplitF0FrictionSensitivityResultV1 {
@@ -218,7 +226,9 @@ export interface SplitF0ComparisonResultV1 {
   splitPointId: string;
   technicalValidity: boolean;
   comparability: "COMPARABLE" | "NO_COMPARABLE_DATA";
+  comparabilityLevel: SplitF0ComparabilityLevelV1;
   issues: string[];
+  knownIncompatibilities: string[];
   bucket: SplitF0ComparabilityBucketV1 | null;
   singleOfferSnapshotId: string | null;
   splitOfferSnapshotIds: [string, string] | null;
@@ -459,9 +469,6 @@ function validateOfferForPeriod(
   if (offer.cancellationClass === "unknown") {
     issues.push("cancellation-incompatible");
   }
-  if (offer.paymentTiming === "unknown") {
-    issues.push("payment-incompatible");
-  }
   if (offer.rating === null || offer.rating < scenario.constraints.minimumRating) {
     issues.push("quality-floor-not-met");
   }
@@ -493,15 +500,62 @@ function validateOfferForPeriod(
   return uniqueSorted(issues);
 }
 
-function roomsCompatible(
-  single: SplitF0OfferSnapshotV1,
-  split: SplitF0OfferSnapshotV1
-): boolean {
-  return (
-    single.roomClass === "unknown" ||
-    split.roomClass === "unknown" ||
-    single.roomClass === split.roomClass
+const COMPARABLE_ROOM_CLASSES = new Set<SplitF0RoomClassV1>([
+  "standard",
+  "superior",
+  "suite",
+  "apartment",
+]);
+
+function paymentCompatibility(
+  offers: readonly [
+    SplitF0OfferSnapshotV1,
+    SplitF0OfferSnapshotV1,
+    SplitF0OfferSnapshotV1,
+  ]
+): {
+  compatible: boolean;
+  level: Exclude<SplitF0ComparabilityLevelV1, "NON_COMPARABLE"> | null;
+  bucketValue: SplitF0PaymentTimingV1;
+  evidenceLimits: string[];
+} {
+  const values = offers.map((offer) => offer.paymentTiming);
+  const knownValues = uniqueSorted(
+    values.filter(
+      (value): value is Exclude<SplitF0PaymentTimingV1, "unknown"> =>
+        value !== "unknown"
+    )
   );
+  if (knownValues.length > 1) {
+    return {
+      compatible: false,
+      level: null,
+      bucketValue: "unknown",
+      evidenceLimits: [],
+    };
+  }
+  if (knownValues.length === 1 && values.every((value) => value !== "unknown")) {
+    return {
+      compatible: true,
+      level: "STRICT_COMPARABLE",
+      bucketValue: knownValues[0],
+      evidenceLimits: [],
+    };
+  }
+  if (knownValues.length === 0) {
+    return {
+      compatible: true,
+      level: "CONDITIONAL_COMPARABLE",
+      bucketValue: "unknown",
+      evidenceLimits: ["payment-timing-unknown"],
+    };
+  }
+  return {
+    compatible: true,
+    level: "CONDITIONAL_COMPARABLE",
+    bucketValue: "unknown",
+    evidenceLimits: ["payment-timing-known-unknown"],
+  };
 }
 
 export function classifySplitF0OfferComparabilityV1(
@@ -511,6 +565,7 @@ export function classifySplitF0OfferComparabilityV1(
   splitOffers: readonly [SplitF0OfferSnapshotV1, SplitF0OfferSnapshotV1]
 ): SplitF0ComparabilityResultV1 {
   const issues: SplitF0ComparabilityIssueV1[] = [];
+  const evidenceLimits: string[] = [];
   if (!validateSplitF0ScenarioV1(scenario).valid) {
     issues.push("scenario-invalid");
   }
@@ -560,23 +615,37 @@ export function classifySplitF0OfferComparabilityV1(
     if (splitOffer.cancellationClass !== singleOffer.cancellationClass) {
       issues.push("cancellation-incompatible");
     }
-    if (splitOffer.paymentTiming !== singleOffer.paymentTiming) {
-      issues.push("payment-incompatible");
-    }
-    if (!roomsCompatible(singleOffer, splitOffer)) {
+    if (
+      !COMPARABLE_ROOM_CLASSES.has(singleOffer.roomClass) ||
+      !COMPARABLE_ROOM_CLASSES.has(splitOffer.roomClass) ||
+      singleOffer.roomClass !== splitOffer.roomClass
+    ) {
       issues.push("room-class-incompatible");
     }
   }
+  const payment = paymentCompatibility([
+    singleOffer,
+    splitOffers[0],
+    splitOffers[1],
+  ]);
+  if (!payment.compatible || payment.level === null) {
+    issues.push("payment-incompatible");
+  }
+  evidenceLimits.push(...payment.evidenceLimits);
   const normalizedIssues = uniqueSorted(issues);
   if (normalizedIssues.length > 0) {
     return {
       comparable: false,
+      comparabilityLevel: "NON_COMPARABLE",
       bucket: null,
       issues: normalizedIssues,
+      evidenceLimits: uniqueSorted(evidenceLimits),
+      knownIncompatibilities: normalizedIssues,
     };
   }
   return {
     comparable: true,
+    comparabilityLevel: payment.level ?? "NON_COMPARABLE",
     bucket: {
       currency: singleOffer.currency,
       occupancy: occupancyKey(singleOffer.occupancy),
@@ -585,10 +654,7 @@ export function classifySplitF0OfferComparabilityV1(
         SplitF0CancellationClassV1,
         "unknown"
       >,
-      paymentTiming: singleOffer.paymentTiming as Exclude<
-        SplitF0PaymentTimingV1,
-        "unknown"
-      >,
+      paymentTiming: payment.bucketValue,
       totalCostCompleteness: "complete",
       minimumRating: scenario.constraints.minimumRating,
       minimumReviewCount: scenario.constraints.minimumReviewCount,
@@ -596,6 +662,8 @@ export function classifySplitF0OfferComparabilityV1(
       roomClass: singleOffer.roomClass,
     },
     issues: [],
+    evidenceLimits: uniqueSorted(evidenceLimits),
+    knownIncompatibilities: [],
   };
 }
 
@@ -630,7 +698,9 @@ function noComparableResult(
     splitPointId,
     technicalValidity,
     comparability: "NO_COMPARABLE_DATA",
+    comparabilityLevel: "NON_COMPARABLE",
     issues: uniqueSorted(issues),
+    knownIncompatibilities: uniqueSorted(issues),
     bucket: null,
     singleOfferSnapshotId: null,
     splitOfferSnapshotIds: null,
@@ -678,6 +748,8 @@ export function evaluateSplitF0EconomicOpportunityV1(
     bucket: SplitF0ComparabilityBucketV1;
     splitTotal: number;
     grossSavingAmount: number;
+    comparabilityLevel: Exclude<SplitF0ComparabilityLevelV1, "NON_COMPARABLE">;
+    evidenceLimits: string[];
   }> = [];
   const rejectedIssues: SplitF0ComparabilityIssueV1[] = [];
   for (const first of input.firstSegmentOffers) {
@@ -700,6 +772,11 @@ export function evaluateSplitF0EconomicOpportunityV1(
           bucket: classification.bucket,
           splitTotal,
           grossSavingAmount: single.totalCost - splitTotal,
+          comparabilityLevel: classification.comparabilityLevel as Exclude<
+            SplitF0ComparabilityLevelV1,
+            "NON_COMPARABLE"
+          >,
+          evidenceLimits: classification.evidenceLimits,
         });
       }
     }
@@ -725,6 +802,8 @@ export function evaluateSplitF0EconomicOpportunityV1(
       candidate.single.totalCost === cheapestSingleByBucket.get(bucketKey(candidate.bucket))
   );
   eligible.sort((left, right) =>
+    Number(left.comparabilityLevel !== "STRICT_COMPARABLE") -
+      Number(right.comparabilityLevel !== "STRICT_COMPARABLE") ||
     right.grossSavingAmount - left.grossSavingAmount ||
     left.splitTotal - right.splitTotal ||
     left.single.offerSnapshotId.localeCompare(right.single.offerSnapshotId) ||
@@ -745,7 +824,9 @@ export function evaluateSplitF0EconomicOpportunityV1(
     splitPointId: input.splitPointId,
     technicalValidity: true,
     comparability: "COMPARABLE",
+    comparabilityLevel: selected.comparabilityLevel,
     issues: [],
+    knownIncompatibilities: [],
     bucket: selected.bucket,
     singleOfferSnapshotId: selected.single.offerSnapshotId,
     splitOfferSnapshotIds: [
@@ -763,12 +844,13 @@ export function evaluateSplitF0EconomicOpportunityV1(
       })
     ),
     economicSignal: economicSignal(selected.grossSavingAmount),
-    evidenceLimits: [
+    evidenceLimits: uniqueSorted([
       "calibration-set-not-market-evidence",
       "hypothetical-friction-not-scientifically-calibrated",
       "production-read-only-results-required-for-economic-feasibility",
       "no-public-or-policy-use",
-    ],
+      ...selected.evidenceLimits,
+    ]),
     publicRecommendationProduced: false,
   };
 }

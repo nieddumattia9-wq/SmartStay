@@ -36,7 +36,13 @@ Every generated option has exactly two contiguous segments, at least two nights 
 
 ## Economic comparability
 
-A comparison is admitted only when the full-stay offer and both segment offers have compatible:
+A comparison is admitted only when the full-stay offer and both segment offers satisfy the same economic and structural gates. Its epistemic level is reported separately:
+
+- `STRICT_COMPARABLE`: all material conditions are known and compatible;
+- `CONDITIONAL_COMPARABLE`: cost, validity and structural gates pass, but payment timing is incomplete without a demonstrated incompatibility;
+- `NON_COMPARABLE`: a material incompatibility is demonstrated or evidence essential to cost, validity or safety is missing.
+
+The three offers must have compatible:
 
 - currency and occupancy;
 - board class;
@@ -47,7 +53,9 @@ A comparison is admitted only when the full-stay offer and both segment offers h
 - location within the scenario limit;
 - room class when the class is available on both sides.
 
-Identical commercial room names across different hotels are not required. Unknown essential costs, taxes or mandatory fees, stale rates, non-bookable offers, incomplete dates, missing provenance and duplicated properties fail closed.
+Identical commercial room names across different hotels are not required. Broad room classes compare only like for like: standard, superior, suite or apartment. `other` and `unknown` are not promoted automatically. Unknown essential costs, taxes or mandatory fees, stale rates, non-bookable offers, incomplete dates, missing provenance and duplicated properties fail closed.
+
+Unknown payment timing is uncertainty, not proof of incompatibility. Equal known values are strict; differing known values are non-comparable; unknown values produce a conditional comparison with an explicit `payment-timing-unknown` or `payment-timing-known-unknown` evidence limit. Conditional results are technical signal-search only: they do not establish equivalence, market evidence, policy eligibility or a public recommendation.
 
 The single baseline is the cheapest eligible full-stay offer inside the same comparability bucket. Commission, markup, provider ordering and provider-specific pricing preferences are excluded.
 
