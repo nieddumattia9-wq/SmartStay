@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "stayopti.split-f0d.equivalence-run-plan@1",
+  "sourceSha": "429fe4283ca0c5c0d0db7ab116379034032286bf",
+  "sourceScenarioMatrixPath": "tests/engine-v3/fixtures/split-f0-scenario-matrix-v1.json",
+  "sourceScenarioMatrixSha256": "aee6715003e5147e81474708766f71ac51df82e4feb67092281f803ee8a15448",
+  "liveScenarioIds": [
+    "split-f0-cal-001",
+    "split-f0-cal-002",
+    "split-f0-cal-003",
+    "split-f0-cal-004",
+    "split-f0-cal-005",
+    "split-f0-cal-006",
+    "split-f0-cal-007",
+    "split-f0-cal-008"
+  ],
+  "liveDurations": [5, 7, 10, 12, 14, 21, 28, 30],
+  "environmentIds": ["sandbox", "production"],
+  "waveIds": ["wave-a", "wave-b"],
+  "logicalSearchesPerScenario": 5,
+  "plannedLiveHttpRequests": 160,
+  "offlineTwoNightControl": {
+    "controlId": "split-f0d-offline-two-night-minimum-segment",
+    "nights": 2,
+    "fullStayValid": true,
+    "expectedAdmissibleSplitPoints": 0,
+    "plannedProviderRequests": 0
+  },
+  "replayControls": [
+    {
+      "controlId": "split-f0d-replay-no-gross-saving",
+      "kind": "NO_GROSS_SAVING"
+    },
+    {
+      "controlId": "split-f0d-replay-economic-candidate",
+      "kind": "POSITIVE_GROSS_SAVING_CANDIDATE"
+    },
+    {
+      "controlId": "split-f0d-replay-essential-data-incomplete",
+      "kind": "ESSENTIAL_DATA_INCOMPLETE"
+    },
+    {
+      "controlId": "split-f0d-replay-availability-loss-best-single-change",
+      "kind": "AVAILABILITY_LOSS_BEST_SINGLE_CHANGE"
+    }
+  ],
+  "futureLivePolicy": {
+    "method": "POST",
+    "endpointPath": "/hotels/rates",
+    "httpsRequired": true,
+    "hostAllowlist": ["api.liteapi.travel"],
+    "redirects": "disabled",
+    "cache": "disabled",
+    "continuation": "none",
+    "stopOnTruncationOrContinuation": true,
+    "retries": 0,
+    "concurrency": 1,
+    "maxRequestsPerSecond": 1,
+    "hardRequestBudget": 160,
+    "sandboxCredentialVariable": "SPLIT_F0D_SANDBOX_API_KEY",
+    "productionCredentialVariable": "SPLIT_F0D_PRODUCTION_API_KEY",
+    "sandboxBaseUrlVariable": "SPLIT_F0D_SANDBOX_BASE_URL",
+    "productionBaseUrlVariable": "SPLIT_F0D_PRODUCTION_BASE_URL",
+    "sandboxCredentialClass": "SAND",
+    "productionCredentialClass": "PROD",
+    "fallbackBetweenEnvironments": false
+  },
+  "networkAuthorizedInD1": false,
+  "marketEvidence": false,
+  "policyEligible": false,
+  "publicRecommendationAllowed": false
+}

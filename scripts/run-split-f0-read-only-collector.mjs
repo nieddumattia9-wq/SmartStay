@@ -948,7 +948,7 @@ export async function runSplitF0Collector({
   return result;
 }
 
-function ratesPayloadForSearch(search) {
+export function createSplitF0RatesRequestBodyV1(search) {
   return {
     checkin: search.request.checkIn,
     checkout: search.request.checkOut,
@@ -1032,7 +1032,7 @@ export async function createSplitF0LiteApiTransport({
             "Content-Type": "application/json",
             "X-Api-Key": apiKey,
           },
-          body: JSON.stringify(ratesPayloadForSearch(logicalSearch)),
+          body: JSON.stringify(createSplitF0RatesRequestBodyV1(logicalSearch)),
           signal: controller.signal,
           redirect: "manual",
         });
