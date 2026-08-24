@@ -11,6 +11,7 @@ import {
   assertSplitF0EndpointAllowed,
   buildSplitF0LogicalSearchPlan,
   createSplitF0BudgetLedger,
+  createSplitF0LiteApiTransport,
   loadSplitF0ScenarioMatrix,
   parseSplitF0CollectorArguments,
   runSplitF0Collector,
@@ -315,8 +316,106 @@ test("collector source stays isolated from public runtime, V2/V3 decision cores 
     assert.equal(importSpecifiers.some((specifier) => specifier.includes(forbidden)), false, forbidden);
   }
   assert.equal(importSpecifiers.some((specifier) => specifier.endsWith("splitF0EconomicFeasibilityPilotV3.ts")), true);
-  assert.equal(importSpecifiers.some((specifier) => specifier.endsWith("liteApiClient.js")), true);
+  assert.equal(importSpecifiers.some((specifier) => specifier === "axios"), false);
+  assert.equal(importSpecifiers.some((specifier) => specifier.endsWith("liteApiClient.js")), false);
   assert.equal(importSpecifiers.some((specifier) => specifier.endsWith("liteApiProvider.js")), true);
+  assert.equal(source.includes("globalThis.fetch"), true);
+});
+
+test("Node 24 live transport is dependency-free and preserves key, endpoint, timeout and redirect gates", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const logicalSearch = buildSplitF0LogicalSearchPlan(matrix)[0];
+  const calls = [];
+  const transport = await createSplitF0LiteApiTransport({
+    apiKey: SAFE_SANDBOX_KEY,
+    baseUrl: "https://api.liteapi.travel/v3.0",
+    fetchImplementation: async (url, options) => {
+      calls.push({ url: String(url), options });
+      return {
+        status: 200,
+        redirected: false,
+        url: String(url),
+        text: async () => JSON.stringify({ data: [] }),
+      };
+    },
+    timeoutMs: 50,
+  });
+  const response = await transport.request({
+    method: "POST",
+    endpointPath: "/hotels/rates",
+    logicalSearch,
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.hotels, []);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.redirect, "manual");
+  assert.equal(calls[0].options.signal instanceof AbortSignal, true);
+  assert.equal(calls[0].options.headers["X-Api-Key"], SAFE_SANDBOX_KEY);
+  assert.equal(JSON.stringify(response).includes(SAFE_SANDBOX_KEY), false);
+  await assert.rejects(
+    transport.request({
+      method: "POST",
+      endpointPath: "/rates/prebook",
+      logicalSearch,
+    }),
+    /endpoint-prohibited/
+  );
+  assert.equal(calls.length, 1);
+
+  await assert.rejects(
+    createSplitF0LiteApiTransport({
+      apiKey: ["prod", "unit-test-only"].join("_"),
+      baseUrl: "https://api.liteapi.travel/v3.0",
+      fetchImplementation: async () => assert.fail("production key reached fetch"),
+    }),
+    /live-transport-gate-failed/
+  );
+
+  const redirected = await createSplitF0LiteApiTransport({
+    apiKey: SAFE_SANDBOX_KEY,
+    baseUrl: "https://api.liteapi.travel/v3.0",
+    fetchImplementation: async (url) => ({
+      status: 302,
+      redirected: false,
+      url: String(url),
+      text: async () => "",
+    }),
+  });
+  await assert.rejects(
+    redirected.request({ method: "POST", endpointPath: "/hotels/rates", logicalSearch }),
+    /redirect was blocked/
+  );
+
+  const timedOut = await createSplitF0LiteApiTransport({
+    apiKey: SAFE_SANDBOX_KEY,
+    baseUrl: "https://api.liteapi.travel/v3.0",
+    fetchImplementation: async (_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () =>
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }))
+        );
+      }),
+    timeoutMs: 2,
+  });
+  await assert.rejects(
+    timedOut.request({ method: "POST", endpointPath: "/hotels/rates", logicalSearch }),
+    (caught) => caught?.code === "ECONNABORTED"
+  );
+
+  const invalidJson = await createSplitF0LiteApiTransport({
+    apiKey: SAFE_SANDBOX_KEY,
+    baseUrl: "https://api.liteapi.travel/v3.0",
+    fetchImplementation: async (url) => ({
+      status: 200,
+      redirected: false,
+      url: String(url),
+      text: async () => "not-json",
+    }),
+  });
+  await assert.rejects(
+    invalidJson.request({ method: "POST", endpointPath: "/hotels/rates", logicalSearch }),
+    (caught) => caught?.code === "INVALID_PROVIDER_JSON"
+  );
 });
 
 test("matrix is read deterministically from the committed F0B fixture", async () => {

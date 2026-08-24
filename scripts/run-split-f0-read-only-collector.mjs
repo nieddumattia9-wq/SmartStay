@@ -26,6 +26,7 @@ export const SPLIT_F0_MAX_HTTP_REQUESTS = 120;
 export const SPLIT_F0_MAX_HTTP_REQUESTS_PER_SCENARIO = 15;
 export const SPLIT_F0_MAX_REQUESTS_PER_SECOND = 4;
 export const SPLIT_F0_MAX_RETRIES = 2;
+export const SPLIT_F0_HTTP_TIMEOUT_MS = 15_000;
 
 const ALLOWED_ENDPOINTS = new Map([
   ["POST /hotels/rates", "rates-search"],
@@ -771,48 +772,142 @@ export async function runSplitF0Collector({
   return result;
 }
 
-function ratesPayloadForSearch(createLiteApiRatesPayload, search) {
-  return createLiteApiRatesPayload({
+function ratesPayloadForSearch(search) {
+  return {
+    checkin: search.request.checkIn,
+    checkout: search.request.checkOut,
+    currency: search.request.currency,
+    guestNationality: search.request.guestNationality,
+    occupancies: [
+      {
+        adults: search.request.occupancy.adults,
+        children: [...search.request.occupancy.childAges],
+      },
+    ],
+    limit: 80,
+    timeout: 12,
+    maxRatesPerHotel: 3,
+    roomMapping: true,
+    includeHotelData: true,
+    sessionId: `splitf0_${search.requestFingerprint.slice(7, 31)}`,
     latitude: search.request.latitude,
     longitude: search.request.longitude,
     radius: search.request.radiusMeters,
-    checkin: search.request.checkIn,
-    checkout: search.request.checkOut,
-    adults: search.request.occupancy.adults,
-    children: search.request.occupancy.childAges,
-    currency: search.request.currency,
-    guestNationality: search.request.guestNationality,
-    limit: 80,
-    sessionId: `splitf0_${search.requestFingerprint.slice(7, 31)}`,
-    margin: null,
-  });
+  };
 }
 
-export async function createSplitF0LiteApiTransport({ apiKey, baseUrl }) {
+function createNativeFetchError(message, code, status = null) {
+  const failure = new Error(message);
+  failure.code = code;
+  failure.status = status;
+  return failure;
+}
+
+async function parseProviderJsonResponse(response) {
+  if (response.status === 204) {
+    return null;
+  }
+  const text = await response.text();
+  if (text.trim().length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw createNativeFetchError(
+      "LiteAPI sandbox response was not valid JSON.",
+      "INVALID_PROVIDER_JSON",
+      response.status
+    );
+  }
+}
+
+export async function createSplitF0LiteApiTransport({
+  apiKey,
+  baseUrl,
+  fetchImplementation = globalThis.fetch,
+  timeoutMs = SPLIT_F0_HTTP_TIMEOUT_MS,
+}) {
   const keyValidation = validateSplitF0SandboxKey(apiKey);
   const baseValidation = validateSplitF0BaseUrl(baseUrl);
   if (!keyValidation.valid || !baseValidation.valid) {
     throw new Error("split-f0-live-transport-gate-failed");
   }
-  process.env.LITEAPI_API_KEY = apiKey;
-  process.env.LITEAPI_BASE_URL = baseValidation.normalized;
+  if (typeof fetchImplementation !== "function") {
+    throw new Error("split-f0-native-fetch-unavailable");
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("split-f0-http-timeout-invalid");
+  }
   const require = createRequire(import.meta.url);
-  const axios = require("axios");
-  axios.defaults.maxRedirects = 0;
-  const { createLiteApiRatesPayload, getLiteApiRates } = require(
-    "../server/providers/liteApi/liteApiClient.js"
-  );
   const { mapLiteApiHotelResponse } = require("../server/providers/liteApi/liteApiProvider.js");
   return {
     async request({ method, endpointPath, logicalSearch }) {
       assertSplitF0EndpointAllowed(method, endpointPath);
-      const response = await getLiteApiRates(ratesPayloadForSearch(createLiteApiRatesPayload, logicalSearch));
+      const requestUrl = new URL(`${baseValidation.normalized}${endpointPath}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      let response;
+      try {
+        response = await fetchImplementation(requestUrl, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-Api-Key": apiKey,
+          },
+          body: JSON.stringify(ratesPayloadForSearch(logicalSearch)),
+          signal: controller.signal,
+          redirect: "manual",
+        });
+      } catch (caught) {
+        if (controller.signal.aborted || caught?.name === "AbortError") {
+          throw createNativeFetchError(
+            "LiteAPI sandbox request timed out.",
+            "ECONNABORTED"
+          );
+        }
+        throw caught;
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (
+        response.redirected === true ||
+        (response.status >= 300 && response.status <= 399)
+      ) {
+        throw createNativeFetchError(
+          "LiteAPI sandbox redirect was blocked.",
+          "REDIRECT_PROHIBITED",
+          response.status
+        );
+      }
+      if (typeof response.url === "string" && response.url.length > 0) {
+        const responseUrl = new URL(response.url);
+        if (
+          responseUrl.protocol !== requestUrl.protocol ||
+          responseUrl.host.toLowerCase() !== requestUrl.host.toLowerCase()
+        ) {
+          throw createNativeFetchError(
+            "LiteAPI sandbox response host was not allowlisted.",
+            "RESPONSE_HOST_PROHIBITED",
+            response.status
+          );
+        }
+      }
+      const data = await parseProviderJsonResponse(response);
+      if (response.status < 200 || response.status >= 300) {
+        throw createNativeFetchError(
+          `LiteAPI sandbox request failed with status ${response.status}.`,
+          "LITEAPI_HTTP_ERROR",
+          response.status
+        );
+      }
       return {
         status: response.status,
-        hotels: response.noContent
+        hotels: data === null
           ? []
           : mapLiteApiHotelResponse(
-              response.data,
+              data,
               logicalSearch.request.currency,
               {
                 latitude: logicalSearch.request.latitude,
