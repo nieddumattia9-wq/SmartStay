@@ -4,16 +4,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  assertSplitF0PersistedPayloadSafeV1,
   buildSplitF0LogicalSearchPlan,
+  createSplitF0LiteApiTransport,
   createSplitF0RatesRequestBodyV1,
   loadSplitF0ScenarioMatrix,
+  normalizeSplitF0MappedHotelsV1,
   sha256SplitF0,
   stableStringifySplitF0,
+  validateSplitF0OutputPath,
 } from "./run-split-f0-read-only-collector.mjs";
 import {
+  analyzeSplitF0CrossCaptureStabilityV1,
   buildSplitF0SegmentsV1,
   evaluateSplitF0EconomicOpportunityV1,
   selectSplitF0FixedSingleBaselineV1,
+  summarizeSplitF0PrimarySavingsV1,
 } from "../src/engine-v3/evaluation/splitF0EconomicFeasibilityPilotV3.ts";
 
 const CURRENT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +37,13 @@ export const SPLIT_F0D_WAVES = ["wave-a", "wave-b"];
 export const SPLIT_F0D_LOGICAL_SEARCHES_PER_SCENARIO = 5;
 export const SPLIT_F0D_HARD_REQUEST_BUDGET = 160;
 export const SPLIT_F0D_ACTUAL_HTTP_REQUESTS = 0;
+export const SPLIT_F0D_OFFICIAL_BASE_URL = "https://api.liteapi.travel/v3.0";
+export const SPLIT_F0D_RATES_ENDPOINT = "/hotels/rates";
+export const SPLIT_F0D_HTTP_TIMEOUT_MS = 15_000;
+export const SPLIT_F0D_LIVE_CONFIRMATIONS = [
+  "--execute-paired-live",
+  "--confirm-rates-only-production-access",
+];
 
 const FUTURE_NON_SECRET_REQUEST_CONFIGURATION = Object.freeze({
   method: "POST",
@@ -116,6 +129,8 @@ export function validateSplitF0dFutureLiveConfiguration({
   productionBaseUrl,
   sandboxCredential,
   productionCredential,
+  sandboxCredentialVariableName = "SPLIT_F0D_SANDBOX_API_KEY",
+  productionCredentialVariableName = "SPLIT_F0D_PRODUCTION_API_KEY",
 } = {}) {
   const issues = [];
   validateEnvironmentBaseUrl(sandboxBaseUrl, "sandbox", issues);
@@ -126,17 +141,32 @@ export function validateSplitF0dFutureLiveConfiguration({
   if (classifySplitF0dCredential(productionCredential) !== "PROD") {
     issues.push("PRODUCTION_CREDENTIAL_CLASS_NOT_PROVEN");
   }
+  if (
+    typeof sandboxCredential === "string" &&
+    sandboxCredential.length > 0 &&
+    sandboxCredential === productionCredential
+  ) {
+    issues.push("SANDBOX_PRODUCTION_CREDENTIALS_MUST_DIFFER");
+  }
+  for (const [label, variableName] of [
+    ["sandbox", sandboxCredentialVariableName],
+    ["production", productionCredentialVariableName],
+  ]) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variableName)) {
+      issues.push(`${label}-credential-variable-name-invalid`);
+    }
+  }
   return {
     valid: issues.length === 0,
     issues: uniqueSorted(issues),
     credentialReceipt: {
       sandbox: {
-        variableName: "SPLIT_F0D_SANDBOX_API_KEY",
+        variableName: sandboxCredentialVariableName,
         requiredClass: "SAND",
         observedClass: classifySplitF0dCredential(sandboxCredential),
       },
       production: {
-        variableName: "SPLIT_F0D_PRODUCTION_API_KEY",
+        variableName: productionCredentialVariableName,
         requiredClass: "PROD",
         observedClass: classifySplitF0dCredential(productionCredential),
       },
@@ -497,20 +527,760 @@ export async function runSplitF0dDryRun() {
   return result;
 }
 
+function splitF0dRatesSchemaInterpretable(payload) {
+  if (Array.isArray(payload)) return true;
+  if (payload === null || typeof payload !== "object") return false;
+  return ["data", "rates", "results", "items", "hotels", "response"].some(
+    (key) => Object.prototype.hasOwnProperty.call(payload, key)
+  );
+}
+
+export async function createSplitF0dRatesOnlyTransport({
+  environment,
+  credential,
+  baseUrl,
+  fetchImplementation = globalThis.fetch,
+  timeoutMs = SPLIT_F0D_HTTP_TIMEOUT_MS,
+}) {
+  if (!SPLIT_F0D_ENVIRONMENTS.includes(environment)) {
+    throw new Error("split-f0d-environment-invalid");
+  }
+  return createSplitF0LiteApiTransport({
+    apiKey: credential,
+    baseUrl,
+    fetchImplementation,
+    timeoutMs,
+    requiredCredentialClass: environment === "sandbox" ? "SAND" : "PROD",
+    redirectMode: "error",
+    requiredStatus: 200,
+    requireJsonContentType: true,
+    stopOnContinuationOrTruncation: true,
+    responseSchemaValidator: splitF0dRatesSchemaInterpretable,
+    cacheMode: "no-store",
+    environmentLabel: environment,
+  });
+}
+
+function credentialVariableName(value, label) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    throw new Error(`split-f0d-${label}-credential-variable-name-invalid`);
+  }
+  return value;
+}
+
+export function resolveSplitF0dLiveConfiguration(
+  options,
+  environmentVariables = process.env
+) {
+  const sandboxCredentialVariableName = credentialVariableName(
+    options.sandboxCredentialVariableName,
+    "sandbox"
+  );
+  const productionCredentialVariableName = credentialVariableName(
+    options.productionCredentialVariableName,
+    "production"
+  );
+  const sandboxBaseUrlVariableName = options.sandboxBaseUrlVariableName;
+  const productionBaseUrlVariableName = options.productionBaseUrlVariableName;
+  for (const [label, variableName] of [
+    ["sandbox-base-url", sandboxBaseUrlVariableName],
+    ["production-base-url", productionBaseUrlVariableName],
+  ]) {
+    if (
+      variableName !== null &&
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(variableName)
+    ) {
+      throw new Error(`split-f0d-${label}-variable-name-invalid`);
+    }
+  }
+  const sandboxCredential = environmentVariables[sandboxCredentialVariableName];
+  const productionCredential = environmentVariables[productionCredentialVariableName];
+  const sandboxBaseUrl = sandboxBaseUrlVariableName === null
+    ? SPLIT_F0D_OFFICIAL_BASE_URL
+    : environmentVariables[sandboxBaseUrlVariableName];
+  const productionBaseUrl = productionBaseUrlVariableName === null
+    ? SPLIT_F0D_OFFICIAL_BASE_URL
+    : environmentVariables[productionBaseUrlVariableName];
+  const validation = validateSplitF0dFutureLiveConfiguration({
+    sandboxBaseUrl,
+    productionBaseUrl,
+    sandboxCredential,
+    productionCredential,
+    sandboxCredentialVariableName,
+    productionCredentialVariableName,
+  });
+  return {
+    valid: validation.valid,
+    issues: validation.issues,
+    credentials: {
+      sandbox: sandboxCredential,
+      production: productionCredential,
+    },
+    baseUrls: {
+      sandbox: sandboxBaseUrl,
+      production: productionBaseUrl,
+    },
+    credentialReceipt: {
+      ...validation.credentialReceipt,
+      equal: false,
+    },
+    baseUrlReceipt: {
+      sandbox: sandboxBaseUrl === SPLIT_F0D_OFFICIAL_BASE_URL
+        ? "OFFICIAL_ALLOWLIST_MATCH"
+        : "INVALID",
+      production: productionBaseUrl === SPLIT_F0D_OFFICIAL_BASE_URL
+        ? "OFFICIAL_ALLOWLIST_MATCH"
+        : "INVALID",
+    },
+  };
+}
+
+function evaluateSplitF0dSearches(matrix, searches) {
+  const byLogicalSearch = new Map(
+    searches.map((search) => [search.logicalSearchId, search.offers])
+  );
+  const comparisons = [];
+  for (const scenario of matrix.scenarios) {
+    const singleStayOffers =
+      byLogicalSearch.get(`${scenario.scenarioId}.full`) ?? [];
+    const fixedSingleBaseline = selectSplitF0FixedSingleBaselineV1(
+      scenario,
+      singleStayOffers
+    );
+    for (const splitPoint of scenario.splitPoints) {
+      comparisons.push(
+        evaluateSplitF0EconomicOpportunityV1({
+          scenario,
+          splitPointId: splitPoint.splitPointId,
+          singleStayOffers,
+          fixedSingleBaseline,
+          firstSegmentOffers:
+            byLogicalSearch.get(
+              `${scenario.scenarioId}.${splitPoint.splitPointId}.segment-0`
+            ) ?? [],
+          secondSegmentOffers:
+            byLogicalSearch.get(
+              `${scenario.scenarioId}.${splitPoint.splitPointId}.segment-1`
+            ) ?? [],
+        })
+      );
+    }
+  }
+  return comparisons;
+}
+
+function summarizeSplitF0dWave(matrix, searches) {
+  const comparisons = evaluateSplitF0dSearches(matrix, searches);
+  const comparable = comparisons.filter(
+    (comparison) => comparison.comparability === "COMPARABLE"
+  );
+  return {
+    searches,
+    comparisons,
+    counters: {
+      normalizedOffers: searches.reduce(
+        (total, search) => total + search.offers.length,
+        0
+      ),
+      scenariosWithRates: new Set(
+        searches
+          .filter((search) => search.offers.length > 0)
+          .map((search) => search.scenarioId)
+      ).size,
+      fixedBaselineScenarios: new Set(
+        comparisons
+          .filter((comparison) => comparison.fixedBaseline !== null)
+          .map((comparison) => comparison.scenarioId)
+      ).size,
+      comparableSplitScenarios: new Set(
+        comparable.map((comparison) => comparison.scenarioId)
+      ).size,
+      positiveScenarios: new Set(
+        comparable
+          .filter((comparison) => (comparison.grossSavingMinorUnits ?? 0) > 0)
+          .map((comparison) => comparison.scenarioId)
+      ).size,
+      strictComparisons: comparable.filter(
+        (comparison) => comparison.comparabilityLevel === "STRICT_COMPARABLE"
+      ).length,
+      conditionalComparisons: comparable.filter(
+        (comparison) =>
+          comparison.comparabilityLevel === "CONDITIONAL_COMPARABLE"
+      ).length,
+    },
+  };
+}
+
+function positiveComparisonsByScenario(wave) {
+  const result = new Map();
+  for (const comparison of wave.comparisons) {
+    if (
+      comparison.comparability === "COMPARABLE" &&
+      (comparison.grossSavingMinorUnits ?? 0) > 0
+    ) {
+      const current = result.get(comparison.scenarioId);
+      if (
+        current === undefined ||
+        comparison.grossSavingMinorUnits > current.grossSavingMinorUnits
+      ) {
+        result.set(comparison.scenarioId, comparison);
+      }
+    }
+  }
+  return result;
+}
+
+function summarizeSplitF0dProduction(matrix, waveA, waveB, runComplete) {
+  const positiveA = positiveComparisonsByScenario(waveA);
+  const positiveB = positiveComparisonsByScenario(waveB);
+  const repeatedScenarioIds = [...positiveA.keys()]
+    .filter((scenarioId) => positiveB.has(scenarioId))
+    .sort();
+  const scenarioById = new Map(
+    matrix.scenarios.map((scenario) => [scenario.scenarioId, scenario])
+  );
+  const repeatedPositiveDurations = repeatedScenarioIds.map(
+    (scenarioId) => scenarioById.get(scenarioId).nights
+  );
+  const crossWave = analyzeSplitF0CrossCaptureStabilityV1(
+    waveA.comparisons,
+    waveB.comparisons
+  );
+  const allComparisons = [...waveA.comparisons, ...waveB.comparisons];
+  const robustSavings = summarizeSplitF0PrimarySavingsV1(
+    allComparisons,
+    crossWave.quarantinedScenarioIds
+  );
+  const robustRepeated = repeatedScenarioIds.filter((scenarioId) => {
+    const left = positiveA.get(scenarioId);
+    const right = positiveB.get(scenarioId);
+    return (
+      left.outlierAssessment.classification === "NONE" &&
+      right.outlierAssessment.classification === "NONE" &&
+      !crossWave.quarantinedScenarioIds.includes(scenarioId)
+    );
+  });
+  const repeatedNetAtPositiveFriction = robustRepeated.filter((scenarioId) => {
+    const left = positiveA.get(scenarioId);
+    const right = positiveB.get(scenarioId);
+    return [25, 50, 75, 100, 150].some((friction) => {
+      const leftPoint = left.frictionSensitivity.find(
+        (item) => item.hypotheticalFrictionEur === friction
+      );
+      const rightPoint = right.frictionSensitivity.find(
+        (item) => item.hypotheticalFrictionEur === friction
+      );
+      return (
+        (leftPoint?.netSavingAtFrictionMinorUnits ?? 0) > 0 &&
+        (rightPoint?.netSavingAtFrictionMinorUnits ?? 0) > 0
+      );
+    });
+  });
+  const comparableCount = allComparisons.filter(
+    (comparison) => comparison.comparability === "COMPARABLE"
+  ).length;
+  let pilotResultClassification = "INCONCLUSIVE";
+  if (runComplete && repeatedNetAtPositiveFriction.length > 0) {
+    pilotResultClassification = "REPEATED_PRODUCTION_NET_SIGNAL";
+  } else if (runComplete && repeatedScenarioIds.length > 0) {
+    pilotResultClassification = "PRODUCTION_GROSS_SIGNAL_ONLY";
+  } else if (runComplete && comparableCount > 0) {
+    pilotResultClassification = "NO_PRODUCTION_SIGNAL_IN_THIS_PILOT";
+  }
+  const netPositiveAtFriction = Object.fromEntries(
+    [25, 50, 75, 100, 150].map((friction) => [
+      String(friction),
+      allComparisons.filter((comparison) =>
+        comparison.frictionSensitivity.some(
+          (item) =>
+            item.hypotheticalFrictionEur === friction &&
+            item.netSavingAtFrictionMinorUnits > 0
+        )
+      ).length,
+    ])
+  );
+  const robustRatios = allComparisons
+    .filter(
+      (comparison) =>
+        comparison.outlierAssessment.classification === "NONE" &&
+        !crossWave.quarantinedScenarioIds.includes(comparison.scenarioId) &&
+        typeof comparison.grossSavingRatio === "number"
+    )
+    .map((comparison) => comparison.grossSavingRatio);
+  const durationResults = Object.fromEntries(
+    matrix.scenarios.map((scenario) => {
+      const waveAResult = positiveA.get(scenario.scenarioId) ?? null;
+      const waveBResult = positiveB.get(scenario.scenarioId) ?? null;
+      return [
+        String(scenario.nights),
+        {
+          scenarioId: scenario.scenarioId,
+          waveA: waveAResult === null ? "NO_POSITIVE_PRIMARY_SIGNAL" : {
+            splitPointId: waveAResult.splitPointId,
+            comparabilityLevel: waveAResult.comparabilityLevel,
+            grossSavingAmount: waveAResult.grossSavingAmount,
+            grossSavingRatio: waveAResult.grossSavingRatio,
+            outlier: waveAResult.outlierAssessment.classification,
+          },
+          waveB: waveBResult === null ? "NO_POSITIVE_PRIMARY_SIGNAL" : {
+            splitPointId: waveBResult.splitPointId,
+            comparabilityLevel: waveBResult.comparabilityLevel,
+            grossSavingAmount: waveBResult.grossSavingAmount,
+            grossSavingRatio: waveBResult.grossSavingRatio,
+            outlier: waveBResult.outlierAssessment.classification,
+          },
+          repeated: waveAResult !== null && waveBResult !== null,
+          robustRepeated: robustRepeated.includes(scenario.scenarioId),
+        },
+      ];
+    })
+  );
+  return {
+    pilotResultClassification,
+    repeatedPositiveDurations,
+    repeatedNetPositiveDurations: repeatedNetAtPositiveFriction.map(
+      (scenarioId) => scenarioById.get(scenarioId).nights
+    ),
+    strictComparisons: allComparisons.filter(
+      (comparison) => comparison.comparabilityLevel === "STRICT_COMPARABLE"
+    ).length,
+    conditionalComparisons: allComparisons.filter(
+      (comparison) =>
+        comparison.comparabilityLevel === "CONDITIONAL_COMPARABLE"
+    ).length,
+    robustMaximumGrossSaving: robustSavings.robustMaximumSaving,
+    robustMedianPositiveSaving: robustSavings.robustMedianSaving,
+    maximumSavingRatio:
+      robustRatios.length === 0 ? null : Math.max(...robustRatios),
+    outlierComparisons: allComparisons.filter(
+      (comparison) => comparison.outlierAssessment.classification !== "NONE"
+    ).length,
+    crossWaveUnstableScenarios: crossWave.unstableScenarioIds,
+    netPositiveAtFriction,
+    durationResults,
+  };
+}
+
+export function classifySplitF0dTransportFailure(caught) {
+  const status = Number.isInteger(caught?.status) ? caught.status : null;
+  const code = String(caught?.code ?? "UNEXPECTED_TRANSPORT_FAILURE");
+  if (status === 401 || status === 403) {
+    return { classification: "PROVIDER_AUTHORIZATION_FAILURE", globalStop: true };
+  }
+  if (status === 429) {
+    return { classification: "RATE_LIMIT_STOP", globalStop: true };
+  }
+  if (code === "ECONNABORTED") {
+    return { classification: "TIMEOUT", globalStop: false };
+  }
+  if (status !== null && status >= 500 && status <= 599) {
+    return { classification: "PROVIDER_5XX", globalStop: false };
+  }
+  if (
+    [
+      "REDIRECT_PROHIBITED",
+      "RESPONSE_HOST_PROHIBITED",
+      "INVALID_PROVIDER_CONTENT_TYPE",
+      "INVALID_PROVIDER_JSON",
+      "INVALID_PROVIDER_SCHEMA",
+      "CONTINUATION_OR_TRUNCATION_PROHIBITED",
+    ].includes(code)
+  ) {
+    return { classification: code, globalStop: true };
+  }
+  return { classification: code, globalStop: true };
+}
+
+function emptyWaveStore() {
+  return {
+    sandbox: { "wave-a": [], "wave-b": [] },
+    production: { "wave-a": [], "wave-b": [] },
+  };
+}
+
+export async function runSplitF0dPairedLive({
+  liveConfiguration,
+  transportFactory = createSplitF0dRatesOnlyTransport,
+  sleep = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  monotonicNow = () => performance.now(),
+  wallClockNow = () => Date.now(),
+  hmacKey = crypto.randomBytes(32),
+}) {
+  if (!liveConfiguration?.valid) {
+    throw new Error(
+      `split-f0d-live-configuration-invalid:${(
+        liveConfiguration?.issues ?? ["configuration-missing"]
+      ).join(",")}`
+    );
+  }
+  const [matrix, runPlan] = await Promise.all([
+    loadSplitF0ScenarioMatrix(),
+    loadSplitF0dRunPlan(),
+  ]);
+  const runPlanValidation = await validateSplitF0dRunPlan(matrix, runPlan);
+  if (!runPlanValidation.valid) {
+    throw new Error(
+      `split-f0d-run-plan-invalid:${runPlanValidation.issues.join(",")}`
+    );
+  }
+  const schedule = buildSplitF0dPairedSchedule(matrix, runPlan);
+  const searchById = new Map(
+    schedule.baseSearches.map((search) => [search.logicalSearchId, search])
+  );
+  const transports = Object.fromEntries(
+    await Promise.all(
+      SPLIT_F0D_ENVIRONMENTS.map(async (environment) => [
+        environment,
+        await transportFactory({
+          environment,
+          credential: liveConfiguration.credentials[environment],
+          baseUrl: liveConfiguration.baseUrls[environment],
+          timeoutMs: SPLIT_F0D_HTTP_TIMEOUT_MS,
+        }),
+      ])
+    )
+  );
+  const collected = emptyWaveStore();
+  const rawIdentifiers = [];
+  const executionLedger = [];
+  const errorLedger = [];
+  const counters = {
+    actualHttpRequests: 0,
+    sandboxHttpRequests: 0,
+    productionHttpRequests: 0,
+    completePairedSearches: 0,
+    incompletePairedSearches: 0,
+    rateLimitResponses: 0,
+    timeouts: 0,
+    providerErrors: 0,
+    maximumPairTimeSkewSeconds: 0,
+  };
+  let lastRequestStartedAt = Number.NEGATIVE_INFINITY;
+  let globalFailure = null;
+  const fingerprintIdentifier = (kind, value) =>
+    crypto
+      .createHmac("sha256", hmacKey)
+      .update(`${kind}\u0000${value}`)
+      .digest("hex");
+
+  pairLoop: for (const pair of schedule.pairs) {
+    if (
+      pair.environmentRequestHashes.sandbox !==
+      pair.environmentRequestHashes.production
+    ) {
+      globalFailure = "PAIRED_REQUEST_HASH_MISMATCH";
+      break;
+    }
+    const logicalSearch = searchById.get(pair.requestReceipt.logicalSearchId);
+    if (logicalSearch === undefined) {
+      globalFailure = "LOGICAL_SEARCH_NOT_FOUND";
+      break;
+    }
+    const pairStartedAt = [];
+    let pairComplete = true;
+    for (const environment of pair.environmentOrder) {
+      if (
+        counters.actualHttpRequests >= SPLIT_F0D_HARD_REQUEST_BUDGET ||
+        counters[`${environment}HttpRequests`] >= 80
+      ) {
+        globalFailure = "HARD_REQUEST_BUDGET_EXCEEDED";
+        pairComplete = false;
+        break pairLoop;
+      }
+      const elapsed = monotonicNow() - lastRequestStartedAt;
+      if (elapsed < 1_000) {
+        await sleep(1_000 - elapsed);
+      }
+      lastRequestStartedAt = monotonicNow();
+      const startedAt = wallClockNow();
+      pairStartedAt.push(startedAt);
+      counters.actualHttpRequests += 1;
+      counters[`${environment}HttpRequests`] += 1;
+      try {
+        const response = await transports[environment].request({
+          method: "POST",
+          endpointPath: SPLIT_F0D_RATES_ENDPOINT,
+          logicalSearch,
+        });
+        const observedAt = new Date(wallClockNow()).toISOString();
+        const normalized = normalizeSplitF0MappedHotelsV1(
+          logicalSearch,
+          response.hotels,
+          observedAt,
+          {
+            sourceKind: `${environment}-read-only`,
+            fingerprintIdentifier,
+          }
+        );
+        rawIdentifiers.push(...normalized.rawIdentifiers);
+        collected[environment][pair.waveId].push({
+          scenarioId: logicalSearch.scenarioId,
+          logicalSearchId: logicalSearch.logicalSearchId,
+          kind: logicalSearch.kind,
+          splitPointId: logicalSearch.splitPointId,
+          segmentOrdinal: logicalSearch.segmentOrdinal,
+          checkIn: logicalSearch.period.checkIn,
+          checkOut: logicalSearch.period.checkOut,
+          nights: logicalSearch.period.nights,
+          requestFingerprint: logicalSearch.requestFingerprint,
+          status: "COMPLETED",
+          providerStatus: response.status,
+          offers: normalized.snapshots,
+        });
+        executionLedger.push({
+          pairId: pair.pairId,
+          environment,
+          ordinal: counters.actualHttpRequests,
+          requestHash: pair.requestReceipt.canonicalBodySha256,
+          result: "HTTP_200_JSON_INTERPRETABLE",
+        });
+      } catch (caught) {
+        const failure = classifySplitF0dTransportFailure(caught);
+        if (failure.classification === "RATE_LIMIT_STOP") {
+          counters.rateLimitResponses += 1;
+        } else if (failure.classification === "TIMEOUT") {
+          counters.timeouts += 1;
+        } else {
+          counters.providerErrors += 1;
+        }
+        errorLedger.push({
+          pairId: pair.pairId,
+          environment,
+          ordinal: counters.actualHttpRequests,
+          classification: failure.classification,
+          status: Number.isInteger(caught?.status) ? caught.status : null,
+          retryAttempted: false,
+        });
+        executionLedger.push({
+          pairId: pair.pairId,
+          environment,
+          ordinal: counters.actualHttpRequests,
+          requestHash: pair.requestReceipt.canonicalBodySha256,
+          result: failure.classification,
+        });
+        pairComplete = false;
+        if (failure.globalStop) {
+          globalFailure = failure.classification;
+          break pairLoop;
+        }
+        break;
+      }
+    }
+    if (pairStartedAt.length === 2) {
+      counters.maximumPairTimeSkewSeconds = Math.max(
+        counters.maximumPairTimeSkewSeconds,
+        Math.abs(pairStartedAt[1] - pairStartedAt[0]) / 1_000
+      );
+    }
+    if (pairComplete) {
+      counters.completePairedSearches += 1;
+    } else {
+      counters.incompletePairedSearches += 1;
+    }
+  }
+  if (globalFailure !== null) {
+    counters.incompletePairedSearches +=
+      schedule.pairs.length -
+      counters.completePairedSearches -
+      counters.incompletePairedSearches;
+  }
+  const waves = Object.fromEntries(
+    SPLIT_F0D_ENVIRONMENTS.map((environment) => [
+      environment,
+      Object.fromEntries(
+        SPLIT_F0D_WAVES.map((waveId) => [
+          waveId,
+          summarizeSplitF0dWave(matrix, collected[environment][waveId]),
+        ])
+      ),
+    ])
+  );
+  const runComplete =
+    globalFailure === null &&
+    counters.actualHttpRequests === SPLIT_F0D_HARD_REQUEST_BUDGET &&
+    counters.completePairedSearches === schedule.pairs.length;
+  const productionSummary = summarizeSplitF0dProduction(
+    matrix,
+    waves.production["wave-a"],
+    waves.production["wave-b"],
+    runComplete
+  );
+  const result = {
+    schemaVersion: "stayopti.split-f0d.paired-rates-live@1",
+    liveRunStatus: runComplete ? "COMPLETED" : "INCONCLUSIVE",
+    failureClassification: globalFailure,
+    technicalPilotOnly: true,
+    marketEvidence: runComplete
+      ? "LIMITED_PRODUCTION_PILOT_ONLY"
+      : "INCONCLUSIVE",
+    policyEligible: false,
+    publicRecommendationAllowed: false,
+    configReceipt: {
+      method: "POST",
+      endpoint: "https://api.liteapi.travel/v3.0/hotels/rates",
+      redirects: "disabled",
+      retries: 0,
+      concurrency: 1,
+      maxRequestsPerSecond: 1,
+      hardRequestBudget: SPLIT_F0D_HARD_REQUEST_BUDGET,
+      cache: "disabled",
+      continuation: "none",
+      credentialReceipt: liveConfiguration.credentialReceipt,
+      credentialValuesExposed: false,
+    },
+    requestHashLedger: schedule.pairs.map((pair) => ({
+      pairId: pair.pairId,
+      waveId: pair.waveId,
+      logicalSearchId: pair.requestReceipt.logicalSearchId,
+      environmentOrder: pair.environmentOrder,
+      canonicalBodySha256: pair.requestReceipt.canonicalBodySha256,
+      pairedHashMatch:
+        pair.environmentRequestHashes.sandbox ===
+        pair.environmentRequestHashes.production,
+    })),
+    executionLedger,
+    errorLedger,
+    counters,
+    waves,
+    productionSummary,
+    safetyCounters: {
+      retries: 0,
+      prebookCalls: 0,
+      bookingCalls: 0,
+      paymentCalls: 0,
+      metadataCalls: 0,
+      placesCalls: 0,
+      priceIndexCalls: 0,
+      credentialValuesPersisted: 0,
+      rawProviderIdentifiersPersisted: 0,
+    },
+  };
+  assertSplitF0PersistedPayloadSafeV1(result, rawIdentifiers);
+  return result;
+}
+
+export async function writeSplitF0dLiveOutputs(outputDirectory, result) {
+  const pathValidation = validateSplitF0OutputPath(outputDirectory);
+  if (!pathValidation.valid) {
+    throw new Error(`split-f0d-${pathValidation.reason}`);
+  }
+  await fs.mkdir(pathValidation.resolved, { recursive: false });
+  const datasetPath = path.join(
+    pathValidation.resolved,
+    "split-f0d-paired-live-sanitized.json"
+  );
+  const summaryPath = path.join(pathValidation.resolved, "summary.txt");
+  const datasetText = `${stableStringifySplitF0(result, 2)}\n`;
+  await fs.writeFile(datasetPath, datasetText, { encoding: "utf8", flag: "wx" });
+  const summary = [
+    `liveRunStatus=${result.liveRunStatus}`,
+    `failureClassification=${result.failureClassification ?? "NONE"}`,
+    `actualHttpRequests=${result.counters.actualHttpRequests}`,
+    `sandboxHttpRequests=${result.counters.sandboxHttpRequests}`,
+    `productionHttpRequests=${result.counters.productionHttpRequests}`,
+    `completePairedSearches=${result.counters.completePairedSearches}`,
+    `incompletePairedSearches=${result.counters.incompletePairedSearches}`,
+    `pilotResultClassification=${result.productionSummary.pilotResultClassification}`,
+    `marketEvidence=${result.marketEvidence}`,
+    "policyEligible=false",
+    "publicRecommendationAllowed=false",
+  ].join("\n");
+  await fs.writeFile(summaryPath, `${summary}\n`, { encoding: "utf8", flag: "wx" });
+  return {
+    outputDirectory: pathValidation.resolved,
+    datasetPath,
+    summaryPath,
+    datasetSha256: `sha256:${sha256SplitF0(datasetText)}`,
+  };
+}
+
 export function parseSplitF0dArguments(argv) {
   if (argv.length === 0 || (argv.length === 1 && argv[0] === "--dry-run")) {
     return { mode: "dry-run" };
   }
-  if (argv.includes("--execute")) {
-    throw new Error("split-f0d-live-execution-not-authorized-in-d1");
+  const executeConfirmed = argv.includes("--execute-paired-live");
+  const productionAccessConfirmed = argv.includes(
+    "--confirm-rates-only-production-access"
+  );
+  if (!executeConfirmed || !productionAccessConfirmed) {
+    throw new Error("split-f0d-live-confirmations-required");
   }
-  throw new Error(`split-f0d-cli-arguments-invalid:${argv.join(",")}`);
+  const options = {
+    mode: "paired-live",
+    sandboxCredentialVariableName: "SPLIT_F0D_SANDBOX_API_KEY",
+    productionCredentialVariableName: "SPLIT_F0D_PRODUCTION_API_KEY",
+    sandboxBaseUrlVariableName: null,
+    productionBaseUrlVariableName: null,
+    outputDirectory: null,
+  };
+  const valueFlags = new Map([
+    ["--sandbox-key-env", "sandboxCredentialVariableName"],
+    ["--production-key-env", "productionCredentialVariableName"],
+    ["--sandbox-base-url-env", "sandboxBaseUrlVariableName"],
+    ["--production-base-url-env", "productionBaseUrlVariableName"],
+    ["--output", "outputDirectory"],
+  ]);
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (SPLIT_F0D_LIVE_CONFIRMATIONS.includes(argument)) continue;
+    const optionKey = valueFlags.get(argument);
+    if (optionKey === undefined) {
+      throw new Error(`split-f0d-cli-argument-invalid:${argument}`);
+    }
+    const value = argv[index + 1];
+    if (
+      typeof value !== "string" ||
+      value.length === 0 ||
+      value.startsWith("--")
+    ) {
+      throw new Error(`split-f0d-cli-value-required:${argument}`);
+    }
+    options[optionKey] = value;
+    index += 1;
+  }
+  if (options.outputDirectory === null) {
+    throw new Error("split-f0d-live-output-directory-required");
+  }
+  const outputValidation = validateSplitF0OutputPath(options.outputDirectory);
+  if (!outputValidation.valid) {
+    throw new Error(`split-f0d-${outputValidation.reason}`);
+  }
+  options.outputDirectory = outputValidation.resolved;
+  return options;
 }
 
 async function main() {
-  parseSplitF0dArguments(process.argv.slice(2));
-  const result = await runSplitF0dDryRun();
-  process.stdout.write(`${stableStringifySplitF0(result, 2)}\n`);
+  const options = parseSplitF0dArguments(process.argv.slice(2));
+  if (options.mode === "dry-run") {
+    const result = await runSplitF0dDryRun();
+    process.stdout.write(`${stableStringifySplitF0(result, 2)}\n`);
+    return;
+  }
+  const liveConfiguration = resolveSplitF0dLiveConfiguration(options);
+  if (!liveConfiguration.valid) {
+    throw new Error(
+      `split-f0d-live-configuration-invalid:${liveConfiguration.issues.join(",")}`
+    );
+  }
+  const result = await runSplitF0dPairedLive({ liveConfiguration });
+  const outputReceipt = await writeSplitF0dLiveOutputs(
+    options.outputDirectory,
+    result
+  );
+  process.stdout.write(
+    `${stableStringifySplitF0({
+      liveRunStatus: result.liveRunStatus,
+      failureClassification: result.failureClassification,
+      counters: result.counters,
+      productionSummary: result.productionSummary,
+      outputReceipt,
+      credentialValuesExposed: false,
+    }, 2)}\n`
+  );
+  if (result.liveRunStatus !== "COMPLETED") {
+    process.exitCode = 1;
+  }
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;

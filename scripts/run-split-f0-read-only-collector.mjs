@@ -577,20 +577,38 @@ function classifyRoom(roomName) {
   return value.length > 0 ? "other" : "unknown";
 }
 
-function normalizeMappedHotels(search, hotels, observedAt) {
+export function normalizeSplitF0MappedHotelsV1(
+  search,
+  hotels,
+  observedAt,
+  {
+    sourceKind = "sandbox-read-only",
+    fingerprintIdentifier = (kind, value) =>
+      sha256SplitF0(`liteapi-${kind}:${value}`),
+  } = {}
+) {
   const snapshots = [];
   const rawIdentifiers = [];
   for (const hotel of Array.isArray(hotels) ? hotels : []) {
     const rawHotelId = String(hotel?.sourceHotelId ?? hotel?.id ?? "").trim();
     if (rawHotelId.length === 0) continue;
-    const propertyDigest = sha256SplitF0(`liteapi-hotel:${rawHotelId}`);
+    const propertyDigest = fingerprintIdentifier("hotel", rawHotelId);
+    if (!/^[0-9a-f]{64}$/.test(propertyDigest)) {
+      throw new Error("split-f0-provider-fingerprint-invalid");
+    }
     const propertyId = `property.${propertyDigest}`;
     rawIdentifiers.push(rawHotelId);
     for (const offer of Array.isArray(hotel?.offers) ? hotel.offers : []) {
       const rawOfferId = String(offer?.providerOfferReference ?? offer?.id ?? "").trim();
       if (rawOfferId.length === 0) continue;
       rawIdentifiers.push(rawOfferId);
-      const offerDigest = sha256SplitF0(`liteapi-offer:${rawHotelId}:${rawOfferId}`);
+      const offerDigest = fingerprintIdentifier(
+        "offer",
+        `${rawHotelId}:${rawOfferId}`
+      );
+      if (!/^[0-9a-f]{64}$/.test(offerDigest)) {
+        throw new Error("split-f0-provider-fingerprint-invalid");
+      }
       const canonical = {
         propertyId,
         offerFingerprint: `offer.${offerDigest}`,
@@ -652,7 +670,7 @@ function normalizeMappedHotels(search, hotels, observedAt) {
         bookable: canonical.bookable,
         freshness: canonical.freshness,
         provenance: {
-          sourceKind: "sandbox-read-only",
+          sourceKind,
           captureId: `capture.${sha256SplitF0(`${search.requestFingerprint}:${offerDigest}`).slice(0, 32)}`,
           observedAt,
           contentDigest,
@@ -664,7 +682,7 @@ function normalizeMappedHotels(search, hotels, observedAt) {
   return { snapshots, rawIdentifiers };
 }
 
-function assertPersistedPayloadSafe(payload, rawIdentifiers = []) {
+export function assertSplitF0PersistedPayloadSafeV1(payload, rawIdentifiers = []) {
   const walk = (value, keyPath = []) => {
     if (Array.isArray(value)) {
       value.forEach((item, index) => walk(item, [...keyPath, String(index)]));
@@ -821,7 +839,7 @@ export function replaySplitF0SanitizedDataset(matrix, dataset) {
     comparisons,
     counters: aggregateResultCounters(dataset.searches, comparisons, network),
   };
-  assertPersistedPayloadSafe(replay);
+  assertSplitF0PersistedPayloadSafeV1(replay);
   return replay;
 }
 
@@ -903,7 +921,11 @@ export async function runSplitF0Collector({
       monotonicNow,
       rateState,
     });
-    const normalized = normalizeMappedHotels(search, response.hotels, observedAt);
+    const normalized = normalizeSplitF0MappedHotelsV1(
+      search,
+      response.hotels,
+      observedAt
+    );
     if (response.paymentFieldEvidence !== undefined) {
       paymentFieldObservations.push(response.paymentFieldEvidence);
     }
@@ -944,7 +966,7 @@ export async function runSplitF0Collector({
     paymentFieldProbe: aggregateSplitF0PaymentFieldEvidence(paymentFieldObservations),
     counters: aggregateResultCounters(collectedSearches, comparisons, network),
   };
-  assertPersistedPayloadSafe(result, rawIdentifiers);
+  assertSplitF0PersistedPayloadSafeV1(result, rawIdentifiers);
   return result;
 }
 
@@ -998,15 +1020,64 @@ async function parseProviderJsonResponse(response) {
   }
 }
 
+function validateLiveCredentialClass(apiKey, requiredClass) {
+  if (requiredClass === "SAND") {
+    return validateSplitF0SandboxKey(apiKey).valid;
+  }
+  if (requiredClass === "PROD") {
+    return typeof apiKey === "string" && apiKey.startsWith("prod_");
+  }
+  return false;
+}
+
+function continuationOrTruncationPresent(payload) {
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+    return false;
+  }
+  if (
+    payload.hasMore === true ||
+    payload.truncated === true ||
+    payload.continuation !== undefined ||
+    payload.nextPageToken !== undefined ||
+    payload.nextToken !== undefined
+  ) {
+    return true;
+  }
+  for (const container of [payload.pagination, payload.meta]) {
+    if (
+      container !== null &&
+      typeof container === "object" &&
+      (container.hasMore === true ||
+        container.truncated === true ||
+        container.next !== undefined ||
+        container.continuation !== undefined ||
+        container.nextPageToken !== undefined)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function createSplitF0LiteApiTransport({
   apiKey,
   baseUrl,
   fetchImplementation = globalThis.fetch,
   timeoutMs = SPLIT_F0_HTTP_TIMEOUT_MS,
+  requiredCredentialClass = "SAND",
+  redirectMode = "manual",
+  requiredStatus = null,
+  requireJsonContentType = false,
+  stopOnContinuationOrTruncation = false,
+  responseSchemaValidator = null,
+  cacheMode = null,
+  environmentLabel = "sandbox",
 }) {
-  const keyValidation = validateSplitF0SandboxKey(apiKey);
   const baseValidation = validateSplitF0BaseUrl(baseUrl);
-  if (!keyValidation.valid || !baseValidation.valid) {
+  if (
+    !validateLiveCredentialClass(apiKey, requiredCredentialClass) ||
+    !baseValidation.valid
+  ) {
     throw new Error("split-f0-live-transport-gate-failed");
   }
   if (typeof fetchImplementation !== "function") {
@@ -1014,6 +1085,24 @@ export async function createSplitF0LiteApiTransport({
   }
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("split-f0-http-timeout-invalid");
+  }
+  if (!["manual", "error"].includes(redirectMode)) {
+    throw new Error("split-f0-redirect-mode-invalid");
+  }
+  if (requiredStatus !== null && requiredStatus !== 200) {
+    throw new Error("split-f0-required-status-invalid");
+  }
+  if (!/^[a-z][a-z0-9-]{1,31}$/.test(environmentLabel)) {
+    throw new Error("split-f0-environment-label-invalid");
+  }
+  if (
+    responseSchemaValidator !== null &&
+    typeof responseSchemaValidator !== "function"
+  ) {
+    throw new Error("split-f0-response-schema-validator-invalid");
+  }
+  if (cacheMode !== null && cacheMode !== "no-store") {
+    throw new Error("split-f0-cache-mode-invalid");
   }
   const require = createRequire(import.meta.url);
   const { mapLiteApiHotelResponse } = require("../server/providers/liteApi/liteApiProvider.js");
@@ -1025,7 +1114,7 @@ export async function createSplitF0LiteApiTransport({
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       let response;
       try {
-        response = await fetchImplementation(requestUrl, {
+        const requestOptions = {
           method: "POST",
           headers: {
             Accept: "application/json",
@@ -1034,13 +1123,24 @@ export async function createSplitF0LiteApiTransport({
           },
           body: JSON.stringify(createSplitF0RatesRequestBodyV1(logicalSearch)),
           signal: controller.signal,
-          redirect: "manual",
-        });
+          redirect: redirectMode,
+        };
+        if (cacheMode !== null) requestOptions.cache = cacheMode;
+        response = await fetchImplementation(requestUrl, requestOptions);
       } catch (caught) {
         if (controller.signal.aborted || caught?.name === "AbortError") {
           throw createNativeFetchError(
-            "LiteAPI sandbox request timed out.",
+            `LiteAPI ${environmentLabel} request timed out.`,
             "ECONNABORTED"
+          );
+        }
+        if (
+          redirectMode === "error" &&
+          /redirect/i.test(String(caught?.message ?? caught))
+        ) {
+          throw createNativeFetchError(
+            `LiteAPI ${environmentLabel} redirect was blocked.`,
+            "REDIRECT_PROHIBITED"
           );
         }
         throw caught;
@@ -1052,7 +1152,7 @@ export async function createSplitF0LiteApiTransport({
         (response.status >= 300 && response.status <= 399)
       ) {
         throw createNativeFetchError(
-          "LiteAPI sandbox redirect was blocked.",
+          `LiteAPI ${environmentLabel} redirect was blocked.`,
           "REDIRECT_PROHIBITED",
           response.status
         );
@@ -1064,17 +1164,57 @@ export async function createSplitF0LiteApiTransport({
           responseUrl.host.toLowerCase() !== requestUrl.host.toLowerCase()
         ) {
           throw createNativeFetchError(
-            "LiteAPI sandbox response host was not allowlisted.",
+            `LiteAPI ${environmentLabel} response host was not allowlisted.`,
             "RESPONSE_HOST_PROHIBITED",
             response.status
           );
         }
       }
-      const data = await parseProviderJsonResponse(response);
-      if (response.status < 200 || response.status >= 300) {
+      if (requiredStatus !== null && response.status !== requiredStatus) {
         throw createNativeFetchError(
-          `LiteAPI sandbox request failed with status ${response.status}.`,
+          `LiteAPI ${environmentLabel} request failed with status ${response.status}.`,
           "LITEAPI_HTTP_ERROR",
+          response.status
+        );
+      }
+      if (requireJsonContentType) {
+        const contentType = response.headers?.get?.("content-type") ?? "";
+        if (!/(?:application|text)\/(?:[^;]+\+)?json\b/i.test(contentType)) {
+          throw createNativeFetchError(
+            `LiteAPI ${environmentLabel} response content type was not JSON.`,
+            "INVALID_PROVIDER_CONTENT_TYPE",
+            response.status
+          );
+        }
+      }
+      const data = await parseProviderJsonResponse(response);
+      if (
+        requiredStatus === null &&
+        (response.status < 200 || response.status >= 300)
+      ) {
+        throw createNativeFetchError(
+          `LiteAPI ${environmentLabel} request failed with status ${response.status}.`,
+          "LITEAPI_HTTP_ERROR",
+          response.status
+        );
+      }
+      if (
+        stopOnContinuationOrTruncation &&
+        continuationOrTruncationPresent(data)
+      ) {
+        throw createNativeFetchError(
+          `LiteAPI ${environmentLabel} response signaled continuation or truncation.`,
+          "CONTINUATION_OR_TRUNCATION_PROHIBITED",
+          response.status
+        );
+      }
+      if (
+        responseSchemaValidator !== null &&
+        !responseSchemaValidator(data)
+      ) {
+        throw createNativeFetchError(
+          `LiteAPI ${environmentLabel} response schema was not interpretable.`,
+          "INVALID_PROVIDER_SCHEMA",
           response.status
         );
       }
