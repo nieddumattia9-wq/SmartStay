@@ -90,6 +90,16 @@ export type SplitF0EconomicSignalV1 =
   | "POSITIVE_150_TO_299"
   | "POSITIVE_300_PLUS";
 
+export type SplitF0OutlierFlagV1 =
+  | "PRICE_LEVEL_OUTLIER"
+  | "SAVING_RATIO_OUTLIER"
+  | "CROSS_CAPTURE_INSTABILITY";
+
+export type SplitF0OutlierClassificationV1 =
+  | "NONE"
+  | SplitF0OutlierFlagV1
+  | "MULTIPLE_FLAGS";
+
 export interface SplitF0OccupancyV1 {
   adults: number;
   childAges: number[];
@@ -219,6 +229,62 @@ export interface SplitF0ComparabilityResultV1 {
 export interface SplitF0FrictionSensitivityResultV1 {
   hypotheticalFrictionEur: SplitF0FrictionSensitivityEurV1;
   netSavingAtFriction: number;
+  netSavingAtFrictionMinorUnits: number;
+  netSavingAtFrictionFormatted: string;
+}
+
+export interface SplitF0FixedBaselineBucketV1 {
+  currency: string;
+  occupancy: string;
+  boardClass: SplitF0BoardClassV1;
+  cancellationClass: SplitF0CancellationClassV1;
+  paymentTiming: SplitF0PaymentTimingV1;
+  roomClass: SplitF0RoomClassV1;
+  totalCostCompleteness: "complete";
+}
+
+export interface SplitF0FixedSingleBaselineV1 {
+  offerSnapshotId: string;
+  total: number;
+  totalMinorUnits: number;
+  totalFormatted: string;
+  perNight: number;
+  perNightMinorUnits: number;
+  perNightFormatted: string;
+  bucket: SplitF0FixedBaselineBucketV1;
+  evidenceLimits: string[];
+  eligibleFullStayOfferCount: number;
+  cheaperEligibleFullStayOfferCount: number;
+  selectedPercentile: number;
+  localMedianTotal: number;
+  localMedianTotalMinorUnits: number;
+  localMedianTotalFormatted: string;
+}
+
+export interface SplitF0OutlierAssessmentV1 {
+  classification: SplitF0OutlierClassificationV1;
+  flags: SplitF0OutlierFlagV1[];
+  selectedPricePerNight: number | null;
+  localMedianPricePerNight: number | null;
+  selectedPercentile: number | null;
+  grossSavingRatio: number | null;
+  productionReconfirmationRequired: boolean;
+}
+
+export interface SplitF0MatchedBucketDiagnosticV1 {
+  comparabilityLevel: Exclude<
+    SplitF0ComparabilityLevelV1,
+    "NON_COMPARABLE"
+  >;
+  bucket: SplitF0ComparabilityBucketV1;
+  singleOfferSnapshotId: string;
+  splitOfferSnapshotIds: [string, string];
+  singleTotal: number;
+  splitTotal: number;
+  grossSavingAmount: number;
+  grossSavingRatio: number;
+  evidenceLimits: string[];
+  outlierAssessment: SplitF0OutlierAssessmentV1;
 }
 
 export interface SplitF0ComparisonResultV1 {
@@ -230,14 +296,24 @@ export interface SplitF0ComparisonResultV1 {
   issues: string[];
   knownIncompatibilities: string[];
   bucket: SplitF0ComparabilityBucketV1 | null;
+  fixedBaseline: SplitF0FixedSingleBaselineV1 | null;
+  baselineSelectionMode: "PRIMARY_FIXED_BEST_SINGLE";
   singleOfferSnapshotId: string | null;
   splitOfferSnapshotIds: [string, string] | null;
   singleTotal: number | null;
+  singleTotalMinorUnits: number | null;
+  singleTotalFormatted: string | null;
   splitTotal: number | null;
+  splitTotalMinorUnits: number | null;
+  splitTotalFormatted: string | null;
   grossSavingAmount: number | null;
+  grossSavingMinorUnits: number | null;
+  grossSavingAmountFormatted: string | null;
   grossSavingRatio: number | null;
   frictionSensitivity: SplitF0FrictionSensitivityResultV1[];
   economicSignal: SplitF0EconomicSignalV1;
+  matchedBucketDiagnostic: SplitF0MatchedBucketDiagnosticV1 | null;
+  outlierAssessment: SplitF0OutlierAssessmentV1;
   evidenceLimits: string[];
   publicRecommendationProduced: false;
 }
@@ -246,6 +322,7 @@ export interface SplitF0EconomicEvaluationInputV1 {
   scenario: SplitF0ScenarioV1;
   splitPointId: string;
   singleStayOffers: SplitF0OfferSnapshotV1[];
+  fixedSingleBaseline?: SplitF0OfferSnapshotV1 | null;
   firstSegmentOffers: SplitF0OfferSnapshotV1[];
   secondSegmentOffers: SplitF0OfferSnapshotV1[];
 }
@@ -298,6 +375,49 @@ function sameOccupancy(
   right: SplitF0OccupancyV1
 ): boolean {
   return occupancyKey(left) === occupancyKey(right);
+}
+
+export function splitF0MoneyToMinorUnitsV1(value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error("split-f0-money-invalid");
+  }
+  const representation = value.toString();
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(representation);
+  if (match === null) {
+    throw new Error("split-f0-money-precision-unsupported");
+  }
+  const whole = Number(match[1]);
+  const fraction = Number((match[2] ?? "").padEnd(2, "0"));
+  const minorUnits = whole * 100 + fraction;
+  if (!Number.isSafeInteger(minorUnits)) {
+    throw new Error("split-f0-money-out-of-range");
+  }
+  return minorUnits;
+}
+
+export function splitF0MinorUnitsToMoneyV1(minorUnits: number): string {
+  if (!Number.isSafeInteger(minorUnits)) {
+    throw new Error("split-f0-minor-units-invalid");
+  }
+  const sign = minorUnits < 0 ? "-" : "";
+  const absolute = Math.abs(minorUnits);
+  return `${sign}${Math.floor(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
+}
+
+function minorUnitsToNumber(minorUnits: number): number {
+  return Number(splitF0MinorUnitsToMoneyV1(minorUnits));
+}
+
+function medianMinorUnits(values: readonly number[]): number {
+  if (values.length === 0) {
+    throw new Error("split-f0-median-empty");
+  }
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+  return Math.round((sorted[middle - 1] + sorted[middle]) / 2);
 }
 
 export function validateSplitF0ScenarioV1(
@@ -450,9 +570,16 @@ function validateOfferForPeriod(
   if (!sameOccupancy(offer.occupancy, scenario.occupancy)) {
     issues.push("occupancy-mismatch");
   }
+  let totalCostMinorUnits: number | null = null;
+  try {
+    totalCostMinorUnits = splitF0MoneyToMinorUnitsV1(offer.totalCost);
+  }
+  catch {
+    totalCostMinorUnits = null;
+  }
   if (
-    !Number.isFinite(offer.totalCost) ||
-    offer.totalCost <= 0 ||
+    totalCostMinorUnits === null ||
+    totalCostMinorUnits <= 0 ||
     offer.totalCostCompleteness !== "complete"
   ) {
     issues.push("total-cost-incomplete");
@@ -498,6 +625,198 @@ function validateOfferForPeriod(
     issues.push("provenance-incomplete");
   }
   return uniqueSorted(issues);
+}
+
+const NON_ESSENTIAL_FIXED_BASELINE_ISSUES =
+  new Set<SplitF0ComparabilityIssueV1>([
+    "board-incompatible",
+    "cancellation-incompatible",
+  ]);
+
+function eligibleFixedSingleOffers(
+  scenario: SplitF0ScenarioV1,
+  offers: readonly SplitF0OfferSnapshotV1[]
+): SplitF0OfferSnapshotV1[] {
+  return offers
+    .filter((offer) =>
+      validateOfferForPeriod(
+        scenario,
+        offer,
+        scenario,
+        "single-period-invalid"
+      ).every((issue) => NON_ESSENTIAL_FIXED_BASELINE_ISSUES.has(issue))
+    )
+    .sort((left, right) =>
+      splitF0MoneyToMinorUnitsV1(left.totalCost) -
+        splitF0MoneyToMinorUnitsV1(right.totalCost) ||
+      left.offerSnapshotId.localeCompare(right.offerSnapshotId)
+    );
+}
+
+export function selectSplitF0FixedSingleBaselineV1(
+  scenario: SplitF0ScenarioV1,
+  offers: readonly SplitF0OfferSnapshotV1[]
+): SplitF0OfferSnapshotV1 | null {
+  return eligibleFixedSingleOffers(scenario, offers)[0] ?? null;
+}
+
+function fixedBaselineEvidenceLimits(
+  offer: SplitF0OfferSnapshotV1
+): string[] {
+  const limits: string[] = [];
+  if (offer.boardClass === "unknown") {
+    limits.push("fixed-baseline-board-unknown");
+  }
+  if (offer.cancellationClass === "unknown") {
+    limits.push("fixed-baseline-cancellation-unknown");
+  }
+  if (offer.paymentTiming === "unknown") {
+    limits.push("payment-timing-unknown");
+  }
+  if (offer.roomClass === "unknown" || offer.roomClass === "other") {
+    limits.push("fixed-baseline-room-class-incomplete");
+  }
+  return uniqueSorted(limits);
+}
+
+function summarizeFixedBaseline(
+  scenario: SplitF0ScenarioV1,
+  offers: readonly SplitF0OfferSnapshotV1[],
+  selected: SplitF0OfferSnapshotV1
+): SplitF0FixedSingleBaselineV1 {
+  const eligible = eligibleFixedSingleOffers(scenario, offers);
+  const selectedIndex = eligible.findIndex(
+    (offer) => offer.offerSnapshotId === selected.offerSnapshotId
+  );
+  if (selectedIndex < 0) {
+    throw new Error("split-f0-fixed-baseline-not-eligible");
+  }
+  const totalMinorUnits = splitF0MoneyToMinorUnitsV1(selected.totalCost);
+  const medianMinor = medianMinorUnits(
+    eligible.map((offer) => splitF0MoneyToMinorUnitsV1(offer.totalCost))
+  );
+  const perNightMinorUnits = Math.round(totalMinorUnits / scenario.nights);
+  return {
+    offerSnapshotId: selected.offerSnapshotId,
+    total: minorUnitsToNumber(totalMinorUnits),
+    totalMinorUnits,
+    totalFormatted: splitF0MinorUnitsToMoneyV1(totalMinorUnits),
+    perNight: minorUnitsToNumber(perNightMinorUnits),
+    perNightMinorUnits,
+    perNightFormatted: splitF0MinorUnitsToMoneyV1(perNightMinorUnits),
+    bucket: {
+      currency: selected.currency,
+      occupancy: occupancyKey(selected.occupancy),
+      boardClass: selected.boardClass,
+      cancellationClass: selected.cancellationClass,
+      paymentTiming: selected.paymentTiming,
+      roomClass: selected.roomClass,
+      totalCostCompleteness: "complete",
+    },
+    evidenceLimits: fixedBaselineEvidenceLimits(selected),
+    eligibleFullStayOfferCount: eligible.length,
+    cheaperEligibleFullStayOfferCount: selectedIndex,
+    selectedPercentile:
+      eligible.length === 1 ? 0 : selectedIndex / (eligible.length - 1),
+    localMedianTotal: minorUnitsToNumber(medianMinor),
+    localMedianTotalMinorUnits: medianMinor,
+    localMedianTotalFormatted: splitF0MinorUnitsToMoneyV1(medianMinor),
+  };
+}
+
+function outlierClassification(
+  flags: readonly SplitF0OutlierFlagV1[]
+): SplitF0OutlierClassificationV1 {
+  const uniqueFlags = uniqueSorted(flags);
+  if (uniqueFlags.length === 0) {
+    return "NONE";
+  }
+  return uniqueFlags.length === 1 ? uniqueFlags[0] : "MULTIPLE_FLAGS";
+}
+
+function assessLocalOutlier(
+  scenario: SplitF0ScenarioV1,
+  fixedBaseline: SplitF0FixedSingleBaselineV1 | null,
+  selectedSingle: SplitF0OfferSnapshotV1 | null,
+  eligibleSingles: readonly SplitF0OfferSnapshotV1[],
+  grossSavingRatio: number | null
+): SplitF0OutlierAssessmentV1 {
+  if (selectedSingle === null || eligibleSingles.length === 0) {
+    return {
+      classification: "NONE",
+      flags: [],
+      selectedPricePerNight: null,
+      localMedianPricePerNight: null,
+      selectedPercentile: null,
+      grossSavingRatio,
+      productionReconfirmationRequired: false,
+    };
+  }
+  const ordered = [...eligibleSingles].sort((left, right) =>
+    splitF0MoneyToMinorUnitsV1(left.totalCost) -
+      splitF0MoneyToMinorUnitsV1(right.totalCost) ||
+    left.offerSnapshotId.localeCompare(right.offerSnapshotId)
+  );
+  const selectedIndex = ordered.findIndex(
+    (offer) => offer.offerSnapshotId === selectedSingle.offerSnapshotId
+  );
+  const selectedMinor = splitF0MoneyToMinorUnitsV1(selectedSingle.totalCost);
+  const medianMinor = medianMinorUnits(
+    ordered.map((offer) => splitF0MoneyToMinorUnitsV1(offer.totalCost))
+  );
+  const selectedPercentile =
+    selectedIndex < 0
+      ? null
+      : ordered.length === 1
+        ? 0
+        : selectedIndex / (ordered.length - 1);
+  const selectedPricePerNight = minorUnitsToNumber(
+    Math.round(selectedMinor / scenario.nights)
+  );
+  const localMedianPricePerNight = minorUnitsToNumber(
+    Math.round(medianMinor / scenario.nights)
+  );
+  const flags: SplitF0OutlierFlagV1[] = [];
+  const priceLevelOutlier =
+    ordered.length >= 5 &&
+    selectedPercentile !== null &&
+    selectedPercentile >= 0.9 &&
+    selectedMinor >= medianMinor * 3;
+  if (priceLevelOutlier) {
+    flags.push("PRICE_LEVEL_OUTLIER");
+  }
+  if (
+    grossSavingRatio !== null &&
+    grossSavingRatio >= 0.5 &&
+    (priceLevelOutlier ||
+      (selectedPercentile !== null && selectedPercentile >= 0.9))
+  ) {
+    flags.push("SAVING_RATIO_OUTLIER");
+  }
+  if (
+    fixedBaseline !== null &&
+    selectedSingle.offerSnapshotId === fixedBaseline.offerSnapshotId
+  ) {
+    return {
+      classification: "NONE",
+      flags: [],
+      selectedPricePerNight,
+      localMedianPricePerNight,
+      selectedPercentile,
+      grossSavingRatio,
+      productionReconfirmationRequired: false,
+    };
+  }
+  const normalizedFlags = uniqueSorted(flags);
+  return {
+    classification: outlierClassification(normalizedFlags),
+    flags: normalizedFlags,
+    selectedPricePerNight,
+    localMedianPricePerNight,
+    selectedPercentile,
+    grossSavingRatio,
+    productionReconfirmationRequired: normalizedFlags.length > 0,
+  };
 }
 
 const COMPARABLE_ROOM_CLASSES = new Set<SplitF0RoomClassV1>([
@@ -671,27 +990,240 @@ function bucketKey(bucket: SplitF0ComparabilityBucketV1): string {
   return JSON.stringify(bucket);
 }
 
-function economicSignal(grossSavingAmount: number): SplitF0EconomicSignalV1 {
-  if (grossSavingAmount <= 0) {
+function economicSignal(grossSavingMinorUnits: number): SplitF0EconomicSignalV1 {
+  if (grossSavingMinorUnits <= 0) {
     return "NO_GROSS_SAVING";
   }
-  if (grossSavingAmount < 50) {
+  if (grossSavingMinorUnits < 5_000) {
     return "POSITIVE_BELOW_50";
   }
-  if (grossSavingAmount < 150) {
+  if (grossSavingMinorUnits < 15_000) {
     return "POSITIVE_50_TO_149";
   }
-  if (grossSavingAmount < 300) {
+  if (grossSavingMinorUnits < 30_000) {
     return "POSITIVE_150_TO_299";
   }
   return "POSITIVE_300_PLUS";
+}
+
+interface SplitF0CandidateV1 {
+  single: SplitF0OfferSnapshotV1;
+  split: [SplitF0OfferSnapshotV1, SplitF0OfferSnapshotV1];
+  bucket: SplitF0ComparabilityBucketV1;
+  singleTotalMinorUnits: number;
+  splitTotalMinorUnits: number;
+  grossSavingMinorUnits: number;
+  comparabilityLevel: Exclude<
+    SplitF0ComparabilityLevelV1,
+    "NON_COMPARABLE"
+  >;
+  evidenceLimits: string[];
+}
+
+function candidateFromClassification(
+  single: SplitF0OfferSnapshotV1,
+  split: [SplitF0OfferSnapshotV1, SplitF0OfferSnapshotV1],
+  classification: SplitF0ComparabilityResultV1
+): SplitF0CandidateV1 | null {
+  if (
+    !classification.comparable ||
+    classification.bucket === null ||
+    classification.comparabilityLevel === "NON_COMPARABLE"
+  ) {
+    return null;
+  }
+  const singleTotalMinorUnits = splitF0MoneyToMinorUnitsV1(single.totalCost);
+  const splitTotalMinorUnits =
+    splitF0MoneyToMinorUnitsV1(split[0].totalCost) +
+    splitF0MoneyToMinorUnitsV1(split[1].totalCost);
+  return {
+    single,
+    split,
+    bucket: classification.bucket,
+    singleTotalMinorUnits,
+    splitTotalMinorUnits,
+    grossSavingMinorUnits: singleTotalMinorUnits - splitTotalMinorUnits,
+    comparabilityLevel: classification.comparabilityLevel,
+    evidenceLimits: classification.evidenceLimits,
+  };
+}
+
+function sortCandidates(
+  left: SplitF0CandidateV1,
+  right: SplitF0CandidateV1
+): number {
+  return (
+    Number(left.comparabilityLevel !== "STRICT_COMPARABLE") -
+      Number(right.comparabilityLevel !== "STRICT_COMPARABLE") ||
+    right.grossSavingMinorUnits - left.grossSavingMinorUnits ||
+    left.splitTotalMinorUnits - right.splitTotalMinorUnits ||
+    left.single.offerSnapshotId.localeCompare(right.single.offerSnapshotId) ||
+    left.split[0].offerSnapshotId.localeCompare(
+      right.split[0].offerSnapshotId
+    ) ||
+    left.split[1].offerSnapshotId.localeCompare(
+      right.split[1].offerSnapshotId
+    )
+  );
+}
+
+function buildMatchedBucketDiagnostic(
+  scenario: SplitF0ScenarioV1,
+  segments: readonly [SplitF0SegmentV1, SplitF0SegmentV1],
+  singleStayOffers: readonly SplitF0OfferSnapshotV1[],
+  firstSegmentOffers: readonly SplitF0OfferSnapshotV1[],
+  secondSegmentOffers: readonly SplitF0OfferSnapshotV1[],
+  fixedBaseline: SplitF0FixedSingleBaselineV1 | null
+): SplitF0MatchedBucketDiagnosticV1 | null {
+  const candidates: SplitF0CandidateV1[] = [];
+  const structuralKey = (
+    offer: SplitF0OfferSnapshotV1,
+    period: Pick<SplitF0SegmentV1, "checkIn" | "checkOut" | "nights">,
+    periodIssue: "single-period-invalid" | "split-period-invalid"
+  ): string | null => {
+    if (
+      validateOfferForPeriod(
+        scenario,
+        offer,
+        period,
+        periodIssue
+      ).length > 0 ||
+      !COMPARABLE_ROOM_CLASSES.has(offer.roomClass)
+    ) {
+      return null;
+    }
+    return JSON.stringify([
+      offer.currency,
+      occupancyKey(offer.occupancy),
+      offer.boardClass,
+      offer.cancellationClass,
+      offer.roomClass,
+    ]);
+  };
+  const singlesByStructuralKey = new Map<
+    string,
+    SplitF0OfferSnapshotV1[]
+  >();
+  for (const single of singleStayOffers) {
+    const key = structuralKey(
+      single,
+      scenario,
+      "single-period-invalid"
+    );
+    if (key !== null) {
+      const values = singlesByStructuralKey.get(key) ?? [];
+      values.push(single);
+      singlesByStructuralKey.set(key, values);
+    }
+  }
+  for (const first of firstSegmentOffers) {
+    const firstKey = structuralKey(
+      first,
+      segments[0],
+      "split-period-invalid"
+    );
+    if (firstKey === null) {
+      continue;
+    }
+    for (const second of secondSegmentOffers) {
+      const secondKey = structuralKey(
+        second,
+        segments[1],
+        "split-period-invalid"
+      );
+      if (secondKey === null || secondKey !== firstKey) {
+        continue;
+      }
+      for (const single of singlesByStructuralKey.get(firstKey) ?? []) {
+        const classification = classifySplitF0OfferComparabilityV1(
+          scenario,
+          segments,
+          single,
+          [first, second]
+        );
+        const candidate = candidateFromClassification(
+          single,
+          [first, second],
+          classification
+        );
+        if (candidate !== null) {
+          candidates.push(candidate);
+        }
+      }
+    }
+  }
+  if (candidates.length === 0) {
+    return null;
+  }
+  const cheapestSingleByBucket = new Map<string, number>();
+  for (const candidate of candidates) {
+    const key = bucketKey(candidate.bucket);
+    const current = cheapestSingleByBucket.get(key);
+    if (
+      current === undefined ||
+      candidate.singleTotalMinorUnits < current
+    ) {
+      cheapestSingleByBucket.set(key, candidate.singleTotalMinorUnits);
+    }
+  }
+  const selected = candidates
+    .filter(
+      (candidate) =>
+        candidate.singleTotalMinorUnits ===
+        cheapestSingleByBucket.get(bucketKey(candidate.bucket))
+    )
+    .sort(sortCandidates)[0];
+  if (selected === undefined) {
+    return null;
+  }
+  const grossSavingRatio =
+    selected.grossSavingMinorUnits / selected.singleTotalMinorUnits;
+  return {
+    comparabilityLevel: selected.comparabilityLevel,
+    bucket: selected.bucket,
+    singleOfferSnapshotId: selected.single.offerSnapshotId,
+    splitOfferSnapshotIds: [
+      selected.split[0].offerSnapshotId,
+      selected.split[1].offerSnapshotId,
+    ],
+    singleTotal: minorUnitsToNumber(selected.singleTotalMinorUnits),
+    splitTotal: minorUnitsToNumber(selected.splitTotalMinorUnits),
+    grossSavingAmount: minorUnitsToNumber(selected.grossSavingMinorUnits),
+    grossSavingRatio,
+    evidenceLimits: uniqueSorted([
+      "matched-bucket-diagnostic-only",
+      "not-best-single-stay-headline",
+      ...selected.evidenceLimits,
+    ]),
+    outlierAssessment: assessLocalOutlier(
+      scenario,
+      fixedBaseline,
+      selected.single,
+      eligibleFixedSingleOffers(scenario, singleStayOffers),
+      grossSavingRatio
+    ),
+  };
+}
+
+function emptyOutlierAssessment(): SplitF0OutlierAssessmentV1 {
+  return {
+    classification: "NONE",
+    flags: [],
+    selectedPricePerNight: null,
+    localMedianPricePerNight: null,
+    selectedPercentile: null,
+    grossSavingRatio: null,
+    productionReconfirmationRequired: false,
+  };
 }
 
 function noComparableResult(
   scenarioId: string,
   splitPointId: string,
   issues: readonly string[],
-  technicalValidity: boolean
+  technicalValidity: boolean,
+  fixedBaseline: SplitF0FixedSingleBaselineV1 | null = null,
+  matchedBucketDiagnostic: SplitF0MatchedBucketDiagnosticV1 | null = null
 ): SplitF0ComparisonResultV1 {
   return {
     scenarioId,
@@ -702,17 +1234,28 @@ function noComparableResult(
     issues: uniqueSorted(issues),
     knownIncompatibilities: uniqueSorted(issues),
     bucket: null,
-    singleOfferSnapshotId: null,
+    fixedBaseline,
+    baselineSelectionMode: "PRIMARY_FIXED_BEST_SINGLE",
+    singleOfferSnapshotId: fixedBaseline?.offerSnapshotId ?? null,
     splitOfferSnapshotIds: null,
-    singleTotal: null,
+    singleTotal: fixedBaseline?.total ?? null,
+    singleTotalMinorUnits: fixedBaseline?.totalMinorUnits ?? null,
+    singleTotalFormatted: fixedBaseline?.totalFormatted ?? null,
     splitTotal: null,
+    splitTotalMinorUnits: null,
+    splitTotalFormatted: null,
     grossSavingAmount: null,
+    grossSavingMinorUnits: null,
+    grossSavingAmountFormatted: null,
     grossSavingRatio: null,
     frictionSensitivity: [],
     economicSignal: "NO_COMPARABLE_DATA",
+    matchedBucketDiagnostic,
+    outlierAssessment: emptyOutlierAssessment(),
     evidenceLimits: [
       "calibration-set-not-market-evidence",
       "no-public-or-policy-use",
+      ...(fixedBaseline?.evidenceLimits ?? []),
     ],
     publicRecommendationProduced: false,
   };
@@ -742,83 +1285,111 @@ export function evaluateSplitF0EconomicOpportunityV1(
       false
     );
   }
-  const candidates: Array<{
-    single: SplitF0OfferSnapshotV1;
-    split: [SplitF0OfferSnapshotV1, SplitF0OfferSnapshotV1];
-    bucket: SplitF0ComparabilityBucketV1;
-    splitTotal: number;
-    grossSavingAmount: number;
-    comparabilityLevel: Exclude<SplitF0ComparabilityLevelV1, "NON_COMPARABLE">;
-    evidenceLimits: string[];
-  }> = [];
+  const eligibleSingles = eligibleFixedSingleOffers(
+    input.scenario,
+    input.singleStayOffers
+  );
+  const automaticallySelectedBaseline = eligibleSingles[0] ?? null;
+  const fixedSingle =
+    input.fixedSingleBaseline === undefined
+      ? automaticallySelectedBaseline
+      : input.fixedSingleBaseline;
+  if (
+    fixedSingle !== null &&
+    !eligibleSingles.some(
+      (offer) => offer.offerSnapshotId === fixedSingle.offerSnapshotId
+    )
+  ) {
+    return noComparableResult(
+      input.scenario.scenarioId,
+      input.splitPointId,
+      ["fixed-single-baseline-invalid"],
+      false
+    );
+  }
+  const fixedBaseline =
+    fixedSingle === null
+      ? null
+      : summarizeFixedBaseline(
+          input.scenario,
+          input.singleStayOffers,
+          fixedSingle
+        );
+  const matchedBucketDiagnostic = buildMatchedBucketDiagnostic(
+    input.scenario,
+    segments,
+    input.singleStayOffers,
+    input.firstSegmentOffers,
+    input.secondSegmentOffers,
+    fixedBaseline
+  );
+  if (fixedSingle === null || fixedBaseline === null) {
+    return noComparableResult(
+      input.scenario.scenarioId,
+      input.splitPointId,
+      ["no-eligible-fixed-single-baseline"],
+      true,
+      null,
+      matchedBucketDiagnostic
+    );
+  }
+  const candidates: SplitF0CandidateV1[] = [];
   const rejectedIssues: SplitF0ComparabilityIssueV1[] = [];
   for (const first of input.firstSegmentOffers) {
     for (const second of input.secondSegmentOffers) {
-      for (const single of input.singleStayOffers) {
-        const classification = classifySplitF0OfferComparabilityV1(
-          input.scenario,
-          segments,
-          single,
-          [first, second]
-        );
-        if (!classification.comparable || classification.bucket === null) {
-          rejectedIssues.push(...classification.issues);
-          continue;
-        }
-        const splitTotal = first.totalCost + second.totalCost;
-        candidates.push({
-          single,
-          split: [first, second],
-          bucket: classification.bucket,
-          splitTotal,
-          grossSavingAmount: single.totalCost - splitTotal,
-          comparabilityLevel: classification.comparabilityLevel as Exclude<
-            SplitF0ComparabilityLevelV1,
-            "NON_COMPARABLE"
-          >,
-          evidenceLimits: classification.evidenceLimits,
-        });
+      const classification = classifySplitF0OfferComparabilityV1(
+        input.scenario,
+        segments,
+        fixedSingle,
+        [first, second]
+      );
+      const candidate = candidateFromClassification(
+        fixedSingle,
+        [first, second],
+        classification
+      );
+      if (candidate === null) {
+        rejectedIssues.push(...classification.issues);
+        continue;
       }
+      candidates.push(candidate);
     }
   }
   if (candidates.length === 0) {
     return noComparableResult(
       input.scenario.scenarioId,
       input.splitPointId,
-      rejectedIssues.length > 0 ? uniqueSorted(rejectedIssues) : ["no-offers"],
-      true
+      [
+        "NO_COMPARABLE_SPLIT_FOR_FIXED_BASELINE",
+        ...(rejectedIssues.length > 0
+          ? uniqueSorted(rejectedIssues)
+          : ["no-offers"]),
+      ],
+      true,
+      fixedBaseline,
+      matchedBucketDiagnostic
     );
   }
-  const cheapestSingleByBucket = new Map<string, number>();
-  for (const candidate of candidates) {
-    const key = bucketKey(candidate.bucket);
-    const current = cheapestSingleByBucket.get(key);
-    if (current === undefined || candidate.single.totalCost < current) {
-      cheapestSingleByBucket.set(key, candidate.single.totalCost);
-    }
-  }
-  const eligible = candidates.filter(
-    (candidate) =>
-      candidate.single.totalCost === cheapestSingleByBucket.get(bucketKey(candidate.bucket))
-  );
-  eligible.sort((left, right) =>
-    Number(left.comparabilityLevel !== "STRICT_COMPARABLE") -
-      Number(right.comparabilityLevel !== "STRICT_COMPARABLE") ||
-    right.grossSavingAmount - left.grossSavingAmount ||
-    left.splitTotal - right.splitTotal ||
-    left.single.offerSnapshotId.localeCompare(right.single.offerSnapshotId) ||
-    left.split[0].offerSnapshotId.localeCompare(right.split[0].offerSnapshotId) ||
-    left.split[1].offerSnapshotId.localeCompare(right.split[1].offerSnapshotId)
-  );
-  const selected = eligible[0];
+  const selected = candidates.sort(sortCandidates)[0];
   if (selected === undefined) {
     return noComparableResult(
       input.scenario.scenarioId,
       input.splitPointId,
-      ["no-cheapest-single-baseline"],
-      true
+      ["no-comparable-split-for-fixed-baseline"],
+      true,
+      fixedBaseline,
+      matchedBucketDiagnostic
     );
   }
+  const grossSavingRatio =
+    selected.grossSavingMinorUnits / selected.singleTotalMinorUnits;
+  const outlierAssessment = assessLocalOutlier(
+    input.scenario,
+    fixedBaseline,
+    selected.single,
+    eligibleSingles,
+    grossSavingRatio
+  );
   return {
     scenarioId: input.scenario.scenarioId,
     splitPointId: input.splitPointId,
@@ -828,29 +1399,274 @@ export function evaluateSplitF0EconomicOpportunityV1(
     issues: [],
     knownIncompatibilities: [],
     bucket: selected.bucket,
+    fixedBaseline,
+    baselineSelectionMode: "PRIMARY_FIXED_BEST_SINGLE",
     singleOfferSnapshotId: selected.single.offerSnapshotId,
     splitOfferSnapshotIds: [
       selected.split[0].offerSnapshotId,
       selected.split[1].offerSnapshotId,
     ],
-    singleTotal: selected.single.totalCost,
-    splitTotal: selected.splitTotal,
-    grossSavingAmount: selected.grossSavingAmount,
-    grossSavingRatio: selected.grossSavingAmount / selected.single.totalCost,
-    frictionSensitivity: SPLIT_F0_FRICTION_SENSITIVITY_EUR_V1.map(
-      (hypotheticalFrictionEur) => ({
-        hypotheticalFrictionEur,
-        netSavingAtFriction: selected.grossSavingAmount - hypotheticalFrictionEur,
-      })
+    singleTotal: minorUnitsToNumber(selected.singleTotalMinorUnits),
+    singleTotalMinorUnits: selected.singleTotalMinorUnits,
+    singleTotalFormatted: splitF0MinorUnitsToMoneyV1(
+      selected.singleTotalMinorUnits
     ),
-    economicSignal: economicSignal(selected.grossSavingAmount),
+    splitTotal: minorUnitsToNumber(selected.splitTotalMinorUnits),
+    splitTotalMinorUnits: selected.splitTotalMinorUnits,
+    splitTotalFormatted: splitF0MinorUnitsToMoneyV1(
+      selected.splitTotalMinorUnits
+    ),
+    grossSavingAmount: minorUnitsToNumber(selected.grossSavingMinorUnits),
+    grossSavingMinorUnits: selected.grossSavingMinorUnits,
+    grossSavingAmountFormatted: splitF0MinorUnitsToMoneyV1(
+      selected.grossSavingMinorUnits
+    ),
+    grossSavingRatio,
+    frictionSensitivity: SPLIT_F0_FRICTION_SENSITIVITY_EUR_V1.map(
+      (hypotheticalFrictionEur) => {
+        const netSavingAtFrictionMinorUnits =
+          selected.grossSavingMinorUnits -
+          splitF0MoneyToMinorUnitsV1(hypotheticalFrictionEur);
+        return {
+          hypotheticalFrictionEur,
+          netSavingAtFriction: minorUnitsToNumber(
+            netSavingAtFrictionMinorUnits
+          ),
+          netSavingAtFrictionMinorUnits,
+          netSavingAtFrictionFormatted: splitF0MinorUnitsToMoneyV1(
+            netSavingAtFrictionMinorUnits
+          ),
+        };
+      }
+    ),
+    economicSignal: economicSignal(selected.grossSavingMinorUnits),
+    matchedBucketDiagnostic,
+    outlierAssessment,
     evidenceLimits: uniqueSorted([
       "calibration-set-not-market-evidence",
       "hypothetical-friction-not-scientifically-calibrated",
       "production-read-only-results-required-for-economic-feasibility",
       "no-public-or-policy-use",
+      ...fixedBaseline.evidenceLimits,
       ...selected.evidenceLimits,
+      ...(outlierAssessment.productionReconfirmationRequired
+        ? ["outlier-production-reconfirmation-required"]
+        : []),
     ]),
     publicRecommendationProduced: false,
+  };
+}
+
+export interface SplitF0SavingsSummaryV1 {
+  positiveComparisonCount: number;
+  rawMaximumSaving: number | null;
+  robustMaximumSaving: number | null;
+  rawMedianSaving: number | null;
+  robustMedianSaving: number | null;
+  quarantinedComparisonCount: number;
+}
+
+export interface SplitF0CrossCaptureComparisonV1 {
+  scenarioId: string;
+  splitPointId: string;
+  baselineStable: boolean;
+  splitStable: boolean;
+  savingStable: boolean;
+  matchedBucketBaselineStable: boolean;
+  matchedBucketSplitStable: boolean;
+  matchedBucketSavingStable: boolean;
+  flags: SplitF0OutlierFlagV1[];
+  classification: SplitF0OutlierClassificationV1;
+}
+
+export interface SplitF0CrossCaptureAnalysisV1 {
+  comparisons: SplitF0CrossCaptureComparisonV1[];
+  unstableScenarioIds: string[];
+  quarantinedScenarioIds: string[];
+  capture1Summary: SplitF0SavingsSummaryV1;
+  capture2Summary: SplitF0SavingsSummaryV1;
+}
+
+function positiveSavingMinorUnits(
+  comparisons: readonly SplitF0ComparisonResultV1[]
+): number[] {
+  return comparisons
+    .map((comparison) => comparison.grossSavingMinorUnits)
+    .filter(
+      (value): value is number =>
+        typeof value === "number" && value > 0
+    )
+    .sort((left, right) => left - right);
+}
+
+function medianSavingAmount(values: readonly number[]): number | null {
+  return values.length === 0
+    ? null
+    : minorUnitsToNumber(medianMinorUnits(values));
+}
+
+export function summarizeSplitF0PrimarySavingsV1(
+  comparisons: readonly SplitF0ComparisonResultV1[],
+  quarantinedScenarioIds: readonly string[] = []
+): SplitF0SavingsSummaryV1 {
+  const quarantine = new Set(quarantinedScenarioIds);
+  const rawValues = positiveSavingMinorUnits(comparisons);
+  const robustComparisons = comparisons.filter(
+    (comparison) =>
+      !quarantine.has(comparison.scenarioId) &&
+      comparison.outlierAssessment.classification === "NONE"
+  );
+  const robustValues = positiveSavingMinorUnits(robustComparisons);
+  return {
+    positiveComparisonCount: rawValues.length,
+    rawMaximumSaving:
+      rawValues.length === 0
+        ? null
+        : minorUnitsToNumber(rawValues[rawValues.length - 1]),
+    robustMaximumSaving:
+      robustValues.length === 0
+        ? null
+        : minorUnitsToNumber(robustValues[robustValues.length - 1]),
+    rawMedianSaving: medianSavingAmount(rawValues),
+    robustMedianSaving: medianSavingAmount(robustValues),
+    quarantinedComparisonCount: comparisons.filter(
+      (comparison) =>
+        quarantine.has(comparison.scenarioId) ||
+        comparison.outlierAssessment.classification !== "NONE"
+    ).length,
+  };
+}
+
+function materiallyUnstableMinorUnits(
+  left: number | null,
+  right: number | null
+): boolean {
+  if (left === null || right === null) {
+    return left !== right;
+  }
+  const difference = Math.abs(left - right);
+  const denominator = Math.max(1, Math.min(Math.abs(left), Math.abs(right)));
+  return difference >= 10_000 && difference / denominator >= 0.5;
+}
+
+function optionalMoneyMinorUnits(value: number | null | undefined): number | null {
+  return typeof value === "number"
+    ? splitF0MoneyToMinorUnitsV1(Math.abs(value)) * Math.sign(value)
+    : null;
+}
+
+export function analyzeSplitF0CrossCaptureStabilityV1(
+  capture1: readonly SplitF0ComparisonResultV1[],
+  capture2: readonly SplitF0ComparisonResultV1[]
+): SplitF0CrossCaptureAnalysisV1 {
+  const capture2ByKey = new Map(
+    capture2.map((comparison) => [
+      `${comparison.scenarioId}|${comparison.splitPointId}`,
+      comparison,
+    ])
+  );
+  const comparisons: SplitF0CrossCaptureComparisonV1[] = [];
+  for (const left of capture1) {
+    const right = capture2ByKey.get(
+      `${left.scenarioId}|${left.splitPointId}`
+    );
+    if (right === undefined) {
+      comparisons.push({
+        scenarioId: left.scenarioId,
+        splitPointId: left.splitPointId,
+        baselineStable: false,
+        splitStable: false,
+        savingStable: false,
+        matchedBucketBaselineStable: false,
+        matchedBucketSplitStable: false,
+        matchedBucketSavingStable: false,
+        flags: ["CROSS_CAPTURE_INSTABILITY"],
+        classification: "CROSS_CAPTURE_INSTABILITY",
+      });
+      continue;
+    }
+    const baselineStable = !materiallyUnstableMinorUnits(
+      left.singleTotalMinorUnits,
+      right.singleTotalMinorUnits
+    );
+    const splitStable = !materiallyUnstableMinorUnits(
+      left.splitTotalMinorUnits,
+      right.splitTotalMinorUnits
+    );
+    const savingStable = !materiallyUnstableMinorUnits(
+      left.grossSavingMinorUnits,
+      right.grossSavingMinorUnits
+    );
+    const matchedBucketBaselineStable = !materiallyUnstableMinorUnits(
+      optionalMoneyMinorUnits(
+        left.matchedBucketDiagnostic?.singleTotal
+      ),
+      optionalMoneyMinorUnits(
+        right.matchedBucketDiagnostic?.singleTotal
+      )
+    );
+    const matchedBucketSplitStable = !materiallyUnstableMinorUnits(
+      optionalMoneyMinorUnits(left.matchedBucketDiagnostic?.splitTotal),
+      optionalMoneyMinorUnits(right.matchedBucketDiagnostic?.splitTotal)
+    );
+    const matchedBucketSavingStable = !materiallyUnstableMinorUnits(
+      optionalMoneyMinorUnits(
+        left.matchedBucketDiagnostic?.grossSavingAmount
+      ),
+      optionalMoneyMinorUnits(
+        right.matchedBucketDiagnostic?.grossSavingAmount
+      )
+    );
+    const flags = uniqueSorted([
+      ...left.outlierAssessment.flags,
+      ...right.outlierAssessment.flags,
+      ...(left.matchedBucketDiagnostic?.outlierAssessment.flags ?? []),
+      ...(right.matchedBucketDiagnostic?.outlierAssessment.flags ?? []),
+      ...(!baselineStable ||
+      !splitStable ||
+      !savingStable ||
+      !matchedBucketBaselineStable ||
+      !matchedBucketSplitStable ||
+      !matchedBucketSavingStable
+        ? (["CROSS_CAPTURE_INSTABILITY"] as const)
+        : []),
+    ]);
+    comparisons.push({
+      scenarioId: left.scenarioId,
+      splitPointId: left.splitPointId,
+      baselineStable,
+      splitStable,
+      savingStable,
+      matchedBucketBaselineStable,
+      matchedBucketSplitStable,
+      matchedBucketSavingStable,
+      flags,
+      classification: outlierClassification(flags),
+    });
+  }
+  const unstableScenarioIds = uniqueSorted(
+    comparisons
+      .filter((comparison) =>
+        comparison.flags.includes("CROSS_CAPTURE_INSTABILITY")
+      )
+      .map((comparison) => comparison.scenarioId)
+  );
+  const quarantinedScenarioIds = uniqueSorted(
+    comparisons
+      .filter((comparison) => comparison.flags.length > 0)
+      .map((comparison) => comparison.scenarioId)
+  );
+  return {
+    comparisons,
+    unstableScenarioIds,
+    quarantinedScenarioIds,
+    capture1Summary: summarizeSplitF0PrimarySavingsV1(
+      capture1,
+      quarantinedScenarioIds
+    ),
+    capture2Summary: summarizeSplitF0PrimarySavingsV1(
+      capture2,
+      quarantinedScenarioIds
+    ),
   };
 }

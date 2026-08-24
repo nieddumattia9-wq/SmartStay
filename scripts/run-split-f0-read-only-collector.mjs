@@ -8,6 +8,8 @@ import {
   SPLIT_F0_SCENARIO_MATRIX_VERSION_V1,
   buildSplitF0SegmentsV1,
   evaluateSplitF0EconomicOpportunityV1,
+  selectSplitF0FixedSingleBaselineV1,
+  summarizeSplitF0PrimarySavingsV1,
   validateSplitF0ScenarioV1,
 } from "../src/engine-v3/evaluation/splitF0EconomicFeasibilityPilotV3.ts";
 
@@ -692,12 +694,17 @@ function evaluationResults(matrix, searches) {
   const comparisons = [];
   for (const scenario of matrix.scenarios) {
     const singleStayOffers = byLogicalSearch.get(`${scenario.scenarioId}.full`) ?? [];
+    const fixedSingleBaseline = selectSplitF0FixedSingleBaselineV1(
+      scenario,
+      singleStayOffers
+    );
     for (const splitPoint of scenario.splitPoints) {
       comparisons.push(
         evaluateSplitF0EconomicOpportunityV1({
           scenario,
           splitPointId: splitPoint.splitPointId,
           singleStayOffers,
+          fixedSingleBaseline,
           firstSegmentOffers:
             byLogicalSearch.get(`${scenario.scenarioId}.${splitPoint.splitPointId}.segment-0`) ?? [],
           secondSegmentOffers:
@@ -707,24 +714,6 @@ function evaluationResults(matrix, searches) {
     }
   }
   return comparisons;
-}
-
-function grossSavingStatistics(comparisons) {
-  const values = comparisons
-    .map((item) => item.grossSavingAmount)
-    .filter((value) => typeof value === "number" && value > 0)
-    .sort((left, right) => left - right);
-  const median =
-    values.length === 0
-      ? null
-      : values.length % 2 === 1
-        ? values[(values.length - 1) / 2]
-        : (values[values.length / 2 - 1] + values[values.length / 2]) / 2;
-  return {
-    count: values.length,
-    maximum: values.length === 0 ? null : values.at(-1),
-    median,
-  };
 }
 
 function aggregateResultCounters(searches, comparisons, network) {
@@ -740,9 +729,9 @@ function aggregateResultCounters(searches, comparisons, network) {
     conditional.map((item) => item.singleOfferSnapshotId).filter(Boolean)
   );
   const scenarioIdsWithComparable = new Set(comparable.map((item) => item.scenarioId));
-  const allSavings = grossSavingStatistics(comparable);
-  const strictSavings = grossSavingStatistics(strict);
-  const conditionalSavings = grossSavingStatistics(conditional);
+  const allSavings = summarizeSplitF0PrimarySavingsV1(comparable);
+  const strictSavings = summarizeSplitF0PrimarySavingsV1(strict);
+  const conditionalSavings = summarizeSplitF0PrimarySavingsV1(conditional);
   const signalBands = {};
   for (const item of comparisons) {
     signalBands[item.economicSignal] = (signalBands[item.economicSignal] ?? 0) + 1;
@@ -766,8 +755,13 @@ function aggregateResultCounters(searches, comparisons, network) {
     scenariosWithGrossSaving: new Set(
       comparable.filter((item) => (item.grossSavingAmount ?? 0) > 0).map((item) => item.scenarioId)
     ).size,
-    maxGrossSavingEur: allSavings.maximum,
-    medianGrossSavingEur: allSavings.median,
+    maxGrossSavingEur: allSavings.rawMaximumSaving,
+    medianGrossSavingEur: allSavings.rawMedianSaving,
+    rawMaxGrossSavingEur: allSavings.rawMaximumSaving,
+    robustMaxGrossSavingEur: allSavings.robustMaximumSaving,
+    rawMedianGrossSavingEur: allSavings.rawMedianSaving,
+    robustMedianGrossSavingEur: allSavings.robustMedianSaving,
+    outlierComparisons: allSavings.quarantinedComparisonCount,
     strictComparableSingleOffers: strictSingles.size,
     conditionalComparableSingleOffers: conditionalSingles.size,
     strictComparableSplitPairs: strict.length,
@@ -784,10 +778,19 @@ function aggregateResultCounters(searches, comparisons, network) {
         .filter((item) => (item.grossSavingAmount ?? 0) > 0)
         .map((item) => item.scenarioId)
     ).size,
-    strictMaxGrossSavingEur: strictSavings.maximum,
-    strictMedianGrossSavingEur: strictSavings.median,
-    conditionalMaxGrossSavingEur: conditionalSavings.maximum,
-    conditionalMedianGrossSavingEur: conditionalSavings.median,
+    strictMaxGrossSavingEur: strictSavings.rawMaximumSaving,
+    strictMedianGrossSavingEur: strictSavings.rawMedianSaving,
+    conditionalMaxGrossSavingEur: conditionalSavings.rawMaximumSaving,
+    conditionalMedianGrossSavingEur: conditionalSavings.rawMedianSaving,
+    fixedBaselineScenarios: new Set(
+      comparisons
+        .filter((item) => item.fixedBaseline !== null)
+        .map((item) => item.scenarioId)
+    ).size,
+    primaryComparableSplitPairs: comparable.length,
+    matchedBucketDiagnosticPairs: comparisons.filter(
+      (item) => item.matchedBucketDiagnostic !== null
+    ).length,
     signalBands,
   };
 }
@@ -1119,6 +1122,14 @@ function humanSummary(result) {
     `conditionalComparableSplitPairs=${result.counters?.conditionalComparableSplitPairs ?? 0}`,
     `scenariosWithStrictComparableData=${result.counters?.scenariosWithStrictComparableData ?? 0}`,
     `scenariosWithConditionalComparableData=${result.counters?.scenariosWithConditionalComparableData ?? 0}`,
+    `fixedBaselineScenarios=${result.counters?.fixedBaselineScenarios ?? 0}`,
+    `primaryComparableSplitPairs=${result.counters?.primaryComparableSplitPairs ?? 0}`,
+    `matchedBucketDiagnosticPairs=${result.counters?.matchedBucketDiagnosticPairs ?? 0}`,
+    `rawMaxGrossSavingEur=${result.counters?.rawMaxGrossSavingEur ?? "null"}`,
+    `robustMaxGrossSavingEur=${result.counters?.robustMaxGrossSavingEur ?? "null"}`,
+    `rawMedianGrossSavingEur=${result.counters?.rawMedianGrossSavingEur ?? "null"}`,
+    `robustMedianGrossSavingEur=${result.counters?.robustMedianGrossSavingEur ?? "null"}`,
+    `outlierComparisons=${result.counters?.outlierComparisons ?? 0}`,
     `paymentFieldPresent=${result.paymentFieldProbe?.fieldPresent ?? false}`,
     `paymentUsableTimingPresent=${result.paymentFieldProbe?.usableTimingPresent ?? false}`,
   ].join("\n") + "\n";

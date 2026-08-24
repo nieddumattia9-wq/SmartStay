@@ -277,7 +277,38 @@ test("normalized sandbox output fingerprints raw IDs, strips secrets and remains
   assert.equal(first.counters.conditionalComparableSplitPairs, 0);
   assert.equal(first.counters.scenariosWithStrictComparableData, 8);
   assert.equal(first.counters.scenariosWithConditionalComparableData, 0);
+  assert.equal(first.counters.fixedBaselineScenarios, 8);
+  assert.equal(first.counters.primaryComparableSplitPairs, 16);
+  assert.equal(first.counters.matchedBucketDiagnosticPairs, 16);
+  assert.equal(first.counters.rawMaxGrossSavingEur, 1_740);
+  assert.equal(first.counters.robustMaxGrossSavingEur, 1_740);
+  assert.equal(first.counters.rawMedianGrossSavingEur, 754);
+  assert.equal(first.counters.robustMedianGrossSavingEur, 754);
+  assert.equal(first.counters.outlierComparisons, 0);
   assert.equal(first.counters.sandboxLogicalSearches, 40);
+  for (const scenario of matrix.scenarios) {
+    const scenarioComparisons = first.comparisons.filter(
+      (comparison) => comparison.scenarioId === scenario.scenarioId
+    );
+    assert.equal(
+      new Set(
+        scenarioComparisons.map(
+          (comparison) => comparison.fixedBaseline?.offerSnapshotId
+        )
+      ).size,
+      1
+    );
+    for (const comparison of scenarioComparisons) {
+      assert.equal(comparison.baselineSelectionMode, "PRIMARY_FIXED_BEST_SINGLE");
+      assert.equal(comparison.singleTotalMinorUnits, scenario.nights * 10_000);
+      assert.equal(comparison.splitTotalMinorUnits, scenario.nights * 4_200);
+      assert.equal(comparison.grossSavingMinorUnits, scenario.nights * 5_800);
+      assert.match(comparison.singleTotalFormatted, /^\d+\.\d{2}$/);
+      assert.match(comparison.splitTotalFormatted, /^\d+\.\d{2}$/);
+      assert.match(comparison.grossSavingAmountFormatted, /^\d+\.\d{2}$/);
+      assert.equal(comparison.outlierAssessment.classification, "NONE");
+    }
+  }
   for (const forbidden of [
     SAFE_SANDBOX_KEY,
     "raw-hotel-",

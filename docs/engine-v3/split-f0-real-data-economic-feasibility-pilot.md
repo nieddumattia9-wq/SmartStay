@@ -57,11 +57,15 @@ Identical commercial room names across different hotels are not required. Broad 
 
 Unknown payment timing is uncertainty, not proof of incompatibility. Equal known values are strict; differing known values are non-comparable; unknown values produce a conditional comparison with an explicit `payment-timing-unknown` or `payment-timing-known-unknown` evidence limit. Conditional results are technical signal-search only: they do not establish equivalence, market evidence, policy eligibility or a public recommendation.
 
-The single baseline is the cheapest eligible full-stay offer inside the same comparability bucket. Commission, markup, provider ordering and provider-specific pricing preferences are excluded.
+The primary single baseline is selected once per scenario before any Split pair is observed. Full-stay offers first pass currency, occupancy, complete-cost, tax/mandatory-cost, bookability, freshness, quality and location gates; the lowest total cost wins, with the stable offer fingerprint as tie-break. The selected snapshot, total, broad comparability bucket and evidence limits are frozen for both split points.
+
+A Split produces a primary headline only when both segment offers are compatible with this fixed best-single bucket. If no pair is compatible, the result is NO_COMPARABLE_SPLIT_FOR_FIXED_BASELINE; a more expensive single must never replace the best eligible single merely to manufacture a comparison.
+
+Other matched-bucket comparisons may be retained as MATCHED_BUCKET_DIAGNOSTIC_SAVING. They describe tariff structure only: they are not headline savings, do not enter the primary scenario-saving count or median, and cannot be represented as an advantage over the best single stay. Commission, markup, provider ordering and provider-specific pricing preferences remain excluded.
 
 ## Metrics and friction sensitivity
 
-For comparable data only:
+For comparable data only, every monetary input is validated at EUR-cent precision and converted to integer minor units before sums or subtraction:
 
 ```text
 singleTotal = complete full-stay total
@@ -71,9 +75,21 @@ grossSavingRatio = grossSavingAmount / singleTotal
 netSavingAtFriction = grossSavingAmount - hypotheticalFriction
 ```
 
+Outputs expose minor units and a two-decimal rendering. Unsupported sub-cent precision, negative monetary inputs where prohibited, zero/invalid offer totals and non-finite values fail closed. The ratio is calculated only after the final integer-cent numerator and denominator are fixed.
+
 There is no scientifically calibrated switching-cost model. The deterministic EUR penalties `0, 25, 50, 75, 100, 150` are analytical sensitivity scenarios, not estimates of human discomfort and not policy thresholds.
 
 The descriptive signals are `NO_COMPARABLE_DATA`, `NO_GROSS_SAVING`, `POSITIVE_BELOW_50`, `POSITIVE_50_TO_149`, `POSITIVE_150_TO_299` and `POSITIVE_300_PLUS`. Technical validity, comparability, gross saving, friction sensitivity and evidence limitations remain separate.
+
+## Outlier and cross-capture quarantine
+
+Observed values are never deleted or rewritten. Diagnostic flags are PRICE_LEVEL_OUTLIER, SAVING_RATIO_OUTLIER and CROSS_CAPTURE_INSTABILITY; more than one flag is reported as MULTIPLE_FLAGS.
+
+- price-level quarantine requires both a high local percentile and a price-per-night at least three times the scenario's eligible full-stay median, with at least five observations;
+- saving-ratio quarantine requires a ratio of at least 50% together with high local price evidence, never a standalone absolute-euro threshold;
+- cross-capture instability requires both at least EUR 100 absolute movement and at least 50% relative movement in baseline, compatible Split total or saving, or a comparable/non-comparable state change.
+
+Raw metrics retain every primary observation. Robust maximum and median exclude quarantined scenarios. Matched-bucket outliers remain visible only as diagnostics. Every flagged result requires production read-only reconfirmation and remains ineligible for policy or public recommendation.
 
 ## Data minimization for later phases
 
