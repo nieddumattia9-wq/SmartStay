@@ -22,6 +22,10 @@ export const SPLIT_R1_DESTINATION_ENDPOINT = "/mcp/hotel/search-destinations";
 export const SPLIT_R1_HOTEL_SEARCH_ENDPOINT = "/mcp/hotel/search-hotels";
 export const SPLIT_R1_EXPECTED_DURATIONS = [5, 7, 10, 12, 14, 21, 28, 30];
 export const SPLIT_R1_MAX_CONTINUATIONS_PER_SEARCH = 2;
+export const SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET = 80;
+export const SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET = 100;
+export const SPLIT_R1_MAX_REQUESTS_PER_SECOND = 1;
+export const SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS = 1_000;
 export const SPLIT_R1_RETRIES = 0;
 export const SPLIT_R1_CONCURRENCY = 1;
 export const SPLIT_R1_HTTP_TIMEOUT_MS = 120_000;
@@ -521,19 +525,174 @@ async function parseJsonResponse(response, operation) {
   }
 }
 
+function requestClassForEndpoint(endpointPath) {
+  if (endpointPath === SPLIT_R1_HOTEL_SEARCH_ENDPOINT) return "hotel-search";
+  if (endpointPath === SPLIT_R1_DESTINATION_ENDPOINT) return "destination";
+  if (endpointPath === SPLIT_R1_AUTH_ENDPOINT) return "authentication";
+  throw new Error("split-r1-request-class-unknown");
+}
+
+function validateRestrictiveLimit(value, hardLimit, label) {
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`split-r1-${label}-invalid`);
+  }
+  if (value > hardLimit) {
+    throw new Error(`split-r1-${label}-increase-prohibited`);
+  }
+  return value;
+}
+
+export function createSplitR1RequestBudgetLedger({
+  hotelSearchHttpBudget = SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
+  totalRouteStackHttpBudget = SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET,
+} = {}) {
+  const hotelLimit = validateRestrictiveLimit(
+    hotelSearchHttpBudget,
+    SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
+    "hotel-search-http-budget"
+  );
+  const totalLimit = validateRestrictiveLimit(
+    totalRouteStackHttpBudget,
+    SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET,
+    "total-routestack-http-budget"
+  );
+  if (hotelLimit > totalLimit) {
+    throw new Error("split-r1-hotel-budget-exceeds-total-budget");
+  }
+  let totalRouteStackRequests = 0;
+  let hotelSearchRequests = 0;
+  const requestsByClass = {
+    authentication: 0,
+    destination: 0,
+    "hotel-search": 0,
+  };
+
+  return {
+    reserve(requestClass) {
+      if (!(requestClass in requestsByClass)) {
+        throw new Error("split-r1-budget-request-class-invalid");
+      }
+      if (totalRouteStackRequests + 1 > totalLimit) {
+        return {
+          reserved: false,
+          reason: "TOTAL_ROUTESTACK_HTTP_BUDGET_EXHAUSTED",
+        };
+      }
+      if (requestClass === "hotel-search" && hotelSearchRequests + 1 > hotelLimit) {
+        return {
+          reserved: false,
+          reason: "HOTEL_SEARCH_HTTP_BUDGET_EXHAUSTED",
+        };
+      }
+      totalRouteStackRequests += 1;
+      requestsByClass[requestClass] += 1;
+      if (requestClass === "hotel-search") hotelSearchRequests += 1;
+      return {
+        reserved: true,
+        ordinal: totalRouteStackRequests,
+        hotelSearchOrdinal: requestClass === "hotel-search" ? hotelSearchRequests : null,
+      };
+    },
+    snapshot() {
+      return {
+        hardHotelSearchHttpBudget: SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
+        hardTotalRouteStackHttpBudget: SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET,
+        effectiveHotelSearchHttpBudget: hotelLimit,
+        effectiveTotalRouteStackHttpBudget: totalLimit,
+        totalRouteStackRequests,
+        hotelSearchRequests,
+        requestsByClass: { ...requestsByClass },
+        remainingHotelSearchRequests: hotelLimit - hotelSearchRequests,
+        remainingTotalRouteStackRequests: totalLimit - totalRouteStackRequests,
+      };
+    },
+  };
+}
+
+export function createSplitR1MonotonicRateLimiter({
+  monotonicNow = () => performance.now(),
+  sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  minRequestStartIntervalMs = SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
+} = {}) {
+  if (typeof monotonicNow !== "function" || typeof sleep !== "function") {
+    throw new Error("split-r1-rate-limiter-dependency-invalid");
+  }
+  if (
+    !Number.isFinite(minRequestStartIntervalMs) ||
+    minRequestStartIntervalMs < SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS
+  ) {
+    throw new Error("split-r1-rate-limit-increase-prohibited");
+  }
+  let lastRequestStart = null;
+  return {
+    async awaitStartSlot() {
+      const beforeWait = monotonicNow();
+      if (!Number.isFinite(beforeWait)) throw new Error("split-r1-monotonic-clock-invalid");
+      if (lastRequestStart !== null) {
+        const elapsed = beforeWait - lastRequestStart;
+        const waitMilliseconds = Math.max(0, minRequestStartIntervalMs - elapsed);
+        if (waitMilliseconds > 0) await sleep(waitMilliseconds);
+      }
+      const requestStart = monotonicNow();
+      if (!Number.isFinite(requestStart)) throw new Error("split-r1-monotonic-clock-invalid");
+      if (
+        lastRequestStart !== null &&
+        requestStart - lastRequestStart < minRequestStartIntervalMs
+      ) {
+        throw new Error("split-r1-rate-limit-interval-not-satisfied");
+      }
+      lastRequestStart = requestStart;
+      return requestStart;
+    },
+  };
+}
+
+export class SplitR1BudgetBoundedError extends Error {
+  constructor(reason) {
+    super(`split-r1-budget-bounded:${reason}`);
+    this.name = "SplitR1BudgetBoundedError";
+    this.code = "SPLIT_R1_BUDGET_BOUNDED";
+    this.reason = reason;
+  }
+}
+
+function isSplitR1BudgetBoundedError(error) {
+  return error instanceof SplitR1BudgetBoundedError;
+}
+
 export function createSplitR1NativeTransport({
   baseUrl = SPLIT_R1_OFFICIAL_BASE_URL,
   fetchImpl = globalThis.fetch,
   timeoutMs = SPLIT_R1_HTTP_TIMEOUT_MS,
+  budgetLimits,
+  monotonicNow,
+  sleep,
+  minRequestStartIntervalMs = SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
 }) {
   validateSplitR1BaseUrl(baseUrl);
   if (typeof fetchImpl !== "function") throw new Error("split-r1-native-fetch-unavailable");
-  let httpRequests = 0;
-  const post = async (endpointPath, body, bearerToken = null) => {
+  const budgetLedger = createSplitR1RequestBudgetLedger(budgetLimits);
+  const rateLimiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow,
+    sleep,
+    minRequestStartIntervalMs,
+  });
+  let activeRequests = 0;
+  let maxObservedConcurrency = 0;
+  let serializedTail = Promise.resolve();
+
+  const performPost = async (endpointPath, body, bearerToken = null) => {
     assertSplitR1EndpointAllowed("POST", endpointPath);
+    const requestClass = requestClassForEndpoint(endpointPath);
+    const reservation = budgetLedger.reserve(requestClass);
+    if (!reservation.reserved) {
+      throw new SplitR1BudgetBoundedError(reservation.reason);
+    }
+    await rateLimiter.awaitStartSlot();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    httpRequests += 1;
+    activeRequests += 1;
+    maxObservedConcurrency = Math.max(maxObservedConcurrency, activeRequests);
     try {
       const response = await fetchImpl(`${baseUrl}${endpointPath}`, {
         method: "POST",
@@ -548,12 +707,22 @@ export function createSplitR1NativeTransport({
       });
       return await parseJsonResponse(response, endpointPath.split("/").at(-1));
     } finally {
+      activeRequests -= 1;
       clearTimeout(timeout);
     }
   };
+
+  const post = (endpointPath, body, bearerToken = null) => {
+    const operation = serializedTail.then(() => performPost(endpointPath, body, bearerToken));
+    serializedTail = operation.catch(() => undefined);
+    return operation;
+  };
+
   return {
     post,
-    getHttpRequestCount: () => httpRequests,
+    getHttpRequestCount: () => budgetLedger.snapshot().totalRouteStackRequests,
+    getBudgetSnapshot: () => budgetLedger.snapshot(),
+    getMaxObservedConcurrency: () => maxObservedConcurrency,
   };
 }
 
@@ -566,12 +735,21 @@ export async function runSplitR1Collector({
   now = Date.now,
   randomUUID = crypto.randomUUID,
   ephemeralRunKey = crypto.randomBytes(32),
+  monotonicNow,
+  sleep,
+  budgetLimits,
 }) {
   const dryRun = buildSplitR1DryRunPlan(matrix);
   if (options.mode === "dry-run") return dryRun;
 
   const configuration = resolveProductionConfiguration(environment, execArgv);
-  const transport = createSplitR1NativeTransport({ baseUrl: configuration.baseUrl, fetchImpl });
+  const transport = createSplitR1NativeTransport({
+    baseUrl: configuration.baseUrl,
+    fetchImpl,
+    monotonicNow,
+    sleep,
+    budgetLimits,
+  });
   const authRequest = createSplitR1PartnerTokenRequest({
     apiKey: configuration.apiKey,
     apiSecret: configuration.apiSecret,
@@ -584,43 +762,118 @@ export async function runSplitR1Collector({
     throw new Error("split-r1-partner-token-missing");
   }
   const logicalSearches = buildSplitF0LogicalSearchPlan(matrix);
-  const allOffers = [];
+  const destinations = new Map();
   for (const scenario of matrix.scenarios) {
     const destinationPayload = await transport.post(
       SPLIT_R1_DESTINATION_ENDPOINT,
       createSplitR1DestinationRequest(scenario),
       partnerToken
     );
-    const destination = selectSplitR1DestinationCandidate(destinationPayload, scenario);
-    for (const logicalSearch of logicalSearches.filter((search) => search.scenarioId === scenario.scenarioId)) {
-      const originalRequest = createSplitR1HotelSearchRequest(logicalSearch, destination);
-      let responsePayload = await transport.post(
+    destinations.set(
+      scenario.scenarioId,
+      selectSplitR1DestinationCandidate(destinationPayload, scenario)
+    );
+  }
+
+  const searchStates = logicalSearches.map((logicalSearch) => ({
+    logicalSearch,
+    originalRequest: createSplitR1HotelSearchRequest(
+      logicalSearch,
+      destinations.get(logicalSearch.scenarioId)
+    ),
+    latestResponse: null,
+    continuationCount: 0,
+    offers: [],
+    status: "PENDING_INITIAL",
+  }));
+
+  const markAllPendingBudgetBounded = () => {
+    for (const state of searchStates) {
+      if (state.status === "PENDING_INITIAL" || state.status === "CONTINUATION_PENDING") {
+        state.status = "BUDGET_BOUNDED_INCOMPLETE";
+      }
+    }
+  };
+
+  for (const state of searchStates) {
+    try {
+      state.latestResponse = await transport.post(
         SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
-        originalRequest,
+        state.originalRequest,
         partnerToken
       );
-      allOffers.push(...normalizeSplitR1SearchResponse(responsePayload, { logicalSearch, ephemeralRunKey }));
-      for (let continuationOrdinal = 1; continuationOrdinal <= 2; continuationOrdinal += 1) {
-        const container = normalizeResponseContainer(responsePayload);
-        if (typeof container?.nextResultsKey !== "string" || container.nextResultsKey.length === 0) break;
+    } catch (error) {
+      if (!isSplitR1BudgetBoundedError(error)) throw error;
+      markAllPendingBudgetBounded();
+      break;
+    }
+    state.offers.push(
+      ...normalizeSplitR1SearchResponse(state.latestResponse, {
+        logicalSearch: state.logicalSearch,
+        ephemeralRunKey,
+      })
+    );
+    const container = normalizeResponseContainer(state.latestResponse);
+    state.status =
+      typeof container?.nextResultsKey === "string" && container.nextResultsKey.length > 0
+        ? "CONTINUATION_PENDING"
+        : "COMPLETE";
+  }
+
+  for (
+    let continuationOrdinal = 1;
+    continuationOrdinal <= SPLIT_R1_MAX_CONTINUATIONS_PER_SEARCH;
+    continuationOrdinal += 1
+  ) {
+    const eligibleStates = searchStates.filter(
+      (state) => state.status === "CONTINUATION_PENDING"
+    );
+    if (eligibleStates.length === 0) break;
+    let budgetExhausted = false;
+    for (const state of eligibleStates) {
+      try {
         const continuationRequest = createSplitR1ContinuationRequest(
-          originalRequest,
-          responsePayload,
+          state.originalRequest,
+          state.latestResponse,
           continuationOrdinal
         );
-        responsePayload = await transport.post(
+        state.latestResponse = await transport.post(
           SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
           continuationRequest,
           partnerToken
         );
-        allOffers.push(...normalizeSplitR1SearchResponse(responsePayload, { logicalSearch, ephemeralRunKey }));
+      } catch (error) {
+        if (!isSplitR1BudgetBoundedError(error)) throw error;
+        markAllPendingBudgetBounded();
+        budgetExhausted = true;
+        break;
       }
-      const finalContainer = normalizeResponseContainer(responsePayload);
-      if (typeof finalContainer?.nextResultsKey === "string" && finalContainer.nextResultsKey.length > 0) {
-        throw new Error("split-r1-continuation-budget-exceeded");
-      }
+      state.continuationCount += 1;
+      state.offers.push(
+        ...normalizeSplitR1SearchResponse(state.latestResponse, {
+          logicalSearch: state.logicalSearch,
+          ephemeralRunKey,
+        })
+      );
+      const container = normalizeResponseContainer(state.latestResponse);
+      state.status =
+        typeof container?.nextResultsKey === "string" && container.nextResultsKey.length > 0
+          ? "CONTINUATION_PENDING"
+          : "COMPLETE";
+    }
+    if (budgetExhausted) break;
+  }
+
+  for (const state of searchStates) {
+    if (state.status === "CONTINUATION_PENDING") {
+      state.status = "CONTINUATION_LIMIT_INCOMPLETE";
     }
   }
+  const completedOffers = searchStates
+    .filter((state) => state.status === "COMPLETE")
+    .flatMap((state) => state.offers);
+  const budgetSnapshot = transport.getBudgetSnapshot();
+  const incompleteSearches = searchStates.filter((state) => state.status !== "COMPLETE");
   const result = {
     schemaVersion: "stayopti.split-r1.production-search-level-result@1",
     environment: "production",
@@ -628,11 +881,21 @@ export async function runSplitR1Collector({
     marketEvidence: "LIMITED_SEARCH_LEVEL_ONLY",
     policyEligible: false,
     publicRecommendationAllowed: false,
-    httpRequests: transport.getHttpRequestCount(),
+    runStatus: incompleteSearches.length === 0 ? "COMPLETE" : "INCONCLUSIVE",
+    tokenUsage: "UNKNOWN_NOT_EXPOSED",
+    httpRequests: budgetSnapshot.totalRouteStackRequests,
+    requestBudget: budgetSnapshot,
+    maxObservedConcurrency: transport.getMaxObservedConcurrency(),
+    logicalSearchesCompleted: searchStates.length - incompleteSearches.length,
+    logicalSearchesIncomplete: incompleteSearches.length,
+    incompleteSearches: incompleteSearches.map((state) => ({
+      logicalSearchId: state.logicalSearch.logicalSearchId,
+      status: state.status,
+    })),
     scenarios: matrix.scenarios.map((scenario) =>
       evaluateSplitR1SearchLevelScenario(
         scenario,
-        allOffers.filter((offer) => offer.scenarioId === scenario.scenarioId)
+        completedOffers.filter((offer) => offer.scenarioId === scenario.scenarioId)
       )
     ),
   };

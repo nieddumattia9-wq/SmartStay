@@ -8,12 +8,16 @@ import {
   SPLIT_R1_AUTH_ENDPOINT,
   SPLIT_R1_DESTINATION_ENDPOINT,
   SPLIT_R1_EXPECTED_DURATIONS,
+  SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
+  SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET,
   SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+  SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
   SPLIT_R1_OFFICIAL_BASE_URL,
   SPLIT_R1_REPOSITORY_ROOT,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1DryRunPlan,
+  createSplitR1RequestBudgetLedger,
   createSplitR1ContinuationRequest,
   createSplitR1HotelSearchRequest,
   createSplitR1NativeTransport,
@@ -263,6 +267,192 @@ test("native fetch transport disables redirects and never reaches a forbidden re
     () => assertSplitR1EndpointAllowed("POST", "/mcp/hotel/get-hotel-details"),
     /not-allowlisted/
   );
+});
+
+test("atomic budgets admit hotel request 80 and total request 100 but block the next before fetch", () => {
+  const hotelLedger = createSplitR1RequestBudgetLedger();
+  for (let ordinal = 1; ordinal <= 80; ordinal += 1) {
+    const reservation = hotelLedger.reserve("hotel-search");
+    assert.equal(reservation.reserved, true);
+    assert.equal(reservation.hotelSearchOrdinal, ordinal);
+  }
+  assert.deepEqual(hotelLedger.reserve("hotel-search"), {
+    reserved: false,
+    reason: "HOTEL_SEARCH_HTTP_BUDGET_EXHAUSTED",
+  });
+  assert.equal(hotelLedger.snapshot().hotelSearchRequests, 80);
+
+  const totalLedger = createSplitR1RequestBudgetLedger();
+  for (let ordinal = 1; ordinal <= 100; ordinal += 1) {
+    const requestClass = ordinal <= 80 ? "hotel-search" : "destination";
+    const reservation = totalLedger.reserve(requestClass);
+    assert.equal(reservation.reserved, true);
+    assert.equal(reservation.ordinal, ordinal);
+  }
+  assert.deepEqual(totalLedger.reserve("authentication"), {
+    reserved: false,
+    reason: "TOTAL_ROUTESTACK_HTTP_BUDGET_EXHAUSTED",
+  });
+  assert.equal(totalLedger.snapshot().totalRouteStackRequests, 100);
+});
+
+test("external settings can only tighten hard caps and rate interval", () => {
+  assert.throws(
+    () =>
+      createSplitR1RequestBudgetLedger({
+        hotelSearchHttpBudget: SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET + 1,
+      }),
+    /increase-prohibited/
+  );
+  assert.throws(
+    () =>
+      createSplitR1RequestBudgetLedger({
+        totalRouteStackHttpBudget: SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET + 1,
+      }),
+    /increase-prohibited/
+  );
+  assert.throws(
+    () =>
+      createSplitR1NativeTransport({
+        fetchImpl: async () => jsonResponse({}),
+        minRequestStartIntervalMs: SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS - 1,
+      }),
+    /rate-limit-increase-prohibited/
+  );
+  assert.doesNotThrow(() =>
+    createSplitR1RequestBudgetLedger({
+      hotelSearchHttpBudget: 40,
+      totalRouteStackHttpBudget: 50,
+    })
+  );
+});
+
+test("monotonic limiter serializes fetches at 1000ms with observed concurrency one and retry zero", async () => {
+  let milliseconds = 0;
+  let active = 0;
+  let maximumActive = 0;
+  const starts = [];
+  const transport = createSplitR1NativeTransport({
+    monotonicNow: () => milliseconds,
+    sleep: async (duration) => {
+      milliseconds += duration;
+    },
+    fetchImpl: async (_url, options) => {
+      starts.push(milliseconds);
+      assert.equal(options.redirect, "error");
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await Promise.resolve();
+      active -= 1;
+      return jsonResponse({ token: "memory-only-token" });
+    },
+  });
+  await Promise.all([
+    transport.post(SPLIT_R1_AUTH_ENDPOINT, {}),
+    transport.post(SPLIT_R1_AUTH_ENDPOINT, {}),
+    transport.post(SPLIT_R1_AUTH_ENDPOINT, {}),
+  ]);
+  assert.deepEqual(starts, [0, 1_000, 2_000]);
+  assert.equal(maximumActive, 1);
+  assert.equal(transport.getMaxObservedConcurrency(), 1);
+  assert.equal(transport.getBudgetSnapshot().totalRouteStackRequests, 3);
+});
+
+test("reserved request remains counted after HTTP failure and no retry is attempted", async () => {
+  let fetchCalls = 0;
+  const transport = createSplitR1NativeTransport({
+    monotonicNow: () => 0,
+    sleep: async () => {},
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      return jsonResponse({ error: "synthetic" }, 500);
+    },
+  });
+  await assert.rejects(() => transport.post(SPLIT_R1_AUTH_ENDPOINT, {}), /http-500/);
+  assert.equal(fetchCalls, 1);
+  assert.equal(transport.getBudgetSnapshot().totalRouteStackRequests, 1);
+});
+
+test("live scheduling is breadth-first and budget exhaustion is returned as inconclusive", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const destinationsByLabel = new Map(
+    matrix.scenarios.map((scenario) => [scenario.destination.label, scenario.destination])
+  );
+  let milliseconds = 0;
+  const hotelRequestBodies = [];
+  const result = await runSplitR1Collector({
+    matrix,
+    options: {
+      mode: "execute-production-read-only",
+    },
+    environment: {
+      ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+      ROUTESTACK_API_KEY: "synthetic-key",
+      ROUTESTACK_API_SECRET: "synthetic-secret",
+    },
+    execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000001",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => milliseconds,
+    sleep: async (duration) => {
+      milliseconds += duration;
+    },
+    fetchImpl: async (url, options) => {
+      const endpoint = new URL(url).pathname;
+      const body = JSON.parse(options.body);
+      if (endpoint === SPLIT_R1_AUTH_ENDPOINT) {
+        return jsonResponse({ token: "memory-only-token" });
+      }
+      if (endpoint === SPLIT_R1_DESTINATION_ENDPOINT) {
+        const destination = destinationsByLabel.get(body.query);
+        return jsonResponse({
+          result: [
+            {
+              id: `memory-destination-${body.query}`,
+              coordinates: {
+                lat: destination.latitude,
+                long: destination.longitude,
+              },
+            },
+          ],
+        });
+      }
+      assert.equal(endpoint, SPLIT_R1_HOTEL_SEARCH_ENDPOINT);
+      hotelRequestBodies.push(body);
+      return jsonResponse({
+        result: {
+          currency: "EUR",
+          result: [rawHotel(`memory-hotel-${hotelRequestBodies.length}`, 100)],
+          token: "memory-session-token",
+          correlationId: "memory-correlation",
+          nextResultsKey: `memory-next-${hotelRequestBodies.length}`,
+        },
+      });
+    },
+  });
+
+  assert.equal(result.runStatus, "INCONCLUSIVE");
+  assert.equal(result.httpRequests, 89);
+  assert.equal(result.requestBudget.hotelSearchRequests, 80);
+  assert.equal(result.requestBudget.requestsByClass.authentication, 1);
+  assert.equal(result.requestBudget.requestsByClass.destination, 8);
+  assert.equal(result.logicalSearchesCompleted, 0);
+  assert.equal(result.logicalSearchesIncomplete, 40);
+  assert.equal(result.maxObservedConcurrency, 1);
+  assert.equal(hotelRequestBodies.length, 80);
+  assert.equal(hotelRequestBodies.slice(0, 40).some((body) => "nextResultsKey" in body), false);
+  assert.equal(hotelRequestBodies.slice(40).every((body) => "nextResultsKey" in body), true);
+  assert.equal(
+    result.incompleteSearches.every((search) => search.status === "BUDGET_BOUNDED_INCOMPLETE"),
+    true
+  );
+  assert.equal(
+    result.scenarios.every((scenario) => scenario.fixedBaseline === null),
+    true
+  );
+  assert.equal(JSON.stringify(result).includes("memory-hotel-"), false);
+  assert.equal(JSON.stringify(result).includes("memory-session-token"), false);
 });
 
 test("search-level normalization uses ourprice only, ignores provider saving and persists only run-local identity", async () => {
