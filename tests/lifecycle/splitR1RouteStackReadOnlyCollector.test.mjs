@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   SPLIT_R1_AUTH_ENDPOINT,
+  SPLIT_R1_CAUSAL_LEDGER_VERSION,
   SPLIT_R1_DESTINATION_ENDPOINT,
   SPLIT_R1_EXPECTED_DURATIONS,
   SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
@@ -19,6 +20,7 @@ import {
   SPLIT_R1_REPOSITORY_ROOT,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
+  buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
   createSplitR1RequestBudgetLedger,
   createSplitR1ContinuationRequest,
@@ -27,15 +29,19 @@ import {
   createSplitR1NativeTransport,
   createSplitR1PartnerTokenRequest,
   evaluateSplitR1SearchLevelScenario,
+  fingerprintSplitR1Identifier,
+  normalizeSplitR1SearchPage,
   normalizeSplitR1SearchResponse,
   parseSplitR1Arguments,
   runSplitR1Collector,
+  replaySplitR1CausalLedger,
   selectSplitR1DestinationCandidate,
   validateSplitR1BaseUrl,
 } from "../../scripts/run-split-r1-routestack-read-only-collector.mjs";
 import {
   buildSplitF0LogicalSearchPlan,
   loadSplitF0ScenarioMatrix,
+  stableStringifySplitF0,
 } from "../../scripts/run-split-f0-read-only-collector.mjs";
 
 const TEST_KEY = Buffer.alloc(32, 7);
@@ -126,6 +132,27 @@ function coordinateLessRomePayload(id = "memory-rome-destination") {
         coordinates: { lat: 44.4268, long: 26.1025 },
       },
     ],
+  };
+}
+
+function causalPage(logicalSearch, hotels, {
+  currency = "EUR",
+  key = TEST_KEY,
+} = {}) {
+  return normalizeSplitR1SearchPage(
+    { result: { currency, result: hotels } },
+    { logicalSearch, ephemeralRunKey: key }
+  );
+}
+
+function causalSearchState(logicalSearch, pages, status = "COMPLETE") {
+  return {
+    logicalSearch,
+    status,
+    initialPageCount: pages.length > 0 ? 1 : 0,
+    continuationCount: Math.max(0, pages.length - 1),
+    pageDiagnostics: pages,
+    offers: pages.flatMap((page) => page.offers),
   };
 }
 
@@ -842,6 +869,230 @@ test("same-property segment pair is not a Split and unsupported monetary precisi
     { logicalSearch, ephemeralRunKey: TEST_KEY }
   );
   assert.deepEqual(normalized, []);
+});
+
+test("causal normalization reconciles every raw result and minimizes duplicate property prices", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const logicalSearch = buildSplitF0LogicalSearchPlan(matrix)[0];
+  const page = causalPage(logicalSearch, [
+    rawHotel("raw-ledger-good", 100),
+    rawHotel("raw-ledger-good", 90),
+    rawHotel("", 80),
+    { id: "raw-ledger-missing-price" },
+    { id: "raw-ledger-nonnumeric", ourprice: "not-a-number" },
+    rawHotel("raw-ledger-nonpositive", 0),
+    rawHotel("raw-ledger-precision", 1.001),
+  ]);
+  const missingCurrencyPage = normalizeSplitR1SearchPage(
+    { result: { result: [rawHotel("raw-ledger-no-currency", 10)] } },
+    { logicalSearch, ephemeralRunKey: TEST_KEY }
+  );
+  const mismatchPage = causalPage(logicalSearch, [rawHotel("raw-ledger-usd", 10)], {
+    currency: "USD",
+  });
+  assert.equal(missingCurrencyPage.rejectionCounts.MISSING_CURRENCY, 1);
+  assert.equal(mismatchPage.rejectionCounts.CURRENCY_MISMATCH, 1);
+  assert.equal(mismatchPage.offers.length, 1);
+  const mismatchLedger = buildSplitR1CausalLedger(
+    matrix,
+    [causalSearchState(logicalSearch, [mismatchPage])]
+  );
+  assert.equal(mismatchLedger.searches[0].normalizedResultCount, 0);
+  assert.equal(mismatchLedger.searches[0].rejectionCounts.CURRENCY_MISMATCH, 1);
+
+  const ledger = buildSplitR1CausalLedger(matrix, [causalSearchState(logicalSearch, [page])]);
+  const search = ledger.searches[0];
+  assert.equal(ledger.schemaVersion, SPLIT_R1_CAUSAL_LEDGER_VERSION);
+  assert.equal(search.rawResultCount, 7);
+  assert.equal(search.funnel.RAW_RESULTS, 7);
+  assert.equal(search.normalizedResultCount, 1);
+  assert.equal(search.rejectionCounts.MISSING_PROPERTY_ID, 1);
+  assert.equal(search.rejectionCounts.MISSING_OURPRICE, 1);
+  assert.equal(search.rejectionCounts.NON_NUMERIC_OURPRICE, 1);
+  assert.equal(search.rejectionCounts.NON_POSITIVE_OURPRICE, 1);
+  assert.equal(search.rejectionCounts.UNSUPPORTED_PRECISION, 1);
+  assert.equal(search.rejectionCounts.DUPLICATE_PROPERTY_WORSE_PRICE, 1);
+  assert.equal(search.properties[0].bestOurpriceMinor, 9_000);
+  assert.equal(search.funnelReconciled, true);
+  assert.equal(search.initialPageCount, 1);
+  assert.equal(search.continuationPageCount, 0);
+
+  const sameRun = fingerprintSplitR1Identifier("raw-ledger-good", TEST_KEY);
+  assert.equal(search.properties[0].propertyFingerprint, sameRun);
+  assert.equal(fingerprintSplitR1Identifier("raw-ledger-good", TEST_KEY), sameRun);
+  assert.notEqual(
+    fingerprintSplitR1Identifier("raw-ledger-good", Buffer.alloc(32, 8)),
+    sameRun
+  );
+  const serialized = stableStringifySplitF0(ledger);
+  for (const forbidden of [
+    "raw-ledger-good",
+    "raw-ledger-missing-price",
+    "raw-ledger-nonnumeric",
+    "raw-ledger-nonpositive",
+    "raw-ledger-precision",
+  ]) {
+    assert.equal(serialized.includes(forbidden), false);
+  }
+  assert.equal(serialized.includes(TEST_KEY.toString("hex")), false);
+  assert.equal(ledger.privacy.ephemeralSecretPersisted, false);
+  assert.equal(ledger.privacy.crossRunLinkability, false);
+  assert.equal(ledger.privacy.rawIdentifiersPersisted, 0);
+});
+
+test("causal ledger preserves segment decomposition and replays headline plus counterfactuals deterministically", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const scenario = matrix.scenarios[0];
+  const searches = buildSplitF0LogicalSearchPlan(matrix).filter(
+    (search) => search.scenarioId === scenario.scenarioId
+  );
+  const full = searches.find((search) => search.kind === "full-stay");
+  const states = searches.map((search) => {
+    if (search === full) {
+      return causalSearchState(search, [causalPage(search, [
+        rawHotel("raw-fixed-single", 500),
+        rawHotel("raw-common-a", 700),
+        rawHotel("raw-common-b", 800),
+        rawHotel("raw-full-duplicate", 600),
+        rawHotel("raw-full-duplicate", 550),
+      ])]);
+    }
+    if (search.splitPointId === scenario.splitPoints[0].splitPointId) {
+      return causalSearchState(search, [causalPage(search, search.segmentOrdinal === 0
+        ? [
+            rawHotel("raw-same-property", 10),
+            rawHotel("raw-segment-a", 20),
+            rawHotel("raw-common-a", 21),
+            rawHotel("raw-common-b", 21.5),
+          ]
+        : [
+            rawHotel("raw-same-property", 10),
+            rawHotel("raw-segment-b", 20),
+            rawHotel("raw-common-a", 22),
+            rawHotel("raw-common-b", 22.5),
+          ])]);
+    }
+    return causalSearchState(search, [causalPage(search, search.segmentOrdinal === 0
+      ? [rawHotel("raw-alt-a", 240), rawHotel("raw-alt-same", 230)]
+      : [rawHotel("raw-alt-b", 250), rawHotel("raw-alt-same", 230)])]);
+  });
+  const ledger = buildSplitR1CausalLedger(matrix, states);
+  const scenarioReplay = ledger.replay.scenarios.find(
+    (entry) => entry.scenarioId === scenario.scenarioId
+  );
+  const current = scenarioReplay.counterfactuals.find(
+    (entry) => entry.mode === "CURRENT_DISTINCT_PROPERTY_POLICY"
+  );
+  const halfCurrent = current.splitResults.find(
+    (entry) => entry.splitPointId === scenario.splitPoints[0].splitPointId
+  );
+  assert.notEqual(
+    halfCurrent.selectedPair.segment1PropertyFingerprint,
+    halfCurrent.selectedPair.segment2PropertyFingerprint
+  );
+  assert.equal(
+    halfCurrent.selectedPair.segment1Minor + halfCurrent.selectedPair.segment2Minor,
+    halfCurrent.selectedPair.splitTotalMinor
+  );
+  assert.equal(halfCurrent.selectedPair.fixedSingleMinor, 50_000);
+  assert.equal(halfCurrent.selectedPair.grossSavingMinor, 47_000);
+  assert.equal(halfCurrent.selectedPair.frictionSensitivity.length, 6);
+  assert.equal(halfCurrent.selectedPair.breakEven.length, 6);
+  assert.equal(halfCurrent.selectedPair.classification, "OUTLIER_DIAGNOSTIC");
+  assert.ok(halfCurrent.funnel.SAME_PROPERTY_PAIR > 0);
+  assert.ok(halfCurrent.funnel.CONDITIONAL_PAIR_ACCEPTED > 0);
+
+  const sameAllowed = scenarioReplay.counterfactuals.find(
+    (entry) => entry.mode === "SAME_PROPERTY_ALLOWED_DIAGNOSTIC"
+  ).splitResults[0].selectedPair;
+  assert.equal(sameAllowed.segment1PropertyFingerprint, sameAllowed.segment2PropertyFingerprint);
+  assert.equal(sameAllowed.splitTotalMinor, 2_000);
+  const noDistinct = scenarioReplay.counterfactuals.find(
+    (entry) => entry.mode === "NO_DISTINCT_PROPERTY_REQUIREMENT"
+  ).splitResults[0].selectedPair;
+  assert.deepEqual(noDistinct, sameAllowed);
+
+  const commonUniverse = scenarioReplay.counterfactuals.find(
+    (entry) => entry.mode === "COMMON_PROPERTY_UNIVERSE_ONLY"
+  ).splitResults[0].selectedPair;
+  assert.ok(commonUniverse);
+  assert.notEqual(
+    commonUniverse.segment1PropertyFingerprint,
+    commonUniverse.segment2PropertyFingerprint
+  );
+  const fullIntersection = scenarioReplay.counterfactuals.find(
+    (entry) => entry.mode === "FULL_STAY_AND_BOTH_SEGMENTS_INTERSECTION"
+  ).splitResults[0].selectedPair;
+  assert.ok(fullIntersection);
+
+  const directHeadline = evaluateSplitR1SearchLevelScenario(
+    scenario,
+    states.flatMap((state) => state.offers)
+  );
+  assert.equal(
+    stableStringifySplitF0(scenarioReplay.headline),
+    stableStringifySplitF0(directHeadline)
+  );
+  assert.equal(scenarioReplay.headline.fixedBaseline.totalMinorUnits, 50_000);
+  assert.equal(scenarioReplay.headline.strictComparisons, 0);
+  assert.equal(scenarioReplay.headline.splitResults[0].headlineEligible, false);
+  assert.equal(ledger.priceNature, "UNPROVEN_SEARCH_LEVEL_WINDOW_PRICE");
+  assert.equal(ledger.economicPolicy.distinctPropertyRequired, true);
+
+  const reordered = structuredClone(ledger);
+  reordered.searches.reverse();
+  for (const search of reordered.searches) search.properties.reverse();
+  assert.equal(
+    stableStringifySplitF0(replaySplitR1CausalLedger(reordered)),
+    stableStringifySplitF0(ledger.replay)
+  );
+  assert.equal(
+    stableStringifySplitF0(replaySplitR1CausalLedger(ledger)),
+    stableStringifySplitF0(ledger.replay)
+  );
+});
+
+test("causal replay explains missing full baseline while preserving segment-only observations", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const scenario = matrix.scenarios[1];
+  const searches = buildSplitF0LogicalSearchPlan(matrix).filter(
+    (search) => search.scenarioId === scenario.scenarioId
+  );
+  const states = searches.map((search) => causalSearchState(search, [
+    causalPage(search, search.kind === "full-stay"
+      ? [{ id: "raw-full-without-price" }]
+      : [rawHotel(`raw-segment-only-${search.logicalSearchId}`, 100)])
+  ]));
+  const ledger = buildSplitR1CausalLedger(matrix, states);
+  const fullSearch = ledger.searches.find(
+    (search) => search.scenarioId === scenario.scenarioId && search.searchRole === "FULL_STAY"
+  );
+  assert.equal(fullSearch.rawResultCount, 1);
+  assert.equal(fullSearch.normalizedResultCount, 0);
+  assert.equal(fullSearch.rejectionCounts.MISSING_OURPRICE, 1);
+  const scenarioReplay = ledger.replay.scenarios.find(
+    (entry) => entry.scenarioId === scenario.scenarioId
+  );
+  assert.equal(scenarioReplay.headline.fixedBaseline, null);
+  assert.equal(
+    scenarioReplay.headline.splitResults.every(
+      (result) => result.reason === "fixed-full-stay-baseline-missing"
+    ),
+    true
+  );
+  const unconstrained = scenarioReplay.counterfactuals.find(
+    (entry) => entry.mode === "UNCONSTRAINED_BEST_OBSERVED_SPLIT"
+  );
+  assert.ok(unconstrained.splitResults[0].selectedPair);
+  assert.equal(unconstrained.splitResults[0].selectedPair.fixedSingleMinor, null);
+  assert.equal(
+    unconstrained.splitResults[0].selectedPair.classification,
+    "DIAGNOSTIC_WITHOUT_FIXED_BASELINE"
+  );
+  assert.equal(
+    unconstrained.splitResults[0].funnel.NO_FULL_STAY_BASELINE,
+    1
+  );
 });
 
 test("persisted payload scan rejects secret and provider-session key names", () => {

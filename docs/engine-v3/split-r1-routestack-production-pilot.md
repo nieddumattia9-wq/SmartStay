@@ -66,3 +66,25 @@ Provider identities are transformed with an HMAC-SHA256 key created in memory fo
 Details, rooms-and-rates, revalidation, prebook, booking, cancellation and payment endpoints are unreachable from the allowlist. Continuation reuses the original search body and the same in-memory session values; a third continuation is rejected.
 
 The collector remains private, provider-specific acquisition infrastructure. The F0 economic contract remains the provider-neutral decision-analysis boundary, and no R1 output is linked to public runtime or policy.
+
+## Sanitized causal ledger and offline replay
+
+Future live captures include the versioned diagnostic contract `stayopti.split-r1.causal-ledger@1`. This addition does not change the search-level economic policy or reinterpret the R1B.7 result. It records enough minimized evidence to reproduce and explain a future result without another provider request.
+
+Each logical search records its scenario and window, `FULL_STAY`, `SEGMENT_1` or `SEGMENT_2` role, completion status, initial and continuation page counts, raw and normalized counts, and a deterministic rejection funnel. Raw observations reconcile to first-cause rejections, one best admissible price per run-local property fingerprint, and duplicate-property worse-price counts. Incomplete searches remain visible in the ledger but stay excluded from the economic headline.
+
+The rejection vocabulary separates missing property identity or price, non-numeric and non-positive prices, missing or mismatched currency, unsupported monetary precision, worse duplicates and incomplete searches. Scenario replay separately counts a missing fixed baseline, temporal mismatch, missing segment candidates, same-property pairs, absence of a distinct-property pair and accepted conditional pairs. No quality or location gate is invented at this search-level layer.
+
+For each selected conditional Split, the replay preserves the two run-local property fingerprints, each segment price in integer minor units, their integer sum, the fixed single baseline, gross difference, ratio, the frozen EUR 0/25/50/75/100/150 friction analysis and outlier classification. Full cross-products are derived from the minimized per-property best-price universe rather than redundantly persisted.
+
+Pure replay modes are diagnostic and cannot alter the primary result:
+
+- `CURRENT_DISTINCT_PROPERTY_POLICY` reproduces the current fixed-baseline and distinct-property rule;
+- `SAME_PROPERTY_ALLOWED_DIAGNOSTIC` and `NO_DISTINCT_PROPERTY_REQUIREMENT` show the isolated effect of relaxing the distinct-property constraint;
+- `UNCONSTRAINED_BEST_OBSERVED_SPLIT` retains the best observed segment pair even when no fixed full-stay baseline exists, without promoting it to a saving;
+- `COMMON_PROPERTY_UNIVERSE_ONLY` limits candidates to properties observed full-stay and in at least one segment window;
+- `FULL_STAY_AND_BOTH_SEGMENTS_INTERSECTION` uses only properties observed in all three windows.
+
+The baseline remains selected before any Split, comparisons remain conditional, `ourprice` retains `UNPROVEN_SEARCH_LEVEL_WINDOW_PRICE`, strict comparisons remain zero, and outliers remain quarantined. A future capture fails if replay does not reproduce the primary scenario result byte-for-byte after canonical serialization. Search and property order do not influence replay.
+
+Property pseudonyms are `HMAC-SHA256(runEphemeralSecret, rawPropertyIdentity)`. The secret is generated in memory, is never persisted and deliberately changes between runs; therefore fingerprints support correlations only inside one capture. Raw property, offer and destination identifiers, hotel names, addresses, URLs, credentials, session material, payloads and PII remain prohibited.

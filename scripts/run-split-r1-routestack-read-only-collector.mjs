@@ -32,6 +32,7 @@ export const SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS = 1;
 export const SPLIT_R1_RETRIES = 0;
 export const SPLIT_R1_CONCURRENCY = 1;
 export const SPLIT_R1_HTTP_TIMEOUT_MS = 120_000;
+export const SPLIT_R1_CAUSAL_LEDGER_VERSION = "stayopti.split-r1.causal-ledger@1";
 export const SPLIT_R1_LIVE_CONFIRMATIONS = [
   "--execute-production-read-only",
   "--confirm-routestack-search-only",
@@ -105,6 +106,33 @@ const SPLIT_R1_DESTINATION_COUNTRY_ALIASES = Object.freeze({
 });
 
 const SPLIT_R1_COMPATIBLE_DESTINATION_TYPES = new Set(["city", "destination"]);
+
+const SPLIT_R1_SEARCH_REJECTION_REASONS = Object.freeze([
+  "MISSING_PROPERTY_ID",
+  "MISSING_OURPRICE",
+  "NON_NUMERIC_OURPRICE",
+  "NON_POSITIVE_OURPRICE",
+  "MISSING_CURRENCY",
+  "CURRENCY_MISMATCH",
+  "UNSUPPORTED_PRECISION",
+  "DUPLICATE_PROPERTY_WORSE_PRICE",
+  "SEARCH_INCOMPLETE",
+]);
+
+const SPLIT_R1_PAIR_FUNNEL_REASONS = Object.freeze([
+  "NO_FULL_STAY_BASELINE",
+  "SAME_PROPERTY_PAIR",
+  "TEMPORAL_MISMATCH",
+  "NO_SEGMENT_CANDIDATE",
+  "NO_DISTINCT_PROPERTY_PAIR",
+  "CONDITIONAL_PAIR_ACCEPTED",
+]);
+
+const SPLIT_R1_EVIDENCE_LIMITS = Object.freeze([
+  "search-level-total-cost-semantics-unproven",
+  "taxes-and-mandatory-costs-unproven",
+  "room-board-cancellation-payment-unproven",
+]);
 
 function uniqueSorted(values) {
   return [...new Set(values)].sort();
@@ -493,22 +521,66 @@ export function fingerprintSplitR1Identifier(rawIdentifier, ephemeralRunKey) {
   return `hmac-sha256:${crypto.createHmac("sha256", ephemeralRunKey).update(rawIdentifier).digest("hex")}`;
 }
 
-export function normalizeSplitR1SearchResponse(payload, { logicalSearch, ephemeralRunKey }) {
+function emptySplitR1SearchRejectionCounts() {
+  return Object.fromEntries(SPLIT_R1_SEARCH_REJECTION_REASONS.map((reason) => [reason, 0]));
+}
+
+function splitR1SearchRole(logicalSearch) {
+  if (logicalSearch.kind === "full-stay") return "FULL_STAY";
+  if (logicalSearch.kind === "split-segment" && logicalSearch.segmentOrdinal === 0) {
+    return "SEGMENT_1";
+  }
+  if (logicalSearch.kind === "split-segment" && logicalSearch.segmentOrdinal === 1) {
+    return "SEGMENT_2";
+  }
+  throw new Error("split-r1-causal-search-role-invalid");
+}
+
+export function normalizeSplitR1SearchPage(payload, { logicalSearch, ephemeralRunKey }) {
   const container = normalizeResponseContainer(payload);
   const currency = typeof container?.currency === "string" && container.currency.length === 3
     ? container.currency.toUpperCase()
     : null;
+  const expectedCurrency = logicalSearch?.request?.currency;
+  const items = getResponseItems(payload);
+  const rejectionCounts = emptySplitR1SearchRejectionCounts();
   const normalized = [];
-  for (const hotel of getResponseItems(payload)) {
+  for (const hotel of items) {
     const rawId = hotel?.id ?? hotel?.hotelId;
-    const price = finiteNumber(hotel?.ourprice);
-    if (typeof rawId !== "string" || rawId.length === 0 || currency === null || price === null || price <= 0) {
+    if (typeof rawId !== "string" || rawId.length === 0) {
+      rejectionCounts.MISSING_PROPERTY_ID += 1;
       continue;
+    }
+    if (
+      !Object.prototype.hasOwnProperty.call(hotel ?? {}, "ourprice") ||
+      hotel.ourprice === null ||
+      hotel.ourprice === undefined ||
+      hotel.ourprice === ""
+    ) {
+      rejectionCounts.MISSING_OURPRICE += 1;
+      continue;
+    }
+    const price = finiteNumber(hotel.ourprice);
+    if (price === null) {
+      rejectionCounts.NON_NUMERIC_OURPRICE += 1;
+      continue;
+    }
+    if (price <= 0) {
+      rejectionCounts.NON_POSITIVE_OURPRICE += 1;
+      continue;
+    }
+    if (currency === null) {
+      rejectionCounts.MISSING_CURRENCY += 1;
+      continue;
+    }
+    if (currency !== expectedCurrency) {
+      rejectionCounts.CURRENCY_MISMATCH += 1;
     }
     let totalMinorUnits;
     try {
       totalMinorUnits = splitF0MoneyToMinorUnitsV1(price);
     } catch {
+      rejectionCounts.UNSUPPORTED_PRECISION += 1;
       continue;
     }
     normalized.push({
@@ -526,18 +598,22 @@ export function normalizeSplitR1SearchResponse(payload, { logicalSearch, ephemer
       providerSavingUsed: false,
       taxCompleteness: "unknown",
       comparabilityCeiling: "CONDITIONAL_COMPARABLE",
-      evidenceLimits: [
-        "search-level-total-cost-semantics-unproven",
-        "taxes-and-mandatory-costs-unproven",
-        "room-board-cancellation-payment-unproven",
-      ],
+      evidenceLimits: [...SPLIT_R1_EVIDENCE_LIMITS],
     });
   }
-  return normalized.sort(
-    (left, right) =>
-      left.totalMinorUnits - right.totalMinorUnits ||
-      left.propertyFingerprint.localeCompare(right.propertyFingerprint)
-  );
+  return {
+    rawResultCount: items.length,
+    rejectionCounts,
+    offers: normalized.sort(
+      (left, right) =>
+        left.totalMinorUnits - right.totalMinorUnits ||
+        left.propertyFingerprint.localeCompare(right.propertyFingerprint)
+    ),
+  };
+}
+
+export function normalizeSplitR1SearchResponse(payload, context) {
+  return normalizeSplitR1SearchPage(payload, context).offers;
 }
 
 function frictionSensitivity(grossSavingMinorUnits) {
@@ -645,6 +721,414 @@ export function evaluateSplitR1SearchLevelScenario(scenario, offers) {
     ).length,
     splitResults,
   };
+}
+
+function emptySplitR1PairFunnel() {
+  return Object.fromEntries(SPLIT_R1_PAIR_FUNNEL_REASONS.map((reason) => [reason, 0]));
+}
+
+function compareSplitR1Properties(left, right) {
+  return (
+    left.bestOurpriceMinor - right.bestOurpriceMinor ||
+    left.propertyFingerprint.localeCompare(right.propertyFingerprint)
+  );
+}
+
+function compareSplitR1Pairs(left, right) {
+  return (
+    left.splitTotalMinor - right.splitTotalMinor ||
+    left.segment1.propertyFingerprint.localeCompare(right.segment1.propertyFingerprint) ||
+    left.segment2.propertyFingerprint.localeCompare(right.segment2.propertyFingerprint)
+  );
+}
+
+function splitR1WindowNights(checkIn, checkOut) {
+  const start = new Date(`${checkIn}T00:00:00.000Z`);
+  const end = new Date(`${checkOut}T00:00:00.000Z`);
+  const nights = (end.getTime() - start.getTime()) / 86_400_000;
+  if (!Number.isSafeInteger(nights) || nights < 1) {
+    throw new Error("split-r1-causal-window-invalid");
+  }
+  return nights;
+}
+
+function aggregateSplitR1SearchState(state, scenario) {
+  const rejectionCounts = emptySplitR1SearchRejectionCounts();
+  const pageDiagnostics = Array.isArray(state.pageDiagnostics) ? state.pageDiagnostics : [];
+  const rawResultCount = pageDiagnostics.reduce((total, page) => total + page.rawResultCount, 0);
+  for (const page of pageDiagnostics) {
+    for (const reason of SPLIT_R1_SEARCH_REJECTION_REASONS) {
+      if (reason === "DUPLICATE_PROPERTY_WORSE_PRICE" || reason === "SEARCH_INCOMPLETE") continue;
+      rejectionCounts[reason] += page.rejectionCounts[reason] ?? 0;
+    }
+  }
+  const economicallyEligibleOffers = (state.offers ?? []).filter(
+    (offer) => offer.currency === scenario.currency
+  );
+  const bestByProperty = new Map();
+  for (const offer of economicallyEligibleOffers) {
+    const prior = bestByProperty.get(offer.propertyFingerprint);
+    if (
+      prior === undefined ||
+      offer.totalMinorUnits < prior.totalMinorUnits
+    ) {
+      bestByProperty.set(offer.propertyFingerprint, offer);
+    }
+  }
+  rejectionCounts.DUPLICATE_PROPERTY_WORSE_PRICE =
+    economicallyEligibleOffers.length - bestByProperty.size;
+  rejectionCounts.SEARCH_INCOMPLETE = state.status === "COMPLETE" ? 0 : 1;
+  const directRejected = SPLIT_R1_SEARCH_REJECTION_REASONS
+    .filter((reason) => reason !== "DUPLICATE_PROPERTY_WORSE_PRICE" && reason !== "SEARCH_INCOMPLETE")
+    .reduce((total, reason) => total + rejectionCounts[reason], 0);
+  const reconciledRawResultCount = directRejected +
+    rejectionCounts.DUPLICATE_PROPERTY_WORSE_PRICE +
+    bestByProperty.size;
+  if (pageDiagnostics.length > 0 && reconciledRawResultCount !== rawResultCount) {
+    throw new Error("split-r1-causal-search-funnel-not-reconciled");
+  }
+  const logicalSearch = state.logicalSearch;
+  return {
+    logicalSearchId: logicalSearch.logicalSearchId,
+    scenarioId: logicalSearch.scenarioId,
+    duration: scenario.nights,
+    searchRole: splitR1SearchRole(logicalSearch),
+    splitPointId: logicalSearch.splitPointId,
+    checkIn: logicalSearch.request.checkIn,
+    checkOut: logicalSearch.request.checkOut,
+    windowNights: splitR1WindowNights(
+      logicalSearch.request.checkIn,
+      logicalSearch.request.checkOut
+    ),
+    currency: logicalSearch.request.currency,
+    requestCompletionStatus: state.status,
+    initialPageCount: state.initialPageCount ?? 0,
+    continuationPageCount: state.continuationCount ?? 0,
+    pageCount: (state.initialPageCount ?? 0) + (state.continuationCount ?? 0),
+    rawResultCount,
+    normalizedResultCount: bestByProperty.size,
+    rejectionCounts,
+    funnel: {
+      RAW_RESULTS: rawResultCount,
+      ...rejectionCounts,
+    },
+    funnelReconciled:
+      pageDiagnostics.length === 0 || reconciledRawResultCount === rawResultCount,
+    properties: [...bestByProperty.values()]
+      .map((offer) => ({
+        propertyFingerprint: offer.propertyFingerprint,
+        bestOurpriceMinor: offer.totalMinorUnits,
+        currency: offer.currency,
+        searchRole: splitR1SearchRole(logicalSearch),
+        scenarioId: logicalSearch.scenarioId,
+        splitPointId: logicalSearch.splitPointId,
+        requiredFieldsPresent: {
+          propertyIdentity: true,
+          ourprice: true,
+          currency: true,
+        },
+      }))
+      .sort(compareSplitR1Properties),
+  };
+}
+
+function buildSplitR1CausalScenarioRecords(matrix, logicalSearches) {
+  return matrix.scenarios.map((scenario) => ({
+    scenarioId: scenario.scenarioId,
+    duration: scenario.nights,
+    checkIn: scenario.checkIn,
+    checkOut: scenario.checkOut,
+    currency: scenario.currency,
+    splitPoints: scenario.splitPoints.map((splitPoint) => {
+      const first = logicalSearches.find(
+        (search) =>
+          search.scenarioId === scenario.scenarioId &&
+          search.splitPointId === splitPoint.splitPointId &&
+          search.segmentOrdinal === 0
+      );
+      const second = logicalSearches.find(
+        (search) =>
+          search.scenarioId === scenario.scenarioId &&
+          search.splitPointId === splitPoint.splitPointId &&
+          search.segmentOrdinal === 1
+      );
+      if (!first || !second) throw new Error("split-r1-causal-segment-plan-missing");
+      return {
+        splitPointId: splitPoint.splitPointId,
+        segment1: {
+          checkIn: first.request.checkIn,
+          checkOut: first.request.checkOut,
+          nights: first.request.nights,
+        },
+        segment2: {
+          checkIn: second.request.checkIn,
+          checkOut: second.request.checkOut,
+          nights: second.request.nights,
+        },
+      };
+    }),
+  }));
+}
+
+function splitR1LedgerOffers(searches) {
+  return searches.flatMap((search) => search.properties.map((property) => ({
+    schemaVersion: "stayopti.split-r1.search-level-offer@1",
+    logicalSearchId: search.logicalSearchId,
+    scenarioId: search.scenarioId,
+    searchKind: search.searchRole === "FULL_STAY" ? "full-stay" : "split-segment",
+    splitPointId: search.splitPointId,
+    segmentOrdinal:
+      search.searchRole === "SEGMENT_1" ? 0 : search.searchRole === "SEGMENT_2" ? 1 : null,
+    propertyFingerprint: property.propertyFingerprint,
+    totalMinorUnits: property.bestOurpriceMinor,
+    total: splitF0MinorUnitsToMoneyV1(property.bestOurpriceMinor),
+    currency: property.currency,
+    basePriceDiagnosticAvailable: false,
+    providerSavingUsed: false,
+    taxCompleteness: "unknown",
+    comparabilityCeiling: "CONDITIONAL_COMPARABLE",
+    evidenceLimits: [...SPLIT_R1_EVIDENCE_LIMITS],
+  })));
+}
+
+function splitR1TemporalCoverageValid(scenario, splitPoint, firstSearch, secondSearch) {
+  return Boolean(
+    firstSearch &&
+    secondSearch &&
+    firstSearch.checkIn === scenario.checkIn &&
+    firstSearch.checkOut === secondSearch.checkIn &&
+    secondSearch.checkOut === scenario.checkOut &&
+    firstSearch.checkIn === splitPoint.segment1.checkIn &&
+    firstSearch.checkOut === splitPoint.segment1.checkOut &&
+    secondSearch.checkIn === splitPoint.segment2.checkIn &&
+    secondSearch.checkOut === splitPoint.segment2.checkOut &&
+    firstSearch.windowNights + secondSearch.windowNights === scenario.duration
+  );
+}
+
+function bestSplitR1Pair(firstProperties, secondProperties, allowSameProperty) {
+  let bestPair = null;
+  let samePropertyPairs = 0;
+  let acceptedPairs = 0;
+  for (const segment1 of firstProperties) {
+    for (const segment2 of secondProperties) {
+      if (segment1.propertyFingerprint === segment2.propertyFingerprint && !allowSameProperty) {
+        samePropertyPairs += 1;
+        continue;
+      }
+      acceptedPairs += 1;
+      const candidate = {
+        segment1,
+        segment2,
+        splitTotalMinor: segment1.bestOurpriceMinor + segment2.bestOurpriceMinor,
+      };
+      if (bestPair === null || compareSplitR1Pairs(candidate, bestPair) < 0) bestPair = candidate;
+    }
+  }
+  return { bestPair, samePropertyPairs, acceptedPairs };
+}
+
+function splitR1BreakEven(grossSavingMinor) {
+  return SPLIT_F0_FRICTION_SENSITIVITY_EUR_V1.map((frictionEur) => {
+    const frictionMinor = splitF0MoneyToMinorUnitsV1(frictionEur);
+    const requiredImprovementMinor = Math.max(0, frictionMinor - grossSavingMinor);
+    return {
+      hypotheticalFrictionEur: frictionEur,
+      requiredImprovementMinor,
+      requiredImprovement: splitF0MinorUnitsToMoneyV1(requiredImprovementMinor),
+    };
+  });
+}
+
+function splitR1SelectedPairRecord(baseline, pair) {
+  if (pair === null) return null;
+  const grossSavingMinor = baseline === null
+    ? null
+    : baseline.bestOurpriceMinor - pair.splitTotalMinor;
+  const grossSavingRatio = baseline === null
+    ? null
+    : grossSavingMinor / baseline.bestOurpriceMinor;
+  const outlierFlags = grossSavingRatio !== null && Math.abs(grossSavingRatio) > 0.5
+    ? ["SAVING_RATIO_OUTLIER"]
+    : [];
+  return {
+    segment1PropertyFingerprint: pair.segment1.propertyFingerprint,
+    segment2PropertyFingerprint: pair.segment2.propertyFingerprint,
+    segment1Minor: pair.segment1.bestOurpriceMinor,
+    segment2Minor: pair.segment2.bestOurpriceMinor,
+    splitTotalMinor: pair.splitTotalMinor,
+    fixedSingleMinor: baseline?.bestOurpriceMinor ?? null,
+    grossSavingMinor,
+    grossSavingRatio,
+    frictionSensitivity: grossSavingMinor === null ? [] : frictionSensitivity(grossSavingMinor),
+    breakEven: grossSavingMinor === null ? [] : splitR1BreakEven(grossSavingMinor),
+    classification:
+      grossSavingMinor === null
+        ? "DIAGNOSTIC_WITHOUT_FIXED_BASELINE"
+        : outlierFlags.length > 0
+          ? "OUTLIER_DIAGNOSTIC"
+          : "HEADLINE_CONDITIONAL",
+    outlierFlags,
+  };
+}
+
+function splitR1SetIntersection(left, right) {
+  return new Set([...left].filter((value) => right.has(value)));
+}
+
+function filterSplitR1Properties(properties, allowedFingerprints) {
+  if (allowedFingerprints === null) return properties;
+  return properties.filter((property) => allowedFingerprints.has(property.propertyFingerprint));
+}
+
+function evaluateSplitR1CounterfactualMode({
+  scenario,
+  searches,
+  mode,
+}) {
+  const fullSearch = searches.find((search) => search.searchRole === "FULL_STAY");
+  const fullProperties = [...(fullSearch?.properties ?? [])].sort(compareSplitR1Properties);
+  const results = [];
+  for (const splitPoint of scenario.splitPoints) {
+    const firstSearch = searches.find(
+      (search) => search.searchRole === "SEGMENT_1" && search.splitPointId === splitPoint.splitPointId
+    );
+    const secondSearch = searches.find(
+      (search) => search.searchRole === "SEGMENT_2" && search.splitPointId === splitPoint.splitPointId
+    );
+    const firstAll = [...(firstSearch?.properties ?? [])].sort(compareSplitR1Properties);
+    const secondAll = [...(secondSearch?.properties ?? [])].sort(compareSplitR1Properties);
+    const fullSet = new Set(fullProperties.map((property) => property.propertyFingerprint));
+    const firstSet = new Set(firstAll.map((property) => property.propertyFingerprint));
+    const secondSet = new Set(secondAll.map((property) => property.propertyFingerprint));
+    let allowedFingerprints = null;
+    if (mode === "COMMON_PROPERTY_UNIVERSE_ONLY") {
+      allowedFingerprints = splitR1SetIntersection(fullSet, new Set([...firstSet, ...secondSet]));
+    } else if (mode === "FULL_STAY_AND_BOTH_SEGMENTS_INTERSECTION") {
+      allowedFingerprints = splitR1SetIntersection(splitR1SetIntersection(fullSet, firstSet), secondSet);
+    }
+    const baselineCandidates = filterSplitR1Properties(fullProperties, allowedFingerprints);
+    const firstProperties = filterSplitR1Properties(firstAll, allowedFingerprints);
+    const secondProperties = filterSplitR1Properties(secondAll, allowedFingerprints);
+    const baseline = baselineCandidates[0] ?? null;
+    const allowSameProperty = [
+      "SAME_PROPERTY_ALLOWED_DIAGNOSTIC",
+      "UNCONSTRAINED_BEST_OBSERVED_SPLIT",
+      "NO_DISTINCT_PROPERTY_REQUIREMENT",
+    ].includes(mode);
+    const temporalValid = splitR1TemporalCoverageValid(
+      scenario,
+      splitPoint,
+      firstSearch,
+      secondSearch
+    );
+    const funnel = emptySplitR1PairFunnel();
+    if (baseline === null) funnel.NO_FULL_STAY_BASELINE = 1;
+    if (!temporalValid) funnel.TEMPORAL_MISMATCH = 1;
+    if (firstProperties.length === 0 || secondProperties.length === 0) {
+      funnel.NO_SEGMENT_CANDIDATE = 1;
+    }
+    const pairSelection = temporalValid
+      ? bestSplitR1Pair(firstProperties, secondProperties, allowSameProperty)
+      : { bestPair: null, samePropertyPairs: 0, acceptedPairs: 0 };
+    funnel.SAME_PROPERTY_PAIR = pairSelection.samePropertyPairs;
+    funnel.CONDITIONAL_PAIR_ACCEPTED = pairSelection.acceptedPairs;
+    if (
+      !allowSameProperty &&
+      firstProperties.length > 0 &&
+      secondProperties.length > 0 &&
+      pairSelection.acceptedPairs === 0
+    ) {
+      funnel.NO_DISTINCT_PROPERTY_PAIR = 1;
+    }
+    results.push({
+      splitPointId: splitPoint.splitPointId,
+      baselinePropertyFingerprint: baseline?.propertyFingerprint ?? null,
+      selectedPair: splitR1SelectedPairRecord(baseline, pairSelection.bestPair),
+      funnel,
+    });
+  }
+  return { mode, splitResults: results };
+}
+
+export function replaySplitR1CausalLedger(ledger) {
+  if (ledger?.schemaVersion !== SPLIT_R1_CAUSAL_LEDGER_VERSION) {
+    throw new Error("split-r1-causal-ledger-version-invalid");
+  }
+  const searches = [...ledger.searches].sort((left, right) =>
+    left.logicalSearchId.localeCompare(right.logicalSearchId)
+  );
+  const modes = [
+    "CURRENT_DISTINCT_PROPERTY_POLICY",
+    "SAME_PROPERTY_ALLOWED_DIAGNOSTIC",
+    "UNCONSTRAINED_BEST_OBSERVED_SPLIT",
+    "COMMON_PROPERTY_UNIVERSE_ONLY",
+    "FULL_STAY_AND_BOTH_SEGMENTS_INTERSECTION",
+    "NO_DISTINCT_PROPERTY_REQUIREMENT",
+  ];
+  return {
+    schemaVersion: "stayopti.split-r1.causal-replay@1",
+    scenarios: [...ledger.scenarios]
+      .sort((left, right) => left.scenarioId.localeCompare(right.scenarioId))
+      .map((scenario) => {
+        const scenarioSearches = searches.filter(
+          (search) =>
+            search.scenarioId === scenario.scenarioId &&
+            search.requestCompletionStatus === "COMPLETE"
+        );
+        const headline = evaluateSplitR1SearchLevelScenario(
+          { ...scenario, nights: scenario.duration },
+          splitR1LedgerOffers(scenarioSearches)
+        );
+        return {
+          scenarioId: scenario.scenarioId,
+          headline,
+          counterfactuals: modes.map((mode) =>
+            evaluateSplitR1CounterfactualMode({ scenario, searches: scenarioSearches, mode })
+          ),
+        };
+      }),
+  };
+}
+
+export function buildSplitR1CausalLedger(matrix, searchStates) {
+  const logicalSearches = buildSplitF0LogicalSearchPlan(matrix);
+  const scenarioById = new Map(matrix.scenarios.map((scenario) => [scenario.scenarioId, scenario]));
+  const baseLedger = {
+    schemaVersion: SPLIT_R1_CAUSAL_LEDGER_VERSION,
+    priceNature: "UNPROVEN_SEARCH_LEVEL_WINDOW_PRICE",
+    strictComparisons: 0,
+    comparability: "CONDITIONAL_SEARCH_LEVEL_ONLY",
+    economicPolicy: {
+      fixedBestSingle: true,
+      distinctPropertyRequired: true,
+      integerMinorUnits: true,
+      frictionSensitivityEur: [...SPLIT_F0_FRICTION_SENSITIVITY_EUR_V1],
+      outlierQuarantine: true,
+      publicRecommendationAllowed: false,
+      policyEligible: false,
+    },
+    privacy: {
+      propertyIdentity: "RUN_LOCAL_HMAC_SHA256",
+      ephemeralSecretPersisted: false,
+      crossRunLinkability: false,
+      rawIdentifiersPersisted: 0,
+      piiPersisted: 0,
+      commercialUrlsPersisted: 0,
+    },
+    scenarios: buildSplitR1CausalScenarioRecords(matrix, logicalSearches),
+    searches: [...searchStates]
+      .map((state) => {
+        const scenario = scenarioById.get(state.logicalSearch.scenarioId);
+        if (!scenario) throw new Error("split-r1-causal-scenario-missing");
+        return aggregateSplitR1SearchState(state, scenario);
+      })
+      .sort((left, right) => left.logicalSearchId.localeCompare(right.logicalSearchId)),
+  };
+  const replay = replaySplitR1CausalLedger(baseLedger);
+  const ledger = { ...baseLedger, replay };
+  assertSplitR1PersistedPayloadSafe(ledger);
+  return ledger;
 }
 
 export function assertSplitR1PersistedPayloadSafe(payload) {
@@ -1001,7 +1485,9 @@ export async function runSplitR1Collector({
       destinations.get(logicalSearch.scenarioId)
     ),
     latestResponse: null,
+    initialPageCount: 0,
     continuationCount: 0,
+    pageDiagnostics: [],
     offers: [],
     status: "PENDING_INITIAL",
   }));
@@ -1026,12 +1512,13 @@ export async function runSplitR1Collector({
       markAllPendingBudgetBounded();
       break;
     }
-    state.offers.push(
-      ...normalizeSplitR1SearchResponse(state.latestResponse, {
-        logicalSearch: state.logicalSearch,
-        ephemeralRunKey,
-      })
-    );
+    state.initialPageCount = 1;
+    const initialPage = normalizeSplitR1SearchPage(state.latestResponse, {
+      logicalSearch: state.logicalSearch,
+      ephemeralRunKey,
+    });
+    state.pageDiagnostics.push(initialPage);
+    state.offers.push(...initialPage.offers);
     const container = normalizeResponseContainer(state.latestResponse);
     state.status =
       typeof container?.nextResultsKey === "string" && container.nextResultsKey.length > 0
@@ -1068,12 +1555,12 @@ export async function runSplitR1Collector({
         break;
       }
       state.continuationCount += 1;
-      state.offers.push(
-        ...normalizeSplitR1SearchResponse(state.latestResponse, {
-          logicalSearch: state.logicalSearch,
-          ephemeralRunKey,
-        })
-      );
+      const continuationPage = normalizeSplitR1SearchPage(state.latestResponse, {
+        logicalSearch: state.logicalSearch,
+        ephemeralRunKey,
+      });
+      state.pageDiagnostics.push(continuationPage);
+      state.offers.push(...continuationPage.offers);
       const container = normalizeResponseContainer(state.latestResponse);
       state.status =
         typeof container?.nextResultsKey === "string" && container.nextResultsKey.length > 0
@@ -1093,6 +1580,20 @@ export async function runSplitR1Collector({
     .flatMap((state) => state.offers);
   const budgetSnapshot = transport.getBudgetSnapshot();
   const incompleteSearches = searchStates.filter((state) => state.status !== "COMPLETE");
+  const economicScenarios = matrix.scenarios.map((scenario) =>
+    evaluateSplitR1SearchLevelScenario(
+      scenario,
+      completedOffers.filter((offer) => offer.scenarioId === scenario.scenarioId)
+    )
+  );
+  const causalLedger = buildSplitR1CausalLedger(matrix, searchStates);
+  const replayedScenarios = causalLedger.replay.scenarios.map((scenario) => scenario.headline);
+  if (
+    stableStringifySplitF0(economicScenarios) !==
+    stableStringifySplitF0(replayedScenarios)
+  ) {
+    throw new Error("split-r1-causal-headline-replay-diverged");
+  }
   const result = {
     schemaVersion: "stayopti.split-r1.production-search-level-result@1",
     environment: "production",
@@ -1111,12 +1612,8 @@ export async function runSplitR1Collector({
       logicalSearchId: state.logicalSearch.logicalSearchId,
       status: state.status,
     })),
-    scenarios: matrix.scenarios.map((scenario) =>
-      evaluateSplitR1SearchLevelScenario(
-        scenario,
-        completedOffers.filter((offer) => offer.scenarioId === scenario.scenarioId)
-      )
-    ),
+    scenarios: economicScenarios,
+    causalLedger,
   };
   assertSplitR1PersistedPayloadSafe(result);
   return result;
