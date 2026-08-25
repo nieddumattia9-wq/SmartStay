@@ -26,6 +26,9 @@ export const SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET = 80;
 export const SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET = 100;
 export const SPLIT_R1_MAX_REQUESTS_PER_SECOND = 1;
 export const SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS = 1_000;
+export const SPLIT_R1_MAX_EARLY_WAKE_CYCLES = 10;
+export const SPLIT_R1_MAX_RATE_LIMIT_WAIT_MS = 5_000;
+export const SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS = 1;
 export const SPLIT_R1_RETRIES = 0;
 export const SPLIT_R1_CONCURRENCY = 1;
 export const SPLIT_R1_HTTP_TIMEOUT_MS = 120_000;
@@ -828,20 +831,34 @@ export function createSplitR1MonotonicRateLimiter({
   let lastRequestStart = null;
   return {
     async awaitStartSlot() {
-      const beforeWait = monotonicNow();
-      if (!Number.isFinite(beforeWait)) throw new Error("split-r1-monotonic-clock-invalid");
-      if (lastRequestStart !== null) {
-        const elapsed = beforeWait - lastRequestStart;
-        const waitMilliseconds = Math.max(0, minRequestStartIntervalMs - elapsed);
-        if (waitMilliseconds > 0) await sleep(waitMilliseconds);
-      }
-      const requestStart = monotonicNow();
+      let requestStart = monotonicNow();
       if (!Number.isFinite(requestStart)) throw new Error("split-r1-monotonic-clock-invalid");
-      if (
+      let earlyWakeCycles = 0;
+      let requestedWaitMilliseconds = 0;
+      while (
         lastRequestStart !== null &&
         requestStart - lastRequestStart < minRequestStartIntervalMs
       ) {
-        throw new Error("split-r1-rate-limit-interval-not-satisfied");
+        if (earlyWakeCycles >= SPLIT_R1_MAX_EARLY_WAKE_CYCLES) {
+          throw new Error("RATE_LIMIT_CLOCK_DID_NOT_PROGRESS");
+        }
+        const remainingMilliseconds =
+          minRequestStartIntervalMs - (requestStart - lastRequestStart);
+        const waitMilliseconds =
+          Math.ceil(remainingMilliseconds) + SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS;
+        if (
+          requestedWaitMilliseconds + waitMilliseconds >
+          SPLIT_R1_MAX_RATE_LIMIT_WAIT_MS
+        ) {
+          throw new Error("RATE_LIMIT_CLOCK_DID_NOT_PROGRESS");
+        }
+        await sleep(waitMilliseconds);
+        requestedWaitMilliseconds += waitMilliseconds;
+        earlyWakeCycles += 1;
+        requestStart = monotonicNow();
+        if (!Number.isFinite(requestStart)) {
+          throw new Error("split-r1-monotonic-clock-invalid");
+        }
       }
       lastRequestStart = requestStart;
       return requestStart;
@@ -886,11 +903,11 @@ export function createSplitR1NativeTransport({
   const performPost = async (endpointPath, body, bearerToken = null) => {
     assertSplitR1EndpointAllowed("POST", endpointPath);
     const requestClass = requestClassForEndpoint(endpointPath);
+    await rateLimiter.awaitStartSlot();
     const reservation = budgetLedger.reserve(requestClass);
     if (!reservation.reserved) {
       throw new SplitR1BudgetBoundedError(reservation.reason);
     }
-    await rateLimiter.awaitStartSlot();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     activeRequests += 1;

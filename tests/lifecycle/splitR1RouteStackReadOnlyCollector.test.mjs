@@ -11,8 +11,11 @@ import {
   SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
   SPLIT_R1_HARD_TOTAL_ROUTESTACK_HTTP_BUDGET,
   SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+  SPLIT_R1_MAX_EARLY_WAKE_CYCLES,
+  SPLIT_R1_MAX_RATE_LIMIT_WAIT_MS,
   SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
   SPLIT_R1_OFFICIAL_BASE_URL,
+  SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS,
   SPLIT_R1_REPOSITORY_ROOT,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
@@ -20,6 +23,7 @@ import {
   createSplitR1RequestBudgetLedger,
   createSplitR1ContinuationRequest,
   createSplitR1HotelSearchRequest,
+  createSplitR1MonotonicRateLimiter,
   createSplitR1NativeTransport,
   createSplitR1PartnerTokenRequest,
   evaluateSplitR1SearchLevelScenario,
@@ -530,7 +534,7 @@ test("monotonic limiter serializes fetches at 1000ms with observed concurrency o
   const transport = createSplitR1NativeTransport({
     monotonicNow: () => milliseconds,
     sleep: async (duration) => {
-      milliseconds += duration;
+      milliseconds += duration - SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS;
     },
     fetchImpl: async (_url, options) => {
       starts.push(milliseconds);
@@ -551,6 +555,100 @@ test("monotonic limiter serializes fetches at 1000ms with observed concurrency o
   assert.equal(maximumActive, 1);
   assert.equal(transport.getMaxObservedConcurrency(), 1);
   assert.equal(transport.getBudgetSnapshot().totalRouteStackRequests, 3);
+});
+
+test("monotonic limiter accepts exact threshold and sleeps through a 999ms early wake", async () => {
+  let milliseconds = 0;
+  const sleeps = [];
+  const limiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow: () => milliseconds,
+    sleep: async (duration) => {
+      sleeps.push(duration);
+      milliseconds += duration;
+    },
+  });
+  assert.equal(await limiter.awaitStartSlot(), 0);
+  milliseconds = 1_000;
+  assert.equal(await limiter.awaitStartSlot(), 1_000);
+  assert.deepEqual(sleeps, []);
+  milliseconds = 1_999;
+  assert.equal(await limiter.awaitStartSlot(), 2_001);
+  assert.deepEqual(sleeps, [2]);
+});
+
+test("monotonic limiter tolerates repeated partial early wakes without weakening 1000ms", async () => {
+  let milliseconds = 0;
+  const wakeSequence = [400, 850, 999, 1_000];
+  const sleeps = [];
+  const limiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow: () => milliseconds,
+    sleep: async (duration) => {
+      sleeps.push(duration);
+      milliseconds = wakeSequence.shift();
+    },
+  });
+  assert.equal(await limiter.awaitStartSlot(), 0);
+  assert.equal(await limiter.awaitStartSlot(), 1_000);
+  assert.deepEqual(sleeps, [1_001, 601, 151, 2]);
+  assert.equal(wakeSequence.length, 0);
+});
+
+test("clock failure stops before fetch and leaves an unsent request out of the ledger", async () => {
+  let fetchCalls = 0;
+  let transport;
+  const ledgerDuringWait = [];
+  const ledgerAtFetch = [];
+  transport = createSplitR1NativeTransport({
+    monotonicNow: () => 0,
+    sleep: async () => {
+      ledgerDuringWait.push(transport.getBudgetSnapshot().totalRouteStackRequests);
+    },
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      ledgerAtFetch.push(transport.getBudgetSnapshot().totalRouteStackRequests);
+      return jsonResponse({ token: "memory-only-token" });
+    },
+  });
+  await transport.post(SPLIT_R1_AUTH_ENDPOINT, {});
+  await assert.rejects(
+    () => transport.post(SPLIT_R1_AUTH_ENDPOINT, {}),
+    /RATE_LIMIT_CLOCK_DID_NOT_PROGRESS/
+  );
+  assert.equal(fetchCalls, 1);
+  assert.deepEqual(ledgerAtFetch, [1]);
+  assert.equal(transport.getBudgetSnapshot().totalRouteStackRequests, 1);
+  assert.deepEqual(ledgerDuringWait, [1, 1, 1, 1]);
+});
+
+test("more than ten early wakes stops before an eleventh sleep", async () => {
+  let milliseconds = 0;
+  const wakeSequence = [991, 992, 993, 994, 995, 996, 997, 998, 999, 999.5];
+  let sleepCalls = 0;
+  const limiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow: () => milliseconds,
+    sleep: async () => {
+      sleepCalls += 1;
+      milliseconds = wakeSequence.shift();
+    },
+  });
+  await limiter.awaitStartSlot();
+  await assert.rejects(() => limiter.awaitStartSlot(), /RATE_LIMIT_CLOCK_DID_NOT_PROGRESS/);
+  assert.equal(sleepCalls, SPLIT_R1_MAX_EARLY_WAKE_CYCLES);
+  assert.equal(wakeSequence.length, 0);
+});
+
+test("cumulative requested wait never exceeds the 5000ms fail-closed cap", async () => {
+  let requestedWait = 0;
+  const limiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow: () => 0,
+    sleep: async (duration) => {
+      requestedWait += duration;
+    },
+  });
+  await limiter.awaitStartSlot();
+  await assert.rejects(() => limiter.awaitStartSlot(), /RATE_LIMIT_CLOCK_DID_NOT_PROGRESS/);
+  assert.equal(requestedWait, 4_004);
+  assert.ok(requestedWait <= SPLIT_R1_MAX_RATE_LIMIT_WAIT_MS);
 });
 
 test("reserved request remains counted after HTTP failure and no retry is attempted", async () => {
