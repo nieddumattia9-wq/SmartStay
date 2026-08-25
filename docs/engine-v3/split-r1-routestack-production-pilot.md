@@ -134,3 +134,30 @@ These outcomes are research controls only. Even `CANDIDATE_GO` does not activate
 ### Anti-cherry-picking freeze
 
 After this freeze, no scenario, date, split point, hotel filter, threshold or outlier rule may change after results are observed. A scenario without rates cannot be substituted. Two split points in one scenario never become two independent signals. A methodology-inconclusive result cannot be called positive or negative. New scenarios or additional provider requests require a new explicit phase and authorization.
+
+## RouteStack `ourprice` temporal-scale micro-probe
+
+SPLIT-R1C.3 freezes `stayopti.split-r1.ourprice-semantics-probe@1` as an offline diagnostic contract. It does not reinterpret SPLIT-R1B.7, remove the R1C methodology limitation, or unlock the targeted R1C.2 matrix. Its only future question is whether RouteStack search-level `ourprice` behaves empirically like a complete requested-window price or like an unmultiplied nightly price.
+
+The sole frozen scenario is Roma, EUR, one room, two adults and no children, using canonical coordinates 41.9028/12.4964. It contains exactly three windows:
+
+- `A`: 2–3 February 2027, one night;
+- `B`: 3–4 February 2027, one night;
+- `AB`: 2–4 February 2027, two nights.
+
+The explicit `--ourprice-semantics-probe-v1` command defaults to offline dry-run and produces one scenario, three logical hotel searches and zero HTTP requests. A future live execution requires both probe-specific confirmation flags. It has separate, non-increasable hard caps of three hotel-search requests and five RouteStack requests in total: one authentication, one deterministic destination lookup and the three initial searches. Continuation, retry, redirect, details, rooms/rates, revalidation, prebook, booking and payment are prohibited. Concurrency remains one and request starts remain at least 1,000 monotonic milliseconds apart. These micro-probe limits do not change the generic 80/100 R1 caps or any targeted matrix contract.
+
+Only properties observed in all three windows can enter the calculation. The same run-local HMAC-SHA256 pseudonym must identify a property across A, B and AB; neither the ephemeral secret nor a fingerprint is persisted in the aggregate result. Cross-run linkage, raw provider identifiers, manual hotel selection, currency conversion, missing-value imputation, outlier removal and post-hoc subset selection are prohibited. Eligible observations require positive integer-minor-unit `ourprice`, EUR, identical occupancy and a common property pseudonym.
+
+For each common property, the precommitted calculation is:
+
+- `expectedTotal = priceA + priceB`;
+- `expectedNightly = (priceA + priceB) / 2`;
+- `totalError = abs(priceAB - expectedTotal) / expectedTotal`;
+- `nightlyError = abs(priceAB - expectedNightly) / expectedNightly`.
+
+The implementation uses the algebraically equivalent integer-minor-unit form for nightly error before division, avoiding monetary rounding. The aggregate includes the common-property count, median and R7 linearly interpolated p25/p75 for both errors, total-closer/nightly-closer/tie shares, and sanitized minimum/median/maximum prices for A, B and AB over the complete common universe.
+
+`TOTAL_STAY_EMPIRICALLY_SUPPORTED` requires at least ten common properties, median total error at most 0.20, median nightly error at least 0.35 and total-closer share at least 0.80. `NIGHTLY_EMPIRICALLY_SUPPORTED` requires at least ten common properties, median nightly error at most 0.20, median total error at least 0.35 and nightly-closer share at least 0.80. Every other result is `INCONCLUSIVE`. Simultaneous truth of both predicates is an invariant failure named `AMBIGUOUS_CLASSIFICATION_INVARIANT_FAILURE`.
+
+Even a total-stay empirical result leaves taxes, mandatory charges and bookable-price equivalence unproven. It is not contractual provider confirmation, market evidence, policy eligibility or a public recommendation, and it does not authorize the targeted live matrix. Only a separately authorized phase may execute the five-request micro-probe.

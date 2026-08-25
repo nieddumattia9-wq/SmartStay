@@ -16,19 +16,29 @@ import {
   SPLIT_R1_MAX_RATE_LIMIT_WAIT_MS,
   SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
   SPLIT_R1_OFFICIAL_BASE_URL,
+  SPLIT_R1_OURPRICE_PROBE_CONTINUATIONS,
+  SPLIT_R1_OURPRICE_PROBE_CRITERIA,
+  SPLIT_R1_OURPRICE_PROBE_HOTEL_SEARCH_HTTP_BUDGET,
+  SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS,
+  SPLIT_R1_OURPRICE_PROBE_TOTAL_HTTP_BUDGET,
+  SPLIT_R1_OURPRICE_PROBE_VERSION,
   SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS,
   SPLIT_R1_REPOSITORY_ROOT,
   SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
   SPLIT_R1_TARGETED_MATRIX_VERSION,
   SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
   SPLIT_R1_TARGETED_RUN_STATUS,
+  assertSplitR1OurpriceClassificationExclusiveV1,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
+  buildSplitR1OurpriceSemanticsDryRunV1,
+  buildSplitR1OurpriceSemanticsLogicalSearchesV1,
   buildSplitR1TargetedDryRunPlanV1,
   buildSplitR1TargetedLogicalSearchPlanV1,
   classifySplitR1TargetedResultV1,
+  classifySplitR1OurpriceSemanticsMetricsV1,
   createSplitR1RequestBudgetLedger,
   createSplitR1ContinuationRequest,
   createSplitR1HotelSearchRequest,
@@ -36,15 +46,19 @@ import {
   createSplitR1NativeTransport,
   createSplitR1PartnerTokenRequest,
   evaluateSplitR1SearchLevelScenario,
+  evaluateSplitR1OurpriceSemanticsProbeV1,
   fingerprintSplitR1Identifier,
   normalizeSplitR1SearchPage,
   normalizeSplitR1SearchResponse,
+  loadSplitR1OurpriceSemanticsProbeV1,
   loadSplitR1TargetedScenarioMatrixV1,
   parseSplitR1Arguments,
   runSplitR1Collector,
+  runSplitR1OurpriceSemanticsProbeV1,
   replaySplitR1CausalLedger,
   selectSplitR1DestinationCandidate,
   validateSplitR1BaseUrl,
+  validateSplitR1OurpriceSemanticsProbeV1,
   validateSplitR1TargetedScenarioMatrixV1,
 } from "../../scripts/run-split-r1-routestack-read-only-collector.mjs";
 import {
@@ -122,6 +136,25 @@ function targetedClassificationInput(scenarios, overrides = {}) {
     scenarios,
     ...overrides,
   };
+}
+
+function probeFingerprint(index) {
+  return `hmac-sha256:${index.toString(16).padStart(64, "0")}`;
+}
+
+function probeReceipts(probe, count, priceForWindow, overrides = {}) {
+  return ["A", "B", "AB"].map((windowId) => ({
+    windowId,
+    currency: overrides.receiptCurrency?.[windowId] ?? "EUR",
+    occupancy: structuredClone(
+      overrides.occupancy?.[windowId] ?? probe.scenario.occupancy
+    ),
+    offers: Array.from({ length: count }, (_, index) => ({
+      propertyFingerprint: probeFingerprint(index + 1),
+      totalMinorUnits: priceForWindow(windowId, index),
+      currency: overrides.offerCurrency?.[windowId] ?? "EUR",
+    })),
+  }));
 }
 
 function coordinateLessRomePayload(id = "memory-rome-destination") {
@@ -323,6 +356,324 @@ test("targeted future captures are bound to causal ledger v1 and deterministic r
     stableStringifySplitF0(replaySplitR1CausalLedger(ledger)),
     stableStringifySplitF0(ledger.replay)
   );
+});
+
+test("ourprice probe freezes Roma A, B and AB windows and defaults to three-search zero-network dry-run", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  assert.equal(probe.schemaVersion, SPLIT_R1_OURPRICE_PROBE_VERSION);
+  assert.equal(validateSplitR1OurpriceSemanticsProbeV1(probe).valid, true);
+  assert.deepEqual(probe.scenario.windows, [
+    { windowId: "A", checkIn: "2027-02-02", checkOut: "2027-02-03", nights: 1 },
+    { windowId: "B", checkIn: "2027-02-03", checkOut: "2027-02-04", nights: 1 },
+    { windowId: "AB", checkIn: "2027-02-02", checkOut: "2027-02-04", nights: 2 },
+  ]);
+  const searches = buildSplitR1OurpriceSemanticsLogicalSearchesV1(probe);
+  assert.equal(searches.length, 3);
+  assert.deepEqual(searches.map((search) => search.windowId), ["A", "B", "AB"]);
+  assert.equal(searches.every((search) => search.request.currency === "EUR"), true);
+  assert.equal(searches.every((search) => search.request.occupancy.adults === 2), true);
+
+  assert.deepEqual(parseSplitR1Arguments(["--ourprice-semantics-probe-v1"]), {
+    mode: "ourprice-probe-dry-run",
+  });
+  let fetchCalls = 0;
+  const result = await runSplitR1OurpriceSemanticsProbeV1({
+    probe,
+    options: { mode: "ourprice-probe-dry-run" },
+    environment: {},
+    execArgv: [],
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      throw new Error("ourprice-probe-dry-run-must-not-fetch");
+    },
+  });
+  assert.deepEqual(result, buildSplitR1OurpriceSemanticsDryRunV1(probe));
+  assert.equal(result.scenarios, 1);
+  assert.equal(result.logicalHotelSearches, 3);
+  assert.equal(result.httpRequests, 0);
+  assert.equal(result.futureHotelSearchHttpCap, 3);
+  assert.equal(result.futureTotalHttpCap, 5);
+  assert.equal(result.continuationAllowed, false);
+  assert.equal(result.targetedLiveMatrixAuthorized, false);
+  assert.equal(fetchCalls, 0);
+});
+
+test("ourprice probe live mode requires both probe-specific confirmations", () => {
+  assert.throws(
+    () => parseSplitR1Arguments([SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS[0]]),
+    /probe-flag-required/
+  );
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        "--ourprice-semantics-probe-v1",
+        SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS[0],
+      ]),
+    /probe-live-confirmations-incomplete/
+  );
+  assert.deepEqual(
+    parseSplitR1Arguments([
+      "--ourprice-semantics-probe-v1",
+      ...SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS,
+    ]),
+    { mode: "ourprice-probe-live" }
+  );
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        "--targeted-matrix-v1",
+        "--ourprice-semantics-probe-v1",
+      ]),
+    /probe-incompatible-mode-flags/
+  );
+});
+
+test("ourprice formulas and frozen thresholds identify total-stay semantics", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  const receipts = probeReceipts(probe, 10, (windowId, index) => {
+    const priceA = 10_000 + index * 2;
+    const priceB = 12_000 + index * 2;
+    if (windowId === "A") return priceA;
+    if (windowId === "B") return priceB;
+    return priceA + priceB;
+  });
+  const result = evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts);
+  assert.equal(result.classification, "TOTAL_STAY_EMPIRICALLY_SUPPORTED");
+  assert.equal(result.metrics.commonPropertyCount, 10);
+  assert.equal(result.metrics.medianTotalError, 0);
+  assert.equal(result.metrics.p25TotalError, 0);
+  assert.equal(result.metrics.p75TotalError, 0);
+  assert.equal(result.metrics.medianNightlyError, 1);
+  assert.equal(result.metrics.shareTotalCloser, 1);
+  assert.equal(result.metrics.shareNightlyCloser, 0);
+  assert.equal(result.metrics.shareTies, 0);
+  assert.equal(result.outlierRemovalApplied, false);
+  assert.equal(result.conclusionLimits.taxCompleteness, "UNPROVEN");
+  assert.equal(result.conclusionLimits.targetedLiveMatrixAuthorized, false);
+});
+
+test("ourprice formulas and frozen thresholds identify nightly semantics", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  const receipts = probeReceipts(probe, 10, (windowId, index) => {
+    const priceA = 10_000 + index * 2;
+    const priceB = 12_000 + index * 2;
+    if (windowId === "A") return priceA;
+    if (windowId === "B") return priceB;
+    return (priceA + priceB) / 2;
+  });
+  const result = evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts);
+  assert.equal(result.classification, "NIGHTLY_EMPIRICALLY_SUPPORTED");
+  assert.equal(result.metrics.medianNightlyError, 0);
+  assert.equal(result.metrics.medianTotalError, 0.5);
+  assert.equal(result.metrics.shareNightlyCloser, 1);
+});
+
+test("ourprice classification remains inconclusive outside thresholds and below ten common properties", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  const ambiguousScale = probeReceipts(probe, 10, (windowId, index) => {
+    if (windowId === "A") return 10_000 + index * 2;
+    if (windowId === "B") return 12_000 + index * 2;
+    return 16_000 + index * 2;
+  });
+  assert.equal(
+    evaluateSplitR1OurpriceSemanticsProbeV1(probe, ambiguousScale).classification,
+    "INCONCLUSIVE"
+  );
+  const nineProperties = probeReceipts(probe, 9, (windowId, index) => {
+    const priceA = 10_000 + index * 2;
+    const priceB = 12_000 + index * 2;
+    if (windowId === "A") return priceA;
+    if (windowId === "B") return priceB;
+    return priceA + priceB;
+  });
+  const insufficient = evaluateSplitR1OurpriceSemanticsProbeV1(probe, nineProperties);
+  assert.equal(insufficient.metrics.commonPropertyCount, 9);
+  assert.equal(insufficient.classification, "INCONCLUSIVE");
+});
+
+test("ourprice criteria include exact boundaries and ambiguous classification fails closed", () => {
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_CRITERIA.totalStay.minimumCommonPropertyCount, 10);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_CRITERIA.totalStay.maximumMedianTotalError, 0.2);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_CRITERIA.totalStay.minimumMedianNightlyError, 0.35);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_CRITERIA.totalStay.minimumShareTotalCloser, 0.8);
+  assert.equal(
+    classifySplitR1OurpriceSemanticsMetricsV1({
+      commonPropertyCount: 10,
+      medianTotalError: 0.2,
+      medianNightlyError: 0.35,
+      shareTotalCloser: 0.8,
+      shareNightlyCloser: 0.1,
+    }),
+    "TOTAL_STAY_EMPIRICALLY_SUPPORTED"
+  );
+  assert.equal(
+    classifySplitR1OurpriceSemanticsMetricsV1({
+      commonPropertyCount: 10,
+      medianTotalError: 0.35,
+      medianNightlyError: 0.2,
+      shareTotalCloser: 0.1,
+      shareNightlyCloser: 0.8,
+    }),
+    "NIGHTLY_EMPIRICALLY_SUPPORTED"
+  );
+  assert.throws(
+    () => assertSplitR1OurpriceClassificationExclusiveV1(true, true),
+    /AMBIGUOUS_CLASSIFICATION_INVARIANT_FAILURE/
+  );
+});
+
+test("ourprice probe excludes currency mismatch and invalid prices without imputation", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  const currencyMismatch = probeReceipts(
+    probe,
+    10,
+    (windowId) => (windowId === "AB" ? 20_000 : 10_000),
+    { receiptCurrency: { B: "USD" } }
+  );
+  const currencyResult = evaluateSplitR1OurpriceSemanticsProbeV1(probe, currencyMismatch);
+  assert.equal(currencyResult.metrics.commonPropertyCount, 0);
+  assert.equal(currencyResult.classification, "INCONCLUSIVE");
+  assert.equal(currencyResult.rejectionCountsByWindow.B.CURRENCY_MISMATCH, 10);
+
+  const invalid = probeReceipts(probe, 3, () => 10_000);
+  invalid[0].offers[0].totalMinorUnits = null;
+  invalid[0].offers[1].totalMinorUnits = -1;
+  invalid[0].offers[2].totalMinorUnits = "10000";
+  const invalidResult = evaluateSplitR1OurpriceSemanticsProbeV1(probe, invalid);
+  assert.equal(invalidResult.metrics.commonPropertyCount, 0);
+  assert.equal(invalidResult.rejectionCountsByWindow.A.PRICE_NON_INTEGER, 2);
+  assert.equal(invalidResult.rejectionCountsByWindow.A.PRICE_NON_POSITIVE, 1);
+});
+
+test("ourprice probe live stub is capped at one auth, one destination and three searches", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  const endpoints = [];
+  let monotonicClock = 0;
+  const fetchImpl = async (url, init) => {
+    const parsed = new URL(url);
+    endpoints.push(parsed.pathname);
+    assert.equal(init.redirect, "error");
+    if (parsed.pathname === SPLIT_R1_AUTH_ENDPOINT) {
+      return jsonResponse({ token: "memory-only-partner-token" });
+    }
+    if (parsed.pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+      return jsonResponse({
+        result: [
+          {
+            id: "memory-only-destination-id",
+            coordinates: { lat: 41.9028, long: 12.4964 },
+          },
+        ],
+      });
+    }
+    const request = JSON.parse(init.body);
+    const hotels = Array.from({ length: 10 }, (_, index) => {
+      const priceA = 100 + index;
+      const priceB = 120 + index;
+      const ourprice = request.checkIn === "2027-02-02" && request.checkOut === "2027-02-04"
+        ? priceA + priceB
+        : request.checkIn === "2027-02-02"
+          ? priceA
+          : priceB;
+      return rawHotel(`memory-only-property-${index}`, ourprice);
+    });
+    return jsonResponse({ result: { currency: "EUR", result: hotels } });
+  };
+  const result = await runSplitR1Collector({
+    matrix: probe,
+    options: { mode: "ourprice-probe-live" },
+    environment: {
+      ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+      ROUTESTACK_API_KEY: "synthetic-key",
+      ROUTESTACK_API_SECRET: "synthetic-secret",
+    },
+    execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
+    fetchImpl,
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000099",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => monotonicClock,
+    sleep: async (milliseconds) => { monotonicClock += milliseconds; },
+    budgetLimits: { hotelSearchHttpBudget: 80, totalRouteStackHttpBudget: 100 },
+  });
+  assert.equal(result.httpRequests, SPLIT_R1_OURPRICE_PROBE_TOTAL_HTTP_BUDGET);
+  assert.equal(result.hotelSearchHttpRequests, SPLIT_R1_OURPRICE_PROBE_HOTEL_SEARCH_HTTP_BUDGET);
+  assert.equal(result.continuationHttpRequests, SPLIT_R1_OURPRICE_PROBE_CONTINUATIONS);
+  assert.deepEqual(endpoints, [
+    SPLIT_R1_AUTH_ENDPOINT,
+    SPLIT_R1_DESTINATION_ENDPOINT,
+    SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+  ]);
+  assert.equal(result.evaluation.classification, "TOTAL_STAY_EMPIRICALLY_SUPPORTED");
+  const serialized = stableStringifySplitF0(result);
+  for (const forbidden of [
+    "memory-only-partner-token",
+    "memory-only-destination-id",
+    "memory-only-property-0",
+    "synthetic-key",
+    "synthetic-secret",
+  ]) {
+    assert.equal(serialized.includes(forbidden), false);
+  }
+  assert.equal(result.evaluation.propertyFingerprintsPersisted, 0);
+  assert.equal(result.evaluation.ephemeralSecretPersisted, false);
+  assert.equal(result.evaluation.crossRunLinkability, false);
+});
+
+test("ourprice probe never follows continuation and performs no retry", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  let calls = 0;
+  let monotonicClock = 0;
+  const fetchImpl = async (url) => {
+    calls += 1;
+    const pathname = new URL(url).pathname;
+    if (pathname === SPLIT_R1_AUTH_ENDPOINT) return jsonResponse({ token: "memory-token" });
+    if (pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+      return jsonResponse({
+        result: [{ id: "memory-destination", coordinates: { lat: 41.9028, long: 12.4964 } }],
+      });
+    }
+    return jsonResponse({
+      result: {
+        currency: "EUR",
+        result: [rawHotel("memory-property", 100)],
+        nextResultsKey: "memory-continuation-key",
+      },
+    });
+  };
+  await assert.rejects(
+    () =>
+      runSplitR1OurpriceSemanticsProbeV1({
+        probe,
+        options: { mode: "ourprice-probe-live" },
+        environment: {
+          ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+          ROUTESTACK_API_KEY: "synthetic-key",
+          ROUTESTACK_API_SECRET: "synthetic-secret",
+        },
+        execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
+        fetchImpl,
+        now: () => 1_800_000_000_000,
+        randomUUID: () => "00000000-0000-4000-8000-000000000098",
+        ephemeralRunKey: TEST_KEY,
+        monotonicNow: () => monotonicClock,
+        sleep: async (milliseconds) => { monotonicClock += milliseconds; },
+      }),
+    /continuation-prohibited/
+  );
+  assert.equal(calls, 3);
+});
+
+test("ourprice probe fixture rejects any increase to its frozen 3/5 budget", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  const hotelIncrease = structuredClone(probe);
+  hotelIncrease.futureLiveContract.hotelSearchHttpBudget = 4;
+  assert.equal(validateSplitR1OurpriceSemanticsProbeV1(hotelIncrease).valid, false);
+  const totalIncrease = structuredClone(probe);
+  totalIncrease.futureLiveContract.totalRouteStackHttpBudget = 6;
+  assert.equal(validateSplitR1OurpriceSemanticsProbeV1(totalIncrease).valid, false);
 });
 
 test("live mode requires both confirmations before credential or network access", async () => {
