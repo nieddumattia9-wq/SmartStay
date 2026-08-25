@@ -47,7 +47,27 @@ export const SPLIT_R1_TARGETED_MATRIX_PATH = path.join(
 );
 export const SPLIT_R1_TARGETED_EXPECTED_DURATIONS = [7, 10, 12, 14, 21, 30];
 export const SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE = "HOLD";
-export const SPLIT_R1_TARGETED_RUN_STATUS = "HOLD_PRICE_SEMANTICS_UNPROVEN";
+const SPLIT_R1_TARGETED_FROZEN_RUN_GATE = "HOLD_PRICE_SEMANTICS_UNPROVEN";
+export const SPLIT_R1_TARGETED_RUN_STATUS =
+  "ELIGIBLE_PRIVATE_DIAGNOSTIC_DIRECT_AUTHORIZATION_REQUIRED";
+export const SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_VERSION =
+  "stayopti.split-r1.ourprice-empirical-totality-receipt@1";
+export const SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_PATH = path.join(
+  SPLIT_R1_REPOSITORY_ROOT,
+  "tests",
+  "engine-v3",
+  "fixtures",
+  "split-r1-ourprice-empirical-totality-receipt-v1.json"
+);
+export const SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS =
+  "SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED";
+export const SPLIT_R1_TEMPORAL_TOTALITY_GATE = "PASS_EMPIRICAL";
+export const SPLIT_R1_TAX_COMPLETENESS_GATE = "HOLD";
+export const SPLIT_R1_MANDATORY_CHARGES_GATE = "HOLD";
+export const SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE = "HOLD";
+export const SPLIT_R1_TARGETED_DIAGNOSTIC_ELIGIBILITY =
+  "ELIGIBLE_PRIVATE_DIAGNOSTIC_WITH_DIRECT_AUTHORIZATION";
+export const SPLIT_R1_TARGETED_RESULT_LABEL = "diagnostic gross price delta";
 export const SPLIT_R1_OURPRICE_PROBE_VERSION =
   "stayopti.split-r1.ourprice-semantics-probe@1";
 export const SPLIT_R1_OURPRICE_PROBE_PATH = path.join(
@@ -1540,7 +1560,7 @@ export function validateSplitR1TargetedScenarioMatrixV1(matrix) {
     matrix?.priceSemantics?.field !== "ourprice" ||
     matrix?.priceSemantics?.contractStatus !== "UNPROVEN" ||
     matrix?.priceSemantics?.comparisonLevel !== "CONDITIONAL_SEARCH_LEVEL_ONLY" ||
-    matrix?.priceSemantics?.targetedRunGate !== SPLIT_R1_TARGETED_RUN_STATUS
+    matrix?.priceSemantics?.targetedRunGate !== SPLIT_R1_TARGETED_FROZEN_RUN_GATE
   ) {
     issues.push("targeted-price-semantics-gate-invalid");
   }
@@ -1870,7 +1890,16 @@ export function classifySplitR1TargetedResultV1(input) {
   };
 }
 
-export function buildSplitR1TargetedDryRunPlanV1(matrix) {
+export function buildSplitR1TargetedDryRunPlanV1(
+  matrix,
+  empiricalReceipt = SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT
+) {
+  const receiptValidation = validateSplitR1OurpriceEmpiricalTotalityReceiptV1(empiricalReceipt);
+  if (!receiptValidation.valid) {
+    throw new Error(
+      `split-r1-ourprice-empirical-totality-receipt-invalid:${receiptValidation.issues.join(",")}`
+    );
+  }
   const logicalSearches = buildSplitR1TargetedLogicalSearchPlanV1(matrix);
   const durations = matrix.scenarios.map((scenario) => scenario.nights);
   if (
@@ -1897,6 +1926,17 @@ export function buildSplitR1TargetedDryRunPlanV1(matrix) {
     targetedLiveAuthorized: false,
     priceSemanticsGate: SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
     targetedRunStatus: SPLIT_R1_TARGETED_RUN_STATUS,
+    empiricalReceiptVersion: SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_VERSION,
+    ourpriceTemporalSemantics: SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
+    temporalTotalityGate: SPLIT_R1_TEMPORAL_TOTALITY_GATE,
+    taxCompletenessGate: SPLIT_R1_TAX_COMPLETENESS_GATE,
+    mandatoryChargesGate: SPLIT_R1_MANDATORY_CHARGES_GATE,
+    bookableEquivalenceGate: SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE,
+    contractualProviderConfirmation: false,
+    targetedDiagnosticEligibility: SPLIT_R1_TARGETED_DIAGNOSTIC_ELIGIBILITY,
+    targetedLiveDirectAuthorizationRequired: true,
+    targetedResultLabel: SPLIT_R1_TARGETED_RESULT_LABEL,
+    commercialGoAllowed: false,
     causalLedgerRequired: SPLIT_R1_CAUSAL_LEDGER_VERSION,
     strictComparabilityAllowed: false,
     conditionalComparabilityImplemented: true,
@@ -2007,6 +2047,82 @@ export const SPLIT_R1_OURPRICE_PROBE_CRITERIA = Object.freeze({
   outlierRemovalAllowed: false,
   postHocSubsetSelectionAllowed: false,
 });
+
+const SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT = Object.freeze({
+  schemaVersion: SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_VERSION,
+  sourceSha: "5662c56542d51eeafd3106c8aa9070cae65f8e34",
+  probeVersion: SPLIT_R1_OURPRICE_PROBE_V2_VERSION,
+  receiptKind: "SANITIZED_IMMUTABLE_EMPIRICAL_METHOD_RECEIPT",
+  precommittedCriteria: SPLIT_R1_OURPRICE_PROBE_CRITERIA,
+  metrics: {
+    commonPropertyCount: 1210,
+    eligibleTriples: 1210,
+    medianTotalError: 0.010575498616742446,
+    totalErrorP25: 0.0009658711290823479,
+    totalErrorP75: 0.03916262947299449,
+    medianNightlyError: 1.0001592224733593,
+    nightlyErrorP25: 0.98702609903896,
+    nightlyErrorP75: 1.0279044580576178,
+    shareTotalCloser: 0.9851239669421488,
+    shareNightlyCloser: 0.01487603305785124,
+    shareTies: 0,
+  },
+  empiricalClassification: "TOTAL_STAY_EMPIRICALLY_SUPPORTED",
+  decision: {
+    ourpriceTemporalSemantics: SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
+    temporalTotalityGate: SPLIT_R1_TEMPORAL_TOTALITY_GATE,
+    taxCompletenessGate: SPLIT_R1_TAX_COMPLETENESS_GATE,
+    mandatoryChargesGate: SPLIT_R1_MANDATORY_CHARGES_GATE,
+    bookableEquivalenceGate: SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE,
+    contractualProviderConfirmation: false,
+    targetedDiagnosticEligibility: SPLIT_R1_TARGETED_DIAGNOSTIC_ELIGIBILITY,
+    targetedLiveDirectAuthorizationRequired: true,
+    targetedResultLabel: SPLIT_R1_TARGETED_RESULT_LABEL,
+    commercialGoAllowed: false,
+    publicRecommendationAllowed: false,
+    policyEligible: false,
+    economicPolicyChanged: false,
+    publicBoundaryChanged: false,
+  },
+  conclusionLimits: {
+    taxCompleteness: "UNPROVEN",
+    mandatoryChargesCompleteness: "UNPROVEN",
+    bookablePriceEquivalence: "UNPROVEN",
+    contractualProviderConfirmation: false,
+  },
+  privacy: {
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    secretValuesPersisted: 0,
+    propertyFingerprintsPersisted: 0,
+    crossRunLinkability: false,
+  },
+});
+
+export function validateSplitR1OurpriceEmpiricalTotalityReceiptV1(receipt) {
+  const issues = [];
+  if (
+    stableStringifySplitF0(receipt) !==
+    stableStringifySplitF0(SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT)
+  ) {
+    issues.push("ourprice-empirical-totality-receipt-drift");
+  }
+  return { valid: issues.length === 0, issues };
+}
+
+export async function loadSplitR1OurpriceEmpiricalTotalityReceiptV1(
+  receiptPath = SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_PATH
+) {
+  const receipt = JSON.parse(await fs.readFile(receiptPath, "utf8"));
+  const validation = validateSplitR1OurpriceEmpiricalTotalityReceiptV1(receipt);
+  if (!validation.valid) {
+    throw new Error(
+      `split-r1-ourprice-empirical-totality-receipt-invalid:${validation.issues.join(",")}`
+    );
+  }
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
+}
 
 const SPLIT_R1_OURPRICE_PROBE_CONCLUSION_LIMITS = Object.freeze({
   taxCompleteness: "UNPROVEN",
@@ -3086,7 +3202,8 @@ export async function runSplitR1Collector({
     });
   }
   if (options.mode === "targeted-dry-run") {
-    return buildSplitR1TargetedDryRunPlanV1(matrix);
+    const empiricalReceipt = await loadSplitR1OurpriceEmpiricalTotalityReceiptV1();
+    return buildSplitR1TargetedDryRunPlanV1(matrix, empiricalReceipt);
   }
   const dryRun = buildSplitR1DryRunPlan(matrix);
   if (options.mode === "dry-run") return dryRun;

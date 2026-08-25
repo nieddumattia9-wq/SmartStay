@@ -175,3 +175,25 @@ Continuation scheduling is breadth-first and deterministic: initial A, B and AB;
 Initial and continuation offers for a window are accumulated and deterministically reduced under the existing best-price-per-run-local-property contract. Continuation `token`, `correlationId` and `nextResultsKey` exist only in memory long enough to build the immediately following request. They are never logged or persisted and are discarded before the aggregate result is returned. Persisted continuation information is restricted to booleans and integer counts: metadata presence, rounds executed and continuation HTTP requests. Raw continuation values, provider IDs, HMAC secrets and property fingerprints remain absent from output; cross-run linkability remains disabled.
 
 V2 is still a private diagnostic. It does not authorize a provider call in SPLIT-R1C.7, does not unlock the targeted matrix, does not establish taxes or mandatory-charge completeness, does not establish bookable-price equivalence, and cannot change V2, V3, ranking, policy or any public recommendation.
+
+## Empirical totality receipt and tax-semantics decision
+
+SPLIT-R1C.9 preserves the v1 micro-probe, the v2 acquisition contract and every earlier result. It records the successful R1C.8 aggregate as the immutable, sanitized receipt `stayopti.split-r1.ourprice-empirical-totality-receipt@1`, bound to source SHA `5662c56542d51eeafd3106c8aa9070cae65f8e34` and probe `stayopti.split-r1.ourprice-semantics-probe@2`. The receipt contains only the precommitted criteria, aggregate metrics, decision boundaries and zero-valued privacy counters. It contains no property fingerprint, provider identifier, continuation value, credential or cross-run linkage.
+
+The preserved aggregate comprises 1,210 common properties and 1,210 eligible triples. Median total error is `0.010575498616742446`, with R7 p25/p75 `0.0009658711290823479` and `0.03916262947299449`. Median nightly error is `1.0001592224733593`, with R7 p25/p75 `0.98702609903896` and `1.0279044580576178`. Total is closer for `0.9851239669421488` of triples, nightly is closer for `0.01487603305785124`, and ties are zero. Under the unchanged precommitted predicates, the result is `TOTAL_STAY_EMPIRICALLY_SUPPORTED`.
+
+The only admitted temporal statement is:
+
+`OURPRICE_TEMPORAL_SEMANTICS=SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED`
+
+This means that, in this bounded production probe, `ourprice` behaved empirically as a price for the complete requested search window rather than as an unmultiplied nightly price. It must not be described as a final, tax-inclusive, all-in, payable, bookable or confirmed total. Temporal totality is distinct from fiscal and transactional completeness, so the gates remain independently recorded:
+
+- `TEMPORAL_TOTALITY_GATE=PASS_EMPIRICAL`;
+- `TAX_COMPLETENESS_GATE=HOLD`;
+- `MANDATORY_CHARGES_GATE=HOLD`;
+- `BOOKABLE_EQUIVALENCE_GATE=HOLD`;
+- `CONTRACTUAL_PROVIDER_CONFIRMATION=NO`.
+
+Temporal totality is therefore no longer the blocker for the frozen targeted research matrix. The matrix becomes eligible only for a future, separately and directly authorized private diagnostic run. Its output label is `diagnostic gross price delta`, not confirmed saving. Taxes, mandatory supplements, rate conditions and bookability remain compulsory limitations. A positive diagnostic delta cannot create commercial GO, policy eligibility or a public recommendation without a separately authorized recheck/prebook step and verification of mandatory costs. A negative result remains evidence about the frozen sample only and cannot prove universally that Split never works.
+
+The targeted scenario fixture remains byte-identical and retains its historical pre-R1C.8 HOLD field. The collector overlays the versioned empirical receipt when producing the targeted dry-run contract; it does not mutate the matrix, enable live execution or weaken the direct-authorization boundary. Fixed baseline, distinct-property enforcement, funnel accounting, causal replay ledger, budgets, breadth-first scheduler, continuation policy, outlier quarantine and anti-cherry-picking rules are unchanged. RouteStack remains disabled in the public provider registry, and no V2, V3 decision-core, ranking or public-policy boundary changes in this phase.

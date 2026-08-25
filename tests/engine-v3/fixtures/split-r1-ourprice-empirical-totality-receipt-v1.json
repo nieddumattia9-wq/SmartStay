@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "stayopti.split-r1.ourprice-empirical-totality-receipt@1",
+  "sourceSha": "5662c56542d51eeafd3106c8aa9070cae65f8e34",
+  "probeVersion": "stayopti.split-r1.ourprice-semantics-probe@2",
+  "receiptKind": "SANITIZED_IMMUTABLE_EMPIRICAL_METHOD_RECEIPT",
+  "precommittedCriteria": {
+    "totalStay": {
+      "minimumCommonPropertyCount": 10,
+      "maximumMedianTotalError": 0.2,
+      "minimumMedianNightlyError": 0.35,
+      "minimumShareTotalCloser": 0.8
+    },
+    "nightly": {
+      "minimumCommonPropertyCount": 10,
+      "maximumMedianNightlyError": 0.2,
+      "minimumMedianTotalError": 0.35,
+      "minimumShareNightlyCloser": 0.8
+    },
+    "otherwise": "INCONCLUSIVE",
+    "ambiguousInvariantFailure": "AMBIGUOUS_CLASSIFICATION_INVARIANT_FAILURE",
+    "percentileMethod": "LINEAR_INTERPOLATION_R7",
+    "outlierRemovalAllowed": false,
+    "postHocSubsetSelectionAllowed": false
+  },
+  "metrics": {
+    "commonPropertyCount": 1210,
+    "eligibleTriples": 1210,
+    "medianTotalError": 0.010575498616742446,
+    "totalErrorP25": 0.0009658711290823479,
+    "totalErrorP75": 0.03916262947299449,
+    "medianNightlyError": 1.0001592224733593,
+    "nightlyErrorP25": 0.98702609903896,
+    "nightlyErrorP75": 1.0279044580576178,
+    "shareTotalCloser": 0.9851239669421488,
+    "shareNightlyCloser": 0.01487603305785124,
+    "shareTies": 0
+  },
+  "empiricalClassification": "TOTAL_STAY_EMPIRICALLY_SUPPORTED",
+  "decision": {
+    "ourpriceTemporalSemantics": "SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED",
+    "temporalTotalityGate": "PASS_EMPIRICAL",
+    "taxCompletenessGate": "HOLD",
+    "mandatoryChargesGate": "HOLD",
+    "bookableEquivalenceGate": "HOLD",
+    "contractualProviderConfirmation": false,
+    "targetedDiagnosticEligibility": "ELIGIBLE_PRIVATE_DIAGNOSTIC_WITH_DIRECT_AUTHORIZATION",
+    "targetedLiveDirectAuthorizationRequired": true,
+    "targetedResultLabel": "diagnostic gross price delta",
+    "commercialGoAllowed": false,
+    "publicRecommendationAllowed": false,
+    "policyEligible": false,
+    "economicPolicyChanged": false,
+    "publicBoundaryChanged": false
+  },
+  "conclusionLimits": {
+    "taxCompleteness": "UNPROVEN",
+    "mandatoryChargesCompleteness": "UNPROVEN",
+    "bookablePriceEquivalence": "UNPROVEN",
+    "contractualProviderConfirmation": false
+  },
+  "privacy": {
+    "rawIdsPersisted": 0,
+    "rawContinuationIdsPersisted": 0,
+    "secretValuesPersisted": 0,
+    "propertyFingerprintsPersisted": 0,
+    "crossRunLinkability": false
+  }
+}

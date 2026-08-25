@@ -30,11 +30,19 @@ import {
   SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS,
   SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET,
   SPLIT_R1_OURPRICE_PROBE_V2_VERSION,
+  SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_VERSION,
+  SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
+  SPLIT_R1_TEMPORAL_TOTALITY_GATE,
+  SPLIT_R1_TAX_COMPLETENESS_GATE,
+  SPLIT_R1_MANDATORY_CHARGES_GATE,
+  SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE,
   SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS,
   SPLIT_R1_REPOSITORY_ROOT,
   SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
   SPLIT_R1_TARGETED_MATRIX_VERSION,
   SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
+  SPLIT_R1_TARGETED_DIAGNOSTIC_ELIGIBILITY,
+  SPLIT_R1_TARGETED_RESULT_LABEL,
   SPLIT_R1_TARGETED_RUN_STATUS,
   assertSplitR1OurpriceClassificationExclusiveV1,
   assertSplitR1OurpriceProbeInitialSearchAllowed,
@@ -67,6 +75,7 @@ import {
   normalizeSplitR1SearchResponse,
   loadSplitR1OurpriceSemanticsProbeV1,
   loadSplitR1OurpriceSemanticsProbeV2,
+  loadSplitR1OurpriceEmpiricalTotalityReceiptV1,
   loadSplitR1TargetedScenarioMatrixV1,
   parseSplitR1Arguments,
   runSplitR1Collector,
@@ -77,6 +86,7 @@ import {
   validateSplitR1BaseUrl,
   validateSplitR1OurpriceSemanticsProbeV1,
   validateSplitR1OurpriceSemanticsProbeV2,
+  validateSplitR1OurpriceEmpiricalTotalityReceiptV1,
   validateSplitR1TargetedScenarioMatrixV1,
 } from "../../scripts/run-split-r1-routestack-read-only-collector.mjs";
 import {
@@ -354,7 +364,7 @@ test("targeted matrix freezes six high-variance scenarios and thirty zero-networ
   }
 });
 
-test("targeted CLI is explicit, dry-run-only and holds on unproven ourprice semantics", async () => {
+test("targeted CLI remains dry-run-only while empirical temporal totality is separated from tax and bookable gates", async () => {
   assert.deepEqual(parseSplitR1Arguments(["--targeted-matrix-v1"]), {
     mode: "targeted-dry-run",
   });
@@ -386,8 +396,111 @@ test("targeted CLI is explicit, dry-run-only and holds on unproven ourprice sema
   assert.equal(result.targetedLiveAuthorized, false);
   assert.equal(result.priceSemanticsGate, SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE);
   assert.equal(result.targetedRunStatus, SPLIT_R1_TARGETED_RUN_STATUS);
+  assert.equal(
+    result.empiricalReceiptVersion,
+    SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_VERSION
+  );
+  assert.equal(result.ourpriceTemporalSemantics, SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS);
+  assert.equal(result.temporalTotalityGate, SPLIT_R1_TEMPORAL_TOTALITY_GATE);
+  assert.equal(result.taxCompletenessGate, SPLIT_R1_TAX_COMPLETENESS_GATE);
+  assert.equal(result.mandatoryChargesGate, SPLIT_R1_MANDATORY_CHARGES_GATE);
+  assert.equal(result.bookableEquivalenceGate, SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE);
+  assert.equal(result.contractualProviderConfirmation, false);
+  assert.equal(
+    result.targetedDiagnosticEligibility,
+    SPLIT_R1_TARGETED_DIAGNOSTIC_ELIGIBILITY
+  );
+  assert.equal(result.targetedLiveDirectAuthorizationRequired, true);
+  assert.equal(result.targetedResultLabel, SPLIT_R1_TARGETED_RESULT_LABEL);
+  assert.equal(result.commercialGoAllowed, false);
+  assert.equal(result.publicRecommendationAllowed, false);
+  assert.equal(result.policyEligible, false);
   assert.equal(result.causalLedgerRequired, SPLIT_R1_CAUSAL_LEDGER_VERSION);
   assert.equal(fetchCalls, 0);
+});
+
+test("R1C.8 empirical totality receipt is deterministic, sanitized and cannot promote nightly, tax-inclusive or bookable semantics", async () => {
+  const first = await loadSplitR1OurpriceEmpiricalTotalityReceiptV1();
+  const second = await loadSplitR1OurpriceEmpiricalTotalityReceiptV1();
+  assert.equal(first.schemaVersion, SPLIT_R1_OURPRICE_EMPIRICAL_TOTALITY_RECEIPT_VERSION);
+  assert.equal(validateSplitR1OurpriceEmpiricalTotalityReceiptV1(first).valid, true);
+  assert.equal(stableStringifySplitF0(first), stableStringifySplitF0(second));
+  assert.equal(first.sourceSha, "5662c56542d51eeafd3106c8aa9070cae65f8e34");
+  assert.equal(first.probeVersion, SPLIT_R1_OURPRICE_PROBE_V2_VERSION);
+  assert.equal(first.metrics.commonPropertyCount, 1210);
+  assert.equal(first.metrics.eligibleTriples, 1210);
+  assert.equal(first.metrics.medianTotalError, 0.010575498616742446);
+  assert.equal(first.metrics.medianNightlyError, 1.0001592224733593);
+  assert.equal(first.metrics.shareTotalCloser, 0.9851239669421488);
+  assert.equal(first.empiricalClassification, "TOTAL_STAY_EMPIRICALLY_SUPPORTED");
+  assert.notEqual(first.empiricalClassification, "NIGHTLY_EMPIRICALLY_SUPPORTED");
+  assert.equal(first.decision.ourpriceTemporalSemantics, SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS);
+  assert.equal(first.decision.temporalTotalityGate, "PASS_EMPIRICAL");
+  assert.equal(first.decision.taxCompletenessGate, "HOLD");
+  assert.equal(first.decision.mandatoryChargesGate, "HOLD");
+  assert.equal(first.decision.bookableEquivalenceGate, "HOLD");
+  assert.equal(first.decision.contractualProviderConfirmation, false);
+  assert.equal(first.decision.targetedLiveDirectAuthorizationRequired, true);
+  assert.equal(first.decision.targetedResultLabel, "diagnostic gross price delta");
+  assert.equal(first.decision.commercialGoAllowed, false);
+  assert.equal(first.decision.publicRecommendationAllowed, false);
+  assert.equal(first.decision.policyEligible, false);
+  assert.equal(first.conclusionLimits.taxCompleteness, "UNPROVEN");
+  assert.equal(first.conclusionLimits.mandatoryChargesCompleteness, "UNPROVEN");
+  assert.equal(first.conclusionLimits.bookablePriceEquivalence, "UNPROVEN");
+  assert.equal(first.privacy.rawIdsPersisted, 0);
+  assert.equal(first.privacy.rawContinuationIdsPersisted, 0);
+  assert.equal(first.privacy.secretValuesPersisted, 0);
+  assert.equal(first.privacy.crossRunLinkability, false);
+
+  for (const drift of [
+    { path: ["empiricalClassification"], value: "NIGHTLY_EMPIRICALLY_SUPPORTED" },
+    { path: ["decision", "taxCompletenessGate"], value: "PASS" },
+    { path: ["decision", "bookableEquivalenceGate"], value: "PASS" },
+    { path: ["conclusionLimits", "taxCompleteness"], value: "PROVEN" },
+    { path: ["conclusionLimits", "bookablePriceEquivalence"], value: "PROVEN" },
+  ]) {
+    const changed = structuredClone(first);
+    let target = changed;
+    for (const key of drift.path.slice(0, -1)) target = target[key];
+    target[drift.path.at(-1)] = drift.value;
+    assert.equal(validateSplitR1OurpriceEmpiricalTotalityReceiptV1(changed).valid, false);
+  }
+
+  const serialized = stableStringifySplitF0(first);
+  assert.doesNotMatch(
+    serialized,
+    /"(?:apiKey|apiSecret|authorization|token|hmac|nonce|destinationId|hotelId|offerId|correlationId|nextResultsKey)"/i
+  );
+  assert.equal(assertSplitR1PersistedPayloadSafe(first), true);
+});
+
+test("loading the empirical receipt leaves the fixed-baseline headline replay byte-identical", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const scenario = matrix.scenarios[0];
+  const searches = buildSplitF0LogicalSearchPlan(matrix).filter(
+    (search) => search.scenarioId === scenario.scenarioId
+  );
+  const full = searches.find((search) => search.kind === "full-stay");
+  const segments = searches.filter((search) => search.kind === "split-segment");
+  const offers = [
+    normalizedOffer(full, "receipt-baseline", 50_000),
+    ...segments.map((search) =>
+      normalizedOffer(
+        search,
+        search.segmentOrdinal === 0 ? "receipt-segment-a" : "receipt-segment-b",
+        20_000
+      )
+    ),
+  ];
+  const before = evaluateSplitR1SearchLevelScenario(scenario, offers);
+  const receipt = await loadSplitR1OurpriceEmpiricalTotalityReceiptV1();
+  const after = evaluateSplitR1SearchLevelScenario(scenario, offers);
+  assert.equal(stableStringifySplitF0(after), stableStringifySplitF0(before));
+  assert.equal(receipt.decision.economicPolicyChanged, false);
+  assert.equal(receipt.decision.publicBoundaryChanged, false);
+  assert.equal(after.fixedBaseline.selectedBeforeSplit, true);
+  assert.equal(after.strictComparisons, 0);
 });
 
 test("targeted matrix validation fails closed on scenario, split and threshold drift", async () => {
