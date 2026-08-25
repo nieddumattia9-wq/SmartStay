@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,6 +34,20 @@ export const SPLIT_R1_RETRIES = 0;
 export const SPLIT_R1_CONCURRENCY = 1;
 export const SPLIT_R1_HTTP_TIMEOUT_MS = 120_000;
 export const SPLIT_R1_CAUSAL_LEDGER_VERSION = "stayopti.split-r1.causal-ledger@1";
+export const SPLIT_R1_TARGETED_MATRIX_VERSION =
+  "stayopti.split-r1.targeted-scenario-matrix@1";
+export const SPLIT_R1_TARGETED_SCENARIO_VERSION =
+  "stayopti.split-r1.targeted-scenario@1";
+export const SPLIT_R1_TARGETED_MATRIX_PATH = path.join(
+  SPLIT_R1_REPOSITORY_ROOT,
+  "tests",
+  "engine-v3",
+  "fixtures",
+  "split-r1-targeted-scenario-matrix-v1.json"
+);
+export const SPLIT_R1_TARGETED_EXPECTED_DURATIONS = [7, 10, 12, 14, 21, 30];
+export const SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE = "HOLD";
+export const SPLIT_R1_TARGETED_RUN_STATUS = "HOLD_PRICE_SEMANTICS_UNPROVEN";
 export const SPLIT_R1_LIVE_CONFIRMATIONS = [
   "--execute-production-read-only",
   "--confirm-routestack-search-only",
@@ -94,6 +109,8 @@ const SPLIT_R1_DESTINATION_CITY_ALIASES = Object.freeze({
   berlin: ["berlin"],
   wien: ["wien", "vienna"],
   paris: ["paris"],
+  amsterdam: ["amsterdam"],
+  madrid: ["madrid"],
 });
 
 const SPLIT_R1_DESTINATION_COUNTRY_ALIASES = Object.freeze({
@@ -102,6 +119,7 @@ const SPLIT_R1_DESTINATION_COUNTRY_ALIASES = Object.freeze({
   ES: ["es", "esp", "spain", "espana"],
   FR: ["fr", "fra", "france"],
   IT: ["it", "ita", "italy", "italia"],
+  NL: ["nl", "nld", "netherlands", "nederland"],
   PT: ["pt", "prt", "portugal"],
 });
 
@@ -171,7 +189,8 @@ function assertSafeIntegerSeconds(timestamp) {
 }
 
 export function parseSplitR1Arguments(argv) {
-  const allowed = new Set(["--dry-run", ...SPLIT_R1_LIVE_CONFIRMATIONS]);
+  const targetedFlag = "--targeted-matrix-v1";
+  const allowed = new Set(["--dry-run", targetedFlag, ...SPLIT_R1_LIVE_CONFIRMATIONS]);
   for (const argument of argv) {
     if (!allowed.has(argument)) {
       throw new Error(`split-r1-unknown-argument:${argument}`);
@@ -179,6 +198,12 @@ export function parseSplitR1Arguments(argv) {
   }
   if (argv.includes("--dry-run") && SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag))) {
     throw new Error("split-r1-incompatible-mode-flags");
+  }
+  if (argv.includes(targetedFlag) && SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag))) {
+    throw new Error("split-r1-targeted-live-not-authorized");
+  }
+  if (argv.includes(targetedFlag)) {
+    return { mode: "targeted-dry-run" };
   }
   const confirmationsPresent = SPLIT_R1_LIVE_CONFIRMATIONS.filter((flag) => argv.includes(flag));
   if (confirmationsPresent.length === 0) {
@@ -1092,7 +1117,7 @@ export function replaySplitR1CausalLedger(ledger) {
 }
 
 export function buildSplitR1CausalLedger(matrix, searchStates) {
-  const logicalSearches = buildSplitF0LogicalSearchPlan(matrix);
+  const logicalSearches = buildSplitR1LogicalSearchPlan(matrix);
   const scenarioById = new Map(matrix.scenarios.map((scenario) => [scenario.scenarioId, scenario]));
   const baseLedger = {
     schemaVersion: SPLIT_R1_CAUSAL_LEDGER_VERSION,
@@ -1147,6 +1172,554 @@ export function assertSplitR1PersistedPayloadSafe(payload) {
   };
   visit(payload);
   return true;
+}
+
+const SPLIT_R1_TARGETED_EXPECTED_SCENARIOS = Object.freeze([
+  {
+    scenarioId: "SPLIT-R1-TGT-01-ROMA-NEW-YEAR-7N",
+    canonicalId: "it-roma",
+    label: "Roma",
+    countryCode: "IT",
+    latitude: 41.9028,
+    longitude: 12.4964,
+    checkIn: "2026-12-28",
+    checkOut: "2027-01-04",
+    nights: 7,
+    targetMechanism: "NEW_YEAR_PEAK_INSIDE_SHOULDER_STAY",
+    anchors: ["EVENT:2027-01-01"],
+    splitNights: [3, 4],
+  },
+  {
+    scenarioId: "SPLIT-R1-TGT-02-FIRENZE-EASTER-10N",
+    canonicalId: "it-firenze",
+    label: "Firenze",
+    countryCode: "IT",
+    latitude: 43.7696,
+    longitude: 11.2558,
+    checkIn: "2027-03-24",
+    checkOut: "2027-04-03",
+    nights: 10,
+    targetMechanism: "EASTER_WEEKEND_INSIDE_LONGER_STAY",
+    anchors: ["EVENT:2027-03-28"],
+    splitNights: [4, 5],
+  },
+  {
+    scenarioId: "SPLIT-R1-TGT-03-AMSTERDAM-KINGS-DAY-12N",
+    canonicalId: "nl-amsterdam",
+    label: "Amsterdam",
+    countryCode: "NL",
+    latitude: 52.3676,
+    longitude: 4.9041,
+    checkIn: "2027-04-22",
+    checkOut: "2027-05-04",
+    nights: 12,
+    targetMechanism: "KINGS_DAY_AND_MONTH_BOUNDARY",
+    anchors: ["EVENT:2027-04-27", "MONTH_BOUNDARY:2027-05-01"],
+    splitNights: [5, 9],
+  },
+  {
+    scenarioId: "SPLIT-R1-TGT-04-PARIS-BASTILLE-14N",
+    canonicalId: "fr-paris",
+    label: "Paris",
+    countryCode: "FR",
+    latitude: 48.8566,
+    longitude: 2.3522,
+    checkIn: "2027-07-07",
+    checkOut: "2027-07-21",
+    nights: 14,
+    targetMechanism: "BASTILLE_DAY_PEAK_INSIDE_STAY",
+    anchors: ["EVENT:2027-07-14"],
+    splitNights: [7, 8],
+  },
+  {
+    scenarioId: "SPLIT-R1-TGT-05-MADRID-EASTER-21N",
+    canonicalId: "es-madrid",
+    label: "Madrid",
+    countryCode: "ES",
+    latitude: 40.4168,
+    longitude: -3.7038,
+    checkIn: "2027-03-20",
+    checkOut: "2027-04-10",
+    nights: 21,
+    targetMechanism: "EASTER_AND_MULTI_WEEKEND_VARIANCE",
+    anchors: ["EVENT:2027-03-28"],
+    splitNights: [8, 11],
+  },
+  {
+    scenarioId: "SPLIT-R1-TGT-06-BARCELONA-MONTH-BOUNDARY-30N",
+    canonicalId: "es-barcelona",
+    label: "Barcelona",
+    countryCode: "ES",
+    latitude: 41.3874,
+    longitude: 2.1686,
+    checkIn: "2027-06-20",
+    checkOut: "2027-07-20",
+    nights: 30,
+    targetMechanism: "MONTH_BOUNDARY_AND_HIGH_SEASON_REGIME_CHANGE",
+    anchors: ["MONTH_BOUNDARY:2027-07-01"],
+    splitNights: [10, 15],
+  },
+]);
+
+const SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA = Object.freeze({
+  minimumValidScenariosForGo: 5,
+  minimumValidScenariosForConclusion: 4,
+  goMinimumDistinctScenariosNetPositiveAt50Eur: 2,
+  minimumGrossSavingRatio: 0.1,
+  goRequiresAtLeastOnePositiveDurationAtOrAboveNights: 14,
+  conditionalExactDistinctScenarioCount: 1,
+  holdNetPositiveThresholdEur: 25,
+  distinctPropertiesRequired: true,
+  outliersExcluded: true,
+  baselineStabilityRequired: true,
+  samePropertyOnlyIsHold: true,
+  completeCausalLedgerRequired: true,
+  deterministicReplayRequired: true,
+  priceSemanticsMustBeProven: true,
+  providerDataMustBeSufficient: true,
+});
+
+const SPLIT_R1_TARGETED_ANTI_CHERRY_PICKING = Object.freeze({
+  scenarioReplacementAllowed: false,
+  dateChangesAllowed: false,
+  splitPointChangesAllowed: false,
+  hotelFilteringAfterObservationAllowed: false,
+  thresholdChangesAllowed: false,
+  outlierRuleChangesAllowed: false,
+  frictionThresholdChangesAllowed: false,
+  fixedBestSingleChangesAllowed: false,
+  missingScenarioSubstitutionAllowed: false,
+  sameScenarioSplitPointsCountAsDistinctSignals: false,
+  samePropertyPromotionAllowed: false,
+  newProviderCallsAuthorized: false,
+});
+
+function splitR1UtcDateMilliseconds(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const milliseconds = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(milliseconds) ? milliseconds : null;
+}
+
+function splitR1TargetedScenarioFreezeView(scenario) {
+  return {
+    scenarioId: scenario?.scenarioId,
+    canonicalId: scenario?.destination?.canonicalId,
+    label: scenario?.destination?.label,
+    countryCode: scenario?.destination?.countryCode,
+    latitude: scenario?.destination?.latitude,
+    longitude: scenario?.destination?.longitude,
+    checkIn: scenario?.checkIn,
+    checkOut: scenario?.checkOut,
+    nights: scenario?.nights,
+    targetMechanism: scenario?.targetMechanism,
+    anchors: Array.isArray(scenario?.mechanismAnchors)
+      ? scenario.mechanismAnchors.map((anchor) => `${anchor?.kind}:${anchor?.date}`)
+      : [],
+    splitNights: Array.isArray(scenario?.splitPoints)
+      ? scenario.splitPoints.map((splitPoint) => splitPoint?.nightsFromStart)
+      : [],
+  };
+}
+
+export function validateSplitR1TargetedScenarioMatrixV1(matrix) {
+  const issues = [];
+  if (matrix?.schemaVersion !== SPLIT_R1_TARGETED_MATRIX_VERSION) {
+    issues.push("targeted-matrix-schema-version-invalid");
+  }
+  if (!Array.isArray(matrix?.scenarios) || matrix.scenarios.length !== 6) {
+    issues.push("targeted-matrix-scenario-count-invalid");
+  }
+  if (
+    stableStringifySplitF0(matrix?.precommittedCriteria) !==
+    stableStringifySplitF0(SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA)
+  ) {
+    issues.push("targeted-precommitted-criteria-drift");
+  }
+  if (
+    stableStringifySplitF0(matrix?.antiCherryPicking) !==
+    stableStringifySplitF0(SPLIT_R1_TARGETED_ANTI_CHERRY_PICKING)
+  ) {
+    issues.push("targeted-anti-cherry-picking-contract-drift");
+  }
+  if (
+    matrix?.networkRequired !== false ||
+    matrix?.targetedLiveAuthorized !== false ||
+    matrix?.prebookAllowed !== false ||
+    matrix?.bookingAllowed !== false ||
+    matrix?.paymentAllowed !== false ||
+    matrix?.publicRecommendationAllowed !== false
+  ) {
+    issues.push("targeted-safety-boundary-invalid");
+  }
+  if (
+    matrix?.priceSemantics?.field !== "ourprice" ||
+    matrix?.priceSemantics?.contractStatus !== "UNPROVEN" ||
+    matrix?.priceSemantics?.comparisonLevel !== "CONDITIONAL_SEARCH_LEVEL_ONLY" ||
+    matrix?.priceSemantics?.targetedRunGate !== SPLIT_R1_TARGETED_RUN_STATUS
+  ) {
+    issues.push("targeted-price-semantics-gate-invalid");
+  }
+  if (
+    matrix?.causalLedger?.required !== true ||
+    matrix?.causalLedger?.schemaVersion !== SPLIT_R1_CAUSAL_LEDGER_VERSION ||
+    matrix?.causalLedger?.deterministicReplayRequired !== true
+  ) {
+    issues.push("targeted-causal-ledger-contract-invalid");
+  }
+
+  const scenarios = Array.isArray(matrix?.scenarios) ? matrix.scenarios : [];
+  const ids = new Set();
+  for (let index = 0; index < scenarios.length; index += 1) {
+    const scenario = scenarios[index];
+    const expected = SPLIT_R1_TARGETED_EXPECTED_SCENARIOS[index];
+    const prefix = scenario?.scenarioId ?? `index-${index}`;
+    if (scenario?.schemaVersion !== SPLIT_R1_TARGETED_SCENARIO_VERSION) {
+      issues.push(`${prefix}:scenario-schema-version-invalid`);
+    }
+    if (
+      expected === undefined ||
+      stableStringifySplitF0(splitR1TargetedScenarioFreezeView(scenario)) !==
+        stableStringifySplitF0(expected)
+    ) {
+      issues.push(`${prefix}:frozen-scenario-drift`);
+    }
+    if (ids.has(scenario?.scenarioId)) issues.push(`${prefix}:scenario-id-duplicate`);
+    ids.add(scenario?.scenarioId);
+    const checkIn = splitR1UtcDateMilliseconds(scenario?.checkIn);
+    const checkOut = splitR1UtcDateMilliseconds(scenario?.checkOut);
+    if (
+      checkIn === null ||
+      checkOut === null ||
+      checkOut <= checkIn ||
+      (checkOut - checkIn) / 86_400_000 !== scenario?.nights ||
+      checkIn <= Date.UTC(2026, 7, 25)
+    ) {
+      issues.push(`${prefix}:date-window-invalid`);
+    }
+    if (
+      !Number.isFinite(scenario?.destination?.latitude) ||
+      !Number.isFinite(scenario?.destination?.longitude) ||
+      Math.abs(scenario.destination.latitude) > 90 ||
+      Math.abs(scenario.destination.longitude) > 180
+    ) {
+      issues.push(`${prefix}:canonical-coordinates-invalid`);
+    }
+    if (
+      scenario?.currency !== "EUR" ||
+      scenario?.guestNationality !== "IT" ||
+      scenario?.occupancy?.adults !== 2 ||
+      scenario?.occupancy?.rooms !== 1 ||
+      scenario?.occupancy?.pets !== 0 ||
+      !Array.isArray(scenario?.occupancy?.childAges) ||
+      scenario.occupancy.childAges.length !== 0
+    ) {
+      issues.push(`${prefix}:common-occupancy-or-currency-invalid`);
+    }
+    if (
+      scenario?.constraints?.maximumDistanceKm !== 25 ||
+      scenario?.constraints?.minimumRating !== null ||
+      scenario?.constraints?.minimumReviewCount !== null ||
+      scenario?.constraints?.maximumTotalPrice !== null ||
+      scenario?.constraints?.maximumSwitches !== 1 ||
+      scenario?.constraints?.distinctPropertiesRequired !== true ||
+      scenario?.constraints?.minimumSegmentNights !== 2
+    ) {
+      issues.push(`${prefix}:economic-constraints-invalid`);
+    }
+    if (!Array.isArray(scenario?.splitPoints) || scenario.splitPoints.length !== 2) {
+      issues.push(`${prefix}:split-point-count-invalid`);
+    } else {
+      for (const splitPoint of scenario.splitPoints) {
+        if (
+          typeof splitPoint?.splitPointId !== "string" ||
+          splitPoint.splitPointId.length === 0 ||
+          !Number.isInteger(splitPoint?.nightsFromStart) ||
+          splitPoint.nightsFromStart < 2 ||
+          scenario.nights - splitPoint.nightsFromStart < 2
+        ) {
+          issues.push(`${prefix}:split-point-invalid`);
+        }
+      }
+    }
+    if (!Array.isArray(scenario?.mechanismAnchors) || scenario.mechanismAnchors.length === 0) {
+      issues.push(`${prefix}:mechanism-anchor-missing`);
+    } else {
+      for (const anchor of scenario.mechanismAnchors) {
+        const anchorDate = splitR1UtcDateMilliseconds(anchor?.date);
+        if (anchorDate === null || checkIn === null || checkOut === null || anchorDate < checkIn || anchorDate >= checkOut) {
+          issues.push(`${prefix}:mechanism-anchor-outside-window`);
+        }
+      }
+    }
+  }
+  return { valid: issues.length === 0, issues: uniqueSorted(issues) };
+}
+
+export async function loadSplitR1TargetedScenarioMatrixV1(
+  matrixPath = SPLIT_R1_TARGETED_MATRIX_PATH
+) {
+  const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
+  const validation = validateSplitR1TargetedScenarioMatrixV1(matrix);
+  if (!validation.valid) {
+    throw new Error(`split-r1-targeted-matrix-invalid:${validation.issues.join(",")}`);
+  }
+  return matrix;
+}
+
+function splitR1TargetedLogicalSearch(scenario, kind, splitPointId, segmentOrdinal, period) {
+  const request = {
+    destinationCanonicalId: scenario.destination.canonicalId,
+    countryCode: scenario.destination.countryCode,
+    latitude: scenario.destination.latitude,
+    longitude: scenario.destination.longitude,
+    radiusMeters: Math.round(scenario.constraints.maximumDistanceKm * 1000),
+    checkIn: period.checkIn,
+    checkOut: period.checkOut,
+    nights: period.nights,
+    occupancy: scenario.occupancy,
+    currency: scenario.currency,
+    guestNationality: scenario.guestNationality,
+  };
+  const suffix = kind === "full-stay" ? "full" : `${splitPointId}.segment-${segmentOrdinal}`;
+  return {
+    logicalSearchId: `${scenario.scenarioId}.${suffix}`,
+    scenarioId: scenario.scenarioId,
+    kind,
+    splitPointId,
+    segmentOrdinal,
+    period,
+    request,
+    requestFingerprint: `sha256:${crypto
+      .createHash("sha256")
+      .update(stableStringifySplitF0(request))
+      .digest("hex")}`,
+  };
+}
+
+export function buildSplitR1TargetedLogicalSearchPlanV1(matrix) {
+  const validation = validateSplitR1TargetedScenarioMatrixV1(matrix);
+  if (!validation.valid) {
+    throw new Error(`split-r1-targeted-matrix-invalid:${validation.issues.join(",")}`);
+  }
+  const searches = [];
+  for (const scenario of matrix.scenarios) {
+    searches.push(splitR1TargetedLogicalSearch(scenario, "full-stay", null, null, scenario));
+    for (const splitPoint of scenario.splitPoints) {
+      const boundary = addUtcDays(scenario.checkIn, splitPoint.nightsFromStart);
+      const segments = [
+        {
+          ordinal: 0,
+          checkIn: scenario.checkIn,
+          checkOut: boundary,
+          nights: splitPoint.nightsFromStart,
+          currency: scenario.currency,
+          occupancy: scenario.occupancy,
+        },
+        {
+          ordinal: 1,
+          checkIn: boundary,
+          checkOut: scenario.checkOut,
+          nights: scenario.nights - splitPoint.nightsFromStart,
+          currency: scenario.currency,
+          occupancy: scenario.occupancy,
+        },
+      ];
+      for (const segment of segments) {
+        searches.push(
+          splitR1TargetedLogicalSearch(
+            scenario,
+            "split-segment",
+            splitPoint.splitPointId,
+            segment.ordinal,
+            segment
+          )
+        );
+      }
+    }
+  }
+  if (searches.length !== 30) throw new Error("split-r1-targeted-logical-search-count-invalid");
+  return searches;
+}
+
+function buildSplitR1LogicalSearchPlan(matrix) {
+  return matrix?.schemaVersion === SPLIT_R1_TARGETED_MATRIX_VERSION
+    ? buildSplitR1TargetedLogicalSearchPlanV1(matrix)
+    : buildSplitF0LogicalSearchPlan(matrix);
+}
+
+function splitR1ScenarioHasQualifyingComparison(scenario, predicate) {
+  return Array.isArray(scenario?.splitComparisons) && scenario.splitComparisons.some(predicate);
+}
+
+export function classifySplitR1TargetedResultV1(input) {
+  const scenarios = Array.isArray(input?.scenarios) ? input.scenarios : [];
+  const uniqueScenarioIds = new Set(scenarios.map((scenario) => scenario?.scenarioId));
+  if (uniqueScenarioIds.size !== scenarios.length) {
+    throw new Error("split-r1-targeted-classification-duplicate-scenario");
+  }
+  const validScenarios = scenarios.filter((scenario) => scenario?.validComparison === true);
+  const methodologyReasons = [];
+  if (input?.priceSemanticsProven !== true) methodologyReasons.push("PRICE_SEMANTICS_UNPROVEN");
+  if (input?.causalLedgerComplete !== true) methodologyReasons.push("CAUSAL_LEDGER_INCOMPLETE");
+  if (input?.replayDeterministic !== true) methodologyReasons.push("REPLAY_INCOMPLETE_OR_DIVERGENT");
+  if (input?.providerDataSufficient !== true) methodologyReasons.push("PROVIDER_DATA_INSUFFICIENT");
+  if (
+    validScenarios.length <
+    SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.minimumValidScenariosForConclusion
+  ) {
+    methodologyReasons.push("VALID_COVERAGE_BELOW_4_OF_6");
+  }
+  if (methodologyReasons.length > 0) {
+    return {
+      classification: "METHODOLOGY_INCONCLUSIVE",
+      validScenarioCount: validScenarios.length,
+      qualifyingScenarioIds: [],
+      reasonCodes: uniqueSorted(methodologyReasons),
+    };
+  }
+
+  const robustDistinctPositiveAt25 = validScenarios.filter(
+    (scenario) =>
+      scenario?.baselineStable === true &&
+      splitR1ScenarioHasQualifyingComparison(
+        scenario,
+        (comparison) =>
+          comparison?.distinctProperties === true &&
+          comparison?.outlier !== true &&
+          Number.isSafeInteger(comparison?.netSavingAt25Minor) &&
+          comparison.netSavingAt25Minor > 0
+      )
+  );
+  const qualifyingAt50 = validScenarios.filter(
+    (scenario) =>
+      scenario?.baselineStable === true &&
+      splitR1ScenarioHasQualifyingComparison(
+        scenario,
+        (comparison) =>
+          comparison?.distinctProperties === true &&
+          comparison?.outlier !== true &&
+          Number.isSafeInteger(comparison?.netSavingAt50Minor) &&
+          comparison.netSavingAt50Minor > 0 &&
+          Number.isFinite(comparison?.grossSavingRatio) &&
+          comparison.grossSavingRatio >=
+            SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.minimumGrossSavingRatio
+      )
+  );
+  const qualifyingIds = uniqueSorted(qualifyingAt50.map((scenario) => scenario.scenarioId));
+  const hasLongPositive = qualifyingAt50.some(
+    (scenario) =>
+      Number.isInteger(scenario?.duration) &&
+      scenario.duration >=
+        SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.goRequiresAtLeastOnePositiveDurationAtOrAboveNights
+  );
+  if (
+    validScenarios.length >= SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.minimumValidScenariosForGo &&
+    qualifyingAt50.length >=
+      SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.goMinimumDistinctScenariosNetPositiveAt50Eur &&
+    hasLongPositive
+  ) {
+    return {
+      classification: "CANDIDATE_GO",
+      validScenarioCount: validScenarios.length,
+      qualifyingScenarioIds: qualifyingIds,
+      reasonCodes: ["PRECOMMITTED_GO_CRITERIA_MET"],
+    };
+  }
+  if (
+    qualifyingAt50.length ===
+    SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.conditionalExactDistinctScenarioCount
+  ) {
+    return {
+      classification: "CANDIDATE_CONDITIONAL",
+      validScenarioCount: validScenarios.length,
+      qualifyingScenarioIds: qualifyingIds,
+      reasonCodes: ["EXACTLY_ONE_DISTINCT_SCENARIO_QUALIFIES"],
+    };
+  }
+
+  const holdReasons = [];
+  if (robustDistinctPositiveAt25.length === 0) holdReasons.push("ZERO_ROBUST_DISTINCT_POSITIVE_AT_25_EUR");
+  const anyPositiveAt25 = validScenarios.some((scenario) =>
+    splitR1ScenarioHasQualifyingComparison(
+      scenario,
+      (comparison) =>
+        Number.isSafeInteger(comparison?.netSavingAt25Minor) && comparison.netSavingAt25Minor > 0
+    )
+  );
+  const anyRatioAtLeastTenPercent = validScenarios.some((scenario) =>
+    splitR1ScenarioHasQualifyingComparison(
+      scenario,
+      (comparison) =>
+        Number.isSafeInteger(comparison?.netSavingAt25Minor) &&
+        comparison.netSavingAt25Minor > 0 &&
+        Number.isFinite(comparison?.grossSavingRatio) &&
+        comparison.grossSavingRatio >= SPLIT_R1_TARGETED_PRECOMMITTED_CRITERIA.minimumGrossSavingRatio
+    )
+  );
+  if (anyPositiveAt25 && !anyRatioAtLeastTenPercent) holdReasons.push("ALL_POSITIVE_RATIOS_BELOW_10_PERCENT");
+  if (
+    robustDistinctPositiveAt25.length === 0 &&
+    validScenarios.some((scenario) => scenario?.samePropertyCounterfactualPositive === true)
+  ) {
+    holdReasons.push("SAME_PROPERTY_ONLY_POSITIVITY");
+  }
+  const positivityInvalidatedByOutlierOrBaseline = validScenarios.some(
+    (scenario) =>
+      splitR1ScenarioHasQualifyingComparison(
+        scenario,
+        (comparison) =>
+          Number.isSafeInteger(comparison?.netSavingAt25Minor) &&
+          comparison.netSavingAt25Minor > 0 &&
+          (comparison?.outlier === true || scenario?.baselineStable !== true)
+      )
+  );
+  if (anyPositiveAt25 && robustDistinctPositiveAt25.length === 0 && positivityInvalidatedByOutlierOrBaseline) {
+    holdReasons.push("POSITIVITY_DEPENDS_ON_OUTLIER_OR_UNSTABLE_BASELINE");
+  }
+  if (holdReasons.length === 0) holdReasons.push("PRECOMMITTED_GO_CRITERIA_NOT_MET");
+  return {
+    classification: "HOLD_NO_SIGNAL",
+    validScenarioCount: validScenarios.length,
+    qualifyingScenarioIds: qualifyingIds,
+    reasonCodes: uniqueSorted(holdReasons),
+  };
+}
+
+export function buildSplitR1TargetedDryRunPlanV1(matrix) {
+  const logicalSearches = buildSplitR1TargetedLogicalSearchPlanV1(matrix);
+  const durations = matrix.scenarios.map((scenario) => scenario.nights);
+  if (
+    stableStringifySplitF0(durations) !==
+    stableStringifySplitF0(SPLIT_R1_TARGETED_EXPECTED_DURATIONS)
+  ) {
+    throw new Error("split-r1-targeted-duration-matrix-mismatch");
+  }
+  return {
+    schemaVersion: "stayopti.split-r1.targeted-dry-run@1",
+    status: "PASS",
+    mode: "TARGETED_DRY_RUN_ONLY",
+    matrixVersion: matrix.schemaVersion,
+    scenarios: matrix.scenarios.length,
+    durations,
+    logicalSearches: logicalSearches.length,
+    httpRequests: 0,
+    searchesByScenario: Object.fromEntries(
+      matrix.scenarios.map((scenario) => [
+        scenario.scenarioId,
+        logicalSearches.filter((search) => search.scenarioId === scenario.scenarioId).length,
+      ])
+    ),
+    targetedLiveAuthorized: false,
+    priceSemanticsGate: SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
+    targetedRunStatus: SPLIT_R1_TARGETED_RUN_STATUS,
+    causalLedgerRequired: SPLIT_R1_CAUSAL_LEDGER_VERSION,
+    strictComparabilityAllowed: false,
+    conditionalComparabilityImplemented: true,
+    fixedBaselineImplemented: true,
+    antiCherryPickingFrozen: true,
+    publicRecommendationAllowed: false,
+    policyEligible: false,
+  };
 }
 
 export function buildSplitR1DryRunPlan(matrix) {
@@ -1442,6 +2015,9 @@ export async function runSplitR1Collector({
   sleep,
   budgetLimits,
 }) {
+  if (options.mode === "targeted-dry-run") {
+    return buildSplitR1TargetedDryRunPlanV1(matrix);
+  }
   const dryRun = buildSplitR1DryRunPlan(matrix);
   if (options.mode === "dry-run") return dryRun;
 
@@ -1464,7 +2040,7 @@ export async function runSplitR1Collector({
   if (typeof partnerToken !== "string" || partnerToken.length === 0) {
     throw new Error("split-r1-partner-token-missing");
   }
-  const logicalSearches = buildSplitF0LogicalSearchPlan(matrix);
+  const logicalSearches = buildSplitR1LogicalSearchPlan(matrix);
   const destinations = new Map();
   for (const scenario of matrix.scenarios) {
     const destinationPayload = await transport.post(
@@ -1621,7 +2197,10 @@ export async function runSplitR1Collector({
 
 async function main() {
   const options = parseSplitR1Arguments(process.argv.slice(2));
-  const matrix = await loadSplitF0ScenarioMatrix();
+  const matrix =
+    options.mode === "targeted-dry-run"
+      ? await loadSplitR1TargetedScenarioMatrixV1()
+      : await loadSplitF0ScenarioMatrix();
   const result = await runSplitR1Collector({ matrix, options });
   process.stdout.write(`${stableStringifySplitF0(result, 2)}\n`);
 }

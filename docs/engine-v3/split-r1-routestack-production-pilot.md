@@ -88,3 +88,49 @@ Pure replay modes are diagnostic and cannot alter the primary result:
 The baseline remains selected before any Split, comparisons remain conditional, `ourprice` retains `UNPROVEN_SEARCH_LEVEL_WINDOW_PRICE`, strict comparisons remain zero, and outliers remain quarantined. A future capture fails if replay does not reproduce the primary scenario result byte-for-byte after canonical serialization. Search and property order do not influence replay.
 
 Property pseudonyms are `HMAC-SHA256(runEphemeralSecret, rawPropertyIdentity)`. The secret is generated in memory, is never persisted and deliberately changes between runs; therefore fingerprints support correlations only inside one capture. Raw property, offer and destination identifiers, hotel names, addresses, URLs, credentials, session material, payloads and PII remain prohibited.
+
+## Targeted high-variance matrix and precommitted kill criteria
+
+SPLIT-R1C.2 freezes a second, explicitly targeted calibration matrix at `tests/engine-v3/fixtures/split-r1-targeted-scenario-matrix-v1.json`. It does not replace or edit the original eight-scenario generic matrix and it does not reinterpret the prior result: the current generic sample remains `NO_SIGNAL_IN_CURRENT_SAMPLE`, with zero positive comparisons out of eight. The targeted matrix asks a narrower question—whether a Split signal appears around a predeclared tariff-regime boundary—and is not a representative market sample.
+
+The targeted matrix contains exactly six fixed windows and two fixed split points per window:
+
+- Roma, 28 December 2026 to 4 January 2027, 7 nights, `NEW_YEAR_PEAK_INSIDE_SHOULDER_STAY`, splits 3/4 and 4/3;
+- Firenze, 24 March to 3 April 2027, 10 nights, `EASTER_WEEKEND_INSIDE_LONGER_STAY`, splits 4/6 and 5/5;
+- Amsterdam, 22 April to 4 May 2027, 12 nights, King's Day plus month boundary, splits 5/7 and 9/3;
+- Paris, 7 to 21 July 2027, 14 nights, Bastille Day peak, splits 7/7 and 8/6;
+- Madrid, 20 March to 10 April 2027, 21 nights, `EASTER_AND_MULTI_WEEKEND_VARIANCE`, splits 8/13 and 11/10;
+- Barcelona, 20 June to 20 July 2027, 30 nights, `MONTH_BOUNDARY_AND_HIGH_SEASON_REGIME_CHANGE`, splits 10/20 and 15/15.
+
+Every scenario freezes canonical coordinates, EUR, Italian guest nationality, one room, two adults, no children, no pets, no monetary ceiling, at most one change, two different properties and a minimum of two nights per segment. Each event or regime anchor falls inside its stay window. This produces exactly thirty logical searches, but SPLIT-R1C.2 authorizes zero provider requests and zero economic campaign budget.
+
+The command `--targeted-matrix-v1` is an explicit offline-only mode. It validates the frozen fixture, produces six scenarios, thirty logical searches and zero HTTP requests, and exits before environment or credentials are considered. It cannot be combined with the production confirmations. The no-argument and `--dry-run` generic behavior remains eight scenarios, forty logical searches and zero HTTP requests.
+
+### Price-semantics hard gate
+
+RouteStack `ourprice` remains `UNPROVEN_SEARCH_LEVEL_WINDOW_PRICE`. SPLIT-R1C.2 does not authorize a live targeted run. Its receipt must therefore state `PRICE_SEMANTICS_GATE=HOLD` and `TARGETED_RUN_STATUS=HOLD_PRICE_SEMANTICS_UNPROVEN`. A future targeted run requires an independent authoritative confirmation that `ourprice` represents the same complete stay-window price concept for full stays and both segments. Search-level numerical behavior alone is not that proof.
+
+Every future result must carry and deterministically replay `stayopti.split-r1.causal-ledger@1`. Incomplete ledger data, divergent replay or insufficient provider data is methodology-inconclusive; it cannot be converted into a negative or positive economic conclusion.
+
+### Frozen classification contract
+
+Classification is scenario-level: two positive split points in one scenario count as one signal. A `CANDIDATE_GO` requires all of the following:
+
+- at least five of six scenarios have a valid baseline and comparison;
+- at least two distinct scenarios remain net positive after EUR 50 friction;
+- each counted signal has gross saving ratio at least 10%;
+- at least one counted positive duration is 14 nights or longer;
+- each counted Split uses different properties, is not an outlier and has stable baseline evidence;
+- causal replay matches the primary result.
+
+`CANDIDATE_CONDITIONAL` requires exactly one distinct scenario to meet the EUR 50, 10%, distinct-property, non-outlier and stable-baseline conditions. It can authorize only a later targeted confirmation of that same scenario, not a public claim.
+
+`HOLD_NO_SIGNAL` applies when no scenario remains positive after EUR 25, every positive ratio is below 10%, positivity exists only in the same-property counterfactual, or positivity depends on an outlier or unstable baseline. It also applies whenever the evidence is methodologically complete but the full GO or exact-one-scenario conditional contract is not met.
+
+`METHODOLOGY_INCONCLUSIVE` is reserved for fewer than four valid scenarios, unproven price semantics, an incomplete causal ledger, non-deterministic replay or insufficient provider data. It must never be used merely to avoid an otherwise negative result.
+
+These outcomes are research controls only. Even `CANDIDATE_GO` does not activate Split, change ranking or policy, create market evidence, or permit a public recommendation.
+
+### Anti-cherry-picking freeze
+
+After this freeze, no scenario, date, split point, hotel filter, threshold or outlier rule may change after results are observed. A scenario without rates cannot be substituted. Two split points in one scenario never become two independent signals. A methodology-inconclusive result cannot be called positive or negative. New scenarios or additional provider requests require a new explicit phase and authorization.

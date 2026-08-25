@@ -18,10 +18,17 @@ import {
   SPLIT_R1_OFFICIAL_BASE_URL,
   SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS,
   SPLIT_R1_REPOSITORY_ROOT,
+  SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
+  SPLIT_R1_TARGETED_MATRIX_VERSION,
+  SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
+  SPLIT_R1_TARGETED_RUN_STATUS,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
+  buildSplitR1TargetedDryRunPlanV1,
+  buildSplitR1TargetedLogicalSearchPlanV1,
+  classifySplitR1TargetedResultV1,
   createSplitR1RequestBudgetLedger,
   createSplitR1ContinuationRequest,
   createSplitR1HotelSearchRequest,
@@ -32,11 +39,13 @@ import {
   fingerprintSplitR1Identifier,
   normalizeSplitR1SearchPage,
   normalizeSplitR1SearchResponse,
+  loadSplitR1TargetedScenarioMatrixV1,
   parseSplitR1Arguments,
   runSplitR1Collector,
   replaySplitR1CausalLedger,
   selectSplitR1DestinationCandidate,
   validateSplitR1BaseUrl,
+  validateSplitR1TargetedScenarioMatrixV1,
 } from "../../scripts/run-split-r1-routestack-read-only-collector.mjs";
 import {
   buildSplitF0LogicalSearchPlan,
@@ -84,6 +93,34 @@ function normalizedOffer(logicalSearch, property, cents) {
       "taxes-and-mandatory-costs-unproven",
       "room-board-cancellation-payment-unproven",
     ],
+  };
+}
+
+function targetedClassificationScenario(
+  scenarioId,
+  duration,
+  splitComparisons = [],
+  overrides = {}
+) {
+  return {
+    scenarioId,
+    duration,
+    validComparison: true,
+    baselineStable: true,
+    samePropertyCounterfactualPositive: false,
+    splitComparisons,
+    ...overrides,
+  };
+}
+
+function targetedClassificationInput(scenarios, overrides = {}) {
+  return {
+    priceSemanticsProven: true,
+    causalLedgerComplete: true,
+    replayDeterministic: true,
+    providerDataSufficient: true,
+    scenarios,
+    ...overrides,
   };
 }
 
@@ -179,6 +216,115 @@ test("default mode is deterministic dry-run with eight scenarios, forty searches
   assert.deepEqual(result, buildSplitR1DryRunPlan(matrix));
 });
 
+test("targeted matrix freezes six high-variance scenarios and thirty zero-network searches", async () => {
+  const matrix = await loadSplitR1TargetedScenarioMatrixV1();
+  assert.equal(matrix.schemaVersion, SPLIT_R1_TARGETED_MATRIX_VERSION);
+  assert.deepEqual(matrix.scenarios.map((scenario) => scenario.nights), SPLIT_R1_TARGETED_EXPECTED_DURATIONS);
+  assert.deepEqual(
+    matrix.scenarios.map((scenario) => scenario.destination.label),
+    ["Roma", "Firenze", "Amsterdam", "Paris", "Madrid", "Barcelona"]
+  );
+  assert.equal(validateSplitR1TargetedScenarioMatrixV1(matrix).valid, true);
+  for (const scenario of matrix.scenarios) {
+    assert.equal(Number.isFinite(scenario.destination.latitude), true);
+    assert.equal(Number.isFinite(scenario.destination.longitude), true);
+    assert.deepEqual(scenario.occupancy, { adults: 2, childAges: [], rooms: 1, pets: 0 });
+    assert.equal(scenario.currency, "EUR");
+    assert.equal(scenario.constraints.maximumTotalPrice, null);
+    assert.equal(scenario.constraints.maximumSwitches, 1);
+    assert.equal(scenario.constraints.distinctPropertiesRequired, true);
+    assert.equal(scenario.splitPoints.length, 2);
+    for (const splitPoint of scenario.splitPoints) {
+      assert.ok(splitPoint.nightsFromStart >= 2);
+      assert.ok(scenario.nights - splitPoint.nightsFromStart >= 2);
+    }
+    for (const anchor of scenario.mechanismAnchors) {
+      assert.ok(anchor.date >= scenario.checkIn && anchor.date < scenario.checkOut);
+    }
+  }
+  const searches = buildSplitR1TargetedLogicalSearchPlanV1(matrix);
+  assert.equal(searches.length, 30);
+  for (const scenario of matrix.scenarios) {
+    const scenarioSearches = searches.filter((search) => search.scenarioId === scenario.scenarioId);
+    assert.equal(scenarioSearches.length, 5);
+    for (const splitPoint of scenario.splitPoints) {
+      const segments = scenarioSearches
+        .filter((search) => search.splitPointId === splitPoint.splitPointId)
+        .sort((left, right) => left.segmentOrdinal - right.segmentOrdinal);
+      assert.equal(segments.length, 2);
+      assert.equal(segments[0].period.checkIn, scenario.checkIn);
+      assert.equal(segments[0].period.checkOut, segments[1].period.checkIn);
+      assert.equal(segments[1].period.checkOut, scenario.checkOut);
+      assert.equal(segments[0].period.nights + segments[1].period.nights, scenario.nights);
+    }
+  }
+});
+
+test("targeted CLI is explicit, dry-run-only and holds on unproven ourprice semantics", async () => {
+  assert.deepEqual(parseSplitR1Arguments(["--targeted-matrix-v1"]), {
+    mode: "targeted-dry-run",
+  });
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        "--targeted-matrix-v1",
+        "--execute-production-read-only",
+        "--confirm-routestack-search-only",
+      ]),
+    /targeted-live-not-authorized/
+  );
+  const matrix = await loadSplitR1TargetedScenarioMatrixV1();
+  let fetchCalls = 0;
+  const result = await runSplitR1Collector({
+    matrix,
+    options: { mode: "targeted-dry-run" },
+    environment: {},
+    execArgv: [],
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      throw new Error("targeted-dry-run-must-not-fetch");
+    },
+  });
+  assert.deepEqual(result, buildSplitR1TargetedDryRunPlanV1(matrix));
+  assert.equal(result.scenarios, 6);
+  assert.equal(result.logicalSearches, 30);
+  assert.equal(result.httpRequests, 0);
+  assert.equal(result.targetedLiveAuthorized, false);
+  assert.equal(result.priceSemanticsGate, SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE);
+  assert.equal(result.targetedRunStatus, SPLIT_R1_TARGETED_RUN_STATUS);
+  assert.equal(result.causalLedgerRequired, SPLIT_R1_CAUSAL_LEDGER_VERSION);
+  assert.equal(fetchCalls, 0);
+});
+
+test("targeted matrix validation fails closed on scenario, split and threshold drift", async () => {
+  const matrix = await loadSplitR1TargetedScenarioMatrixV1();
+  const dateDrift = structuredClone(matrix);
+  dateDrift.scenarios[0].checkOut = "2027-01-05";
+  assert.equal(validateSplitR1TargetedScenarioMatrixV1(dateDrift).valid, false);
+  const splitDrift = structuredClone(matrix);
+  splitDrift.scenarios[1].splitPoints[0].nightsFromStart = 3;
+  assert.equal(validateSplitR1TargetedScenarioMatrixV1(splitDrift).valid, false);
+  const thresholdDrift = structuredClone(matrix);
+  thresholdDrift.precommittedCriteria.minimumGrossSavingRatio = 0.09;
+  assert.equal(validateSplitR1TargetedScenarioMatrixV1(thresholdDrift).valid, false);
+});
+
+test("targeted future captures are bound to causal ledger v1 and deterministic replay", async () => {
+  const matrix = await loadSplitR1TargetedScenarioMatrixV1();
+  const searches = buildSplitR1TargetedLogicalSearchPlanV1(matrix);
+  const states = searches.map((logicalSearch) =>
+    causalSearchState(logicalSearch, [], "BUDGET_BOUNDED_INCOMPLETE")
+  );
+  const ledger = buildSplitR1CausalLedger(matrix, states);
+  assert.equal(ledger.schemaVersion, SPLIT_R1_CAUSAL_LEDGER_VERSION);
+  assert.equal(ledger.searches.length, 30);
+  assert.equal(ledger.scenarios.length, 6);
+  assert.equal(
+    stableStringifySplitF0(replaySplitR1CausalLedger(ledger)),
+    stableStringifySplitF0(ledger.replay)
+  );
+});
+
 test("live mode requires both confirmations before credential or network access", async () => {
   assert.throws(
     () => parseSplitR1Arguments(["--execute-production-read-only"]),
@@ -192,6 +338,118 @@ test("live mode requires both confirmations before credential or network access"
     ]),
     { mode: "execute-production-read-only" }
   );
+});
+
+test("targeted classifier counts two split points in one scenario as one signal", () => {
+  const scenarios = [
+    targetedClassificationScenario("S1", 7, [
+      { splitPointId: "half", distinctProperties: true, outlier: false, netSavingAt25Minor: 7_500, netSavingAt50Minor: 5_000, grossSavingRatio: 0.12 },
+      { splitPointId: "alt", distinctProperties: true, outlier: false, netSavingAt25Minor: 8_000, netSavingAt50Minor: 5_500, grossSavingRatio: 0.14 },
+    ]),
+    ...[10, 12, 14, 21, 30].map((duration, index) =>
+      targetedClassificationScenario(`S${index + 2}`, duration, [
+        { splitPointId: "none", distinctProperties: true, outlier: false, netSavingAt25Minor: -100, netSavingAt50Minor: -2_600, grossSavingRatio: -0.01 },
+      ])
+    ),
+  ];
+  const result = classifySplitR1TargetedResultV1(targetedClassificationInput(scenarios));
+  assert.equal(result.classification, "CANDIDATE_CONDITIONAL");
+  assert.deepEqual(result.qualifyingScenarioIds, ["S1"]);
+});
+
+test("targeted classifier enforces candidate GO coverage, distinct scenarios, ratio and long stay", () => {
+  const positive = (splitPointId) => ({
+    splitPointId,
+    distinctProperties: true,
+    outlier: false,
+    netSavingAt25Minor: 8_000,
+    netSavingAt50Minor: 5_500,
+    grossSavingRatio: 0.12,
+  });
+  const negative = {
+    splitPointId: "negative",
+    distinctProperties: true,
+    outlier: false,
+    netSavingAt25Minor: -100,
+    netSavingAt50Minor: -2_600,
+    grossSavingRatio: -0.01,
+  };
+  const scenarios = [
+    targetedClassificationScenario("S1", 7, [positive("a")]),
+    targetedClassificationScenario("S2", 14, [positive("b")]),
+    targetedClassificationScenario("S3", 12, [negative]),
+    targetedClassificationScenario("S4", 21, [negative]),
+    targetedClassificationScenario("S5", 30, [negative]),
+    targetedClassificationScenario("S6", 10, [negative], { validComparison: false }),
+  ];
+  const go = classifySplitR1TargetedResultV1(targetedClassificationInput(scenarios));
+  assert.equal(go.classification, "CANDIDATE_GO");
+  assert.deepEqual(go.qualifyingScenarioIds, ["S1", "S2"]);
+
+  const withoutLongPositive = structuredClone(scenarios);
+  withoutLongPositive[1].duration = 10;
+  assert.equal(
+    classifySplitR1TargetedResultV1(targetedClassificationInput(withoutLongPositive)).classification,
+    "HOLD_NO_SIGNAL"
+  );
+});
+
+test("targeted classifier freezes HOLD causes for no signal, weak ratio and same-property-only signal", () => {
+  const negativeScenarios = [7, 10, 12, 14, 21, 30].map((duration, index) =>
+    targetedClassificationScenario(`N${index}`, duration, [
+      { splitPointId: "negative", distinctProperties: true, outlier: false, netSavingAt25Minor: -100, netSavingAt50Minor: -2_600, grossSavingRatio: -0.01 },
+    ])
+  );
+  const noSignal = classifySplitR1TargetedResultV1(targetedClassificationInput(negativeScenarios));
+  assert.equal(noSignal.classification, "HOLD_NO_SIGNAL");
+  assert.ok(noSignal.reasonCodes.includes("ZERO_ROBUST_DISTINCT_POSITIVE_AT_25_EUR"));
+
+  const weakRatio = structuredClone(negativeScenarios);
+  weakRatio[0].splitComparisons = [
+    { splitPointId: "weak", distinctProperties: true, outlier: false, netSavingAt25Minor: 1_000, netSavingAt50Minor: 1, grossSavingRatio: 0.09 },
+  ];
+  const weak = classifySplitR1TargetedResultV1(targetedClassificationInput(weakRatio));
+  assert.equal(weak.classification, "HOLD_NO_SIGNAL");
+  assert.ok(weak.reasonCodes.includes("ALL_POSITIVE_RATIOS_BELOW_10_PERCENT"));
+
+  const sameProperty = structuredClone(negativeScenarios);
+  sameProperty[0].samePropertyCounterfactualPositive = true;
+  sameProperty[0].splitComparisons = [
+    { splitPointId: "same", distinctProperties: false, outlier: false, netSavingAt25Minor: 5_000, netSavingAt50Minor: 2_500, grossSavingRatio: 0.2 },
+  ];
+  const same = classifySplitR1TargetedResultV1(targetedClassificationInput(sameProperty));
+  assert.equal(same.classification, "HOLD_NO_SIGNAL");
+  assert.ok(same.reasonCodes.includes("SAME_PROPERTY_ONLY_POSITIVITY"));
+});
+
+test("targeted classifier quarantines outliers and cannot evade methodology gates", () => {
+  const scenarios = [7, 10, 12, 14, 21, 30].map((duration, index) =>
+    targetedClassificationScenario(`Q${index}`, duration, [
+      {
+        splitPointId: "candidate",
+        distinctProperties: true,
+        outlier: index === 0,
+        netSavingAt25Minor: index === 0 ? 10_000 : -100,
+        netSavingAt50Minor: index === 0 ? 7_500 : -2_600,
+        grossSavingRatio: index === 0 ? 0.2 : -0.01,
+      },
+    ])
+  );
+  const quarantined = classifySplitR1TargetedResultV1(targetedClassificationInput(scenarios));
+  assert.equal(quarantined.classification, "HOLD_NO_SIGNAL");
+  assert.ok(quarantined.reasonCodes.includes("POSITIVITY_DEPENDS_ON_OUTLIER_OR_UNSTABLE_BASELINE"));
+
+  const unproven = classifySplitR1TargetedResultV1(
+    targetedClassificationInput(scenarios, { priceSemanticsProven: false })
+  );
+  assert.equal(unproven.classification, "METHODOLOGY_INCONCLUSIVE");
+  assert.ok(unproven.reasonCodes.includes("PRICE_SEMANTICS_UNPROVEN"));
+
+  const incompleteCoverage = structuredClone(scenarios);
+  incompleteCoverage.slice(3).forEach((scenario) => { scenario.validComparison = false; });
+  const incomplete = classifySplitR1TargetedResultV1(targetedClassificationInput(incompleteCoverage));
+  assert.equal(incomplete.classification, "METHODOLOGY_INCONCLUSIVE");
+  assert.ok(incomplete.reasonCodes.includes("VALID_COVERAGE_BELOW_4_OF_6"));
 });
 
 test("partner-token request uses integer seconds and HMAC-SHA256 base64url over the exact contract", () => {
