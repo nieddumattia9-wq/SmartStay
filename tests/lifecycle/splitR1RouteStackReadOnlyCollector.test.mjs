@@ -77,6 +77,54 @@ function normalizedOffer(logicalSearch, property, cents) {
   };
 }
 
+function coordinateLessRomePayload(id = "memory-rome-destination") {
+  return {
+    result: [
+      { id: "memory-country-result", fullName: "Romania", type: "City" },
+      {
+        id,
+        fullName: "Roma, Metropolitan City of Rome Capital, Italy",
+        type: "City",
+      },
+      {
+        id: "memory-romanian-city",
+        fullName: "Timisoara, Timis, RO",
+        country: "RO",
+        type: "City",
+        coordinates: { lat: 45.7489, long: 21.2087 },
+      },
+      {
+        id: "memory-romanian-city-two",
+        fullName: "Iasi, RO",
+        country: "RO",
+        type: "City",
+        coordinates: { lat: 47.1585, long: 27.6014 },
+      },
+      {
+        id: "memory-romanian-city-three",
+        fullName: "Cluj-Napoca, RO",
+        country: "RO",
+        type: "City",
+        coordinates: { lat: 46.7712, long: 23.6236 },
+      },
+      {
+        id: "memory-romanian-city-four",
+        fullName: "Constanta, RO",
+        country: "RO",
+        type: "City",
+        coordinates: { lat: 44.1598, long: 28.6348 },
+      },
+      {
+        id: "memory-romanian-city-five",
+        fullName: "Bucharest, RO",
+        country: "RO",
+        type: "City",
+        coordinates: { lat: 44.4268, long: 26.1025 },
+      },
+    ],
+  };
+}
+
 test("default mode is deterministic dry-run with eight scenarios, forty searches and zero fetch", async () => {
   const matrix = await loadSplitF0ScenarioMatrix();
   assert.deepEqual(parseSplitR1Arguments([]), { mode: "dry-run" });
@@ -181,6 +229,9 @@ test("geographic destination selection is deterministic, unique and bounded to f
   );
   assert.equal(selected.id, "nearest");
   assert.ok(selected.distanceKm < 1);
+  assert.equal(selected.selectionMode, "GEOSPATIAL_PRIMARY");
+  assert.equal(selected.searchCoordinatesSource, "ROUTESTACK_DESTINATION_RESPONSE");
+  assert.equal(selected.providerDestinationCoordinatesAvailable, true);
   assert.throws(
     () =>
       selectSplitR1DestinationCandidate(
@@ -188,6 +239,150 @@ test("geographic destination selection is deterministic, unique and bounded to f
         scenario
       ),
     /not-within-25km/
+  );
+});
+
+test("unique coordinate-less Rome identity uses frozen coordinates with explicit provenance", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const scenario = matrix.scenarios[0];
+  const selected = selectSplitR1DestinationCandidate(
+    coordinateLessRomePayload("memory-rome-without-coordinates"),
+    scenario
+  );
+  assert.equal(selected.id, "memory-rome-without-coordinates");
+  assert.equal(selected.latitude, 41.9028);
+  assert.equal(selected.longitude, 12.4964);
+  assert.equal(selected.distanceKm, null);
+  assert.equal(
+    selected.selectionMode,
+    "UNIQUE_TEXT_COUNTRY_MATCH_WITH_FROZEN_COORDINATES"
+  );
+  assert.equal(selected.destinationIdSource, "ROUTESTACK_DESTINATION_RESPONSE");
+  assert.equal(selected.searchCoordinatesSource, "FROZEN_SCENARIO_MATRIX");
+  assert.equal(selected.providerDestinationCoordinatesAvailable, false);
+  assert.notEqual(selected.id, "memory-romanian-city");
+  assert.notEqual(selected.id, "memory-romanian-city-two");
+  assert.notEqual(selected.id, "memory-romanian-city-three");
+  assert.notEqual(selected.id, "memory-romanian-city-four");
+  assert.notEqual(selected.id, "memory-romanian-city-five");
+});
+
+test("geospatial primary wins and coordinate-less fallback rejects contradictory or ambiguous identity", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const scenario = matrix.scenarios[0];
+  const fallback = coordinateLessRomePayload().result[1];
+  const primary = selectSplitR1DestinationCandidate(
+    {
+      result: [
+        fallback,
+        {
+          id: "memory-nearby-primary",
+          fullName: "Provider canonical destination",
+          type: "City",
+          coordinates: { lat: 41.9029, long: 12.4965 },
+        },
+      ],
+    },
+    scenario
+  );
+  assert.equal(primary.id, "memory-nearby-primary");
+  assert.equal(primary.selectionMode, "GEOSPATIAL_PRIMARY");
+
+  assert.throws(
+    () =>
+      selectSplitR1DestinationCandidate(
+        {
+          result: [
+            fallback,
+            {
+              id: "memory-contradictory-rome",
+              fullName: "Rome, Italy",
+              type: "City",
+              coordinates: { lat: 45, long: 15 },
+            },
+          ],
+        },
+        scenario
+      ),
+    /coordinates-contradict/
+  );
+  assert.throws(
+    () =>
+      selectSplitR1DestinationCandidate(
+        { result: [fallback, { ...fallback, id: "memory-second-rome" }] },
+        scenario
+      ),
+    /nearest-ambiguous/
+  );
+});
+
+test("coordinate-less fallback fails closed on country, substring, coordinates, type and frozen reference defects", async () => {
+  const matrix = await loadSplitF0ScenarioMatrix();
+  const scenario = matrix.scenarios[0];
+  const select = (candidate, scenarioOverride = scenario) =>
+    selectSplitR1DestinationCandidate({ result: [candidate] }, scenarioOverride);
+
+  assert.throws(
+    () =>
+      select({
+        id: "memory-wrong-country",
+        fullName: "Roma, France",
+        country: "FR",
+        type: "City",
+      }),
+    /not-within-25km/
+  );
+  assert.throws(
+    () =>
+      select({
+        id: "memory-substring-only",
+        fullName: "Roma Nord, Italy",
+        type: "City",
+      }),
+    /not-within-25km/
+  );
+  assert.throws(
+    () =>
+      select({
+        id: "memory-incompatible-type",
+        fullName: "Roma, Italy",
+        type: "Hotel",
+      }),
+    /not-within-25km/
+  );
+  assert.throws(
+    () =>
+      select({
+        id: "memory-invalid-coordinates",
+        fullName: "Roma, Italy",
+        type: "City",
+        coordinates: { lat: "not-a-number", long: 12.4964 },
+      }),
+    /coordinates-invalid/
+  );
+  assert.throws(
+    () =>
+      select({
+        id: "memory-swapped-coordinates",
+        fullName: "Roma, Italy",
+        type: "City",
+        coordinates: { lat: 12.4964, long: 41.9028 },
+      }),
+    /coordinates-appear-swapped/
+  );
+  assert.throws(
+    () => select({ id: "memory-rome", fullName: "Roma, Italy", type: "City" }, {
+      ...scenario,
+      destination: { ...scenario.destination, latitude: undefined },
+    }),
+    /frozen-destination-coordinates-invalid/
+  );
+  assert.throws(
+    () => select({ id: "memory-rome", fullName: "Roma, Italy", type: "City" }, {
+      ...scenario,
+      destination: { ...scenario.destination, longitude: "invalid" },
+    }),
+    /frozen-destination-coordinates-invalid/
   );
 });
 
@@ -406,6 +601,9 @@ test("live scheduling is breadth-first and budget exhaustion is returned as inco
       }
       if (endpoint === SPLIT_R1_DESTINATION_ENDPOINT) {
         const destination = destinationsByLabel.get(body.query);
+        if (body.query === "Roma") {
+          return jsonResponse(coordinateLessRomePayload("memory-destination-Roma"));
+        }
         return jsonResponse({
           result: [
             {
@@ -453,6 +651,7 @@ test("live scheduling is breadth-first and budget exhaustion is returned as inco
   );
   assert.equal(JSON.stringify(result).includes("memory-hotel-"), false);
   assert.equal(JSON.stringify(result).includes("memory-session-token"), false);
+  assert.equal(JSON.stringify(result).includes("memory-destination-Roma"), false);
 });
 
 test("search-level normalization uses ourprice only, ignores provider saving and persists only run-local identity", async () => {

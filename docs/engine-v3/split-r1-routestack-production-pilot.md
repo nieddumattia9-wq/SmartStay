@@ -36,7 +36,13 @@ Live scheduling is breadth-first: authenticate once, resolve all eight destinati
 
 Credentials may enter a live process only from the existing `server/.env` through Node's native `--env-file` mechanism. The collector does not parse, copy or write the file. Dry-run exits before credential resolution. No automatic fallback, alternate host or endpoint exists.
 
-Destination selection is provider-neutral and deterministic. Candidates must contain a non-empty ID and finite coordinates. The unique nearest candidate to the frozen scenario coordinates may be selected only within 25 km. Provider destination IDs and coordinates are held in memory only.
+Destination selection is provider-neutral, deterministic and two-level. The geospatial primary path requires a non-empty ID, finite `coordinates.lat/long`, a unique nearest candidate and a maximum distance of 25 km from the frozen scenario coordinates. That path always has priority and the distance threshold is never widened.
+
+RouteStack production has demonstrated that destination coordinates are optional in otherwise valid results: the unique Rome/Italy identity was returned with an ID but without `coordinates.lat/long`. The refined cause is `PROVIDER_DESTINATION_COORDINATES_OPTIONAL_OR_MISSING_NOT_HANDLED`, not a coordinate-path mismatch because no alternate coordinate path was observed.
+
+Only when no geospatial candidate is eligible, a coordinate-less identity fallback may select one candidate. It requires an exact controlled city identity match, a structured country match, a compatible type when present, a unique match, a non-empty provider ID and finite canonical coordinates in the frozen scenario matrix. Controlled aliases cover the frozen cities, including Roma/Rome. A terminal country component in `fullName` is accepted as structured response identity when the dedicated country field is absent; substring-only city matches are prohibited. A candidate with invalid coordinates, a same-identity candidate located beyond 25 km, an apparent latitude/longitude inversion, ambiguous text matches, a country mismatch or invalid frozen coordinates fails closed.
+
+The fallback records `UNIQUE_TEXT_COUNTRY_MATCH_WITH_FROZEN_COORDINATES`, keeps the destination ID in memory from the RouteStack response and uses the frozen matrix coordinates only for the subsequent search request. It never represents those coordinates as provider-supplied. Provider destination IDs and all destination coordinates remain in memory only and are absent from persisted output.
 
 ## Search-level economic semantics
 

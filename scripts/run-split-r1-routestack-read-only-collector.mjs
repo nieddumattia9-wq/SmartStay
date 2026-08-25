@@ -81,6 +81,28 @@ const FORBIDDEN_PERSISTED_KEYS = new Set([
   "token",
 ]);
 
+const SPLIT_R1_DESTINATION_CITY_ALIASES = Object.freeze({
+  roma: ["roma", "rome"],
+  milano: ["milano", "milan"],
+  lisboa: ["lisboa", "lisbon"],
+  barcelona: ["barcelona"],
+  firenze: ["firenze", "florence"],
+  berlin: ["berlin"],
+  wien: ["wien", "vienna"],
+  paris: ["paris"],
+});
+
+const SPLIT_R1_DESTINATION_COUNTRY_ALIASES = Object.freeze({
+  AT: ["at", "aut", "austria"],
+  DE: ["de", "deu", "germany", "deutschland"],
+  ES: ["es", "esp", "spain", "espana"],
+  FR: ["fr", "fra", "france"],
+  IT: ["it", "ita", "italy", "italia"],
+  PT: ["pt", "prt", "portugal"],
+});
+
+const SPLIT_R1_COMPATIBLE_DESTINATION_TYPES = new Set(["city", "destination"]);
+
 function uniqueSorted(values) {
   return [...new Set(values)].sort();
 }
@@ -206,34 +228,214 @@ export function splitR1HaversineKm(left, right) {
   return 6_371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function selectSplitR1DestinationCandidate(payload, scenario) {
-  const candidates = getResponseItems(payload)
-    .map((candidate) => {
-      const id = candidate?.id ?? candidate?.destinationId;
-      const latitude = finiteNumber(candidate?.coordinates?.lat);
-      const longitude = finiteNumber(candidate?.coordinates?.long);
-      if (typeof id !== "string" || id.length === 0 || latitude === null || longitude === null) {
-        return null;
-      }
-      return {
-        id,
-        latitude,
-        longitude,
-        distanceKm: splitR1HaversineKm(
-          { latitude: scenario.destination.latitude, longitude: scenario.destination.longitude },
-          { latitude, longitude }
-        ),
-      };
-    })
-    .filter(Boolean)
-    .sort((left, right) => left.distanceKm - right.distanceKm || left.id.localeCompare(right.id));
-  if (candidates.length === 0 || candidates[0].distanceKm > 25) {
-    throw new Error("split-r1-destination-not-within-25km");
+function normalizeSplitR1DestinationIdentity(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function splitR1DelimitedIdentityPart(value, position) {
+  if (typeof value !== "string") return null;
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (parts.length === 0) return null;
+  return position === "first" ? parts[0] : parts.at(-1);
+}
+
+function splitR1ScenarioCityAliases(scenario) {
+  const canonical = normalizeSplitR1DestinationIdentity(scenario?.destination?.label);
+  if (canonical === null) return new Set();
+  return new Set(SPLIT_R1_DESTINATION_CITY_ALIASES[canonical] ?? [canonical]);
+}
+
+function splitR1ScenarioCountryAliases(scenario) {
+  const countryCode = typeof scenario?.destination?.countryCode === "string"
+    ? scenario.destination.countryCode.toUpperCase()
+    : "";
+  return new Set(SPLIT_R1_DESTINATION_COUNTRY_ALIASES[countryCode] ?? []);
+}
+
+function splitR1CandidateIdentity(candidate, scenario) {
+  const cityAliases = splitR1ScenarioCityAliases(scenario);
+  const countryAliases = splitR1ScenarioCountryAliases(scenario);
+  const cityValues = [
+    candidate?.city,
+    splitR1DelimitedIdentityPart(candidate?.fullName, "first"),
+    splitR1DelimitedIdentityPart(candidate?.label, "first"),
+    splitR1DelimitedIdentityPart(candidate?.name, "first"),
+  ]
+    .map(normalizeSplitR1DestinationIdentity)
+    .filter(Boolean);
+  const countryValues = [
+    candidate?.country,
+    splitR1DelimitedIdentityPart(candidate?.fullName, "last"),
+    splitR1DelimitedIdentityPart(candidate?.label, "last"),
+    splitR1DelimitedIdentityPart(candidate?.name, "last"),
+  ]
+    .map(normalizeSplitR1DestinationIdentity)
+    .filter(Boolean);
+  const normalizedType = normalizeSplitR1DestinationIdentity(candidate?.type);
+  return {
+    cityMatches: cityAliases.size > 0 && cityValues.some((value) => cityAliases.has(value)),
+    countryMatches:
+      countryAliases.size > 0 && countryValues.some((value) => countryAliases.has(value)),
+    typeCompatible:
+      normalizedType === null || SPLIT_R1_COMPATIBLE_DESTINATION_TYPES.has(normalizedType),
+  };
+}
+
+function splitR1CoordinateNumber(value) {
+  if (typeof value === "string" && value.trim().length === 0) return null;
+  return finiteNumber(value);
+}
+
+function splitR1CandidateCoordinates(candidate) {
+  if (!("coordinates" in (candidate ?? {})) || candidate.coordinates === null) {
+    return { state: "absent" };
   }
-  if (candidates[1] && Math.abs(candidates[0].distanceKm - candidates[1].distanceKm) < 1e-9) {
+  if (
+    typeof candidate.coordinates !== "object" ||
+    Array.isArray(candidate.coordinates) ||
+    !("lat" in candidate.coordinates) ||
+    !("long" in candidate.coordinates)
+  ) {
+    return { state: "invalid" };
+  }
+  const latitude = splitR1CoordinateNumber(candidate.coordinates.lat);
+  const longitude = splitR1CoordinateNumber(candidate.coordinates.long);
+  if (
+    latitude === null ||
+    longitude === null ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return { state: "invalid" };
+  }
+  return { state: "finite", latitude, longitude };
+}
+
+function splitR1FrozenScenarioCoordinates(scenario) {
+  const latitude = splitR1CoordinateNumber(scenario?.destination?.latitude);
+  const longitude = splitR1CoordinateNumber(scenario?.destination?.longitude);
+  if (
+    latitude === null ||
+    longitude === null ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    throw new Error("split-r1-frozen-destination-coordinates-invalid");
+  }
+  return { latitude, longitude };
+}
+
+export function selectSplitR1DestinationCandidate(payload, scenario) {
+  const frozenCoordinates = splitR1FrozenScenarioCoordinates(scenario);
+  const candidates = getResponseItems(payload).map((candidate) => {
+    const id = candidate?.id ?? candidate?.destinationId;
+    const coordinates = splitR1CandidateCoordinates(candidate);
+    const identity = splitR1CandidateIdentity(candidate, scenario);
+    const validId = typeof id === "string" && id.trim().length > 0;
+    if (coordinates.state !== "finite") {
+      return { id, validId, coordinates, identity };
+    }
+    const distanceKm = splitR1HaversineKm(frozenCoordinates, coordinates);
+    const swappedCoordinates = {
+      latitude: coordinates.longitude,
+      longitude: coordinates.latitude,
+    };
+    const swappedCoordinatesValid =
+      swappedCoordinates.latitude >= -90 &&
+      swappedCoordinates.latitude <= 90 &&
+      swappedCoordinates.longitude >= -180 &&
+      swappedCoordinates.longitude <= 180;
+    const swappedDistanceKm = swappedCoordinatesValid
+      ? splitR1HaversineKm(frozenCoordinates, swappedCoordinates)
+      : null;
+    return {
+      id,
+      validId,
+      coordinates,
+      identity,
+      distanceKm,
+      appearsSwapped:
+        distanceKm > 25 && swappedDistanceKm !== null && swappedDistanceKm <= 25,
+    };
+  });
+  const geospatialCandidates = candidates
+    .filter((candidate) => candidate.validId && candidate.coordinates.state === "finite")
+    .sort(
+      (left, right) => left.distanceKm - right.distanceKm || left.id.localeCompare(right.id)
+    );
+  if (geospatialCandidates[0]?.distanceKm <= 25) {
+    if (
+      geospatialCandidates[1] &&
+      Math.abs(geospatialCandidates[0].distanceKm - geospatialCandidates[1].distanceKm) < 1e-9
+    ) {
+      throw new Error("split-r1-destination-nearest-ambiguous");
+    }
+    const selected = geospatialCandidates[0];
+    return {
+      id: selected.id,
+      latitude: selected.coordinates.latitude,
+      longitude: selected.coordinates.longitude,
+      distanceKm: selected.distanceKm,
+      selectionMode: "GEOSPATIAL_PRIMARY",
+      destinationIdSource: "ROUTESTACK_DESTINATION_RESPONSE",
+      searchCoordinatesSource: "ROUTESTACK_DESTINATION_RESPONSE",
+      providerDestinationCoordinatesAvailable: true,
+    };
+  }
+  if (geospatialCandidates.some((candidate) => candidate.appearsSwapped)) {
+    throw new Error("split-r1-destination-coordinates-appear-swapped");
+  }
+  const identityMatches = candidates.filter(
+    (candidate) =>
+      candidate.validId &&
+      candidate.identity.cityMatches &&
+      candidate.identity.countryMatches &&
+      candidate.identity.typeCompatible
+  );
+  if (identityMatches.some((candidate) => candidate.coordinates.state === "invalid")) {
+    throw new Error("split-r1-destination-text-match-coordinates-invalid");
+  }
+  if (
+    identityMatches.some(
+      (candidate) =>
+        candidate.coordinates.state === "finite" && candidate.distanceKm > 25
+    )
+  ) {
+    throw new Error("split-r1-destination-text-match-coordinates-contradict");
+  }
+  const coordinateLessMatches = identityMatches.filter(
+    (candidate) => candidate.coordinates.state === "absent"
+  );
+  if (coordinateLessMatches.length > 1) {
     throw new Error("split-r1-destination-nearest-ambiguous");
   }
-  return candidates[0];
+  if (coordinateLessMatches.length === 0) {
+    throw new Error("split-r1-destination-not-within-25km");
+  }
+  return {
+    id: coordinateLessMatches[0].id,
+    latitude: frozenCoordinates.latitude,
+    longitude: frozenCoordinates.longitude,
+    distanceKm: null,
+    selectionMode: "UNIQUE_TEXT_COUNTRY_MATCH_WITH_FROZEN_COORDINATES",
+    destinationIdSource: "ROUTESTACK_DESTINATION_RESPONSE",
+    searchCoordinatesSource: "FROZEN_SCENARIO_MATRIX",
+    providerDestinationCoordinatesAvailable: false,
+  };
 }
 
 export function createSplitR1DestinationRequest(scenario) {
