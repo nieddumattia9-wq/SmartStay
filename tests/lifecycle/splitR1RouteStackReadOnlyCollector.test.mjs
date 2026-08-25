@@ -29,6 +29,7 @@ import {
   SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
   SPLIT_R1_TARGETED_RUN_STATUS,
   assertSplitR1OurpriceClassificationExclusiveV1,
+  assertSplitR1OurpriceProbeInitialSearchAllowed,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1CausalLedger,
@@ -48,6 +49,7 @@ import {
   evaluateSplitR1SearchLevelScenario,
   evaluateSplitR1OurpriceSemanticsProbeV1,
   fingerprintSplitR1Identifier,
+  hasSplitR1OurpriceProbeContinuationMetadata,
   normalizeSplitR1SearchPage,
   normalizeSplitR1SearchResponse,
   loadSplitR1OurpriceSemanticsProbeV1,
@@ -599,6 +601,12 @@ test("ourprice probe live stub is capped at one auth, one destination and three 
   assert.equal(result.httpRequests, SPLIT_R1_OURPRICE_PROBE_TOTAL_HTTP_BUDGET);
   assert.equal(result.hotelSearchHttpRequests, SPLIT_R1_OURPRICE_PROBE_HOTEL_SEARCH_HTTP_BUDGET);
   assert.equal(result.continuationHttpRequests, SPLIT_R1_OURPRICE_PROBE_CONTINUATIONS);
+  assert.equal(result.continuationMetadataPresent, false);
+  assert.deepEqual(result.continuationMetadataPresentByWindow, {
+    A: false,
+    B: false,
+    AB: false,
+  });
   assert.deepEqual(endpoints, [
     SPLIT_R1_AUTH_ENDPOINT,
     SPLIT_R1_DESTINATION_ENDPOINT,
@@ -622,7 +630,7 @@ test("ourprice probe live stub is capped at one auth, one destination and three 
   assert.equal(result.evaluation.crossRunLinkability, false);
 });
 
-test("ourprice probe never follows continuation and performs no retry", async () => {
+test("ourprice probe treats continuation metadata as sanitized observation and never follows it", async () => {
   const probe = await loadSplitR1OurpriceSemanticsProbeV1();
   let calls = 0;
   let monotonicClock = 0;
@@ -640,30 +648,129 @@ test("ourprice probe never follows continuation and performs no retry", async ()
         currency: "EUR",
         result: [rawHotel("memory-property", 100)],
         nextResultsKey: "memory-continuation-key",
+        correlationId: "memory-correlation-id",
+        token: "memory-continuation-token",
       },
     });
   };
-  await assert.rejects(
-    () =>
-      runSplitR1OurpriceSemanticsProbeV1({
-        probe,
-        options: { mode: "ourprice-probe-live" },
-        environment: {
-          ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
-          ROUTESTACK_API_KEY: "synthetic-key",
-          ROUTESTACK_API_SECRET: "synthetic-secret",
-        },
-        execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
-        fetchImpl,
-        now: () => 1_800_000_000_000,
-        randomUUID: () => "00000000-0000-4000-8000-000000000098",
-        ephemeralRunKey: TEST_KEY,
-        monotonicNow: () => monotonicClock,
-        sleep: async (milliseconds) => { monotonicClock += milliseconds; },
-      }),
-    /continuation-prohibited/
+  const result = await runSplitR1OurpriceSemanticsProbeV1({
+    probe,
+    options: { mode: "ourprice-probe-live" },
+    environment: {
+      ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+      ROUTESTACK_API_KEY: "synthetic-key",
+      ROUTESTACK_API_SECRET: "synthetic-secret",
+    },
+    execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
+    fetchImpl,
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000098",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => monotonicClock,
+    sleep: async (milliseconds) => { monotonicClock += milliseconds; },
+  });
+  assert.equal(calls, 5);
+  assert.equal(result.httpRequests, 5);
+  assert.equal(result.hotelSearchHttpRequests, 3);
+  assert.equal(result.continuationHttpRequests, 0);
+  assert.equal(result.continuationMetadataPresent, true);
+  assert.deepEqual(result.continuationMetadataPresentByWindow, {
+    A: true,
+    B: true,
+    AB: true,
+  });
+  assert.equal(result.evaluation.metrics.commonPropertyCount, 1);
+  assert.equal(result.evaluation.classification, "INCONCLUSIVE");
+  const serialized = stableStringifySplitF0(result);
+  for (const forbidden of [
+    "memory-continuation-key",
+    "memory-correlation-id",
+    "memory-continuation-token",
+    "memory-property",
+  ]) {
+    assert.equal(serialized.includes(forbidden), false);
+  }
+});
+
+test("ourprice probe distinguishes observable continuation metadata from a prohibited HTTP request", () => {
+  assert.equal(
+    hasSplitR1OurpriceProbeContinuationMetadata({
+      result: { result: [], nextResultsKey: "memory-next" },
+    }),
+    true
   );
-  assert.equal(calls, 3);
+  assert.equal(
+    hasSplitR1OurpriceProbeContinuationMetadata({
+      result: { result: [], correlation_id: "memory-correlation", continuationToken: "memory-token" },
+    }),
+    true
+  );
+  assert.equal(
+    hasSplitR1OurpriceProbeContinuationMetadata({ result: { result: [] } }),
+    false
+  );
+  assert.equal(
+    assertSplitR1OurpriceProbeInitialSearchAllowed({
+      endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+      continuationRequest: false,
+    }),
+    true
+  );
+  assert.throws(
+    () =>
+      assertSplitR1OurpriceProbeInitialSearchAllowed({
+        endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        continuationRequest: true,
+      }),
+    /continuation-http-request-prohibited/
+  );
+  assert.throws(
+    () =>
+      assertSplitR1OurpriceProbeInitialSearchAllowed({
+        endpointPath: "/mcp/hotel/search-hotels/continuation",
+        continuationRequest: false,
+      }),
+    /search-endpoint-not-allowlisted/
+  );
+});
+
+test("ourprice probe completes three metadata-bearing empty initial pages as inconclusive", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  let calls = 0;
+  let monotonicClock = 0;
+  const result = await runSplitR1OurpriceSemanticsProbeV1({
+    probe,
+    options: { mode: "ourprice-probe-live" },
+    environment: {
+      ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+      ROUTESTACK_API_KEY: "synthetic-key",
+      ROUTESTACK_API_SECRET: "synthetic-secret",
+    },
+    execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
+    fetchImpl: async (url) => {
+      calls += 1;
+      const pathname = new URL(url).pathname;
+      if (pathname === SPLIT_R1_AUTH_ENDPOINT) return jsonResponse({ token: "memory-token" });
+      if (pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+        return jsonResponse({
+          result: [{ id: "memory-destination", coordinates: { lat: 41.9028, long: 12.4964 } }],
+        });
+      }
+      return jsonResponse({
+        result: { currency: "EUR", result: [], nextResultsKey: "memory-next" },
+      });
+    },
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000097",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => monotonicClock,
+    sleep: async (milliseconds) => { monotonicClock += milliseconds; },
+  });
+  assert.equal(calls, 5);
+  assert.equal(result.continuationHttpRequests, 0);
+  assert.equal(result.continuationMetadataPresent, true);
+  assert.equal(result.evaluation.metrics.commonPropertyCount, 0);
+  assert.equal(result.evaluation.classification, "INCONCLUSIVE");
 });
 
 test("ourprice probe fixture rejects any increase to its frozen 3/5 budget", async () => {

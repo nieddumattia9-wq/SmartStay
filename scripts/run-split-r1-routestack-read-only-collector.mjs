@@ -81,6 +81,15 @@ const ALLOWED_ENDPOINTS = new Set([
   SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
 ]);
 
+const SPLIT_R1_OURPRICE_PROBE_CONTINUATION_METADATA_KEYS = new Set([
+  "continuationkey",
+  "continuationtoken",
+  "correlationid",
+  "nextresultkey",
+  "nextresultskey",
+  "token",
+]);
+
 const FORBIDDEN_ENDPOINT_WORDS = [
   "detail",
   "room",
@@ -293,6 +302,37 @@ export function assertSplitR1EndpointAllowed(method, endpointPath) {
     throw new Error("split-r1-forbidden-endpoint");
   }
   return true;
+}
+
+export function assertSplitR1OurpriceProbeInitialSearchAllowed({
+  endpointPath,
+  continuationRequest = false,
+} = {}) {
+  if (continuationRequest === true) {
+    throw new Error("split-r1-ourprice-probe-continuation-http-request-prohibited");
+  }
+  if (endpointPath !== SPLIT_R1_HOTEL_SEARCH_ENDPOINT) {
+    throw new Error("split-r1-ourprice-probe-search-endpoint-not-allowlisted");
+  }
+  assertSplitR1EndpointAllowed("POST", endpointPath);
+  return true;
+}
+
+export function hasSplitR1OurpriceProbeContinuationMetadata(payload) {
+  const container = normalizeResponseContainer(payload);
+  const candidates = container === payload ? [payload] : [payload, container];
+  return candidates.some((candidate) => {
+    if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) {
+      return false;
+    }
+    return Object.entries(candidate).some(([key, value]) => {
+      const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!SPLIT_R1_OURPRICE_PROBE_CONTINUATION_METADATA_KEYS.has(normalizedKey)) {
+        return false;
+      }
+      return value !== null && value !== undefined && value !== "";
+    });
+  });
 }
 
 export function createSplitR1PartnerTokenRequest({
@@ -2505,18 +2545,17 @@ export async function runSplitR1OurpriceSemanticsProbeV1({
   const searches = buildSplitR1OurpriceSemanticsLogicalSearchesV1(probe);
   const receipts = [];
   for (const logicalSearch of searches) {
+    assertSplitR1OurpriceProbeInitialSearchAllowed({
+      endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+      continuationRequest: false,
+    });
     const responsePayload = await transport.post(
       SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
       createSplitR1HotelSearchRequest(logicalSearch, destination),
       partnerToken
     );
-    const container = normalizeResponseContainer(responsePayload);
-    if (
-      typeof container?.nextResultsKey === "string" &&
-      container.nextResultsKey.length > 0
-    ) {
-      throw new Error("split-r1-ourprice-probe-continuation-prohibited");
-    }
+    const continuationMetadataPresent =
+      hasSplitR1OurpriceProbeContinuationMetadata(responsePayload);
     const page = normalizeSplitR1SearchPage(responsePayload, {
       logicalSearch,
       ephemeralRunKey,
@@ -2526,6 +2565,7 @@ export async function runSplitR1OurpriceSemanticsProbeV1({
       currency: logicalSearch.request.currency,
       occupancy: probe.scenario.occupancy,
       offers: page.offers,
+      continuationMetadataPresent,
     });
   }
   const budget = transport.getBudgetSnapshot();
@@ -2542,6 +2582,15 @@ export async function runSplitR1OurpriceSemanticsProbeV1({
     httpRequests: budget.totalRouteStackRequests,
     hotelSearchHttpRequests: budget.hotelSearchRequests,
     continuationHttpRequests: 0,
+    continuationMetadataPresent: receipts.some(
+      (receipt) => receipt.continuationMetadataPresent === true
+    ),
+    continuationMetadataPresentByWindow: Object.fromEntries(
+      receipts.map((receipt) => [
+        receipt.windowId,
+        receipt.continuationMetadataPresent === true,
+      ])
+    ),
     retries: 0,
     redirects: 0,
     evaluation: evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts),

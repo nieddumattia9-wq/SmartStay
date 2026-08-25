@@ -139,6 +139,8 @@ After this freeze, no scenario, date, split point, hotel filter, threshold or ou
 
 SPLIT-R1C.3 freezes `stayopti.split-r1.ourprice-semantics-probe@1` as an offline diagnostic contract. It does not reinterpret SPLIT-R1B.7, remove the R1C methodology limitation, or unlock the targeted R1C.2 matrix. Its only future question is whether RouteStack search-level `ourprice` behaves empirically like a complete requested-window price or like an unmultiplied nightly price.
 
+SPLIT-R1C.5 refines only the micro-probe continuation boundary after the preserved R1C.4 fail-closed result. Continuation metadata returned with an initial search page—including `nextResultsKey`, correlation context or a continuation token—is observable but does not represent an HTTP continuation request. The micro-probe processes only the results already present on that initial page, discards all raw continuation values before persistence and records only whether continuation metadata was present. It proceeds through A, B and AB even when each initial page advertises continuation. Constructing or sending a continuation remains prohibited, the continuation request count remains zero, and the immutable three hotel-search/five total-request budgets are unchanged.
+
 The sole frozen scenario is Roma, EUR, one room, two adults and no children, using canonical coordinates 41.9028/12.4964. It contains exactly three windows:
 
 - `A`: 2–3 February 2027, one night;
