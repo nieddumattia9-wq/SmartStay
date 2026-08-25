@@ -64,6 +64,25 @@ export const SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS = [
   "--execute-ourprice-semantics-probe-live",
   "--confirm-ourprice-semantics-search-only",
 ];
+export const SPLIT_R1_OURPRICE_PROBE_V2_VERSION =
+  "stayopti.split-r1.ourprice-semantics-probe@2";
+export const SPLIT_R1_OURPRICE_PROBE_V2_PATH = path.join(
+  SPLIT_R1_REPOSITORY_ROOT,
+  "tests",
+  "engine-v3",
+  "fixtures",
+  "split-r1-ourprice-semantics-probe-v2.json"
+);
+export const SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET = 3;
+export const SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW = 2;
+export const SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET = 6;
+export const SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET = 9;
+export const SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET = 11;
+export const SPLIT_R1_OURPRICE_PROBE_V2_EARLY_STOP_COMMON_PROPERTY_THRESHOLD = 10;
+export const SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS = [
+  "--execute-ourprice-semantics-probe-v2-live",
+  "--confirm-ourprice-semantics-bounded-continuation-only",
+];
 export const SPLIT_R1_LIVE_CONFIRMATIONS = [
   "--execute-production-read-only",
   "--confirm-routestack-search-only",
@@ -88,6 +107,20 @@ const SPLIT_R1_OURPRICE_PROBE_CONTINUATION_METADATA_KEYS = new Set([
   "nextresultkey",
   "nextresultskey",
   "token",
+]);
+
+const SPLIT_R1_OURPRICE_PROBE_TERMINAL_STATUSES = new Set([
+  "cancelled",
+  "canceled",
+  "complete",
+  "completed",
+  "error",
+  "expired",
+  "failed",
+  "finished",
+  "noresults",
+  "success",
+  "succeeded",
 ]);
 
 const FORBIDDEN_ENDPOINT_WORDS = [
@@ -216,12 +249,15 @@ function assertSafeIntegerSeconds(timestamp) {
 export function parseSplitR1Arguments(argv) {
   const targetedFlag = "--targeted-matrix-v1";
   const ourpriceProbeFlag = "--ourprice-semantics-probe-v1";
+  const ourpriceProbeV2Flag = "--ourprice-semantics-probe-v2";
   const allowed = new Set([
     "--dry-run",
     targetedFlag,
     ourpriceProbeFlag,
+    ourpriceProbeV2Flag,
     ...SPLIT_R1_LIVE_CONFIRMATIONS,
     ...SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS,
+    ...SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS,
   ]);
   for (const argument of argv) {
     if (!allowed.has(argument)) {
@@ -230,6 +266,33 @@ export function parseSplitR1Arguments(argv) {
   }
   if (argv.includes("--dry-run") && SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag))) {
     throw new Error("split-r1-incompatible-mode-flags");
+  }
+  if (argv.includes(ourpriceProbeFlag) && argv.includes(ourpriceProbeV2Flag)) {
+    throw new Error("split-r1-ourprice-probe-version-conflict");
+  }
+  const probeV2ConfirmationsPresent = SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS.filter(
+    (flag) => argv.includes(flag)
+  );
+  if (probeV2ConfirmationsPresent.length > 0 && !argv.includes(ourpriceProbeV2Flag)) {
+    throw new Error("split-r1-ourprice-probe-v2-flag-required");
+  }
+  if (argv.includes(ourpriceProbeV2Flag)) {
+    if (
+      argv.includes(targetedFlag) ||
+      argv.includes(ourpriceProbeFlag) ||
+      SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
+      SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
+      (argv.includes("--dry-run") && probeV2ConfirmationsPresent.length > 0)
+    ) {
+      throw new Error("split-r1-ourprice-probe-v2-incompatible-mode-flags");
+    }
+    if (probeV2ConfirmationsPresent.length === 0) {
+      return { mode: "ourprice-probe-v2-dry-run" };
+    }
+    if (probeV2ConfirmationsPresent.length !== SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS.length) {
+      throw new Error("split-r1-ourprice-probe-v2-live-confirmations-incomplete");
+    }
+    return { mode: "ourprice-probe-v2-live" };
   }
   const probeConfirmationsPresent = SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS.filter(
     (flag) => argv.includes(flag)
@@ -333,6 +396,43 @@ export function hasSplitR1OurpriceProbeContinuationMetadata(payload) {
       return value !== null && value !== undefined && value !== "";
     });
   });
+}
+
+export function inspectSplitR1OurpriceProbeV2Continuation(payload) {
+  const container = normalizeResponseContainer(payload);
+  const statusValue = [container?.status, container?.applicationStatus, container?.searchStatus]
+    .find((value) => typeof value === "string" && value.length > 0);
+  const normalizedStatus = typeof statusValue === "string"
+    ? statusValue.toLowerCase().replace(/[^a-z0-9]/g, "")
+    : null;
+  const terminal = normalizedStatus !== null &&
+    SPLIT_R1_OURPRICE_PROBE_TERMINAL_STATUSES.has(normalizedStatus);
+  const nextResultsKeyPresent =
+    typeof container?.nextResultsKey === "string" && container.nextResultsKey.length > 0;
+  return {
+    metadataPresent: hasSplitR1OurpriceProbeContinuationMetadata(payload),
+    nextResultsKeyPresent,
+    terminal,
+    canContinue: nextResultsKeyPresent && !terminal,
+  };
+}
+
+export function assertSplitR1OurpriceProbeV2SearchAllowed({
+  endpointPath,
+  continuationOrdinal = 0,
+} = {}) {
+  if (endpointPath !== SPLIT_R1_HOTEL_SEARCH_ENDPOINT) {
+    throw new Error("split-r1-ourprice-probe-v2-search-endpoint-not-allowlisted");
+  }
+  if (
+    !Number.isInteger(continuationOrdinal) ||
+    continuationOrdinal < 0 ||
+    continuationOrdinal > SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW
+  ) {
+    throw new Error("split-r1-ourprice-probe-v2-continuation-budget-exceeded");
+  }
+  assertSplitR1EndpointAllowed("POST", endpointPath);
+  return true;
 }
 
 export function createSplitR1PartnerTokenRequest({
@@ -1849,6 +1949,33 @@ const SPLIT_R1_OURPRICE_PROBE_LIVE_CONTRACT = Object.freeze({
   paymentAllowed: false,
 });
 
+const SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONTRACT = Object.freeze({
+  liveAuthorizedByThisPhase: false,
+  partnerTokenHttpBudget: 1,
+  destinationHttpBudget: 1,
+  hotelSearchInitialHttpBudget: SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET,
+  continuationPerWindowMax: SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW,
+  hotelSearchContinuationHttpBudget:
+    SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET,
+  hotelSearchHttpBudget: SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET,
+  totalRouteStackHttpBudget: SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET,
+  continuationAllowed: true,
+  continuationScheduler: "BREADTH_FIRST",
+  earlyStopCommonPropertyThreshold:
+    SPLIT_R1_OURPRICE_PROBE_V2_EARLY_STOP_COMMON_PROPERTY_THRESHOLD,
+  retries: 0,
+  redirects: 0,
+  maxRequestsPerSecond: 1,
+  minRequestStartIntervalMs: SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
+  concurrency: 1,
+  detailsAllowed: false,
+  roomsAndRatesAllowed: false,
+  revalidationAllowed: false,
+  prebookAllowed: false,
+  bookingAllowed: false,
+  paymentAllowed: false,
+});
+
 const SPLIT_R1_OURPRICE_PROBE_MATCHING_CONTRACT = Object.freeze({
   commonPropertyUniverseOnly: true,
   propertyIdentity: "RUN_LOCAL_HMAC_SHA256",
@@ -1891,9 +2018,12 @@ const SPLIT_R1_OURPRICE_PROBE_CONCLUSION_LIMITS = Object.freeze({
   policyEligible: false,
 });
 
-export function validateSplitR1OurpriceSemanticsProbeV1(probe) {
+function validateSplitR1OurpriceSemanticsProbeAgainstContract(
+  probe,
+  { version, liveContract }
+) {
   const issues = [];
-  if (probe?.schemaVersion !== SPLIT_R1_OURPRICE_PROBE_VERSION) {
+  if (probe?.schemaVersion !== version) {
     issues.push("ourprice-probe-schema-version-invalid");
   }
   if (
@@ -1904,7 +2034,7 @@ export function validateSplitR1OurpriceSemanticsProbeV1(probe) {
   }
   if (
     stableStringifySplitF0(probe?.futureLiveContract) !==
-    stableStringifySplitF0(SPLIT_R1_OURPRICE_PROBE_LIVE_CONTRACT)
+    stableStringifySplitF0(liveContract)
   ) {
     issues.push("ourprice-probe-live-contract-drift");
   }
@@ -1953,6 +2083,20 @@ export function validateSplitR1OurpriceSemanticsProbeV1(probe) {
   return { valid: issues.length === 0, issues: uniqueSorted(issues) };
 }
 
+export function validateSplitR1OurpriceSemanticsProbeV1(probe) {
+  return validateSplitR1OurpriceSemanticsProbeAgainstContract(probe, {
+    version: SPLIT_R1_OURPRICE_PROBE_VERSION,
+    liveContract: SPLIT_R1_OURPRICE_PROBE_LIVE_CONTRACT,
+  });
+}
+
+export function validateSplitR1OurpriceSemanticsProbeV2(probe) {
+  return validateSplitR1OurpriceSemanticsProbeAgainstContract(probe, {
+    version: SPLIT_R1_OURPRICE_PROBE_V2_VERSION,
+    liveContract: SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONTRACT,
+  });
+}
+
 export async function loadSplitR1OurpriceSemanticsProbeV1(
   probePath = SPLIT_R1_OURPRICE_PROBE_PATH
 ) {
@@ -1960,6 +2104,17 @@ export async function loadSplitR1OurpriceSemanticsProbeV1(
   const validation = validateSplitR1OurpriceSemanticsProbeV1(probe);
   if (!validation.valid) {
     throw new Error(`split-r1-ourprice-probe-invalid:${validation.issues.join(",")}`);
+  }
+  return probe;
+}
+
+export async function loadSplitR1OurpriceSemanticsProbeV2(
+  probePath = SPLIT_R1_OURPRICE_PROBE_V2_PATH
+) {
+  const probe = JSON.parse(await fs.readFile(probePath, "utf8"));
+  const validation = validateSplitR1OurpriceSemanticsProbeV2(probe);
+  if (!validation.valid) {
+    throw new Error(`split-r1-ourprice-probe-v2-invalid:${validation.issues.join(",")}`);
   }
   return probe;
 }
@@ -1974,8 +2129,8 @@ function splitR1OurpriceProbeOccupancyForLogicalSearch(probe) {
   };
 }
 
-export function buildSplitR1OurpriceSemanticsLogicalSearchesV1(probe) {
-  const validation = validateSplitR1OurpriceSemanticsProbeV1(probe);
+function buildSplitR1OurpriceSemanticsLogicalSearches(probe, validateProbe) {
+  const validation = validateProbe(probe);
   if (!validation.valid) {
     throw new Error(`split-r1-ourprice-probe-invalid:${validation.issues.join(",")}`);
   }
@@ -2010,6 +2165,20 @@ export function buildSplitR1OurpriceSemanticsLogicalSearchesV1(probe) {
   });
 }
 
+export function buildSplitR1OurpriceSemanticsLogicalSearchesV1(probe) {
+  return buildSplitR1OurpriceSemanticsLogicalSearches(
+    probe,
+    validateSplitR1OurpriceSemanticsProbeV1
+  );
+}
+
+export function buildSplitR1OurpriceSemanticsLogicalSearchesV2(probe) {
+  return buildSplitR1OurpriceSemanticsLogicalSearches(
+    probe,
+    validateSplitR1OurpriceSemanticsProbeV2
+  );
+}
+
 export function buildSplitR1OurpriceSemanticsDryRunV1(probe) {
   const searches = buildSplitR1OurpriceSemanticsLogicalSearchesV1(probe);
   return {
@@ -2030,6 +2199,43 @@ export function buildSplitR1OurpriceSemanticsDryRunV1(probe) {
     futureHotelSearchHttpCap: SPLIT_R1_OURPRICE_PROBE_HOTEL_SEARCH_HTTP_BUDGET,
     futureTotalHttpCap: SPLIT_R1_OURPRICE_PROBE_TOTAL_HTTP_BUDGET,
     continuationAllowed: false,
+    retries: 0,
+    redirects: 0,
+    minRequestStartIntervalMs: SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
+    concurrency: 1,
+    targetedLiveMatrixAuthorized: false,
+    priceSemanticsGate: SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
+    publicRecommendationAllowed: false,
+    policyEligible: false,
+  };
+}
+
+export function buildSplitR1OurpriceSemanticsDryRunV2(probe) {
+  const searches = buildSplitR1OurpriceSemanticsLogicalSearchesV2(probe);
+  return {
+    schemaVersion: "stayopti.split-r1.ourprice-semantics-probe-dry-run@2",
+    status: "PASS",
+    mode: "OURPRICE_SEMANTICS_PROBE_V2_DRY_RUN_ONLY",
+    probeVersion: probe.schemaVersion,
+    scenarios: 1,
+    logicalHotelSearches: searches.length,
+    windows: searches.map((search) => ({
+      windowId: search.windowId,
+      checkIn: search.period.checkIn,
+      checkOut: search.period.checkOut,
+      nights: search.period.nights,
+      requestFingerprint: search.requestFingerprint,
+    })),
+    httpRequests: 0,
+    futureInitialHotelSearchHttpCap: SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET,
+    continuationPerWindowMax: SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW,
+    futureContinuationHttpCap: SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET,
+    futureHotelSearchHttpCap: SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET,
+    futureTotalHttpCap: SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET,
+    continuationAllowed: true,
+    continuationScheduler: "BREADTH_FIRST",
+    earlyStopCommonPropertyThreshold:
+      SPLIT_R1_OURPRICE_PROBE_V2_EARLY_STOP_COMMON_PROPERTY_THRESHOLD,
     retries: 0,
     redirects: 0,
     minRequestStartIntervalMs: SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
@@ -2129,11 +2335,11 @@ function splitR1ProbePriceDistribution(values) {
   };
 }
 
-export function evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts) {
-  const validation = validateSplitR1OurpriceSemanticsProbeV1(probe);
-  if (!validation.valid) {
-    throw new Error(`split-r1-ourprice-probe-invalid:${validation.issues.join(",")}`);
-  }
+function evaluateSplitR1OurpriceSemanticsProbeValidated(
+  probe,
+  receipts,
+  resultSchemaVersion
+) {
   const expectedOccupancy = probe.scenario.occupancy;
   const receiptMap = new Map(
     (Array.isArray(receipts) ? receipts : []).map((receipt) => [receipt?.windowId, receipt])
@@ -2197,7 +2403,7 @@ export function evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts) {
     },
   };
   const result = {
-    schemaVersion: "stayopti.split-r1.ourprice-semantics-probe-result@1",
+    schemaVersion: resultSchemaVersion,
     scenarioId: probe.scenario.scenarioId,
     classification: classifySplitR1OurpriceSemanticsMetricsV1(metrics),
     metrics,
@@ -2215,6 +2421,30 @@ export function evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts) {
   };
   assertSplitR1PersistedPayloadSafe(result);
   return result;
+}
+
+export function evaluateSplitR1OurpriceSemanticsProbeV1(probe, receipts) {
+  const validation = validateSplitR1OurpriceSemanticsProbeV1(probe);
+  if (!validation.valid) {
+    throw new Error(`split-r1-ourprice-probe-invalid:${validation.issues.join(",")}`);
+  }
+  return evaluateSplitR1OurpriceSemanticsProbeValidated(
+    probe,
+    receipts,
+    "stayopti.split-r1.ourprice-semantics-probe-result@1"
+  );
+}
+
+export function evaluateSplitR1OurpriceSemanticsProbeV2(probe, receipts) {
+  const validation = validateSplitR1OurpriceSemanticsProbeV2(probe);
+  if (!validation.valid) {
+    throw new Error(`split-r1-ourprice-probe-v2-invalid:${validation.issues.join(",")}`);
+  }
+  return evaluateSplitR1OurpriceSemanticsProbeValidated(
+    probe,
+    receipts,
+    "stayopti.split-r1.ourprice-semantics-probe-result@2"
+  );
 }
 
 export function buildSplitR1DryRunPlan(matrix) {
@@ -2602,6 +2832,212 @@ export async function runSplitR1OurpriceSemanticsProbeV1({
   return result;
 }
 
+function splitR1OurpriceProbeV2Receipts(probe, states) {
+  return states.map((state) => ({
+    windowId: state.logicalSearch.windowId,
+    currency: state.logicalSearch.request.currency,
+    occupancy: probe.scenario.occupancy,
+    offers: [...state.offers],
+    continuationMetadataPresent: state.continuationMetadataPresent,
+  }));
+}
+
+export async function runSplitR1OurpriceSemanticsProbeV2({
+  probe,
+  options,
+  environment = process.env,
+  execArgv = process.execArgv,
+  fetchImpl = globalThis.fetch,
+  now = Date.now,
+  randomUUID = crypto.randomUUID,
+  ephemeralRunKey = crypto.randomBytes(32),
+  monotonicNow,
+  sleep,
+}) {
+  const dryRun = buildSplitR1OurpriceSemanticsDryRunV2(probe);
+  if (options?.mode === "ourprice-probe-v2-dry-run") return dryRun;
+  if (options?.mode !== "ourprice-probe-v2-live") {
+    throw new Error("split-r1-ourprice-probe-v2-mode-invalid");
+  }
+  const configuration = resolveProductionConfiguration(environment, execArgv);
+  const transport = createSplitR1NativeTransport({
+    baseUrl: configuration.baseUrl,
+    fetchImpl,
+    monotonicNow,
+    sleep,
+    budgetLimits: {
+      hotelSearchHttpBudget: SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET,
+      totalRouteStackHttpBudget: SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET,
+    },
+  });
+  const authRequest = createSplitR1PartnerTokenRequest({
+    apiKey: configuration.apiKey,
+    apiSecret: configuration.apiSecret,
+    now,
+    randomUUID,
+  });
+  const authResponse = await transport.post(SPLIT_R1_AUTH_ENDPOINT, authRequest);
+  const partnerToken = authResponse?.token;
+  if (typeof partnerToken !== "string" || partnerToken.length === 0) {
+    throw new Error("split-r1-partner-token-missing");
+  }
+  const destinationPayload = await transport.post(
+    SPLIT_R1_DESTINATION_ENDPOINT,
+    createSplitR1DestinationRequest(probe.scenario),
+    partnerToken
+  );
+  const destination = selectSplitR1DestinationCandidate(destinationPayload, probe.scenario);
+  const searches = buildSplitR1OurpriceSemanticsLogicalSearchesV2(probe);
+  const states = searches.map((logicalSearch) => ({
+    logicalSearch,
+    originalRequest: createSplitR1HotelSearchRequest(logicalSearch, destination),
+    latestResponse: null,
+    offers: [],
+    continuationCount: 0,
+    continuationMetadataPresent: false,
+  }));
+
+  for (const state of states) {
+    assertSplitR1OurpriceProbeV2SearchAllowed({
+      endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+      continuationOrdinal: 0,
+    });
+    state.latestResponse = await transport.post(
+      SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+      state.originalRequest,
+      partnerToken
+    );
+    const disposition = inspectSplitR1OurpriceProbeV2Continuation(state.latestResponse);
+    state.continuationMetadataPresent ||= disposition.metadataPresent;
+    const page = normalizeSplitR1SearchPage(state.latestResponse, {
+      logicalSearch: state.logicalSearch,
+      ephemeralRunKey,
+    });
+    state.offers.push(...page.offers);
+  }
+
+  let continuationHttpRequests = 0;
+  let continuationRoundsExecuted = 0;
+  let earlyStopApplied = false;
+  let commonPropertyCountAfterFirstRound = null;
+  for (
+    let round = 1;
+    round <= SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW;
+    round += 1
+  ) {
+    let requestsThisRound = 0;
+    for (const state of states) {
+      const disposition = inspectSplitR1OurpriceProbeV2Continuation(state.latestResponse);
+      state.continuationMetadataPresent ||= disposition.metadataPresent;
+      if (!disposition.canContinue) continue;
+      const continuationOrdinal = state.continuationCount + 1;
+      assertSplitR1OurpriceProbeV2SearchAllowed({
+        endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        continuationOrdinal,
+      });
+      if (
+        continuationHttpRequests >=
+        SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET
+      ) {
+        throw new Error("split-r1-ourprice-probe-v2-continuation-budget-exceeded");
+      }
+      const continuationRequest = createSplitR1ContinuationRequest(
+        state.originalRequest,
+        state.latestResponse,
+        continuationOrdinal
+      );
+      state.latestResponse = await transport.post(
+        SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        continuationRequest,
+        partnerToken
+      );
+      state.continuationCount = continuationOrdinal;
+      continuationHttpRequests += 1;
+      requestsThisRound += 1;
+      const nextDisposition = inspectSplitR1OurpriceProbeV2Continuation(
+        state.latestResponse
+      );
+      state.continuationMetadataPresent ||= nextDisposition.metadataPresent;
+      const page = normalizeSplitR1SearchPage(state.latestResponse, {
+        logicalSearch: state.logicalSearch,
+        ephemeralRunKey,
+      });
+      state.offers.push(...page.offers);
+    }
+    if (requestsThisRound === 0) break;
+    continuationRoundsExecuted = round;
+    const roundEvaluation = evaluateSplitR1OurpriceSemanticsProbeV2(
+      probe,
+      splitR1OurpriceProbeV2Receipts(probe, states)
+    );
+    if (round === 1) {
+      commonPropertyCountAfterFirstRound =
+        roundEvaluation.metrics.commonPropertyCount;
+      if (
+        commonPropertyCountAfterFirstRound >=
+        SPLIT_R1_OURPRICE_PROBE_V2_EARLY_STOP_COMMON_PROPERTY_THRESHOLD
+      ) {
+        earlyStopApplied = true;
+        break;
+      }
+    }
+  }
+
+  const budget = transport.getBudgetSnapshot();
+  if (
+    budget.hotelSearchRequests !==
+      SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET + continuationHttpRequests ||
+    budget.totalRouteStackRequests !== 2 + budget.hotelSearchRequests ||
+    budget.hotelSearchRequests > SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET ||
+    budget.totalRouteStackRequests > SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET ||
+    continuationHttpRequests > SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET ||
+    states.some(
+      (state) =>
+        state.continuationCount >
+        SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW
+    )
+  ) {
+    throw new Error("split-r1-ourprice-probe-v2-request-count-invalid");
+  }
+  const evaluation = evaluateSplitR1OurpriceSemanticsProbeV2(
+    probe,
+    splitR1OurpriceProbeV2Receipts(probe, states)
+  );
+  const result = {
+    schemaVersion: "stayopti.split-r1.ourprice-semantics-probe-live-result@2",
+    environment: "production",
+    privateDiagnosticOnly: true,
+    httpRequests: budget.totalRouteStackRequests,
+    hotelSearchInitialHttpRequests: SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET,
+    hotelSearchHttpRequests: budget.hotelSearchRequests,
+    continuationHttpRequests,
+    continuationRoundsExecuted,
+    continuationMetadataPresent: states.some(
+      (state) => state.continuationMetadataPresent
+    ),
+    continuationMetadataPresentByWindow: Object.fromEntries(
+      states.map((state) => [
+        state.logicalSearch.windowId,
+        state.continuationMetadataPresent,
+      ])
+    ),
+    commonPropertyCountAfterFirstRound,
+    earlyStopApplied,
+    retries: 0,
+    redirects: 0,
+    evaluation,
+    targetedLiveMatrixAuthorized: false,
+    publicRecommendationAllowed: false,
+    policyEligible: false,
+  };
+  for (const state of states) {
+    state.latestResponse = null;
+    state.originalRequest = null;
+  }
+  assertSplitR1PersistedPayloadSafe(result);
+  return result;
+}
+
 export async function runSplitR1Collector({
   matrix,
   options,
@@ -2620,6 +3056,23 @@ export async function runSplitR1Collector({
     options.mode === "ourprice-probe-live"
   ) {
     return runSplitR1OurpriceSemanticsProbeV1({
+      probe: matrix,
+      options,
+      environment,
+      execArgv,
+      fetchImpl,
+      now,
+      randomUUID,
+      ephemeralRunKey,
+      monotonicNow,
+      sleep,
+    });
+  }
+  if (
+    options.mode === "ourprice-probe-v2-dry-run" ||
+    options.mode === "ourprice-probe-v2-live"
+  ) {
+    return runSplitR1OurpriceSemanticsProbeV2({
       probe: matrix,
       options,
       environment,
@@ -2817,6 +3270,9 @@ async function main() {
   const matrix =
     options.mode === "ourprice-probe-dry-run" || options.mode === "ourprice-probe-live"
       ? await loadSplitR1OurpriceSemanticsProbeV1()
+      : options.mode === "ourprice-probe-v2-dry-run" ||
+          options.mode === "ourprice-probe-v2-live"
+        ? await loadSplitR1OurpriceSemanticsProbeV2()
       : options.mode === "targeted-dry-run"
       ? await loadSplitR1TargetedScenarioMatrixV1()
       : await loadSplitF0ScenarioMatrix();

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "stayopti.split-r1.ourprice-semantics-probe@2",
+  "sourceSha": "6cacb0dd8e5cda702db55dd1180f1121fd884970",
+  "purpose": "offline-freeze-for-bounded-continuation-ourprice-temporal-scale-micro-probe",
+  "scenario": {
+    "scenarioId": "split-r1-ourprice-semantics-001",
+    "destination": {
+      "canonicalId": "it-roma",
+      "label": "Roma",
+      "countryCode": "IT",
+      "latitude": 41.9028,
+      "longitude": 12.4964,
+      "providerDestinationIds": []
+    },
+    "currency": "EUR",
+    "occupancy": {
+      "roomCount": 1,
+      "rooms": [
+        {
+          "adults": 2,
+          "children": 0,
+          "childAges": []
+        }
+      ]
+    },
+    "windows": [
+      {
+        "windowId": "A",
+        "checkIn": "2027-02-02",
+        "checkOut": "2027-02-03",
+        "nights": 1
+      },
+      {
+        "windowId": "B",
+        "checkIn": "2027-02-03",
+        "checkOut": "2027-02-04",
+        "nights": 1
+      },
+      {
+        "windowId": "AB",
+        "checkIn": "2027-02-02",
+        "checkOut": "2027-02-04",
+        "nights": 2
+      }
+    ]
+  },
+  "futureLiveContract": {
+    "liveAuthorizedByThisPhase": false,
+    "partnerTokenHttpBudget": 1,
+    "destinationHttpBudget": 1,
+    "hotelSearchInitialHttpBudget": 3,
+    "continuationPerWindowMax": 2,
+    "hotelSearchContinuationHttpBudget": 6,
+    "hotelSearchHttpBudget": 9,
+    "totalRouteStackHttpBudget": 11,
+    "continuationAllowed": true,
+    "continuationScheduler": "BREADTH_FIRST",
+    "earlyStopCommonPropertyThreshold": 10,
+    "retries": 0,
+    "redirects": 0,
+    "maxRequestsPerSecond": 1,
+    "minRequestStartIntervalMs": 1000,
+    "concurrency": 1,
+    "detailsAllowed": false,
+    "roomsAndRatesAllowed": false,
+    "revalidationAllowed": false,
+    "prebookAllowed": false,
+    "bookingAllowed": false,
+    "paymentAllowed": false
+  },
+  "matchingContract": {
+    "commonPropertyUniverseOnly": true,
+    "propertyIdentity": "RUN_LOCAL_HMAC_SHA256",
+    "ephemeralSecretPersisted": false,
+    "crossRunLinkability": false,
+    "requiredCurrency": "EUR",
+    "currencyConversionAllowed": false,
+    "missingValueImputationAllowed": false,
+    "manualPropertySelectionAllowed": false,
+    "outlierRemovalAllowed": false
+  },
+  "classificationCriteria": {
+    "totalStay": {
+      "minimumCommonPropertyCount": 10,
+      "maximumMedianTotalError": 0.2,
+      "minimumMedianNightlyError": 0.35,
+      "minimumShareTotalCloser": 0.8
+    },
+    "nightly": {
+      "minimumCommonPropertyCount": 10,
+      "maximumMedianNightlyError": 0.2,
+      "minimumMedianTotalError": 0.35,
+      "minimumShareNightlyCloser": 0.8
+    },
+    "otherwise": "INCONCLUSIVE",
+    "ambiguousInvariantFailure": "AMBIGUOUS_CLASSIFICATION_INVARIANT_FAILURE",
+    "percentileMethod": "LINEAR_INTERPOLATION_R7",
+    "outlierRemovalAllowed": false,
+    "postHocSubsetSelectionAllowed": false
+  },
+  "conclusionLimits": {
+    "taxCompleteness": "UNPROVEN",
+    "mandatoryChargesCompleteness": "UNPROVEN",
+    "bookablePriceEquivalence": "UNPROVEN",
+    "contractualProviderConfirmation": false,
+    "targetedLiveMatrixAuthorized": false,
+    "publicRecommendationAllowed": false,
+    "policyEligible": false
+  }
+}

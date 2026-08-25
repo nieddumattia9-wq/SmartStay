@@ -22,6 +22,14 @@ import {
   SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS,
   SPLIT_R1_OURPRICE_PROBE_TOTAL_HTTP_BUDGET,
   SPLIT_R1_OURPRICE_PROBE_VERSION,
+  SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET,
+  SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW,
+  SPLIT_R1_OURPRICE_PROBE_V2_EARLY_STOP_COMMON_PROPERTY_THRESHOLD,
+  SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET,
+  SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET,
+  SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS,
+  SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET,
+  SPLIT_R1_OURPRICE_PROBE_V2_VERSION,
   SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS,
   SPLIT_R1_REPOSITORY_ROOT,
   SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
@@ -30,12 +38,15 @@ import {
   SPLIT_R1_TARGETED_RUN_STATUS,
   assertSplitR1OurpriceClassificationExclusiveV1,
   assertSplitR1OurpriceProbeInitialSearchAllowed,
+  assertSplitR1OurpriceProbeV2SearchAllowed,
   assertSplitR1EndpointAllowed,
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
   buildSplitR1OurpriceSemanticsDryRunV1,
+  buildSplitR1OurpriceSemanticsDryRunV2,
   buildSplitR1OurpriceSemanticsLogicalSearchesV1,
+  buildSplitR1OurpriceSemanticsLogicalSearchesV2,
   buildSplitR1TargetedDryRunPlanV1,
   buildSplitR1TargetedLogicalSearchPlanV1,
   classifySplitR1TargetedResultV1,
@@ -48,19 +59,24 @@ import {
   createSplitR1PartnerTokenRequest,
   evaluateSplitR1SearchLevelScenario,
   evaluateSplitR1OurpriceSemanticsProbeV1,
+  evaluateSplitR1OurpriceSemanticsProbeV2,
   fingerprintSplitR1Identifier,
   hasSplitR1OurpriceProbeContinuationMetadata,
+  inspectSplitR1OurpriceProbeV2Continuation,
   normalizeSplitR1SearchPage,
   normalizeSplitR1SearchResponse,
   loadSplitR1OurpriceSemanticsProbeV1,
+  loadSplitR1OurpriceSemanticsProbeV2,
   loadSplitR1TargetedScenarioMatrixV1,
   parseSplitR1Arguments,
   runSplitR1Collector,
   runSplitR1OurpriceSemanticsProbeV1,
+  runSplitR1OurpriceSemanticsProbeV2,
   replaySplitR1CausalLedger,
   selectSplitR1DestinationCandidate,
   validateSplitR1BaseUrl,
   validateSplitR1OurpriceSemanticsProbeV1,
+  validateSplitR1OurpriceSemanticsProbeV2,
   validateSplitR1TargetedScenarioMatrixV1,
 } from "../../scripts/run-split-r1-routestack-read-only-collector.mjs";
 import {
@@ -157,6 +173,49 @@ function probeReceipts(probe, count, priceForWindow, overrides = {}) {
       currency: overrides.offerCurrency?.[windowId] ?? "EUR",
     })),
   }));
+}
+
+function probeContinuationEnvelope(
+  hotels,
+  { suffix = "page", next = true, status = "InProgress" } = {}
+) {
+  return {
+    result: {
+      currency: "EUR",
+      result: hotels,
+      status,
+      ...(next
+        ? {
+            nextResultsKey: `memory-next-${suffix}`,
+            correlationId: `memory-correlation-${suffix}`,
+            token: `memory-token-${suffix}`,
+          }
+        : {}),
+    },
+  };
+}
+
+async function runOurpriceProbeV2WithFetch(fetchImpl) {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV2();
+  let monotonicClock = 0;
+  return runSplitR1OurpriceSemanticsProbeV2({
+    probe,
+    options: { mode: "ourprice-probe-v2-live" },
+    environment: {
+      ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+      ROUTESTACK_API_KEY: "synthetic-v2-key",
+      ROUTESTACK_API_SECRET: "synthetic-v2-secret",
+    },
+    execArgv: [`--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`],
+    fetchImpl,
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000096",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => monotonicClock,
+    sleep: async (milliseconds) => {
+      monotonicClock += milliseconds;
+    },
+  });
 }
 
 function coordinateLessRomePayload(id = "memory-rome-destination") {
@@ -781,6 +840,336 @@ test("ourprice probe fixture rejects any increase to its frozen 3/5 budget", asy
   const totalIncrease = structuredClone(probe);
   totalIncrease.futureLiveContract.totalRouteStackHttpBudget = 6;
   assert.equal(validateSplitR1OurpriceSemanticsProbeV1(totalIncrease).valid, false);
+});
+
+test("ourprice probe v1 fixture and zero-continuation boundary remain byte-identical", async () => {
+  const fixturePath = path.join(
+    SPLIT_R1_REPOSITORY_ROOT,
+    "tests",
+    "engine-v3",
+    "fixtures",
+    "split-r1-ourprice-semantics-probe-v1.json"
+  );
+  const bytes = await fs.readFile(fixturePath);
+  assert.equal(
+    crypto.createHash("sha256").update(bytes).digest("hex"),
+    "c9f9643f967d9d39383998268685ad7af5cfd7ab898d7f253d3fc9e1d8da92d1"
+  );
+  const probe = await loadSplitR1OurpriceSemanticsProbeV1();
+  assert.equal(probe.futureLiveContract.continuationAllowed, false);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_CONTINUATIONS, 0);
+  assert.throws(
+    () =>
+      assertSplitR1OurpriceProbeInitialSearchAllowed({
+        endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        continuationRequest: true,
+      }),
+    /continuation-http-request-prohibited/
+  );
+});
+
+test("ourprice probe v2 freezes bounded budgets and defaults to one-scenario zero-network dry-run", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV2();
+  const v1 = await loadSplitR1OurpriceSemanticsProbeV1();
+  assert.equal(probe.schemaVersion, SPLIT_R1_OURPRICE_PROBE_V2_VERSION);
+  assert.equal(validateSplitR1OurpriceSemanticsProbeV2(probe).valid, true);
+  assert.equal(
+    stableStringifySplitF0(probe.scenario),
+    stableStringifySplitF0(v1.scenario)
+  );
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_V2_INITIAL_HTTP_BUDGET, 3);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATIONS_PER_WINDOW, 2);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_V2_CONTINUATION_HTTP_BUDGET, 6);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_V2_HOTEL_SEARCH_HTTP_BUDGET, 9);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_V2_TOTAL_HTTP_BUDGET, 11);
+  assert.equal(SPLIT_R1_OURPRICE_PROBE_V2_EARLY_STOP_COMMON_PROPERTY_THRESHOLD, 10);
+  assert.deepEqual(parseSplitR1Arguments(["--ourprice-semantics-probe-v2"]), {
+    mode: "ourprice-probe-v2-dry-run",
+  });
+  assert.throws(
+    () => parseSplitR1Arguments(["--ourprice-semantics-probe-v2", "--continuations=3"]),
+    /unknown-argument/
+  );
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        "--ourprice-semantics-probe-v2",
+        SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS[0],
+      ]),
+    /v2-live-confirmations-incomplete/
+  );
+  assert.deepEqual(
+    parseSplitR1Arguments([
+      "--ourprice-semantics-probe-v2",
+      ...SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS,
+    ]),
+    { mode: "ourprice-probe-v2-live" }
+  );
+  let fetchCalls = 0;
+  const result = await runSplitR1OurpriceSemanticsProbeV2({
+    probe,
+    options: { mode: "ourprice-probe-v2-dry-run" },
+    environment: {},
+    execArgv: [],
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      throw new Error("ourprice-probe-v2-dry-run-must-not-fetch");
+    },
+  });
+  assert.deepEqual(result, buildSplitR1OurpriceSemanticsDryRunV2(probe));
+  assert.equal(buildSplitR1OurpriceSemanticsLogicalSearchesV2(probe).length, 3);
+  assert.equal(result.scenarios, 1);
+  assert.equal(result.logicalHotelSearches, 3);
+  assert.equal(result.httpRequests, 0);
+  assert.equal(result.futureInitialHotelSearchHttpCap, 3);
+  assert.equal(result.futureContinuationHttpCap, 6);
+  assert.equal(result.futureHotelSearchHttpCap, 9);
+  assert.equal(result.futureTotalHttpCap, 11);
+  assert.equal(result.continuationPerWindowMax, 2);
+  assert.equal(result.continuationScheduler, "BREADTH_FIRST");
+  assert.equal(result.retries, 0);
+  assert.equal(result.redirects, 0);
+  assert.equal(result.concurrency, 1);
+  assert.equal(result.minRequestStartIntervalMs, 1_000);
+  assert.equal(fetchCalls, 0);
+
+  for (const [field, value] of [
+    ["hotelSearchInitialHttpBudget", 4],
+    ["continuationPerWindowMax", 3],
+    ["hotelSearchContinuationHttpBudget", 7],
+    ["hotelSearchHttpBudget", 10],
+    ["totalRouteStackHttpBudget", 12],
+  ]) {
+    const drift = structuredClone(probe);
+    drift.futureLiveContract[field] = value;
+    assert.equal(validateSplitR1OurpriceSemanticsProbeV2(drift).valid, false);
+  }
+});
+
+test("ourprice probe v2 keeps the v1 total, nightly and inconclusive classification criteria", async () => {
+  const probe = await loadSplitR1OurpriceSemanticsProbeV2();
+  const total = probeReceipts(probe, 10, (windowId, index) => {
+    const a = 10_000 + index * 2;
+    const b = 12_000 + index * 2;
+    return windowId === "A" ? a : windowId === "B" ? b : a + b;
+  });
+  const nightly = probeReceipts(probe, 10, (windowId, index) => {
+    const a = 10_000 + index * 2;
+    const b = 12_000 + index * 2;
+    return windowId === "A" ? a : windowId === "B" ? b : (a + b) / 2;
+  });
+  assert.equal(
+    evaluateSplitR1OurpriceSemanticsProbeV2(probe, total).classification,
+    "TOTAL_STAY_EMPIRICALLY_SUPPORTED"
+  );
+  assert.equal(
+    evaluateSplitR1OurpriceSemanticsProbeV2(probe, nightly).classification,
+    "NIGHTLY_EMPIRICALLY_SUPPORTED"
+  );
+  assert.equal(
+    evaluateSplitR1OurpriceSemanticsProbeV2(probe, total.map((receipt) => ({
+      ...receipt,
+      offers: receipt.offers.slice(0, 9),
+    }))).classification,
+    "INCONCLUSIVE"
+  );
+});
+
+test("ourprice probe v2 continuation gate rejects a third request, missing keys and terminal pages", () => {
+  assert.equal(
+    assertSplitR1OurpriceProbeV2SearchAllowed({
+      endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+      continuationOrdinal: 2,
+    }),
+    true
+  );
+  assert.throws(
+    () =>
+      assertSplitR1OurpriceProbeV2SearchAllowed({
+        endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        continuationOrdinal: 3,
+      }),
+    /continuation-budget-exceeded/
+  );
+  assert.equal(
+    inspectSplitR1OurpriceProbeV2Continuation(
+      probeContinuationEnvelope([], { suffix: "active" })
+    ).canContinue,
+    true
+  );
+  assert.equal(
+    inspectSplitR1OurpriceProbeV2Continuation(
+      probeContinuationEnvelope([], { suffix: "terminal", status: "Completed" })
+    ).canContinue,
+    false
+  );
+  assert.equal(
+    inspectSplitR1OurpriceProbeV2Continuation(
+      probeContinuationEnvelope([], { next: false, status: "InProgress" })
+    ).canContinue,
+    false
+  );
+});
+
+test("ourprice probe v2 accumulates pages breadth-first and early-stops after ten common properties", async () => {
+  const hotelOrder = [];
+  let hotelCalls = 0;
+  const result = await runOurpriceProbeV2WithFetch(async (url, init) => {
+    const pathname = new URL(url).pathname;
+    if (pathname === SPLIT_R1_AUTH_ENDPOINT) {
+      return jsonResponse({ token: "memory-v2-partner-token" });
+    }
+    if (pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+      return jsonResponse({
+        result: [{ id: "memory-v2-destination", coordinates: { lat: 41.9028, long: 12.4964 } }],
+      });
+    }
+    hotelCalls += 1;
+    const request = JSON.parse(init.body);
+    const windowId = request.checkOut === "2027-02-03" ? "A"
+      : request.checkIn === "2027-02-03" ? "B" : "AB";
+    const continuation = Object.hasOwn(request, "nextResultsKey");
+    hotelOrder.push(`${windowId}:${continuation ? 1 : 0}`);
+    if (!continuation) {
+      return jsonResponse(probeContinuationEnvelope([
+        rawHotel("memory-v2-shared-0", 500),
+      ], { suffix: `initial-${windowId}` }));
+    }
+    const hotels = Array.from({ length: 10 }, (_, index) => {
+      const a = 100 + index;
+      const b = 120 + index;
+      const price = windowId === "A" ? a : windowId === "B" ? b : a + b;
+      return rawHotel(`memory-v2-shared-${index}`, price);
+    });
+    return jsonResponse(
+      probeContinuationEnvelope(hotels, { suffix: `round1-${windowId}` })
+    );
+  });
+  assert.deepEqual(hotelOrder, ["A:0", "B:0", "AB:0", "A:1", "B:1", "AB:1"]);
+  assert.equal(hotelCalls, 6);
+  assert.equal(result.httpRequests, 8);
+  assert.equal(result.hotelSearchInitialHttpRequests, 3);
+  assert.equal(result.hotelSearchHttpRequests, 6);
+  assert.equal(result.continuationHttpRequests, 3);
+  assert.equal(result.continuationRoundsExecuted, 1);
+  assert.equal(result.commonPropertyCountAfterFirstRound, 10);
+  assert.equal(result.earlyStopApplied, true);
+  assert.equal(result.evaluation.metrics.commonPropertyCount, 10);
+  assert.equal(result.evaluation.classification, "TOTAL_STAY_EMPIRICALLY_SUPPORTED");
+  assert.equal(result.evaluation.metrics.priceDistributions.A.minimumMinorUnits, 10_000);
+  assert.equal(result.evaluation.rejectionCountsByWindow.A.DUPLICATE_PROPERTY_WORSE_PRICE, 1);
+  const serialized = stableStringifySplitF0(result);
+  for (const forbidden of [
+    "memory-v2-partner-token",
+    "memory-v2-destination",
+    "memory-v2-shared-0",
+    "memory-next-",
+    "memory-correlation-",
+    "memory-token-",
+    "synthetic-v2-key",
+    "synthetic-v2-secret",
+  ]) {
+    assert.equal(serialized.includes(forbidden), false);
+  }
+  assert.equal(result.evaluation.rawIdentifiersPersisted, 0);
+  assert.equal(result.evaluation.propertyFingerprintsPersisted, 0);
+  assert.equal(result.evaluation.crossRunLinkability, false);
+});
+
+test("ourprice probe v2 executes at most two breadth-first continuation rounds and never a third", async () => {
+  const hotelOrder = [];
+  let hotelCalls = 0;
+  const result = await runOurpriceProbeV2WithFetch(async (url, init) => {
+    const pathname = new URL(url).pathname;
+    if (pathname === SPLIT_R1_AUTH_ENDPOINT) {
+      return jsonResponse({ token: "memory-v2-partner-token" });
+    }
+    if (pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+      return jsonResponse({
+        result: [{ id: "memory-v2-destination", coordinates: { lat: 41.9028, long: 12.4964 } }],
+      });
+    }
+    hotelCalls += 1;
+    const request = JSON.parse(init.body);
+    const windowId = request.checkOut === "2027-02-03" ? "A"
+      : request.checkIn === "2027-02-03" ? "B" : "AB";
+    const continuationOrdinal = Object.hasOwn(request, "nextResultsKey")
+      ? hotelCalls <= 6 ? 1 : 2
+      : 0;
+    hotelOrder.push(`${windowId}:${continuationOrdinal}`);
+    if (continuationOrdinal === 0) {
+      return jsonResponse(
+        probeContinuationEnvelope([], { suffix: `initial-${windowId}` })
+      );
+    }
+    const start = continuationOrdinal === 1 ? 0 : 5;
+    const hotels = Array.from({ length: 5 }, (_, offset) => {
+      const index = start + offset;
+      const a = 100 + index;
+      const b = 120 + index;
+      const price = windowId === "A" ? a : windowId === "B" ? b : a + b;
+      return rawHotel(`memory-v2-shared-${index}`, price);
+    });
+    return jsonResponse(
+      probeContinuationEnvelope(hotels, {
+        suffix: `round${continuationOrdinal}-${windowId}`,
+      })
+    );
+  });
+  assert.deepEqual(hotelOrder, [
+    "A:0", "B:0", "AB:0",
+    "A:1", "B:1", "AB:1",
+    "A:2", "B:2", "AB:2",
+  ]);
+  assert.equal(hotelCalls, 9);
+  assert.equal(result.httpRequests, 11);
+  assert.equal(result.hotelSearchHttpRequests, 9);
+  assert.equal(result.continuationHttpRequests, 6);
+  assert.equal(result.continuationRoundsExecuted, 2);
+  assert.equal(result.commonPropertyCountAfterFirstRound, 5);
+  assert.equal(result.earlyStopApplied, false);
+  assert.equal(result.evaluation.metrics.commonPropertyCount, 10);
+  assert.equal(result.evaluation.classification, "TOTAL_STAY_EMPIRICALLY_SUPPORTED");
+});
+
+test("ourprice probe v2 continues only non-terminal windows with a valid nextResultsKey", async () => {
+  const hotelOrder = [];
+  let hotelCalls = 0;
+  const result = await runOurpriceProbeV2WithFetch(async (url, init) => {
+    const pathname = new URL(url).pathname;
+    if (pathname === SPLIT_R1_AUTH_ENDPOINT) {
+      return jsonResponse({ token: "memory-v2-partner-token" });
+    }
+    if (pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+      return jsonResponse({
+        result: [{ id: "memory-v2-destination", coordinates: { lat: 41.9028, long: 12.4964 } }],
+      });
+    }
+    hotelCalls += 1;
+    const request = JSON.parse(init.body);
+    const windowId = request.checkOut === "2027-02-03" ? "A"
+      : request.checkIn === "2027-02-03" ? "B" : "AB";
+    const continuation = Object.hasOwn(request, "nextResultsKey");
+    hotelOrder.push(`${windowId}:${continuation ? 1 : 0}`);
+    if (continuation) {
+      return jsonResponse(probeContinuationEnvelope([], { next: false }));
+    }
+    if (windowId === "A") {
+      return jsonResponse(probeContinuationEnvelope([], { suffix: "active-a" }));
+    }
+    if (windowId === "B") {
+      return jsonResponse(probeContinuationEnvelope([], { next: false }));
+    }
+    return jsonResponse(
+      probeContinuationEnvelope([], { suffix: "terminal-ab", status: "Completed" })
+    );
+  });
+  assert.deepEqual(hotelOrder, ["A:0", "B:0", "AB:0", "A:1"]);
+  assert.equal(hotelCalls, 4);
+  assert.equal(result.httpRequests, 6);
+  assert.equal(result.continuationHttpRequests, 1);
+  assert.equal(result.continuationRoundsExecuted, 1);
+  assert.equal(result.evaluation.classification, "INCONCLUSIVE");
 });
 
 test("live mode requires both confirmations before credential or network access", async () => {
