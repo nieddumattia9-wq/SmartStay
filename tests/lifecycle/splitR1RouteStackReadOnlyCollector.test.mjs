@@ -57,6 +57,8 @@ import {
   SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS,
   SPLIT_R1_SANDBOX_HOST_OFFICIALITY,
   SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
+  SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS,
+  SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION,
   SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION,
   SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
   SPLIT_R1_TARGETED_MATRIX_VERSION,
@@ -94,6 +96,7 @@ import {
   evaluateSplitR1SandboxNightlyOracleV1,
   fingerprintSplitR1Identifier,
   hasSplitR1OurpriceProbeContinuationMetadata,
+  diagnoseSplitR1ContinuationMetadataShapeV1,
   inspectSplitR1OurpriceProbeV2Continuation,
   inspectSplitR1SandboxBaseUrl,
   inspectSplitR1SandboxEnvironmentBinding,
@@ -778,6 +781,189 @@ test("sandbox binding reads dedicated variables only, never falls back and canno
     .update(await fs.readFile(serverEnvPath))
     .digest("hex");
   assert.equal(afterEnvHash, beforeEnvHash);
+});
+
+test("continuation metadata shape receipt inspects only allowlisted paths and never persists values", () => {
+  const payload = {
+    correlationId: "root-correlation",
+    token: "root-token",
+    nextResultsKey: "root-next",
+    result: {
+      correlationId: "contract-correlation",
+      token: "contract-token",
+      nextResultsKey: "contract-next",
+      unknownContinuationSecret: "must-not-be-enumerated",
+    },
+    unrelated: { nested: "must-not-be-enumerated" },
+  };
+  const receipt = diagnoseSplitR1ContinuationMetadataShapeV1(payload);
+  assert.equal(receipt.schemaVersion, SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION);
+  assert.deepEqual(
+    receipt.pathDiagnostics.map((diagnostic) => diagnostic.path),
+    SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS
+  );
+  assert.equal(receipt.classification, "AMBIGUOUS_CONTINUATION_METADATA_SHAPE");
+  assert.equal(receipt.continuationAuthorizable, false);
+  assert.equal(receipt.valuesDiscordant, true);
+  assert.equal(receipt.unknownKeyEnumeration, false);
+  assert.equal(receipt.rawMetadataValuesPersisted, 0);
+  assert.equal(receipt.rawIdentifiersPersisted, 0);
+  const serialized = JSON.stringify(receipt);
+  for (const forbiddenValue of [
+    "root-correlation",
+    "root-token",
+    "root-next",
+    "contract-correlation",
+    "contract-token",
+    "contract-next",
+    "unknownContinuationSecret",
+    "must-not-be-enumerated",
+    "unrelated",
+  ]) {
+    assert.doesNotMatch(serialized, new RegExp(forbiddenValue));
+  }
+});
+
+test("continuation metadata shape preserves the result contract and fails closed for incomplete or non-contractual shapes", () => {
+  const completeResult = diagnoseSplitR1ContinuationMetadataShapeV1({
+    result: {
+      correlationId: "result-correlation",
+      token: "result-token",
+      nextResultsKey: "result-next",
+    },
+  });
+  assert.equal(
+    completeResult.classification,
+    "CONTRACTUAL_CONTINUATION_METADATA_SHAPE_COMPLETE"
+  );
+  assert.equal(completeResult.contractualMetadataComplete, true);
+  assert.equal(completeResult.selectedContractualContainer, "result");
+  assert.equal(completeResult.continuationAuthorizable, true);
+
+  const incomplete = diagnoseSplitR1ContinuationMetadataShapeV1({
+    result: { correlationId: "present", token: "", nextResultsKey: null },
+  });
+  assert.equal(incomplete.classification, "INCOMPLETE_CONTINUATION_METADATA_SHAPE");
+  assert.equal(incomplete.contractualMetadataComplete, false);
+  assert.equal(incomplete.continuationAuthorizable, false);
+  assert.deepEqual(
+    incomplete.pathDiagnostics
+      .filter((diagnostic) =>
+        [
+          "result.correlationId",
+          "result.token",
+          "result.nextResultsKey",
+        ].includes(diagnostic.path)
+      )
+      .map(({ path, jsonType, valueShape, stringState }) => ({
+        path,
+        jsonType,
+        valueShape,
+        stringState,
+      })),
+    [
+      {
+        path: "result.correlationId",
+        jsonType: "string",
+        valueShape: "scalar",
+        stringState: "NON_EMPTY",
+      },
+      {
+        path: "result.token",
+        jsonType: "string",
+        valueShape: "scalar",
+        stringState: "EMPTY",
+      },
+      {
+        path: "result.nextResultsKey",
+        jsonType: "null",
+        valueShape: "null",
+        stringState: "NOT_APPLICABLE",
+      },
+    ]
+  );
+
+  const rootOnly = diagnoseSplitR1ContinuationMetadataShapeV1({
+    correlationId: "root-correlation",
+    token: "root-token",
+    nextResultsKey: "root-next",
+  });
+  assert.equal(
+    rootOnly.classification,
+    "NON_CONTRACTUAL_CONTINUATION_METADATA_SHAPE_PRESENT"
+  );
+  assert.equal(rootOnly.contractualMetadataComplete, false);
+  assert.equal(rootOnly.continuationAuthorizable, false);
+});
+
+test("matching duplicate shapes prefer the existing result contract without changing continuation construction", () => {
+  const metadata = {
+    correlationId: "same-correlation",
+    token: "same-token",
+    nextResultsKey: "same-next",
+  };
+  const receipt = diagnoseSplitR1ContinuationMetadataShapeV1({
+    ...metadata,
+    result: { ...metadata },
+  });
+  assert.equal(receipt.valuesDiscordant, false);
+  assert.equal(
+    receipt.classification,
+    "CONTRACTUAL_CONTINUATION_METADATA_SHAPE_COMPLETE"
+  );
+  assert.equal(receipt.selectedContractualContainer, "result");
+  assert.equal(receipt.continuationAuthorizable, true);
+
+  const originalRequest = {
+    destinationId: "memory-only-destination",
+    lat: 45.4642,
+    long: 9.19,
+    checkIn: "2027-10-04",
+    checkOut: "2027-10-18",
+    roomCount: 1,
+    rooms: [{ adults: 2, children: 0, childAges: [] }],
+    currency: "EUR",
+  };
+  const continuation = createSplitR1ContinuationRequest(
+    originalRequest,
+    { result: { ...metadata } },
+    1
+  );
+  assert.deepEqual(continuation, { ...originalRequest, ...metadata });
+  assert.throws(
+    () =>
+      createSplitR1ContinuationRequest(
+        originalRequest,
+        { result: { correlationId: "partial" } },
+        1
+      ),
+    /continuation-token-missing/
+  );
+});
+
+test("continuation metadata shape reports scalar, array and object types without recursive enumeration", () => {
+  const receipt = diagnoseSplitR1ContinuationMetadataShapeV1({
+    data: {
+      correlationId: 7,
+      token: [],
+      nextResultsKey: {},
+      hidden: "not-enumerated",
+    },
+  });
+  const dataDiagnostics = receipt.pathDiagnostics.filter((diagnostic) =>
+    diagnostic.path.startsWith("data.")
+  );
+  assert.deepEqual(
+    dataDiagnostics.map(({ jsonType, valueShape }) => ({ jsonType, valueShape })),
+    [
+      { jsonType: "number", valueShape: "scalar" },
+      { jsonType: "array", valueShape: "array" },
+      { jsonType: "object", valueShape: "object" },
+    ]
+  );
+  assert.equal(receipt.classification, "INCOMPLETE_CONTINUATION_METADATA_SHAPE");
+  assert.equal(receipt.continuationAuthorizable, false);
+  assert.doesNotMatch(JSON.stringify(receipt), /hidden|not-enumerated/);
 });
 
 test("nightly-oracle plan covers every night, prefix and suffix without treating nightly sums as economic prices", async () => {

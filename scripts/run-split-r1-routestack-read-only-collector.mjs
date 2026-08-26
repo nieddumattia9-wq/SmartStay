@@ -103,6 +103,22 @@ export const SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION = Object.freeze({
   hotelSearch: "UNPROVEN",
   continuation: "UNPROVEN",
 });
+export const SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION =
+  "stayopti.split-r1.continuation-metadata-shape@1";
+export const SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS = Object.freeze([
+  "correlationId",
+  "token",
+  "nextResultsKey",
+  "result.correlationId",
+  "result.token",
+  "result.nextResultsKey",
+  "data.correlationId",
+  "data.token",
+  "data.nextResultsKey",
+  "result.data.correlationId",
+  "result.data.token",
+  "result.data.nextResultsKey",
+]);
 export const SPLIT_R1_OURPRICE_PROBE_VERSION =
   "stayopti.split-r1.ourprice-semantics-probe@1";
 export const SPLIT_R1_OURPRICE_PROBE_PATH = path.join(
@@ -572,6 +588,130 @@ export function hasSplitR1OurpriceProbeContinuationMetadata(payload) {
       return value !== null && value !== undefined && value !== "";
     });
   });
+}
+
+const SPLIT_R1_CONTINUATION_METADATA_CONTAINERS = Object.freeze([
+  Object.freeze({ label: "root", prefix: [] }),
+  Object.freeze({ label: "result", prefix: ["result"] }),
+  Object.freeze({ label: "data", prefix: ["data"] }),
+  Object.freeze({ label: "result.data", prefix: ["result", "data"] }),
+]);
+
+function splitR1ValueAtAllowlistedPath(payload, pathParts) {
+  let cursor = payload;
+  for (const part of pathParts) {
+    if (
+      cursor === null ||
+      typeof cursor !== "object" ||
+      Array.isArray(cursor) ||
+      !Object.prototype.hasOwnProperty.call(cursor, part)
+    ) {
+      return { present: false, value: undefined };
+    }
+    cursor = cursor[part];
+  }
+  return { present: true, value: cursor };
+}
+
+function splitR1SanitizedMetadataValueShape(path, observation) {
+  if (!observation.present) {
+    return {
+      path,
+      present: false,
+      jsonType: "absent",
+      valueShape: "absent",
+      stringState: "NOT_APPLICABLE",
+    };
+  }
+  const value = observation.value;
+  if (value === null) {
+    return {
+      path,
+      present: true,
+      jsonType: "null",
+      valueShape: "null",
+      stringState: "NOT_APPLICABLE",
+    };
+  }
+  const array = Array.isArray(value);
+  const jsonType = array ? "array" : typeof value;
+  const valueShape = array ? "array" : typeof value === "object" ? "object" : "scalar";
+  return {
+    path,
+    present: true,
+    jsonType,
+    valueShape,
+    stringState:
+      typeof value === "string"
+        ? value.length > 0
+          ? "NON_EMPTY"
+          : "EMPTY"
+        : "NOT_APPLICABLE",
+  };
+}
+
+function splitR1ContinuationMetadataTuple(payload, container) {
+  const values = ["correlationId", "token", "nextResultsKey"].map((field) =>
+    splitR1ValueAtAllowlistedPath(payload, [...container.prefix, field])
+  );
+  const complete = values.every(
+    (observation) =>
+      observation.present &&
+      typeof observation.value === "string" &&
+      observation.value.length > 0
+  );
+  return {
+    label: container.label,
+    complete,
+    values: complete ? values.map((observation) => observation.value) : null,
+  };
+}
+
+export function diagnoseSplitR1ContinuationMetadataShapeV1(payload) {
+  const pathDiagnostics = SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS.map((path) => {
+    const pathParts = path.split(".");
+    return splitR1SanitizedMetadataValueShape(
+      path,
+      splitR1ValueAtAllowlistedPath(payload, pathParts)
+    );
+  });
+  const tuples = SPLIT_R1_CONTINUATION_METADATA_CONTAINERS.map((container) =>
+    splitR1ContinuationMetadataTuple(payload, container)
+  );
+  const completeTuples = tuples.filter((tuple) => tuple.complete);
+  const valuesDiscordant = completeTuples.some(
+    (tuple) =>
+      completeTuples.length > 1 &&
+      tuple.values.some((value, index) => value !== completeTuples[0].values[index])
+  );
+  const contractualTuple = tuples.find((tuple) => tuple.label === "result");
+  const ambiguous = completeTuples.length > 1 && valuesDiscordant;
+  const continuationAuthorizable = contractualTuple.complete && !ambiguous;
+  const classification = ambiguous
+    ? "AMBIGUOUS_CONTINUATION_METADATA_SHAPE"
+    : continuationAuthorizable
+      ? "CONTRACTUAL_CONTINUATION_METADATA_SHAPE_COMPLETE"
+      : completeTuples.length === 0
+        ? "INCOMPLETE_CONTINUATION_METADATA_SHAPE"
+        : "NON_CONTRACTUAL_CONTINUATION_METADATA_SHAPE_PRESENT";
+  const receipt = {
+    schemaVersion: SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION,
+    pathDiagnostics,
+    presentPathCount: pathDiagnostics.filter((diagnostic) => diagnostic.present).length,
+    completeCandidateContainers: completeTuples.map((tuple) => tuple.label).sort(),
+    completeCandidateContainerCount: completeTuples.length,
+    contractualContainer: "result",
+    contractualMetadataComplete: contractualTuple.complete,
+    selectedContractualContainer: continuationAuthorizable ? "result" : null,
+    continuationAuthorizable,
+    valuesDiscordant,
+    classification,
+    unknownKeyEnumeration: false,
+    rawMetadataValuesPersisted: 0,
+    rawIdentifiersPersisted: 0,
+  };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
 }
 
 export function inspectSplitR1OurpriceProbeV2Continuation(payload) {
@@ -2401,6 +2541,8 @@ export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
     sandboxHostAllowlistStatus: SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS,
     sandboxCurrentContract: SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION,
     sandboxCurrentQuotaClassification: SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION,
+    continuationMetadataShapeReceiptVersion:
+      SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION,
     budgetsExternallyIncreaseable: false,
     sandboxLiveAuthorized: false,
     nightlyScoutImplemented: true,
