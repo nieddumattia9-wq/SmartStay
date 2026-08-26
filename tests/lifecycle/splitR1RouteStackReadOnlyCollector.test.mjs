@@ -50,6 +50,13 @@ import {
   SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO,
   SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET,
   SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_VERSION,
+  SPLIT_R1_SANDBOX_BINDING_VERSION,
+  SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION,
+  SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION,
+  SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES,
+  SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS,
+  SPLIT_R1_SANDBOX_HOST_OFFICIALITY,
+  SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
   SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION,
   SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
   SPLIT_R1_TARGETED_MATRIX_VERSION,
@@ -88,6 +95,8 @@ import {
   fingerprintSplitR1Identifier,
   hasSplitR1OurpriceProbeContinuationMetadata,
   inspectSplitR1OurpriceProbeV2Continuation,
+  inspectSplitR1SandboxBaseUrl,
+  inspectSplitR1SandboxEnvironmentBinding,
   normalizeSplitR1SearchPage,
   normalizeSplitR1SearchResponse,
   loadSplitR1OurpriceSemanticsProbeV1,
@@ -100,8 +109,10 @@ import {
   runSplitR1OurpriceSemanticsProbeV1,
   runSplitR1OurpriceSemanticsProbeV2,
   replaySplitR1CausalLedger,
+  resolveSplitR1SandboxConfiguration,
   selectSplitR1DestinationCandidate,
   validateSplitR1BaseUrl,
+  validateSplitR1SandboxBaseUrl,
   validateSplitR1OurpriceSemanticsProbeV1,
   validateSplitR1OurpriceSemanticsProbeV2,
   validateSplitR1OurpriceEmpiricalTotalityReceiptV1,
@@ -625,6 +636,148 @@ test("sandbox nightly-oracle fixture freezes one fourteen-night scenario and a 4
   assert.equal(result.sandboxCommercialGoAllowed, false);
   assert.equal(result.publicRecommendationAllowed, false);
   assert.equal(fetchCalls, 0);
+});
+
+test("sandbox live path requires its two dedicated confirmations and remains contract-held", () => {
+  const sandboxFlag = "--sandbox-nightly-oracle-v1";
+  assert.deepEqual(
+    parseSplitR1Arguments([sandboxFlag, ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS]),
+    { mode: "sandbox-nightly-oracle-live-contract-hold" }
+  );
+  assert.throws(
+    () => parseSplitR1Arguments([SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS[0]]),
+    /sandbox-nightly-oracle-flag-required/
+  );
+  assert.throws(
+    () => parseSplitR1Arguments([sandboxFlag, SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS[0]]),
+    /live-confirmations-incomplete/
+  );
+  assert.throws(
+    () => parseSplitR1Arguments([sandboxFlag, "--sandbox-total-http-budget=126"]),
+    /unknown-argument/
+  );
+});
+
+test("sandbox base URL is structurally inspected but no routestack subdomain is allowlisted without proof", () => {
+  const receipt = inspectSplitR1SandboxBaseUrl("https://evolvemcp.routestack.ai");
+  assert.deepEqual(receipt, {
+    scheme: "HTTPS",
+    hostname: "evolvemcp.routestack.ai",
+    port: 443,
+    pathClass: "ROOT_ONLY",
+    userinfoAbsent: true,
+    queryAbsent: true,
+    fragmentAbsent: true,
+    differsFromProduction: true,
+    routestackDomainMatch: true,
+    localhost: false,
+    ipLiteral: false,
+    privateOrLinkLocalAddress: false,
+  });
+  assert.throws(
+    () => validateSplitR1SandboxBaseUrl("https://evolvemcp.routestack.ai"),
+    /host-officiality-unproven/
+  );
+  assert.throws(
+    () => validateSplitR1SandboxBaseUrl("https://arbitrary.routestack.ai"),
+    /host-officiality-unproven/
+  );
+  for (const [candidate, expected] of [
+    ["https://mcp.routestack.ai", /production-host-prohibited/],
+    ["http://evolvemcp.routestack.ai", /https-required/],
+    ["https://user:password@evolvemcp.routestack.ai", /userinfo-prohibited/],
+    ["https://evolvemcp.routestack.ai?mode=sandbox", /query-prohibited/],
+    ["https://evolvemcp.routestack.ai#sandbox", /fragment-prohibited/],
+    ["https://evolvemcp.routestack.ai/mcp", /root-path-required/],
+    ["https://evolvemcp.routestack.ai:444", /default-port-required/],
+    ["https://example.com", /domain-not-routestack/],
+    ["https://localhost", /localhost-prohibited/],
+    ["https://127.0.0.1", /ip-literal-prohibited/],
+  ]) {
+    assert.throws(() => inspectSplitR1SandboxBaseUrl(candidate), expected);
+  }
+});
+
+test("sandbox binding reads dedicated variables only, never falls back and cannot reach fetch while allowlist is held", async () => {
+  const serverEnvPath = path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env");
+  const beforeEnvHash = crypto
+    .createHash("sha256")
+    .update(await fs.readFile(serverEnvPath))
+    .digest("hex");
+  const environment = {
+    [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl]: "https://evolvemcp.routestack.ai",
+    [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey]: "synthetic-sandbox-key",
+    [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret]: "synthetic-sandbox-secret",
+    ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+    ROUTESTACK_API_KEY: "synthetic-production-key",
+    ROUTESTACK_API_SECRET: "synthetic-production-secret",
+  };
+  const binding = inspectSplitR1SandboxEnvironmentBinding(environment);
+  assert.equal(binding.schemaVersion, SPLIT_R1_SANDBOX_BINDING_VERSION);
+  assert.equal(binding.sandboxBaseUrlPresent, true);
+  assert.equal(binding.sandboxApiKeyPresent, true);
+  assert.equal(binding.sandboxApiSecretPresent, true);
+  assert.equal(binding.productionBaseUrlPresent, true);
+  assert.equal(binding.productionApiKeyPresent, true);
+  assert.equal(binding.productionApiSecretPresent, true);
+  assert.equal(binding.sandboxKeyEqualsProductionKey, "NO");
+  assert.equal(binding.sandboxSecretEqualsProductionSecret, "NO");
+  assert.equal(binding.sandboxToProductionFallbackAllowed, false);
+  assert.equal(binding.sandboxHostOfficiality, SPLIT_R1_SANDBOX_HOST_OFFICIALITY);
+  assert.equal(binding.sandboxHostAllowlistStatus, SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS);
+  assert.deepEqual(binding.sandboxContract, SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION);
+  assert.equal(binding.sandboxQuotaClassification, SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION);
+  assert.equal(binding.sandboxLiveAuthorized, false);
+  const bindingJson = JSON.stringify(binding);
+  assert.doesNotMatch(bindingJson, /synthetic-(?:sandbox|production)/);
+
+  const envFileArg = `--env-file=${serverEnvPath}`;
+  const sandboxOnlyProxy = new Proxy(environment, {
+    get(target, property, receiver) {
+      if (["ROUTESTACK_BASE_URL", "ROUTESTACK_API_KEY", "ROUTESTACK_API_SECRET"].includes(property)) {
+        throw new Error("production-variable-access-prohibited");
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  assert.throws(
+    () => resolveSplitR1SandboxConfiguration(sandboxOnlyProxy, [envFileArg]),
+    /host-officiality-unproven/
+  );
+  assert.throws(
+    () =>
+      resolveSplitR1SandboxConfiguration(
+        {
+          ROUTESTACK_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL,
+          ROUTESTACK_API_KEY: "production-only-key",
+          ROUTESTACK_API_SECRET: "production-only-secret",
+        },
+        [envFileArg]
+      ),
+    /sandbox-base-url-missing/
+  );
+
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  let fetchCalls = 0;
+  await assert.rejects(
+    runSplitR1Collector({
+      matrix: fixture,
+      options: { mode: "sandbox-nightly-oracle-live-contract-hold" },
+      environment,
+      execArgv: [envFileArg],
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        throw new Error("sandbox-contract-hold-must-not-fetch");
+      },
+    }),
+    /host-officiality-unproven/
+  );
+  assert.equal(fetchCalls, 0);
+  const afterEnvHash = crypto
+    .createHash("sha256")
+    .update(await fs.readFile(serverEnvPath))
+    .digest("hex");
+  assert.equal(afterEnvHash, beforeEnvHash);
 });
 
 test("nightly-oracle plan covers every night, prefix and suffix without treating nightly sums as economic prices", async () => {

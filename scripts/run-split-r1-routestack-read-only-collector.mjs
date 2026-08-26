@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -91,6 +92,17 @@ export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR = 2_500;
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO = 0.02;
 export const SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION =
   "CREDENTIALS_OR_CONTRACT_UNAVAILABLE";
+export const SPLIT_R1_SANDBOX_BINDING_VERSION =
+  "stayopti.split-r1.sandbox-environment-binding@1";
+export const SPLIT_R1_SANDBOX_HOST_OFFICIALITY = "UNPROVEN";
+export const SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS = "HOLD";
+export const SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION = "NOT_DOCUMENTED";
+export const SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION = Object.freeze({
+  auth: "UNPROVEN",
+  destination: "UNPROVEN",
+  hotelSearch: "UNPROVEN",
+  continuation: "UNPROVEN",
+});
 export const SPLIT_R1_OURPRICE_PROBE_VERSION =
   "stayopti.split-r1.ourprice-semantics-probe@1";
 export const SPLIT_R1_OURPRICE_PROBE_PATH = path.join(
@@ -130,12 +142,24 @@ export const SPLIT_R1_LIVE_CONFIRMATIONS = [
   "--execute-production-read-only",
   "--confirm-routestack-search-only",
 ];
+export const SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS = [
+  "--execute-sandbox-nightly-oracle-live",
+  "--confirm-routestack-sandbox-search-only",
+];
 
 const ROUTESTACK_ENVIRONMENT_NAMES = Object.freeze({
   baseUrl: "ROUTESTACK_BASE_URL",
   apiKey: "ROUTESTACK_API_KEY",
   apiSecret: "ROUTESTACK_API_SECRET",
 });
+
+export const SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES = Object.freeze({
+  baseUrl: "ROUTESTACK_SANDBOX_BASE_URL",
+  apiKey: "ROUTESTACK_SANDBOX_API_KEY",
+  apiSecret: "ROUTESTACK_SANDBOX_API_SECRET",
+});
+
+const SPLIT_R1_SANDBOX_ALLOWLISTED_HOSTNAME = null;
 
 const ALLOWED_ENDPOINTS = new Set([
   SPLIT_R1_AUTH_ENDPOINT,
@@ -301,6 +325,7 @@ export function parseSplitR1Arguments(argv) {
     ourpriceProbeFlag,
     ourpriceProbeV2Flag,
     ...SPLIT_R1_LIVE_CONFIRMATIONS,
+    ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
     ...SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS,
     ...SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS,
   ]);
@@ -308,6 +333,15 @@ export function parseSplitR1Arguments(argv) {
     if (!allowed.has(argument)) {
       throw new Error(`split-r1-unknown-argument:${argument}`);
     }
+  }
+  const sandboxConfirmationsPresent = SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS.filter(
+    (flag) => argv.includes(flag)
+  );
+  if (sandboxConfirmationsPresent.length > 0 && !argv.includes(sandboxNightlyOracleFlag)) {
+    throw new Error("split-r1-sandbox-nightly-oracle-flag-required");
+  }
+  if (argv.includes("--dry-run") && sandboxConfirmationsPresent.length > 0) {
+    throw new Error("split-r1-sandbox-nightly-oracle-incompatible-mode-flags");
   }
   if (argv.includes("--dry-run") && SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag))) {
     throw new Error("split-r1-incompatible-mode-flags");
@@ -327,6 +361,7 @@ export function parseSplitR1Arguments(argv) {
       argv.includes(sandboxNightlyOracleFlag) ||
       argv.includes(ourpriceProbeFlag) ||
       SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
+      SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
       SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
       (argv.includes("--dry-run") && probeV2ConfirmationsPresent.length > 0)
     ) {
@@ -351,6 +386,7 @@ export function parseSplitR1Arguments(argv) {
       argv.includes(targetedFlag) ||
       argv.includes(sandboxNightlyOracleFlag) ||
       SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
+      SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
       (argv.includes("--dry-run") && probeConfirmationsPresent.length > 0)
     ) {
       throw new Error("split-r1-ourprice-probe-incompatible-mode-flags");
@@ -378,7 +414,13 @@ export function parseSplitR1Arguments(argv) {
     throw new Error("split-r1-sandbox-nightly-oracle-live-not-authorized");
   }
   if (argv.includes(sandboxNightlyOracleFlag)) {
-    return { mode: "sandbox-nightly-oracle-dry-run" };
+    if (sandboxConfirmationsPresent.length === 0) {
+      return { mode: "sandbox-nightly-oracle-dry-run" };
+    }
+    if (sandboxConfirmationsPresent.length !== SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS.length) {
+      throw new Error("split-r1-sandbox-nightly-oracle-live-confirmations-incomplete");
+    }
+    return { mode: "sandbox-nightly-oracle-live-contract-hold" };
   }
   if (argv.includes(targetedFlag)) {
     return { mode: "targeted-dry-run" };
@@ -413,6 +455,79 @@ export function validateSplitR1BaseUrl(baseUrl) {
     throw new Error("split-r1-base-url-not-allowlisted");
   }
   return SPLIT_R1_OFFICIAL_BASE_URL;
+}
+
+function splitR1HostnameWithoutIpv6Brackets(hostname) {
+  return hostname.startsWith("[") && hostname.endsWith("]")
+    ? hostname.slice(1, -1)
+    : hostname;
+}
+
+export function inspectSplitR1SandboxBaseUrl(baseUrl) {
+  let parsed;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error("split-r1-sandbox-base-url-invalid");
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  const normalizedIpHostname = splitR1HostnameWithoutIpv6Brackets(hostname);
+  const ipVersion = net.isIP(normalizedIpHostname);
+  if (parsed.protocol !== "https:") {
+    throw new Error("split-r1-sandbox-base-url-https-required");
+  }
+  if (parsed.port !== "") {
+    throw new Error("split-r1-sandbox-base-url-default-port-required");
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    throw new Error("split-r1-sandbox-base-url-userinfo-prohibited");
+  }
+  if (parsed.search !== "") {
+    throw new Error("split-r1-sandbox-base-url-query-prohibited");
+  }
+  if (parsed.hash !== "") {
+    throw new Error("split-r1-sandbox-base-url-fragment-prohibited");
+  }
+  if (parsed.pathname !== "" && parsed.pathname !== "/") {
+    throw new Error("split-r1-sandbox-base-url-root-path-required");
+  }
+  if (hostname === "mcp.routestack.ai") {
+    throw new Error("split-r1-sandbox-production-host-prohibited");
+  }
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+    throw new Error("split-r1-sandbox-localhost-prohibited");
+  }
+  if (ipVersion !== 0) {
+    throw new Error("split-r1-sandbox-ip-literal-prohibited");
+  }
+  if (hostname !== "routestack.ai" && !hostname.endsWith(".routestack.ai")) {
+    throw new Error("split-r1-sandbox-domain-not-routestack");
+  }
+  return Object.freeze({
+    scheme: "HTTPS",
+    hostname,
+    port: 443,
+    pathClass: "ROOT_ONLY",
+    userinfoAbsent: true,
+    queryAbsent: true,
+    fragmentAbsent: true,
+    differsFromProduction: true,
+    routestackDomainMatch: true,
+    localhost: false,
+    ipLiteral: false,
+    privateOrLinkLocalAddress: false,
+  });
+}
+
+export function validateSplitR1SandboxBaseUrl(baseUrl) {
+  const receipt = inspectSplitR1SandboxBaseUrl(baseUrl);
+  if (SPLIT_R1_SANDBOX_ALLOWLISTED_HOSTNAME === null) {
+    throw new Error("split-r1-sandbox-host-officiality-unproven");
+  }
+  if (receipt.hostname !== SPLIT_R1_SANDBOX_ALLOWLISTED_HOSTNAME) {
+    throw new Error("split-r1-sandbox-host-not-allowlisted");
+  }
+  return `https://${receipt.hostname}`;
 }
 
 export function assertSplitR1EndpointAllowed(method, endpointPath) {
@@ -2275,6 +2390,18 @@ export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
     sandboxAuthContractMatch: fixture.sandboxPreflight.authContractMatch,
     sandboxSearchContractMatch: fixture.sandboxPreflight.searchContractMatch,
     sandboxQuotaClassification: fixture.sandboxPreflight.quotaClassification,
+    sandboxBindingVersion: SPLIT_R1_SANDBOX_BINDING_VERSION,
+    sandboxBindingImplemented: true,
+    sandboxEnvironmentNames: SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES,
+    sandboxToProductionFallbackAllowed: false,
+    sandboxDirectFlagsRequired: true,
+    sandboxFreshProcessRequired: true,
+    sandboxLiveDirectAuthorizationRequired: true,
+    sandboxHostOfficiality: SPLIT_R1_SANDBOX_HOST_OFFICIALITY,
+    sandboxHostAllowlistStatus: SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS,
+    sandboxCurrentContract: SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION,
+    sandboxCurrentQuotaClassification: SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION,
+    budgetsExternallyIncreaseable: false,
     sandboxLiveAuthorized: false,
     nightlyScoutImplemented: true,
     exhaustiveBreakpointOracleImplemented: true,
@@ -3450,6 +3577,53 @@ function resolveProductionConfiguration(environment, execArgv) {
   return { baseUrl, apiKey, apiSecret };
 }
 
+export function inspectSplitR1SandboxEnvironmentBinding(environment) {
+  const sandboxBaseUrl = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl];
+  const sandboxApiKey = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey];
+  const sandboxApiSecret = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret];
+  const productionBaseUrl = environment[ROUTESTACK_ENVIRONMENT_NAMES.baseUrl];
+  const productionApiKey = environment[ROUTESTACK_ENVIRONMENT_NAMES.apiKey];
+  const productionApiSecret = environment[ROUTESTACK_ENVIRONMENT_NAMES.apiSecret];
+  const present = (value) => typeof value === "string" && value.length > 0;
+  const equality = (left, right) =>
+    present(left) && present(right) ? (left === right ? "YES" : "NO") : "NOT_COMPARABLE";
+  return Object.freeze({
+    schemaVersion: SPLIT_R1_SANDBOX_BINDING_VERSION,
+    sandboxBaseUrlPresent: present(sandboxBaseUrl),
+    sandboxApiKeyPresent: present(sandboxApiKey),
+    sandboxApiSecretPresent: present(sandboxApiSecret),
+    productionBaseUrlPresent: present(productionBaseUrl),
+    productionApiKeyPresent: present(productionApiKey),
+    productionApiSecretPresent: present(productionApiSecret),
+    sandboxKeyEqualsProductionKey: equality(sandboxApiKey, productionApiKey),
+    sandboxSecretEqualsProductionSecret: equality(sandboxApiSecret, productionApiSecret),
+    sandboxToProductionFallbackAllowed: false,
+    sandboxHostOfficiality: SPLIT_R1_SANDBOX_HOST_OFFICIALITY,
+    sandboxHostAllowlistStatus: SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS,
+    sandboxContract: SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION,
+    sandboxQuotaClassification: SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION,
+    sandboxLiveAuthorized: false,
+  });
+}
+
+export function resolveSplitR1SandboxConfiguration(environment, execArgv) {
+  ensureServerEnvBinding(execArgv);
+  const baseUrlValue = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl];
+  const apiKey = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey];
+  const apiSecret = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret];
+  if (typeof baseUrlValue !== "string" || baseUrlValue.length === 0) {
+    throw new Error("split-r1-sandbox-base-url-missing");
+  }
+  if (typeof apiKey !== "string" || apiKey.length === 0) {
+    throw new Error("split-r1-sandbox-api-key-missing");
+  }
+  if (typeof apiSecret !== "string" || apiSecret.length === 0) {
+    throw new Error("split-r1-sandbox-api-secret-missing");
+  }
+  const baseUrl = validateSplitR1SandboxBaseUrl(baseUrlValue);
+  return { baseUrl, apiKey, apiSecret };
+}
+
 async function parseJsonResponse(response, operation) {
   if (response.status !== 200) {
     throw new Error(`split-r1-${operation}-http-${response.status}`);
@@ -4046,6 +4220,10 @@ export async function runSplitR1Collector({
   if (options.mode === "sandbox-nightly-oracle-dry-run") {
     return buildSplitR1SandboxNightlyOracleDryRunV1(matrix);
   }
+  if (options.mode === "sandbox-nightly-oracle-live-contract-hold") {
+    resolveSplitR1SandboxConfiguration(environment, execArgv);
+    throw new Error("split-r1-sandbox-live-not-authorized-host-allowlist-hold");
+  }
   const dryRun = buildSplitR1DryRunPlan(matrix);
   if (options.mode === "dry-run") return dryRun;
 
@@ -4233,7 +4411,8 @@ async function main() {
         ? await loadSplitR1OurpriceSemanticsProbeV2()
       : options.mode === "targeted-dry-run"
       ? await loadSplitR1TargetedScenarioMatrixV1()
-      : options.mode === "sandbox-nightly-oracle-dry-run"
+      : options.mode === "sandbox-nightly-oracle-dry-run" ||
+          options.mode === "sandbox-nightly-oracle-live-contract-hold"
         ? await loadSplitR1SandboxNightlyOraclePilotV1()
       : await loadSplitF0ScenarioMatrix();
   const result = await runSplitR1Collector({ matrix, options });

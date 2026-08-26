@@ -243,3 +243,28 @@ Accordingly, the frozen receipt is:
 - `SANDBOX_LIVE_AUTHORIZED=NO`.
 
 The offline methodology and dry-run may be validated, but no Sandbox network execution is authorized. Even after a future contract preflight, Sandbox can validate candidate generation, recall, deterministic oracle behavior and causal explanations only: `SANDBOX_METHOD_VALIDATION_ALLOWED=YES`, `SANDBOX_MARKET_EVIDENCE_ALLOWED=NO`, `SANDBOX_SPLIT_FREQUENCY_CLAIM_ALLOWED=NO`, `SANDBOX_COMMERCIAL_GO_ALLOWED=NO` and `SANDBOX_PUBLIC_RECOMMENDATION_ALLOWED=NO`. RouteStack remains disabled in the public provider registry.
+
+### Dedicated Sandbox environment binding
+
+SPLIT-R1C.11 supersedes only the local availability finding in the preceding R1C.10 preflight; it does not rewrite that historical receipt or change the nightly-oracle fixture. The ignored, untracked `server/.env` now contains all three dedicated names `ROUTESTACK_SANDBOX_BASE_URL`, `ROUTESTACK_SANDBOX_API_KEY` and `ROUTESTACK_SANDBOX_API_SECRET` while preserving the three Production bindings. The two key values and the two secret values are distinct in the local file. Only presence and equality booleans were inspected; no credential value, prefix, suffix, length or fingerprint is recorded.
+
+The configured Sandbox URL is structurally valid as HTTPS, root-only, default port 443, without user information, query or fragment. Its hostname is `evolvemcp.routestack.ai`, differs from the Production host, belongs syntactically to the `routestack.ai` domain, and is neither localhost nor an IP literal. Those structural facts do not prove that RouteStack operates it as an official Sandbox endpoint.
+
+The production OpenAPI and local examples document the auth, destination, hotel-search and continuation shapes for the Production surface only. They contain no Sandbox server declaration, Sandbox-specific contract, documented rate limit, CTS evidence or quota-separation statement. Consequently the current classifications are:
+
+- `SANDBOX_HOST_OFFICIALITY=UNPROVEN`;
+- `SANDBOX_HOST_ALLOWLIST_STATUS=HOLD`;
+- `SANDBOX_AUTH_CONTRACT=UNPROVEN`;
+- `SANDBOX_DESTINATION_CONTRACT=UNPROVEN`;
+- `SANDBOX_HOTEL_SEARCH_CONTRACT=UNPROVEN`;
+- `SANDBOX_CONTINUATION_CONTRACT=UNPROVEN`;
+- `SANDBOX_QUOTA_CLASSIFICATION=NOT_DOCUMENTED`;
+- `SANDBOX_LIVE_AUTHORIZED=NO`.
+
+The private collector now owns the versioned binding `stayopti.split-r1.sandbox-environment-binding@1`. `--sandbox-nightly-oracle-v1` remains dry-run by default. A future live attempt must also supply both `--execute-sandbox-nightly-oracle-live` and `--confirm-routestack-sandbox-search-only`, must be a fresh Node process bound natively to the existing `server/.env`, and reads only the three `ROUTESTACK_SANDBOX_*` names. There is no fallback to `ROUTESTACK_*`, `MCP_BASE_URL`, Production credentials or the Production base URL.
+
+The Sandbox URL validator rejects HTTP, non-default ports, user information, query strings, fragments, non-root paths, the Production hostname, localhost, IP literals and hosts outside `routestack.ai`. Domain membership alone is not an allowlist: because exact officiality is unproven, no hostname—including `evolvemcp.routestack.ai` or another plausible subdomain—is currently frozen as allowed. The binding therefore terminates before transport creation and before `fetch` even when both confirmation flags are present.
+
+Future budget constants remain immutable caps rather than consumption targets: one auth, one destination lookup, forty-one initial hotel searches, at most two equal-depth breadth-first continuations per search, eighty-two continuation requests, 123 hotel-search requests and 125 RouteStack requests total. Retry and redirect are zero, concurrency is one and the minimum monotonic request-start interval is 1,000 milliseconds. CLI and environment inputs cannot increase any cap; continuation stops when the provider declares completion.
+
+Before any future Sandbox execution, RouteStack must provide authoritative confirmation of the exact Sandbox hostname, applicability of the auth/destination/search/continuation contract, and whether its quota is separate, non-production and non-billable or instead shared/billable. Until all three points are documented and frozen in a later explicitly authorized phase, Sandbox remains a zero-network design surface only.
