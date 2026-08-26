@@ -57,6 +57,8 @@ import {
   SPLIT_R1_SANDBOX_HOST_ALLOWLIST_STATUS,
   SPLIT_R1_SANDBOX_HOST_OFFICIALITY,
   SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
+  SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES,
+  SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION,
   SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS,
   SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION,
   SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION,
@@ -82,6 +84,7 @@ import {
   buildSplitR1SandboxNightlyOracleSearchPlanV1,
   buildSplitR1TargetedDryRunPlanV1,
   buildSplitR1TargetedLogicalSearchPlanV1,
+  classifySplitR1SandboxInitialSearchStateV1,
   classifySplitR1TargetedResultV1,
   classifySplitR1OurpriceSemanticsMetricsV1,
   createSplitR1RequestBudgetLedger,
@@ -964,6 +967,215 @@ test("continuation metadata shape reports scalar, array and object types without
   assert.equal(receipt.classification, "INCOMPLETE_CONTINUATION_METADATA_SHAPE");
   assert.equal(receipt.continuationAuthorizable, false);
   assert.doesNotMatch(JSON.stringify(receipt), /hidden|not-enumerated/);
+});
+
+function splitR1SandboxInitialPage(rawResultCount = 1, normalizableResultCount = 1) {
+  return {
+    rawResultCount,
+    rejectionCounts: {},
+    offers: Array.from({ length: normalizableResultCount }, (_, index) => ({
+      propertyFingerprint: `run-local-${index}`,
+      totalMinorUnits: 10_000 + index,
+      currency: "EUR",
+    })),
+  };
+}
+
+test("Sandbox Completed with a null result continuation key is terminal initial and keeps processed results", () => {
+  const rawCorrelation = "terminal-correlation-value";
+  const rawToken = "terminal-token-value";
+  const receipt = classifySplitR1SandboxInitialSearchStateV1(
+    {
+      result: {
+        applicationStatus: "cOmPlEtEd",
+        correlationId: rawCorrelation,
+        token: rawToken,
+        nextResultsKey: null,
+      },
+    },
+    { httpStatus: 200, jsonValid: true, initialPage: splitR1SandboxInitialPage(167, 167) }
+  );
+  assert.equal(receipt.schemaVersion, SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION);
+  assert.equal(receipt.classification, "SANDBOX_TERMINAL_COMPLETED_INITIAL");
+  assert.equal(receipt.coverageClass, "PROVIDER_DECLARED_TERMINAL_INITIAL");
+  assert.equal(receipt.initialResultsProcessed, true);
+  assert.equal(receipt.initialRawResultCount, 167);
+  assert.equal(receipt.initialNormalizableResultCount, 167);
+  assert.equal(receipt.continuationTechnicallyEligible, false);
+  assert.equal(receipt.continuationAttempted, false);
+  assert.equal(receipt.providerDeclaredTerminalScope, "SINGLE_SANDBOX_SEARCH_ONLY");
+  assert.equal(receipt.globalOptimumClaimAllowed, false);
+  assert.equal(receipt.sandboxMarketEvidenceAllowed, false);
+  assert.doesNotMatch(JSON.stringify(receipt), new RegExp(`${rawCorrelation}|${rawToken}`));
+});
+
+test("Sandbox exact result continuation triple takes precedence over Completed without executing it", () => {
+  const receipt = classifySplitR1SandboxInitialSearchStateV1(
+    {
+      result: {
+        applicationStatus: "Completed",
+        correlationId: "memory-correlation",
+        token: "memory-token",
+        nextResultsKey: "memory-next",
+      },
+    },
+    { initialPage: splitR1SandboxInitialPage() }
+  );
+  assert.equal(receipt.classification, "SANDBOX_CONTINUATION_AVAILABLE");
+  assert.equal(receipt.coverageClass, "PROVIDER_CONTINUATION_AVAILABLE");
+  assert.equal(receipt.resultContinuationTripleComplete, true);
+  assert.equal(receipt.continuationTechnicallyEligible, true);
+  assert.equal(receipt.continuationAttempted, false);
+});
+
+test("Sandbox non-terminal or partial continuation metadata remains incomplete fail-closed", () => {
+  const cases = [
+    {
+      label: "in-progress-null-key",
+      result: {
+        applicationStatus: "InProgress",
+        correlationId: "memory-correlation",
+        token: "memory-token",
+        nextResultsKey: null,
+      },
+    },
+    {
+      label: "missing-key",
+      result: {
+        applicationStatus: "InProgress",
+        correlationId: "memory-correlation",
+        token: "memory-token",
+      },
+    },
+    {
+      label: "missing-token",
+      result: {
+        applicationStatus: "InProgress",
+        correlationId: "memory-correlation",
+        nextResultsKey: "memory-next",
+      },
+    },
+    {
+      label: "empty-key",
+      result: {
+        applicationStatus: "InProgress",
+        correlationId: "memory-correlation",
+        token: "memory-token",
+        nextResultsKey: "",
+      },
+    },
+    {
+      label: "wrong-key-type",
+      result: {
+        applicationStatus: "InProgress",
+        correlationId: "memory-correlation",
+        token: "memory-token",
+        nextResultsKey: 7,
+      },
+    },
+  ];
+  for (const testCase of cases) {
+    const receipt = classifySplitR1SandboxInitialSearchStateV1(
+      { result: testCase.result },
+      { initialPage: splitR1SandboxInitialPage() }
+    );
+    assert.equal(receipt.classification, "SANDBOX_INCOMPLETE_ASYNC_METADATA", testCase.label);
+    assert.equal(receipt.coverageClass, "ASYNC_METADATA_INCOMPLETE", testCase.label);
+    assert.equal(receipt.continuationTechnicallyEligible, false, testCase.label);
+    assert.equal(receipt.continuationAttempted, false, testCase.label);
+  }
+});
+
+test("Sandbox multiple complete groups and contradictory terminal metadata are ambiguous fail-closed", () => {
+  const complete = {
+    correlationId: "memory-correlation",
+    token: "memory-token",
+    nextResultsKey: "memory-next",
+  };
+  const multiple = classifySplitR1SandboxInitialSearchStateV1(
+    { ...complete, result: { applicationStatus: "InProgress", ...complete } },
+    { initialPage: splitR1SandboxInitialPage() }
+  );
+  assert.equal(multiple.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
+  assert.equal(multiple.coverageClass, "ASYNC_METADATA_AMBIGUOUS");
+  assert.equal(multiple.completeMetadataGroupCount, 2);
+  assert.equal(multiple.continuationTechnicallyEligible, false);
+
+  const contradictory = classifySplitR1SandboxInitialSearchStateV1(
+    {
+      result: {
+        applicationStatus: "Completed",
+        correlationId: "terminal-correlation",
+        token: "terminal-token",
+        nextResultsKey: null,
+      },
+      data: complete,
+    },
+    { initialPage: splitR1SandboxInitialPage() }
+  );
+  assert.equal(contradictory.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
+  assert.equal(contradictory.coverageClass, "ASYNC_METADATA_AMBIGUOUS");
+  assert.equal(contradictory.continuationTechnicallyEligible, false);
+});
+
+test("Sandbox initial-state receipt is sanitized and cannot be applied after a continuation", () => {
+  const rawValues = ["raw-correlation", "raw-token", "raw-next"];
+  const receipt = classifySplitR1SandboxInitialSearchStateV1(
+    {
+      result: {
+        applicationStatus: "InProgress",
+        correlationId: rawValues[0],
+        token: rawValues[1],
+        nextResultsKey: rawValues[2],
+        providerIdentifier: "raw-provider-id",
+      },
+    },
+    { initialPage: splitR1SandboxInitialPage() }
+  );
+  assert.deepEqual(SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES, [
+    "PROVIDER_DECLARED_TERMINAL_INITIAL",
+    "PROVIDER_CONTINUATION_AVAILABLE",
+    "ASYNC_METADATA_INCOMPLETE",
+    "ASYNC_METADATA_AMBIGUOUS",
+  ]);
+  const serialized = JSON.stringify(receipt);
+  for (const forbidden of [...rawValues, "providerIdentifier", "raw-provider-id"]) {
+    assert.doesNotMatch(serialized, new RegExp(forbidden));
+  }
+  assert.equal(receipt.rawMetadataValuesPersisted, 0);
+  assert.equal(receipt.rawIdentifiersPersisted, 0);
+  assert.equal(receipt.unknownKeyEnumeration, false);
+  assert.throws(
+    () =>
+      classifySplitR1SandboxInitialSearchStateV1(
+        { result: { applicationStatus: "Completed", nextResultsKey: null } },
+        { initialPage: splitR1SandboxInitialPage(), continuationAttempted: true }
+      ),
+    /continuation-prohibited/
+  );
+});
+
+test("Sandbox reassessment leaves Production continuation classification unchanged", () => {
+  const payload = {
+    result: {
+      applicationStatus: "Completed",
+      correlationId: "production-memory-correlation",
+      token: "production-memory-token",
+      nextResultsKey: "production-memory-next",
+    },
+  };
+  assert.deepEqual(inspectSplitR1OurpriceProbeV2Continuation(payload), {
+    metadataPresent: true,
+    nextResultsKeyPresent: true,
+    terminal: true,
+    canContinue: false,
+  });
+  const sandboxReceipt = classifySplitR1SandboxInitialSearchStateV1(payload, {
+    initialPage: splitR1SandboxInitialPage(),
+  });
+  assert.equal(sandboxReceipt.classification, "SANDBOX_CONTINUATION_AVAILABLE");
+  assert.equal(sandboxReceipt.productionContractChanged, false);
+  assert.equal(sandboxReceipt.publicRuntimeChanged, false);
 });
 
 test("nightly-oracle plan covers every night, prefix and suffix without treating nightly sums as economic prices", async () => {

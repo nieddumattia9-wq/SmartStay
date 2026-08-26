@@ -105,6 +105,14 @@ export const SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION = Object.freeze({
 });
 export const SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION =
   "stayopti.split-r1.continuation-metadata-shape@1";
+export const SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION =
+  "stayopti.split-r1.sandbox-initial-search-state@1";
+export const SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES = Object.freeze([
+  "PROVIDER_DECLARED_TERMINAL_INITIAL",
+  "PROVIDER_CONTINUATION_AVAILABLE",
+  "ASYNC_METADATA_INCOMPLETE",
+  "ASYNC_METADATA_AMBIGUOUS",
+]);
 export const SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS = Object.freeze([
   "correlationId",
   "token",
@@ -706,6 +714,110 @@ export function diagnoseSplitR1ContinuationMetadataShapeV1(payload) {
     continuationAuthorizable,
     valuesDiscordant,
     classification,
+    unknownKeyEnumeration: false,
+    rawMetadataValuesPersisted: 0,
+    rawIdentifiersPersisted: 0,
+  };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
+}
+
+function splitR1SandboxInitialApplicationStatus(payload) {
+  const container = normalizeResponseContainer(payload);
+  const value = container?.applicationStatus;
+  return {
+    pathClass: container === payload ? "ROOT" : "RESULT",
+    completed:
+      typeof value === "string" && value.toLowerCase() === "completed",
+  };
+}
+
+export function classifySplitR1SandboxInitialSearchStateV1(
+  payload,
+  {
+    httpStatus = 200,
+    jsonValid = true,
+    initialPage = null,
+    continuationAttempted = false,
+  } = {}
+) {
+  if (continuationAttempted) {
+    throw new Error("split-r1-sandbox-initial-classification-continuation-prohibited");
+  }
+  const metadataShape = diagnoseSplitR1ContinuationMetadataShapeV1(payload);
+  const applicationStatus = splitR1SandboxInitialApplicationStatus(payload);
+  const resultNextKey = metadataShape.pathDiagnostics.find(
+    (diagnostic) => diagnostic.path === "result.nextResultsKey"
+  );
+  const initialResultsProcessed =
+    Number.isSafeInteger(initialPage?.rawResultCount) &&
+    initialPage.rawResultCount >= 0 &&
+    Array.isArray(initialPage?.offers);
+  const responseValid = httpStatus === 200 && jsonValid === true;
+  const resultNullKey =
+    resultNextKey?.present === true && resultNextKey.jsonType === "null";
+  const multipleCompleteGroups =
+    metadataShape.completeCandidateContainerCount > 1;
+  const terminalCandidate =
+    responseValid &&
+    applicationStatus.completed &&
+    resultNullKey &&
+    initialResultsProcessed;
+  const contradictoryState =
+    terminalCandidate && metadataShape.completeCandidateContainerCount > 0;
+  const ambiguous = multipleCompleteGroups || contradictoryState;
+  const resultContinuationAvailable =
+    responseValid && metadataShape.contractualMetadataComplete && !ambiguous;
+
+  const classification = ambiguous
+    ? "SANDBOX_AMBIGUOUS_ASYNC_METADATA"
+    : resultContinuationAvailable
+      ? "SANDBOX_CONTINUATION_AVAILABLE"
+      : terminalCandidate
+        ? "SANDBOX_TERMINAL_COMPLETED_INITIAL"
+        : "SANDBOX_INCOMPLETE_ASYNC_METADATA";
+  const coverageClass =
+    classification === "SANDBOX_TERMINAL_COMPLETED_INITIAL"
+      ? "PROVIDER_DECLARED_TERMINAL_INITIAL"
+      : classification === "SANDBOX_CONTINUATION_AVAILABLE"
+        ? "PROVIDER_CONTINUATION_AVAILABLE"
+        : classification === "SANDBOX_AMBIGUOUS_ASYNC_METADATA"
+          ? "ASYNC_METADATA_AMBIGUOUS"
+          : "ASYNC_METADATA_INCOMPLETE";
+  const receipt = {
+    schemaVersion: SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION,
+    continuationMetadataShapeVersion: metadataShape.schemaVersion,
+    pathDiagnostics: metadataShape.pathDiagnostics,
+    applicationStatusPathClass: applicationStatus.pathClass,
+    applicationStatusCompleted: applicationStatus.completed,
+    http200JsonValid: responseValid,
+    initialResultsProcessed,
+    initialRawResultCount: initialResultsProcessed
+      ? initialPage.rawResultCount
+      : null,
+    initialNormalizableResultCount: initialResultsProcessed
+      ? initialPage.offers.length
+      : null,
+    completeMetadataGroups: [...metadataShape.completeCandidateContainers],
+    completeMetadataGroupCount:
+      metadataShape.completeCandidateContainerCount,
+    resultContinuationTripleComplete:
+      metadataShape.contractualMetadataComplete,
+    resultNextResultsKeyPresentNull: resultNullKey,
+    classification,
+    coverageClass,
+    continuationTechnicallyEligible:
+      classification === "SANDBOX_CONTINUATION_AVAILABLE",
+    continuationAttempted: false,
+    providerDeclaredTerminalScope:
+      coverageClass === "PROVIDER_DECLARED_TERMINAL_INITIAL"
+        ? "SINGLE_SANDBOX_SEARCH_ONLY"
+        : "NOT_APPLICABLE",
+    universalCoverageClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    sandboxMarketEvidenceAllowed: false,
+    productionContractChanged: false,
+    publicRuntimeChanged: false,
     unknownKeyEnumeration: false,
     rawMetadataValuesPersisted: 0,
     rawIdentifiersPersisted: 0,
