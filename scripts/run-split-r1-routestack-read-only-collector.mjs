@@ -68,6 +68,29 @@ export const SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE = "HOLD";
 export const SPLIT_R1_TARGETED_DIAGNOSTIC_ELIGIBILITY =
   "ELIGIBLE_PRIVATE_DIAGNOSTIC_WITH_DIRECT_AUTHORIZATION";
 export const SPLIT_R1_TARGETED_RESULT_LABEL = "diagnostic gross price delta";
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_VERSION =
+  "stayopti.split-r1.sandbox-nightly-oracle-pilot@1";
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION =
+  "stayopti.split-r1.sandbox-nightly-oracle-causal-ledger@1";
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_PATH = path.join(
+  SPLIT_R1_REPOSITORY_ROOT,
+  "tests",
+  "engine-v3",
+  "fixtures",
+  "split-r1-sandbox-nightly-oracle-pilot-v1.json"
+);
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION = 14;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_BREAKPOINTS = 13;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LOGICAL_SEARCHES = 41;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_MAX_CONTINUATIONS_PER_SEARCH = 2;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_INITIAL_HTTP_BUDGET = 41;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_CONTINUATION_HTTP_BUDGET = 82;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_HOTEL_HTTP_BUDGET = 123;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET = 125;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR = 2_500;
+export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO = 0.02;
+export const SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION =
+  "CREDENTIALS_OR_CONTRACT_UNAVAILABLE";
 export const SPLIT_R1_OURPRICE_PROBE_VERSION =
   "stayopti.split-r1.ourprice-semantics-probe@1";
 export const SPLIT_R1_OURPRICE_PROBE_PATH = path.join(
@@ -268,11 +291,13 @@ function assertSafeIntegerSeconds(timestamp) {
 
 export function parseSplitR1Arguments(argv) {
   const targetedFlag = "--targeted-matrix-v1";
+  const sandboxNightlyOracleFlag = "--sandbox-nightly-oracle-v1";
   const ourpriceProbeFlag = "--ourprice-semantics-probe-v1";
   const ourpriceProbeV2Flag = "--ourprice-semantics-probe-v2";
   const allowed = new Set([
     "--dry-run",
     targetedFlag,
+    sandboxNightlyOracleFlag,
     ourpriceProbeFlag,
     ourpriceProbeV2Flag,
     ...SPLIT_R1_LIVE_CONFIRMATIONS,
@@ -299,6 +324,7 @@ export function parseSplitR1Arguments(argv) {
   if (argv.includes(ourpriceProbeV2Flag)) {
     if (
       argv.includes(targetedFlag) ||
+      argv.includes(sandboxNightlyOracleFlag) ||
       argv.includes(ourpriceProbeFlag) ||
       SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
       SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
@@ -323,6 +349,7 @@ export function parseSplitR1Arguments(argv) {
   if (argv.includes(ourpriceProbeFlag)) {
     if (
       argv.includes(targetedFlag) ||
+      argv.includes(sandboxNightlyOracleFlag) ||
       SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
       (argv.includes("--dry-run") && probeConfirmationsPresent.length > 0)
     ) {
@@ -338,6 +365,20 @@ export function parseSplitR1Arguments(argv) {
   }
   if (argv.includes(targetedFlag) && SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag))) {
     throw new Error("split-r1-targeted-live-not-authorized");
+  }
+  if (
+    argv.includes(sandboxNightlyOracleFlag) &&
+    (argv.includes(targetedFlag) ||
+      argv.includes(ourpriceProbeFlag) ||
+      argv.includes(ourpriceProbeV2Flag) ||
+      SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
+      SPLIT_R1_OURPRICE_PROBE_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)) ||
+      SPLIT_R1_OURPRICE_PROBE_V2_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag)))
+  ) {
+    throw new Error("split-r1-sandbox-nightly-oracle-live-not-authorized");
+  }
+  if (argv.includes(sandboxNightlyOracleFlag)) {
+    return { mode: "sandbox-nightly-oracle-dry-run" };
   }
   if (argv.includes(targetedFlag)) {
     return { mode: "targeted-dry-run" };
@@ -1947,6 +1988,803 @@ export function buildSplitR1TargetedDryRunPlanV1(
   };
 }
 
+const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_EXPECTED_BREAKPOINTS = Object.freeze(
+  Array.from({ length: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_BREAKPOINTS }, (_, index) => ({
+    breakpointId: `bp-${String(index + 1).padStart(2, "0")}`,
+    nightsFromStart: index + 1,
+  }))
+);
+
+const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_METHOD = Object.freeze({
+  previousBreakpointMethod: "LIMITED_ARBITRARY_TWO_BREAKPOINT_SAMPLE",
+  previousNegativeResultValidForTestedBreakpoints: true,
+  previousNegativeResultSufficientForSplitKillDecision: false,
+  nightlyScoutRole: "CANDIDATE_GENERATION_AND_CAUSAL_EXPLANATION_ONLY",
+  exhaustiveOracleRequired: true,
+  allBreakpointsRequired: true,
+  searchFormula: "1 + N + 2 * (N - 1)",
+  nightlySumAsDefinitiveEconomicPriceAllowed: false,
+  exactSegmentPricesRequired: true,
+  fixedFullStayBaselineRequired: true,
+  distinctPropertyHeadlineRequired: true,
+  samePropertyCounterfactualDiagnosticOnly: true,
+  budgetUsedAsCandidateFilter: false,
+  priceTemporalSemantics: SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
+  taxCompleteness: "UNPROVEN",
+  mandatoryChargesCompleteness: "UNPROVEN",
+  bookablePriceEquivalence: "UNPROVEN",
+  resultLabel: SPLIT_R1_TARGETED_RESULT_LABEL,
+});
+
+const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_NEAR_BEST = Object.freeze({
+  schemaVersion: "stayopti.split-r1.near-best-threshold@1",
+  maximumAbsoluteRegretMinorUnits: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR,
+  maximumBaselineRegretRatio: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO,
+  combinationRule: "BOTH_LIMITS_MUST_PASS",
+  calibratedOnLiveResults: false,
+});
+
+const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_CONTINUATION = Object.freeze({
+  scheduler: "BREADTH_FIRST_EQUAL_DEPTH",
+  maximumPerSearch: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_MAX_CONTINUATIONS_PER_SEARCH,
+  hotelSearchInitialHttpMax: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_INITIAL_HTTP_BUDGET,
+  hotelSearchContinuationHttpMax: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_CONTINUATION_HTTP_BUDGET,
+  hotelSearchTotalHttpMax: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_HOTEL_HTTP_BUDGET,
+  totalRouteStackHttpMax: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET,
+  retryCount: 0,
+  redirectCount: 0,
+  concurrency: 1,
+  minimumRequestStartIntervalMs: SPLIT_R1_MIN_REQUEST_START_INTERVAL_MS,
+  externallyIncreaseable: false,
+  coverageClasses: ["PROVIDER_COMPLETED", "BOUNDED_TRUNCATED"],
+  globalOptimumClaimAllowedWhenTruncated: false,
+});
+
+const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_PREFLIGHT = Object.freeze({
+  baseUrlClass: "PRODUCTION_ONLY_CONFIGURATION_PRESENT",
+  sandboxCredentialsPresent: false,
+  authContractMatch: "UNPROVEN_SANDBOX_SPECIFIC",
+  searchContractMatch: "UNPROVEN_SANDBOX_SPECIFIC",
+  continuationContractMatch: "UNPROVEN_SANDBOX_SPECIFIC",
+  quotaClassification: SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION,
+  rateLimitDocumented: false,
+  ctsAvailability: "UNPROVEN",
+  collectorSandboxCompatibility: "DESIGN_ONLY_NOT_LIVE_PROVEN",
+  liveAuthorized: false,
+});
+
+const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_LIMITATIONS = Object.freeze({
+  sandboxMethodValidationAllowed: true,
+  sandboxMarketEvidenceAllowed: false,
+  sandboxSplitFrequencyClaimAllowed: false,
+  sandboxCommercialGoAllowed: false,
+  sandboxPublicRecommendationAllowed: false,
+  policyEligible: false,
+  publicV2Changed: false,
+  publicV3Enabled: false,
+  publicSplitEnabled: false,
+});
+
+function splitR1SandboxNightlyOracleScenarioFreezeView(scenario) {
+  return {
+    scenarioId: scenario?.scenarioId,
+    destination: scenario?.destination,
+    checkIn: scenario?.checkIn,
+    checkOut: scenario?.checkOut,
+    nights: scenario?.nights,
+    currency: scenario?.currency,
+    guestNationality: scenario?.guestNationality,
+    occupancy: scenario?.occupancy,
+    constraints: scenario?.constraints,
+    breakpoints: scenario?.breakpoints,
+  };
+}
+
+export function validateSplitR1SandboxNightlyOraclePilotV1(fixture) {
+  const issues = [];
+  if (fixture?.schemaVersion !== SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_VERSION) {
+    issues.push("sandbox-nightly-oracle-schema-version-invalid");
+  }
+  if (fixture?.sourceSha !== "5ff38377f4eff076fed8e0a2f1f06ecdfbcdc058") {
+    issues.push("sandbox-nightly-oracle-source-sha-drift");
+  }
+  if (
+    fixture?.environment !== "sandbox" ||
+    fixture?.networkRequired !== false ||
+    fixture?.sandboxLiveAuthorized !== false
+  ) {
+    issues.push("sandbox-nightly-oracle-live-boundary-invalid");
+  }
+  if (
+    stableStringifySplitF0(fixture?.methodology) !==
+    stableStringifySplitF0(SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_METHOD)
+  ) {
+    issues.push("sandbox-nightly-oracle-methodology-drift");
+  }
+  if (
+    stableStringifySplitF0(fixture?.nearBestThreshold) !==
+    stableStringifySplitF0(SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_NEAR_BEST)
+  ) {
+    issues.push("sandbox-nightly-oracle-near-best-threshold-drift");
+  }
+  if (
+    stableStringifySplitF0(fixture?.continuationPolicy) !==
+    stableStringifySplitF0(SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_CONTINUATION)
+  ) {
+    issues.push("sandbox-nightly-oracle-continuation-policy-drift");
+  }
+  if (
+    stableStringifySplitF0(fixture?.sandboxPreflight) !==
+    stableStringifySplitF0(SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_PREFLIGHT)
+  ) {
+    issues.push("sandbox-nightly-oracle-preflight-drift");
+  }
+  if (
+    stableStringifySplitF0(fixture?.limitations) !==
+    stableStringifySplitF0(SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_FROZEN_LIMITATIONS)
+  ) {
+    issues.push("sandbox-nightly-oracle-limitations-drift");
+  }
+  const scenario = splitR1SandboxNightlyOracleScenarioFreezeView(fixture?.scenario);
+  if (
+    scenario.nights !== SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION ||
+    splitR1WindowNights(scenario.checkIn, scenario.checkOut) !==
+      SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION ||
+    scenario.currency !== "EUR" ||
+    scenario.occupancy?.adults !== 2 ||
+    scenario.occupancy?.rooms !== 1 ||
+    scenario.occupancy?.childAges?.length !== 0 ||
+    scenario.constraints?.maximumSwitches !== 1 ||
+    scenario.constraints?.distinctPropertiesRequired !== true
+  ) {
+    issues.push("sandbox-nightly-oracle-scenario-contract-invalid");
+  }
+  if (
+    stableStringifySplitF0(scenario.breakpoints) !==
+    stableStringifySplitF0(SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_EXPECTED_BREAKPOINTS)
+  ) {
+    issues.push("sandbox-nightly-oracle-breakpoint-set-invalid");
+  }
+  if (
+    typeof scenario.destination?.label !== "string" ||
+    typeof scenario.destination?.countryCode !== "string" ||
+    !Number.isFinite(scenario.destination?.latitude) ||
+    !Number.isFinite(scenario.destination?.longitude) ||
+    scenario.destination?.providerDestinationIds?.length !== 0
+  ) {
+    issues.push("sandbox-nightly-oracle-destination-invalid");
+  }
+  return { valid: issues.length === 0, issues };
+}
+
+export async function loadSplitR1SandboxNightlyOraclePilotV1(
+  fixturePath = SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_PATH
+) {
+  const fixture = JSON.parse(await fs.readFile(fixturePath, "utf8"));
+  const validation = validateSplitR1SandboxNightlyOraclePilotV1(fixture);
+  if (!validation.valid) {
+    throw new Error(`split-r1-sandbox-nightly-oracle-invalid:${validation.issues.join(",")}`);
+  }
+  return fixture;
+}
+
+function splitR1SandboxNightlyOracleLogicalSearch(
+  scenario,
+  searchRole,
+  checkIn,
+  checkOut,
+  { nightIndex = null, breakpointId = null, nightsFromStart = null } = {}
+) {
+  const suffix =
+    searchRole === "FULL_STAY"
+      ? "full"
+      : searchRole === "NIGHTLY"
+        ? `night-${String(nightIndex).padStart(2, "0")}`
+        : `${searchRole.toLowerCase()}-${String(nightsFromStart).padStart(2, "0")}`;
+  return {
+    logicalSearchId: `${scenario.scenarioId}.${suffix}`,
+    scenarioId: scenario.scenarioId,
+    kind: "sandbox-nightly-oracle-window",
+    searchRole,
+    nightIndex,
+    breakpointId,
+    nightsFromStart,
+    request: {
+      destination: scenario.destination,
+      checkIn,
+      checkOut,
+      occupancy: scenario.occupancy,
+      currency: scenario.currency,
+      guestNationality: scenario.guestNationality,
+    },
+  };
+}
+
+export function buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture) {
+  const validation = validateSplitR1SandboxNightlyOraclePilotV1(fixture);
+  if (!validation.valid) {
+    throw new Error(`split-r1-sandbox-nightly-oracle-invalid:${validation.issues.join(",")}`);
+  }
+  const scenario = fixture.scenario;
+  const searches = [
+    splitR1SandboxNightlyOracleLogicalSearch(
+      scenario,
+      "FULL_STAY",
+      scenario.checkIn,
+      scenario.checkOut
+    ),
+  ];
+  for (let nightIndex = 1; nightIndex <= scenario.nights; nightIndex += 1) {
+    searches.push(
+      splitR1SandboxNightlyOracleLogicalSearch(
+        scenario,
+        "NIGHTLY",
+        addUtcDays(scenario.checkIn, nightIndex - 1),
+        addUtcDays(scenario.checkIn, nightIndex),
+        { nightIndex }
+      )
+    );
+  }
+  for (const breakpoint of scenario.breakpoints) {
+    searches.push(
+      splitR1SandboxNightlyOracleLogicalSearch(
+        scenario,
+        "PREFIX",
+        scenario.checkIn,
+        addUtcDays(scenario.checkIn, breakpoint.nightsFromStart),
+        breakpoint
+      )
+    );
+  }
+  for (const breakpoint of scenario.breakpoints) {
+    searches.push(
+      splitR1SandboxNightlyOracleLogicalSearch(
+        scenario,
+        "SUFFIX",
+        addUtcDays(scenario.checkIn, breakpoint.nightsFromStart),
+        scenario.checkOut,
+        breakpoint
+      )
+    );
+  }
+  if (searches.length !== SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LOGICAL_SEARCHES) {
+    throw new Error("split-r1-sandbox-nightly-oracle-search-count-invalid");
+  }
+  return searches;
+}
+
+export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const countRole = (role) => searches.filter((search) => search.searchRole === role).length;
+  return {
+    schemaVersion: "stayopti.split-r1.sandbox-nightly-oracle-dry-run@1",
+    status: "PASS",
+    mode: "SANDBOX_NIGHTLY_ORACLE_DRY_RUN_ONLY",
+    fixtureVersion: fixture.schemaVersion,
+    scenarios: 1,
+    durationNights: fixture.scenario.nights,
+    breakpoints: fixture.scenario.breakpoints.length,
+    fullStaySearches: countRole("FULL_STAY"),
+    nightlySearches: countRole("NIGHTLY"),
+    prefixSearches: countRole("PREFIX"),
+    suffixSearches: countRole("SUFFIX"),
+    logicalSearches: searches.length,
+    httpRequests: 0,
+    sandboxBaseUrlClass: fixture.sandboxPreflight.baseUrlClass,
+    sandboxCredentialsPresent: fixture.sandboxPreflight.sandboxCredentialsPresent,
+    sandboxAuthContractMatch: fixture.sandboxPreflight.authContractMatch,
+    sandboxSearchContractMatch: fixture.sandboxPreflight.searchContractMatch,
+    sandboxQuotaClassification: fixture.sandboxPreflight.quotaClassification,
+    sandboxLiveAuthorized: false,
+    nightlyScoutImplemented: true,
+    exhaustiveBreakpointOracleImplemented: true,
+    exactSegmentValidationImplemented: true,
+    allBreakpointsRequired: true,
+    samePropertyCounterfactualImplemented: true,
+    distinctPropertyHeadlinePreserved: true,
+    budgetUsedAsCandidateFilter: false,
+    topKRecallMetrics: [
+      "TOP_1_EXACT_BEST_RECALL",
+      "TOP_3_EXACT_BEST_RECALL",
+      "TOP_5_EXACT_BEST_RECALL",
+      "TOP_3_NEAR_BEST_RECALL",
+      "TOP_5_NEAR_BEST_RECALL",
+    ],
+    nearBestThreshold: fixture.nearBestThreshold,
+    regretMetricsImplemented: true,
+    continuationPolicy: fixture.continuationPolicy.scheduler,
+    coverageClasses: fixture.continuationPolicy.coverageClasses,
+    globalOptimumClaimGuarded: true,
+    causalLedgerVersion: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION,
+    priceTemporalSemantics: SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
+    taxCompleteness: "UNPROVEN",
+    mandatoryChargesCompleteness: "UNPROVEN",
+    bookablePriceEquivalence: "UNPROVEN",
+    resultLabel: SPLIT_R1_TARGETED_RESULT_LABEL,
+    sandboxMethodValidationAllowed: true,
+    sandboxMarketEvidenceAllowed: false,
+    sandboxSplitFrequencyClaimAllowed: false,
+    sandboxCommercialGoAllowed: false,
+    publicRecommendationAllowed: false,
+    policyEligible: false,
+  };
+}
+
+function splitR1NightlyOracleOfferSort(left, right) {
+  return (
+    left.totalMinorUnits - right.totalMinorUnits ||
+    left.propertyFingerprint.localeCompare(right.propertyFingerprint)
+  );
+}
+
+function splitR1NightlyOracleOffersForState(state, currency) {
+  const bestByProperty = new Map();
+  for (const offer of state?.offers ?? []) {
+    if (
+      typeof offer?.propertyFingerprint !== "string" ||
+      !/^hmac-sha256:[0-9a-f]{64}$/u.test(offer.propertyFingerprint) ||
+      !Number.isSafeInteger(offer.totalMinorUnits) ||
+      offer.totalMinorUnits <= 0 ||
+      offer.currency !== currency
+    ) {
+      continue;
+    }
+    const previous = bestByProperty.get(offer.propertyFingerprint);
+    if (!previous || offer.totalMinorUnits < previous.totalMinorUnits) {
+      bestByProperty.set(offer.propertyFingerprint, {
+        propertyFingerprint: offer.propertyFingerprint,
+        totalMinorUnits: offer.totalMinorUnits,
+        currency: offer.currency,
+        rating: Number.isFinite(offer.rating) ? offer.rating : null,
+        reviewCount: Number.isFinite(offer.reviewCount) ? offer.reviewCount : null,
+        distanceKm: Number.isFinite(offer.distanceKm) ? offer.distanceKm : null,
+      });
+    }
+  }
+  return [...bestByProperty.values()].sort(splitR1NightlyOracleOfferSort);
+}
+
+function splitR1NightlyOracleStateMap(searchResults) {
+  const map = new Map();
+  for (const state of searchResults ?? []) {
+    if (typeof state?.logicalSearchId !== "string" || map.has(state.logicalSearchId)) {
+      throw new Error("split-r1-sandbox-nightly-oracle-search-state-invalid");
+    }
+    map.set(state.logicalSearchId, state);
+  }
+  return map;
+}
+
+export function buildSplitR1NightlyScoutCurvesV1(fixture, searchResults) {
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture).filter(
+    (search) => search.searchRole === "NIGHTLY"
+  );
+  const stateMap = splitR1NightlyOracleStateMap(searchResults);
+  const propertyFingerprints = uniqueSorted(
+    searches.flatMap((search) =>
+      splitR1NightlyOracleOffersForState(
+        stateMap.get(search.logicalSearchId),
+        fixture.scenario.currency
+      ).map((offer) => offer.propertyFingerprint)
+    )
+  );
+  return propertyFingerprints.map((propertyFingerprint) => {
+    const nightlyPricesMinor = searches.map((search) => {
+      const offer = splitR1NightlyOracleOffersForState(
+        stateMap.get(search.logicalSearchId),
+        fixture.scenario.currency
+      ).find((candidate) => candidate.propertyFingerprint === propertyFingerprint);
+      return offer?.totalMinorUnits ?? null;
+    });
+    return {
+      propertyFingerprint,
+      nightlyPricesMinor,
+      observedNights: nightlyPricesMinor.filter(Number.isSafeInteger).length,
+      complete: nightlyPricesMinor.every(Number.isSafeInteger),
+    };
+  });
+}
+
+function splitR1SumSafeIntegers(values) {
+  if (!values.every(Number.isSafeInteger)) return null;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return Number.isSafeInteger(total) ? total : null;
+}
+
+export function rankSplitR1NightlyScoutBreakpointsV1(fixture, searchResults) {
+  const curves = buildSplitR1NightlyScoutCurvesV1(fixture, searchResults);
+  const completeCurves = curves.filter((curve) => curve.complete);
+  const fullCurveTotals = completeCurves
+    .map((curve) => ({
+      propertyFingerprint: curve.propertyFingerprint,
+      totalMinorUnits: splitR1SumSafeIntegers(curve.nightlyPricesMinor),
+    }))
+    .filter((entry) => Number.isSafeInteger(entry.totalMinorUnits))
+    .sort(splitR1NightlyOracleOfferSort);
+  const scoutBaselineProxyMinor = fullCurveTotals[0]?.totalMinorUnits ?? null;
+  const ranked = fixture.scenario.breakpoints.map((breakpoint) => {
+    let bestPair = null;
+    for (const first of completeCurves) {
+      for (const second of completeCurves) {
+        if (first.propertyFingerprint === second.propertyFingerprint) continue;
+        const prefixMinor = splitR1SumSafeIntegers(
+          first.nightlyPricesMinor.slice(0, breakpoint.nightsFromStart)
+        );
+        const suffixMinor = splitR1SumSafeIntegers(
+          second.nightlyPricesMinor.slice(breakpoint.nightsFromStart)
+        );
+        if (!Number.isSafeInteger(prefixMinor) || !Number.isSafeInteger(suffixMinor)) continue;
+        const splitProxyMinor = prefixMinor + suffixMinor;
+        const candidate = {
+          firstPropertyFingerprint: first.propertyFingerprint,
+          secondPropertyFingerprint: second.propertyFingerprint,
+          prefixScoutProxyMinor: prefixMinor,
+          suffixScoutProxyMinor: suffixMinor,
+          splitScoutProxyMinor: splitProxyMinor,
+          currentPropertyIncreaseSignalMinor:
+            first.nightlyPricesMinor[breakpoint.nightsFromStart] -
+            first.nightlyPricesMinor[breakpoint.nightsFromStart - 1],
+          alternativePropertyDecreaseSignalMinor:
+            second.nightlyPricesMinor[breakpoint.nightsFromStart - 1] -
+            second.nightlyPricesMinor[breakpoint.nightsFromStart],
+          crossoverSignalMinor:
+            first.nightlyPricesMinor[breakpoint.nightsFromStart] -
+            second.nightlyPricesMinor[breakpoint.nightsFromStart],
+          persistenceNights: first.nightlyPricesMinor
+            .slice(breakpoint.nightsFromStart)
+            .filter(
+              (price, index) =>
+                price > second.nightlyPricesMinor[breakpoint.nightsFromStart + index]
+            ).length,
+        };
+        if (
+          !bestPair ||
+          candidate.splitScoutProxyMinor < bestPair.splitScoutProxyMinor ||
+          (candidate.splitScoutProxyMinor === bestPair.splitScoutProxyMinor &&
+            `${candidate.firstPropertyFingerprint}:${candidate.secondPropertyFingerprint}` <
+              `${bestPair.firstPropertyFingerprint}:${bestPair.secondPropertyFingerprint}`)
+        ) {
+          bestPair = candidate;
+        }
+      }
+    }
+    return {
+      breakpointId: breakpoint.breakpointId,
+      nightsFromStart: breakpoint.nightsFromStart,
+      candidateGenerationOnly: true,
+      nightlySumsDefinitiveEconomicPrice: false,
+      completeCurvePropertyCount: completeCurves.length,
+      estimatedDiagnosticDeltaMinor:
+        Number.isSafeInteger(scoutBaselineProxyMinor) && bestPair
+          ? scoutBaselineProxyMinor - bestPair.splitScoutProxyMinor
+          : null,
+      signals: bestPair
+        ? {
+            currentPropertyIncreaseMinor: bestPair.currentPropertyIncreaseSignalMinor,
+            alternativePropertyDecreaseMinor: bestPair.alternativePropertyDecreaseSignalMinor,
+            crossoverMinor: bestPair.crossoverSignalMinor,
+            persistenceNights: bestPair.persistenceNights,
+            remainingNights: fixture.scenario.nights - breakpoint.nightsFromStart,
+          }
+        : null,
+    };
+  });
+  ranked.sort(
+    (left, right) =>
+      (Number.isSafeInteger(right.estimatedDiagnosticDeltaMinor)
+        ? right.estimatedDiagnosticDeltaMinor
+        : Number.MIN_SAFE_INTEGER) -
+        (Number.isSafeInteger(left.estimatedDiagnosticDeltaMinor)
+          ? left.estimatedDiagnosticDeltaMinor
+          : Number.MIN_SAFE_INTEGER) ||
+      (right.signals?.persistenceNights ?? -1) - (left.signals?.persistenceNights ?? -1) ||
+      (right.signals?.crossoverMinor ?? Number.MIN_SAFE_INTEGER) -
+        (left.signals?.crossoverMinor ?? Number.MIN_SAFE_INTEGER) ||
+      left.nightsFromStart - right.nightsFromStart
+  );
+  return ranked.map((entry, index) => ({ ...entry, scoutRank: index + 1 }));
+}
+
+function splitR1NightlyOracleBestPair(firstOffers, secondOffers, allowSameProperty) {
+  const pairs = [];
+  for (const first of firstOffers) {
+    for (const second of secondOffers) {
+      if (!allowSameProperty && first.propertyFingerprint === second.propertyFingerprint) continue;
+      pairs.push({
+        first,
+        second,
+        splitTotalMinorUnits: first.totalMinorUnits + second.totalMinorUnits,
+      });
+    }
+  }
+  pairs.sort(
+    (left, right) =>
+      left.splitTotalMinorUnits - right.splitTotalMinorUnits ||
+      left.first.propertyFingerprint.localeCompare(right.first.propertyFingerprint) ||
+      left.second.propertyFingerprint.localeCompare(right.second.propertyFingerprint)
+  );
+  return pairs[0] ?? null;
+}
+
+function splitR1NightlyOracleBestSamePropertyPair(firstOffers, secondOffers) {
+  const secondByProperty = new Map(
+    secondOffers.map((offer) => [offer.propertyFingerprint, offer])
+  );
+  const pairs = firstOffers
+    .map((first) => {
+      const second = secondByProperty.get(first.propertyFingerprint);
+      return second
+        ? { first, second, splitTotalMinorUnits: first.totalMinorUnits + second.totalMinorUnits }
+        : null;
+    })
+    .filter(Boolean)
+    .sort(
+      (left, right) =>
+        left.splitTotalMinorUnits - right.splitTotalMinorUnits ||
+        left.first.propertyFingerprint.localeCompare(right.first.propertyFingerprint)
+    );
+  return pairs[0] ?? null;
+}
+
+function splitR1NightlyOracleSearchLedgerRecord(search, state, offers) {
+  return {
+    logicalSearchId: search.logicalSearchId,
+    scenarioId: search.scenarioId,
+    searchRole: search.searchRole,
+    breakpointId: search.breakpointId,
+    nightIndex: search.nightIndex,
+    checkIn: search.request.checkIn,
+    checkOut: search.request.checkOut,
+    currency: search.request.currency,
+    completionStatus: state?.completionStatus ?? "BOUNDED_TRUNCATED",
+    initialPageCount: Number.isSafeInteger(state?.initialPageCount) ? state.initialPageCount : 0,
+    continuationPageCount: Number.isSafeInteger(state?.continuationPageCount)
+      ? state.continuationPageCount
+      : 0,
+    rawResultCount: Number.isSafeInteger(state?.rawResultCount) ? state.rawResultCount : 0,
+    normalizedResultCount: offers.length,
+    rejectionCounts: Object.fromEntries(
+      Object.entries(state?.rejectionCounts ?? {}).sort(([left], [right]) => left.localeCompare(right))
+    ),
+    bestObservedPriceByProperty: offers.map((offer) => ({
+      propertyFingerprint: offer.propertyFingerprint,
+      bestOurpriceMinorUnits: offer.totalMinorUnits,
+      currency: offer.currency,
+      necessaryFieldsPresent: true,
+    })),
+  };
+}
+
+function splitR1NightlyOracleNearBest(best, candidate, baselineMinor) {
+  if (!best || !candidate || !Number.isSafeInteger(baselineMinor) || baselineMinor <= 0) return false;
+  const regretMinor = best.diagnosticGrossPriceDeltaMinor - candidate.diagnosticGrossPriceDeltaMinor;
+  return (
+    regretMinor >= 0 &&
+    regretMinor <= SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR &&
+    regretMinor / baselineMinor <= SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO
+  );
+}
+
+function splitR1NightlyOracleTopKRegret(oracleBest, rankedOracle, scoutRanking, k, baselineMinor) {
+  const topIds = new Set(scoutRanking.slice(0, k).map((entry) => entry.breakpointId));
+  const bestInTopK = rankedOracle.find((entry) => topIds.has(entry.breakpointId)) ?? null;
+  if (!oracleBest || !bestInTopK) {
+    return { topK: k, absoluteMinorUnits: null, baselineRatio: null };
+  }
+  const absoluteMinorUnits =
+    oracleBest.diagnosticGrossPriceDeltaMinor - bestInTopK.diagnosticGrossPriceDeltaMinor;
+  return {
+    topK: k,
+    absoluteMinorUnits,
+    baselineRatio: baselineMinor > 0 ? absoluteMinorUnits / baselineMinor : null,
+  };
+}
+
+export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const stateMap = splitR1NightlyOracleStateMap(searchResults);
+  const offersBySearch = new Map(
+    searches.map((search) => [
+      search.logicalSearchId,
+      splitR1NightlyOracleOffersForState(
+        stateMap.get(search.logicalSearchId),
+        fixture.scenario.currency
+      ),
+    ])
+  );
+  const fullSearch = searches.find((search) => search.searchRole === "FULL_STAY");
+  const fullOffers = offersBySearch.get(fullSearch.logicalSearchId);
+  const fixedBaseline = fullOffers[0] ?? null;
+  const scoutRanking = rankSplitR1NightlyScoutBreakpointsV1(fixture, searchResults);
+  const comparisons = fixture.scenario.breakpoints.map((breakpoint) => {
+    const prefixSearch = searches.find(
+      (search) => search.searchRole === "PREFIX" && search.breakpointId === breakpoint.breakpointId
+    );
+    const suffixSearch = searches.find(
+      (search) => search.searchRole === "SUFFIX" && search.breakpointId === breakpoint.breakpointId
+    );
+    const prefixOffers = offersBySearch.get(prefixSearch.logicalSearchId);
+    const suffixOffers = offersBySearch.get(suffixSearch.logicalSearchId);
+    const distinctPair = splitR1NightlyOracleBestPair(prefixOffers, suffixOffers, false);
+    const samePropertyPair = splitR1NightlyOracleBestSamePropertyPair(
+      prefixOffers,
+      suffixOffers
+    );
+    const rejectionReasons = [];
+    if (!fixedBaseline) rejectionReasons.push("NO_FIXED_FULL_STAY_BASELINE");
+    if (prefixOffers.length === 0) rejectionReasons.push("NO_PREFIX_CANDIDATE");
+    if (suffixOffers.length === 0) rejectionReasons.push("NO_SUFFIX_CANDIDATE");
+    if (!distinctPair) rejectionReasons.push("NO_DISTINCT_PROPERTY_PAIR");
+    if (!fixedBaseline || !distinctPair) {
+      return {
+        breakpointId: breakpoint.breakpointId,
+        nightsFromStart: breakpoint.nightsFromStart,
+        comparability: "NON_COMPARABLE",
+        rejectionReasons: uniqueSorted(rejectionReasons),
+        scoutRank: scoutRanking.find((entry) => entry.breakpointId === breakpoint.breakpointId)?.scoutRank,
+        samePropertyCounterfactual: samePropertyPair
+          ? { splitTotalMinorUnits: samePropertyPair.splitTotalMinorUnits }
+          : null,
+      };
+    }
+    const diagnosticGrossPriceDeltaMinor =
+      fixedBaseline.totalMinorUnits - distinctPair.splitTotalMinorUnits;
+    const diagnosticGrossPriceDeltaRatio =
+      diagnosticGrossPriceDeltaMinor / fixedBaseline.totalMinorUnits;
+    return {
+      breakpointId: breakpoint.breakpointId,
+      nightsFromStart: breakpoint.nightsFromStart,
+      comparability: "CONDITIONAL_SEARCH_LEVEL_COMPARABLE",
+      evidenceLimits: [
+        "tax-completeness-unproven",
+        "mandatory-charges-completeness-unproven",
+        "bookable-price-equivalence-unproven",
+      ],
+      rejectionReasons: [],
+      prefixPropertyFingerprint: distinctPair.first.propertyFingerprint,
+      suffixPropertyFingerprint: distinctPair.second.propertyFingerprint,
+      prefixMinorUnits: distinctPair.first.totalMinorUnits,
+      suffixMinorUnits: distinctPair.second.totalMinorUnits,
+      splitTotalMinorUnits: distinctPair.splitTotalMinorUnits,
+      fixedFullStayMinorUnits: fixedBaseline.totalMinorUnits,
+      diagnosticGrossPriceDeltaMinor,
+      diagnosticGrossPriceDelta: splitF0MinorUnitsToMoneyV1(diagnosticGrossPriceDeltaMinor),
+      diagnosticGrossPriceDeltaRatio,
+      frictionSensitivity: frictionSensitivity(diagnosticGrossPriceDeltaMinor),
+      scoutRank: scoutRanking.find((entry) => entry.breakpointId === breakpoint.breakpointId)?.scoutRank,
+      samePropertyCounterfactual: samePropertyPair
+        ? {
+            diagnosticOnly: true,
+            splitTotalMinorUnits: samePropertyPair.splitTotalMinorUnits,
+            diagnosticGrossPriceDeltaMinor:
+              fixedBaseline.totalMinorUnits - samePropertyPair.splitTotalMinorUnits,
+          }
+        : null,
+      resultLabel: SPLIT_R1_TARGETED_RESULT_LABEL,
+      publicRecommendationAllowed: false,
+      policyEligible: false,
+    };
+  });
+  const rankedOracle = comparisons
+    .filter(
+      (comparison) =>
+        comparison.comparability === "CONDITIONAL_SEARCH_LEVEL_COMPARABLE" &&
+        Number.isSafeInteger(comparison.diagnosticGrossPriceDeltaMinor)
+    )
+    .sort(
+      (left, right) =>
+        right.diagnosticGrossPriceDeltaMinor - left.diagnosticGrossPriceDeltaMinor ||
+        left.nightsFromStart - right.nightsFromStart
+    )
+    .map((comparison, index) => ({ ...comparison, oracleRank: index + 1 }));
+  const oracleRankById = new Map(rankedOracle.map((entry) => [entry.breakpointId, entry.oracleRank]));
+  const rankedComparisons = comparisons.map((comparison) => ({
+    ...comparison,
+    oracleRank: oracleRankById.get(comparison.breakpointId) ?? null,
+  }));
+  const oracleBest = rankedOracle[0] ?? null;
+  const scoutTopIds = (k) => new Set(scoutRanking.slice(0, k).map((entry) => entry.breakpointId));
+  const exactRecall = (k) => Boolean(oracleBest && scoutTopIds(k).has(oracleBest.breakpointId));
+  const nearBestRecall = (k) =>
+    rankedOracle.some(
+      (candidate) =>
+        scoutTopIds(k).has(candidate.breakpointId) &&
+        splitR1NightlyOracleNearBest(oracleBest, candidate, fixedBaseline?.totalMinorUnits)
+    );
+  const coverageClass = searches.every(
+    (search) => stateMap.get(search.logicalSearchId)?.completionStatus === "PROVIDER_COMPLETED"
+  )
+    ? "PROVIDER_COMPLETED"
+    : "BOUNDED_TRUNCATED";
+  const searchLedger = searches.map((search) =>
+    splitR1NightlyOracleSearchLedgerRecord(
+      search,
+      stateMap.get(search.logicalSearchId),
+      offersBySearch.get(search.logicalSearchId)
+    )
+  );
+  const causalLedger = {
+    schemaVersion: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION,
+    scenarioId: fixture.scenario.scenarioId,
+    coverageClass,
+    oracleClaim:
+      coverageClass === "PROVIDER_COMPLETED"
+        ? "GLOBAL_OPTIMUM_WITHIN_PROVIDER_COMPLETED_SEARCH_SET"
+        : "BEST_OBSERVED_WITHIN_EQUAL_COVERAGE",
+    searches: searchLedger,
+    nightlyCurves: buildSplitR1NightlyScoutCurvesV1(fixture, searchResults),
+    breakpointProposals: scoutRanking,
+    breakpointQuotes: rankedComparisons,
+    fixedFullStayBaseline: fixedBaseline
+      ? {
+          propertyFingerprint: fixedBaseline.propertyFingerprint,
+          totalMinorUnits: fixedBaseline.totalMinorUnits,
+          currency: fixedBaseline.currency,
+          selectedBeforeBreakpoints: true,
+        }
+      : null,
+    rawIdentifiersPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+  };
+  const result = {
+    schemaVersion: "stayopti.split-r1.sandbox-nightly-oracle-result@1",
+    scenarioId: fixture.scenario.scenarioId,
+    priceTemporalSemantics: SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
+    taxCompleteness: "UNPROVEN",
+    mandatoryChargesCompleteness: "UNPROVEN",
+    bookablePriceEquivalence: "UNPROVEN",
+    fixedFullStayBaseline: causalLedger.fixedFullStayBaseline,
+    coverageClass,
+    oracleClaim: causalLedger.oracleClaim,
+    comparisons: rankedComparisons,
+    scoutRecall: {
+      TOP_1_EXACT_BEST_RECALL: exactRecall(1),
+      TOP_3_EXACT_BEST_RECALL: exactRecall(3),
+      TOP_5_EXACT_BEST_RECALL: exactRecall(5),
+      TOP_3_NEAR_BEST_RECALL: nearBestRecall(3),
+      TOP_5_NEAR_BEST_RECALL: nearBestRecall(5),
+      trueOptimumScoutRank: oracleBest?.scoutRank ?? null,
+      top1Regret: splitR1NightlyOracleTopKRegret(
+        oracleBest,
+        rankedOracle,
+        scoutRanking,
+        1,
+        fixedBaseline?.totalMinorUnits
+      ),
+      top3Regret: splitR1NightlyOracleTopKRegret(
+        oracleBest,
+        rankedOracle,
+        scoutRanking,
+        3,
+        fixedBaseline?.totalMinorUnits
+      ),
+      top5Regret: splitR1NightlyOracleTopKRegret(
+        oracleBest,
+        rankedOracle,
+        scoutRanking,
+        5,
+        fixedBaseline?.totalMinorUnits
+      ),
+      falseNegativeReasons:
+        oracleBest && !exactRecall(5)
+          ? ["NIGHTLY_SCOUT_PROXY_RANKED_TRUE_OPTIMUM_BELOW_TOP_5"]
+          : [],
+    },
+    causalLedger,
+    nightlySumsUsedAsDefinitiveEconomicPrice: false,
+    budgetUsedAsCandidateFilter: false,
+    resultLabel: SPLIT_R1_TARGETED_RESULT_LABEL,
+    sandboxMethodValidationAllowed: true,
+    sandboxMarketEvidenceAllowed: false,
+    sandboxCommercialGoAllowed: false,
+    publicRecommendationAllowed: false,
+    policyEligible: false,
+  };
+  assertSplitR1PersistedPayloadSafe(result);
+  return result;
+}
+
 const SPLIT_R1_OURPRICE_PROBE_EXPECTED_SCENARIO = Object.freeze({
   scenarioId: "split-r1-ourprice-semantics-001",
   destination: {
@@ -3205,6 +4043,9 @@ export async function runSplitR1Collector({
     const empiricalReceipt = await loadSplitR1OurpriceEmpiricalTotalityReceiptV1();
     return buildSplitR1TargetedDryRunPlanV1(matrix, empiricalReceipt);
   }
+  if (options.mode === "sandbox-nightly-oracle-dry-run") {
+    return buildSplitR1SandboxNightlyOracleDryRunV1(matrix);
+  }
   const dryRun = buildSplitR1DryRunPlan(matrix);
   if (options.mode === "dry-run") return dryRun;
 
@@ -3392,6 +4233,8 @@ async function main() {
         ? await loadSplitR1OurpriceSemanticsProbeV2()
       : options.mode === "targeted-dry-run"
       ? await loadSplitR1TargetedScenarioMatrixV1()
+      : options.mode === "sandbox-nightly-oracle-dry-run"
+        ? await loadSplitR1SandboxNightlyOraclePilotV1()
       : await loadSplitF0ScenarioMatrix();
   const result = await runSplitR1Collector({ matrix, options });
   process.stdout.write(`${stableStringifySplitF0(result, 2)}\n`);

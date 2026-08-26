@@ -197,3 +197,49 @@ This means that, in this bounded production probe, `ourprice` behaved empiricall
 Temporal totality is therefore no longer the blocker for the frozen targeted research matrix. The matrix becomes eligible only for a future, separately and directly authorized private diagnostic run. Its output label is `diagnostic gross price delta`, not confirmed saving. Taxes, mandatory supplements, rate conditions and bookability remain compulsory limitations. A positive diagnostic delta cannot create commercial GO, policy eligibility or a public recommendation without a separately authorized recheck/prebook step and verification of mandatory costs. A negative result remains evidence about the frozen sample only and cannot prove universally that Split never works.
 
 The targeted scenario fixture remains byte-identical and retains its historical pre-R1C.8 HOLD field. The collector overlays the versioned empirical receipt when producing the targeted dry-run contract; it does not mutate the matrix, enable live execution or weaken the direct-authorization boundary. Fixed baseline, distinct-property enforcement, funnel accounting, causal replay ledger, budgets, breadth-first scheduler, continuation policy, outlier quarantine and anti-cherry-picking rules are unchanged. RouteStack remains disabled in the public provider registry, and no V2, V3 decision-core, ranking or public-policy boundary changes in this phase.
+
+## Sandbox nightly dynamic-pricing methodology freeze
+
+SPLIT-R1C.10 preserves the prior generic and targeted evidence without reinterpretation. The historical eight RouteStack comparisons remain valid for the two frozen `half/alt` breakpoints that were actually tested, but their breakpoint method is classified as `LIMITED_ARBITRARY_TWO_BREAKPOINT_SAMPLE`. Zero positive comparisons in that limited sample is not sufficient for a universal Split kill decision. No prior dataset, receipt, fixture or result is changed.
+
+The frozen replacement methodology has four deliberately separate layers:
+
+1. **Nightly Scout** builds one-night price curves for run-local property pseudonyms and ranks promising breakpoints from price increases, decreases or stability, crossovers, proxy delta magnitude, remaining nights, persistence, availability and observable comparability. These signals generate and explain candidates only. A budget is never a candidate filter.
+2. **Exhaustive Breakpoint Oracle** obtains an actual prefix and suffix search-window quote for every possible breakpoint. It never treats the sum of one-night observations as an economic price.
+3. **Candidate Validation** compares each exact prefix-plus-suffix total with the one fixed best full-stay baseline selected before breakpoints are inspected. The headline requires two different properties; same-property results remain a separate counterfactual.
+4. **Commercial Validation** remains a future, separately authorized step for taxes, mandatory charges, rate conditions and recheck/prebook evidence. Nothing in the Sandbox methodology creates commercial GO, policy eligibility or a public recommendation.
+
+For an `N`-night stay, the oracle freezes exactly `1 + N + 2 * (N - 1)` logical hotel searches: one full stay, `N` one-night windows, and one real prefix plus one real suffix for every breakpoint `1..N-1`. The one frozen pilot fixture, `stayopti.split-r1.sandbox-nightly-oracle-pilot@1`, uses Milano from 4–18 October 2027, EUR, one room, two adults, no children, fourteen nights and all thirteen breakpoints. Its dry-run is therefore one scenario, one full-stay search, fourteen nightly searches, thirteen prefixes, thirteen suffixes, forty-one logical searches and zero HTTP requests.
+
+Every economic comparison uses only `SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED` full, prefix and suffix observations in integer minor units. Taxes, mandatory charges and bookable-price equivalence remain `UNPROVEN`. The comparison records the exact segment prices and their sum, fixed baseline, diagnostic gross price delta and ratio, explicit EUR 0/25/50/75/100/150 friction sensitivity, available rating/distance evidence, currency and occupancy constraints, and comparability rejection reasons. Friction is never silently subtracted and no result is called a confirmed saving.
+
+### Scout recall and precommitted near-best rule
+
+The oracle produces the exact best observed breakpoint, while the Scout reports `TOP_1_EXACT_BEST_RECALL`, `TOP_3_EXACT_BEST_RECALL`, `TOP_5_EXACT_BEST_RECALL`, `TOP_3_NEAR_BEST_RECALL` and `TOP_5_NEAR_BEST_RECALL`. It also reports the oracle rank of every proposal, absolute and baseline-relative regret, and an explicit false-negative reason when the exact optimum falls outside the top five.
+
+The immutable `stayopti.split-r1.near-best-threshold@1` rule was fixed offline before any Sandbox result: absolute regret must be at most 2,500 minor units and baseline-relative regret must be at most 0.02. Both limits must pass. This threshold is a methodological recall boundary, not a commercial relevance threshold, and was not calibrated on live results.
+
+### Equal-coverage continuation and claims
+
+Continuation is `BREADTH_FIRST_EQUAL_DEPTH`: all forty-one initial windows precede continuation round one, and no search receives a deeper page before every eligible search has equal opportunity at the prior depth. Each search permits at most two continuation requests. The immutable caps are forty-one initial hotel requests, eighty-two continuations, 123 hotel-search requests and 125 total RouteStack requests, including one authentication and one destination lookup. Retry and redirect remain zero, concurrency remains one, and request starts remain at least 1,000 monotonic milliseconds apart. No CLI, environment variable or external configuration can increase these limits.
+
+Coverage is explicitly `PROVIDER_COMPLETED` or `BOUNDED_TRUNCATED`. Only complete equal-depth coverage permits the claim `GLOBAL_OPTIMUM_WITHIN_PROVIDER_COMPLETED_SEARCH_SET`. Any bounded truncation is labeled `BEST_OBSERVED_WITHIN_EQUAL_COVERAGE`; the unqualified claim `GLOBAL_OPTIMUM` is prohibited.
+
+### Sanitized nightly-oracle causal ledger
+
+The versioned `stayopti.split-r1.sandbox-nightly-oracle-causal-ledger@1` records a per-search funnel, aggregate nightly curves, Scout proposals, every quoted breakpoint, exact prefix and suffix prices, the fixed full-stay baseline, split total, Scout and oracle ranks, regret, comparability rejections and coverage class. Property identity is represented only by a run-local HMAC-SHA256 pseudonym created with an ephemeral in-memory secret. Raw property, destination and continuation IDs, tokens, credentials, HMAC keys and provider payloads are prohibited. The secret is not persisted and cross-run linkability is deliberately unavailable.
+
+### Offline Sandbox contract preflight
+
+The local preflight found only the existing production-style `ROUTESTACK_BASE_URL`, `ROUTESTACK_API_KEY` and `ROUTESTACK_API_SECRET` binding, with the configured HTTPS host `mcp.routestack.ai`. It found no Sandbox-specific base URL or credential variables, no Sandbox-specific auth/search/continuation contract, no documented Sandbox rate limit or CTS proof, and no evidence that Sandbox quota is separate, non-production or unbilled. No secret value was read into output.
+
+Accordingly, the frozen receipt is:
+
+- `SANDBOX_BASE_URL_CLASS=PRODUCTION_ONLY_CONFIGURATION_PRESENT`;
+- `SANDBOX_CREDENTIALS_PRESENT=NO`;
+- `SANDBOX_AUTH_CONTRACT_MATCH=UNPROVEN_SANDBOX_SPECIFIC`;
+- `SANDBOX_SEARCH_CONTRACT_MATCH=UNPROVEN_SANDBOX_SPECIFIC`;
+- `SANDBOX_QUOTA_CLASSIFICATION=CREDENTIALS_OR_CONTRACT_UNAVAILABLE`;
+- `SANDBOX_LIVE_AUTHORIZED=NO`.
+
+The offline methodology and dry-run may be validated, but no Sandbox network execution is authorized. Even after a future contract preflight, Sandbox can validate candidate generation, recall, deterministic oracle behavior and causal explanations only: `SANDBOX_METHOD_VALIDATION_ALLOWED=YES`, `SANDBOX_MARKET_EVIDENCE_ALLOWED=NO`, `SANDBOX_SPLIT_FREQUENCY_CLAIM_ALLOWED=NO`, `SANDBOX_COMMERCIAL_GO_ALLOWED=NO` and `SANDBOX_PUBLIC_RECOMMENDATION_ALLOWED=NO`. RouteStack remains disabled in the public provider registry.

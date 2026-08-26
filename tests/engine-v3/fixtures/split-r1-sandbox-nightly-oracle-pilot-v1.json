@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "stayopti.split-r1.sandbox-nightly-oracle-pilot@1",
+  "sourceSha": "5ff38377f4eff076fed8e0a2f1f06ecdfbcdc058",
+  "purpose": "offline-nightly-scout-and-exhaustive-breakpoint-oracle-method-validation",
+  "provider": "RouteStack",
+  "environment": "sandbox",
+  "networkRequired": false,
+  "sandboxLiveAuthorized": false,
+  "methodology": {
+    "previousBreakpointMethod": "LIMITED_ARBITRARY_TWO_BREAKPOINT_SAMPLE",
+    "previousNegativeResultValidForTestedBreakpoints": true,
+    "previousNegativeResultSufficientForSplitKillDecision": false,
+    "nightlyScoutRole": "CANDIDATE_GENERATION_AND_CAUSAL_EXPLANATION_ONLY",
+    "exhaustiveOracleRequired": true,
+    "allBreakpointsRequired": true,
+    "searchFormula": "1 + N + 2 * (N - 1)",
+    "nightlySumAsDefinitiveEconomicPriceAllowed": false,
+    "exactSegmentPricesRequired": true,
+    "fixedFullStayBaselineRequired": true,
+    "distinctPropertyHeadlineRequired": true,
+    "samePropertyCounterfactualDiagnosticOnly": true,
+    "budgetUsedAsCandidateFilter": false,
+    "priceTemporalSemantics": "SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED",
+    "taxCompleteness": "UNPROVEN",
+    "mandatoryChargesCompleteness": "UNPROVEN",
+    "bookablePriceEquivalence": "UNPROVEN",
+    "resultLabel": "diagnostic gross price delta"
+  },
+  "nearBestThreshold": {
+    "schemaVersion": "stayopti.split-r1.near-best-threshold@1",
+    "maximumAbsoluteRegretMinorUnits": 2500,
+    "maximumBaselineRegretRatio": 0.02,
+    "combinationRule": "BOTH_LIMITS_MUST_PASS",
+    "calibratedOnLiveResults": false
+  },
+  "continuationPolicy": {
+    "scheduler": "BREADTH_FIRST_EQUAL_DEPTH",
+    "maximumPerSearch": 2,
+    "hotelSearchInitialHttpMax": 41,
+    "hotelSearchContinuationHttpMax": 82,
+    "hotelSearchTotalHttpMax": 123,
+    "totalRouteStackHttpMax": 125,
+    "retryCount": 0,
+    "redirectCount": 0,
+    "concurrency": 1,
+    "minimumRequestStartIntervalMs": 1000,
+    "externallyIncreaseable": false,
+    "coverageClasses": [
+      "PROVIDER_COMPLETED",
+      "BOUNDED_TRUNCATED"
+    ],
+    "globalOptimumClaimAllowedWhenTruncated": false
+  },
+  "sandboxPreflight": {
+    "baseUrlClass": "PRODUCTION_ONLY_CONFIGURATION_PRESENT",
+    "sandboxCredentialsPresent": false,
+    "authContractMatch": "UNPROVEN_SANDBOX_SPECIFIC",
+    "searchContractMatch": "UNPROVEN_SANDBOX_SPECIFIC",
+    "continuationContractMatch": "UNPROVEN_SANDBOX_SPECIFIC",
+    "quotaClassification": "CREDENTIALS_OR_CONTRACT_UNAVAILABLE",
+    "rateLimitDocumented": false,
+    "ctsAvailability": "UNPROVEN",
+    "collectorSandboxCompatibility": "DESIGN_ONLY_NOT_LIVE_PROVEN",
+    "liveAuthorized": false
+  },
+  "limitations": {
+    "sandboxMethodValidationAllowed": true,
+    "sandboxMarketEvidenceAllowed": false,
+    "sandboxSplitFrequencyClaimAllowed": false,
+    "sandboxCommercialGoAllowed": false,
+    "sandboxPublicRecommendationAllowed": false,
+    "policyEligible": false,
+    "publicV2Changed": false,
+    "publicV3Enabled": false,
+    "publicSplitEnabled": false
+  },
+  "scenario": {
+    "scenarioId": "SPLIT-R1-SBX-NIGHTLY-ORACLE-01-MILANO-14N",
+    "destination": {
+      "canonicalId": "city-it-milano",
+      "label": "Milano",
+      "countryCode": "IT",
+      "latitude": 45.4642,
+      "longitude": 9.19,
+      "providerDestinationIds": []
+    },
+    "checkIn": "2027-10-04",
+    "checkOut": "2027-10-18",
+    "nights": 14,
+    "currency": "EUR",
+    "guestNationality": "IT",
+    "occupancy": {
+      "adults": 2,
+      "childAges": [],
+      "rooms": 1,
+      "pets": 0
+    },
+    "constraints": {
+      "maximumDistanceKm": 25,
+      "minimumRating": null,
+      "minimumReviewCount": null,
+      "maximumSwitches": 1,
+      "distinctPropertiesRequired": true
+    },
+    "breakpoints": [
+      { "breakpointId": "bp-01", "nightsFromStart": 1 },
+      { "breakpointId": "bp-02", "nightsFromStart": 2 },
+      { "breakpointId": "bp-03", "nightsFromStart": 3 },
+      { "breakpointId": "bp-04", "nightsFromStart": 4 },
+      { "breakpointId": "bp-05", "nightsFromStart": 5 },
+      { "breakpointId": "bp-06", "nightsFromStart": 6 },
+      { "breakpointId": "bp-07", "nightsFromStart": 7 },
+      { "breakpointId": "bp-08", "nightsFromStart": 8 },
+      { "breakpointId": "bp-09", "nightsFromStart": 9 },
+      { "breakpointId": "bp-10", "nightsFromStart": 10 },
+      { "breakpointId": "bp-11", "nightsFromStart": 11 },
+      { "breakpointId": "bp-12", "nightsFromStart": 12 },
+      { "breakpointId": "bp-13", "nightsFromStart": 13 }
+    ]
+  }
+}

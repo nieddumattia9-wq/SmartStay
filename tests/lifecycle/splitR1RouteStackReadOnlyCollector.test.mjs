@@ -38,6 +38,19 @@ import {
   SPLIT_R1_BOOKABLE_EQUIVALENCE_GATE,
   SPLIT_R1_RATE_LIMIT_SAFETY_MARGIN_MS,
   SPLIT_R1_REPOSITORY_ROOT,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_BREAKPOINTS,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_CONTINUATION_HTTP_BUDGET,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_HOTEL_HTTP_BUDGET,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_INITIAL_HTTP_BUDGET,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LOGICAL_SEARCHES,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_MAX_CONTINUATIONS_PER_SEARCH,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET,
+  SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_VERSION,
+  SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION,
   SPLIT_R1_TARGETED_EXPECTED_DURATIONS,
   SPLIT_R1_TARGETED_MATRIX_VERSION,
   SPLIT_R1_TARGETED_PRICE_SEMANTICS_GATE,
@@ -55,6 +68,9 @@ import {
   buildSplitR1OurpriceSemanticsDryRunV2,
   buildSplitR1OurpriceSemanticsLogicalSearchesV1,
   buildSplitR1OurpriceSemanticsLogicalSearchesV2,
+  buildSplitR1NightlyScoutCurvesV1,
+  buildSplitR1SandboxNightlyOracleDryRunV1,
+  buildSplitR1SandboxNightlyOracleSearchPlanV1,
   buildSplitR1TargetedDryRunPlanV1,
   buildSplitR1TargetedLogicalSearchPlanV1,
   classifySplitR1TargetedResultV1,
@@ -68,6 +84,7 @@ import {
   evaluateSplitR1SearchLevelScenario,
   evaluateSplitR1OurpriceSemanticsProbeV1,
   evaluateSplitR1OurpriceSemanticsProbeV2,
+  evaluateSplitR1SandboxNightlyOracleV1,
   fingerprintSplitR1Identifier,
   hasSplitR1OurpriceProbeContinuationMetadata,
   inspectSplitR1OurpriceProbeV2Continuation,
@@ -76,6 +93,7 @@ import {
   loadSplitR1OurpriceSemanticsProbeV1,
   loadSplitR1OurpriceSemanticsProbeV2,
   loadSplitR1OurpriceEmpiricalTotalityReceiptV1,
+  loadSplitR1SandboxNightlyOraclePilotV1,
   loadSplitR1TargetedScenarioMatrixV1,
   parseSplitR1Arguments,
   runSplitR1Collector,
@@ -87,6 +105,7 @@ import {
   validateSplitR1OurpriceSemanticsProbeV1,
   validateSplitR1OurpriceSemanticsProbeV2,
   validateSplitR1OurpriceEmpiricalTotalityReceiptV1,
+  validateSplitR1SandboxNightlyOraclePilotV1,
   validateSplitR1TargetedScenarioMatrixV1,
 } from "../../scripts/run-split-r1-routestack-read-only-collector.mjs";
 import {
@@ -136,6 +155,53 @@ function normalizedOffer(logicalSearch, property, cents) {
       "room-board-cancellation-payment-unproven",
     ],
   };
+}
+
+function nightlyOracleState(logicalSearch, pricesByProperty, overrides = {}) {
+  const offers = Object.entries(pricesByProperty).map(([property, cents]) =>
+    normalizedOffer(logicalSearch, property, cents)
+  );
+  return {
+    logicalSearchId: logicalSearch.logicalSearchId,
+    completionStatus: "PROVIDER_COMPLETED",
+    initialPageCount: 1,
+    continuationPageCount: 0,
+    rawResultCount: offers.length,
+    rejectionCounts: {},
+    offers,
+    ...overrides,
+  };
+}
+
+function buildNightlyOracleSyntheticStates(fixture) {
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  return searches.map((search) => {
+    if (search.searchRole === "FULL_STAY") {
+      return nightlyOracleState(search, { a: 200000, b: 205000, c: 210000 });
+    }
+    if (search.searchRole === "NIGHTLY") {
+      const beforeCrossover = search.nightIndex <= 7;
+      return nightlyOracleState(search, {
+        a: beforeCrossover ? 10000 : 20000,
+        b: beforeCrossover ? 16000 : 8000,
+        c: 14500,
+      });
+    }
+    const breakpoint = search.nightsFromStart;
+    const optimum = breakpoint === 7;
+    if (search.searchRole === "PREFIX") {
+      return nightlyOracleState(search, {
+        a: optimum ? 70000 : 90000 + breakpoint * 1000,
+        b: 110000 + breakpoint * 1000,
+        c: 120000 + breakpoint * 1000,
+      });
+    }
+    return nightlyOracleState(search, {
+      a: optimum ? 95000 : 120000 - breakpoint * 1000,
+      b: optimum ? 80000 : 125000 - breakpoint * 1000,
+      c: 130000 - breakpoint * 1000,
+    });
+  });
 }
 
 function targetedClassificationScenario(
@@ -501,6 +567,195 @@ test("loading the empirical receipt leaves the fixed-baseline headline replay by
   assert.equal(receipt.decision.publicBoundaryChanged, false);
   assert.equal(after.fixedBaseline.selectedBeforeSplit, true);
   assert.equal(after.strictComparisons, 0);
+});
+
+test("sandbox nightly-oracle fixture freezes one fourteen-night scenario and a 41-search zero-network dry-run", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  assert.equal(fixture.schemaVersion, SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_VERSION);
+  assert.equal(validateSplitR1SandboxNightlyOraclePilotV1(fixture).valid, true);
+  assert.equal(fixture.scenario.nights, SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION);
+  assert.equal(fixture.scenario.breakpoints.length, SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_BREAKPOINTS);
+  assert.equal(fixture.sandboxPreflight.quotaClassification, SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION);
+  assert.equal(fixture.sandboxPreflight.sandboxCredentialsPresent, false);
+  assert.equal(fixture.sandboxPreflight.liveAuthorized, false);
+  assert.equal(fixture.methodology.nightlySumAsDefinitiveEconomicPriceAllowed, false);
+  assert.equal(fixture.methodology.budgetUsedAsCandidateFilter, false);
+  assert.equal(
+    fixture.methodology.priceTemporalSemantics,
+    "SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED"
+  );
+  assert.equal(fixture.methodology.taxCompleteness, "UNPROVEN");
+  assert.equal(fixture.methodology.mandatoryChargesCompleteness, "UNPROVEN");
+  assert.equal(fixture.methodology.bookablePriceEquivalence, "UNPROVEN");
+  assert.deepEqual(parseSplitR1Arguments(["--sandbox-nightly-oracle-v1"]), {
+    mode: "sandbox-nightly-oracle-dry-run",
+  });
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        "--sandbox-nightly-oracle-v1",
+        "--execute-production-read-only",
+        "--confirm-routestack-search-only",
+      ]),
+    /sandbox-nightly-oracle-live-not-authorized/
+  );
+  let fetchCalls = 0;
+  const result = await runSplitR1Collector({
+    matrix: fixture,
+    options: { mode: "sandbox-nightly-oracle-dry-run" },
+    environment: {},
+    execArgv: [],
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      throw new Error("sandbox-nightly-oracle-dry-run-must-not-fetch");
+    },
+  });
+  assert.deepEqual(result, buildSplitR1SandboxNightlyOracleDryRunV1(fixture));
+  assert.equal(result.scenarios, 1);
+  assert.equal(result.durationNights, 14);
+  assert.equal(result.breakpoints, 13);
+  assert.equal(result.fullStaySearches, 1);
+  assert.equal(result.nightlySearches, 14);
+  assert.equal(result.prefixSearches, 13);
+  assert.equal(result.suffixSearches, 13);
+  assert.equal(result.logicalSearches, SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LOGICAL_SEARCHES);
+  assert.equal(result.httpRequests, 0);
+  assert.equal(result.sandboxLiveAuthorized, false);
+  assert.equal(result.sandboxMarketEvidenceAllowed, false);
+  assert.equal(result.sandboxCommercialGoAllowed, false);
+  assert.equal(result.publicRecommendationAllowed, false);
+  assert.equal(fetchCalls, 0);
+});
+
+test("nightly-oracle plan covers every night, prefix and suffix without treating nightly sums as economic prices", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  assert.equal(searches.length, 1 + 14 + 2 * 13);
+  assert.deepEqual(
+    searches.filter((search) => search.searchRole === "NIGHTLY").map((search) => search.nightIndex),
+    Array.from({ length: 14 }, (_, index) => index + 1)
+  );
+  for (const breakpoint of fixture.scenario.breakpoints) {
+    const prefix = searches.find(
+      (search) => search.searchRole === "PREFIX" && search.breakpointId === breakpoint.breakpointId
+    );
+    const suffix = searches.find(
+      (search) => search.searchRole === "SUFFIX" && search.breakpointId === breakpoint.breakpointId
+    );
+    assert.ok(prefix);
+    assert.ok(suffix);
+    assert.equal(prefix.request.checkIn, fixture.scenario.checkIn);
+    assert.equal(prefix.request.checkOut, suffix.request.checkIn);
+    assert.equal(suffix.request.checkOut, fixture.scenario.checkOut);
+  }
+  assert.equal(fixture.continuationPolicy.maximumPerSearch, 2);
+  assert.equal(
+    fixture.continuationPolicy.hotelSearchInitialHttpMax,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_INITIAL_HTTP_BUDGET
+  );
+  assert.equal(
+    fixture.continuationPolicy.hotelSearchContinuationHttpMax,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_CONTINUATION_HTTP_BUDGET
+  );
+  assert.equal(
+    fixture.continuationPolicy.hotelSearchTotalHttpMax,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_HOTEL_HTTP_BUDGET
+  );
+  assert.equal(
+    fixture.continuationPolicy.totalRouteStackHttpMax,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET
+  );
+  assert.equal(
+    fixture.continuationPolicy.maximumPerSearch,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_MAX_CONTINUATIONS_PER_SEARCH
+  );
+  assert.equal(fixture.continuationPolicy.retryCount, 0);
+  assert.equal(fixture.continuationPolicy.redirectCount, 0);
+  assert.equal(fixture.continuationPolicy.concurrency, 1);
+  assert.equal(fixture.continuationPolicy.minimumRequestStartIntervalMs, 1000);
+  assert.equal(fixture.continuationPolicy.externallyIncreaseable, false);
+});
+
+test("nightly scout ranks candidates while the oracle uses only exact full, prefix and suffix prices", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const states = buildNightlyOracleSyntheticStates(fixture);
+  const curves = buildSplitR1NightlyScoutCurvesV1(fixture, states);
+  assert.equal(curves.length, 3);
+  assert.equal(curves.every((curve) => curve.complete && curve.observedNights === 14), true);
+  const result = evaluateSplitR1SandboxNightlyOracleV1(fixture, states);
+  assert.equal(result.fixedFullStayBaseline.totalMinorUnits, 200000);
+  assert.equal(result.fixedFullStayBaseline.selectedBeforeBreakpoints, true);
+  assert.equal(result.coverageClass, "PROVIDER_COMPLETED");
+  assert.equal(result.oracleClaim, "GLOBAL_OPTIMUM_WITHIN_PROVIDER_COMPLETED_SEARCH_SET");
+  const best = result.comparisons.find((comparison) => comparison.oracleRank === 1);
+  assert.equal(best.breakpointId, "bp-07");
+  assert.equal(best.prefixMinorUnits, 70000);
+  assert.equal(best.suffixMinorUnits, 80000);
+  assert.equal(best.splitTotalMinorUnits, 150000);
+  assert.equal(best.diagnosticGrossPriceDeltaMinor, 50000);
+  assert.notEqual(best.prefixPropertyFingerprint, best.suffixPropertyFingerprint);
+  assert.equal(best.samePropertyCounterfactual.diagnosticOnly, true);
+  assert.equal(result.nightlySumsUsedAsDefinitiveEconomicPrice, false);
+  assert.equal(result.budgetUsedAsCandidateFilter, false);
+  assert.equal(result.resultLabel, "diagnostic gross price delta");
+  assert.equal(result.scoutRecall.TOP_1_EXACT_BEST_RECALL, true);
+  assert.equal(result.scoutRecall.TOP_3_EXACT_BEST_RECALL, true);
+  assert.equal(result.scoutRecall.TOP_5_EXACT_BEST_RECALL, true);
+  assert.equal(result.scoutRecall.TOP_3_NEAR_BEST_RECALL, true);
+  assert.equal(result.scoutRecall.TOP_5_NEAR_BEST_RECALL, true);
+  assert.equal(result.scoutRecall.trueOptimumScoutRank, 1);
+  assert.equal(result.causalLedger.schemaVersion, SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION);
+  assert.equal(result.causalLedger.searches.length, 41);
+  assert.equal(result.causalLedger.breakpointQuotes.length, 13);
+  assert.equal(result.causalLedger.rawIdentifiersPersisted, 0);
+  assert.equal(result.causalLedger.ephemeralHmacSecretPersisted, false);
+  assert.equal(result.causalLedger.crossRunLinkability, false);
+  assert.equal(result.sandboxMarketEvidenceAllowed, false);
+  assert.equal(result.sandboxCommercialGoAllowed, false);
+  assert.equal(result.publicRecommendationAllowed, false);
+  assert.equal(result.policyEligible, false);
+});
+
+test("nightly-oracle near-best thresholds are precommitted and coverage truncation blocks global optimum claims", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  assert.equal(
+    fixture.nearBestThreshold.maximumAbsoluteRegretMinorUnits,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR
+  );
+  assert.equal(
+    fixture.nearBestThreshold.maximumBaselineRegretRatio,
+    SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO
+  );
+  assert.equal(fixture.nearBestThreshold.calibratedOnLiveResults, false);
+  const thresholdDrift = structuredClone(fixture);
+  thresholdDrift.nearBestThreshold.maximumAbsoluteRegretMinorUnits += 1;
+  assert.equal(validateSplitR1SandboxNightlyOraclePilotV1(thresholdDrift).valid, false);
+  const budgetDrift = structuredClone(fixture);
+  budgetDrift.continuationPolicy.hotelSearchTotalHttpMax += 1;
+  assert.equal(validateSplitR1SandboxNightlyOraclePilotV1(budgetDrift).valid, false);
+
+  const states = buildNightlyOracleSyntheticStates(fixture);
+  states[1] = { ...states[1], completionStatus: "BOUNDED_TRUNCATED" };
+  const result = evaluateSplitR1SandboxNightlyOracleV1(fixture, states);
+  assert.equal(result.coverageClass, "BOUNDED_TRUNCATED");
+  assert.equal(result.oracleClaim, "BEST_OBSERVED_WITHIN_EQUAL_COVERAGE");
+  assert.doesNotMatch(result.oracleClaim, /^GLOBAL_OPTIMUM$/u);
+});
+
+test("nightly-oracle causal output is deterministic, sanitized and independent from input ordering", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const states = buildNightlyOracleSyntheticStates(fixture);
+  const first = evaluateSplitR1SandboxNightlyOracleV1(fixture, states);
+  const second = evaluateSplitR1SandboxNightlyOracleV1(fixture, [...states].reverse());
+  assert.equal(stableStringifySplitF0(first), stableStringifySplitF0(second));
+  assert.equal(assertSplitR1PersistedPayloadSafe(first), true);
+  const serialized = stableStringifySplitF0(first);
+  assert.doesNotMatch(
+    serialized,
+    /"(?:apiKey|apiSecret|authorization|token|hmac|nonce|destinationId|hotelId|offerId|correlationId|nextResultsKey)"/i
+  );
+  assert.equal(first.causalLedger.nightlyCurves.every((curve) => curve.propertyFingerprint.startsWith("hmac-sha256:")), true);
+  assert.equal(first.causalLedger.crossRunLinkability, false);
 });
 
 test("targeted matrix validation fails closed on scenario, split and threshold drift", async () => {
