@@ -91,6 +91,8 @@ export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET = 125;
 export const SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG = "--live-bounded-pilot";
 export const SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG =
   "--live-canonical-full-stay-canary";
+export const SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG =
+  "--live-alternative-full-stay-qualification";
 export const SPLIT_R1_SANDBOX_BOUNDED_BASE_URL = "https://evolvemcp.routestack.ai";
 export const SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX = 1;
 export const SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX = 1;
@@ -154,6 +156,58 @@ export const SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_CONTRACT = Object.freez
   sandboxToProductionFallbackAllowed: false,
   rawPersistenceAllowed: false,
 });
+export const SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES = Object.freeze([
+  Object.freeze({
+    candidateOrdinal: 1,
+    candidateRuleId: "AUDIT_DATE_PLUS_90_DAYS_NEXT_MONDAY",
+    checkIn: "2026-11-30",
+    checkOut: "2026-12-14",
+  }),
+  Object.freeze({
+    candidateOrdinal: 2,
+    candidateRuleId: "AUDIT_DATE_PLUS_180_DAYS_NEXT_MONDAY",
+    checkIn: "2027-03-01",
+    checkOut: "2027-03-15",
+  }),
+  Object.freeze({
+    candidateOrdinal: 3,
+    candidateRuleId: "AUDIT_DATE_PLUS_270_DAYS_NEXT_MONDAY",
+    checkIn: "2027-05-24",
+    checkOut: "2027-06-07",
+  }),
+]);
+export const SPLIT_R1_SANDBOX_QUALIFICATION_AUTH_HTTP_MAX = 1;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_DESTINATION_HTTP_MAX = 1;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_INITIAL_SEARCH_HTTP_MAX = 3;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_CONTINUATION_HTTP_MAX = 0;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_TOTAL_HTTP_MAX = 5;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_RETRY_MAX = 0;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_REDIRECT_MAX = 0;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_MAX_CONCURRENCY = 1;
+export const SPLIT_R1_SANDBOX_QUALIFICATION_MIN_REQUEST_START_INTERVAL_MS = 1_000;
+export const SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT =
+  Object.freeze({
+    schemaVersion:
+      "stayopti.split-r1.sandbox-alternative-full-stay-qualification-contract@1",
+    canonicalScenarios: 1,
+    candidateCount: 3,
+    canonicalLogicalSearches: 41,
+    executedLogicalSearches: 3,
+    breakpoints: 13,
+    authHttpMax: SPLIT_R1_SANDBOX_QUALIFICATION_AUTH_HTTP_MAX,
+    destinationHttpMax: SPLIT_R1_SANDBOX_QUALIFICATION_DESTINATION_HTTP_MAX,
+    initialSearchHttpMax: SPLIT_R1_SANDBOX_QUALIFICATION_INITIAL_SEARCH_HTTP_MAX,
+    continuationHttpMax: SPLIT_R1_SANDBOX_QUALIFICATION_CONTINUATION_HTTP_MAX,
+    totalHttpMax: SPLIT_R1_SANDBOX_QUALIFICATION_TOTAL_HTTP_MAX,
+    retryMax: SPLIT_R1_SANDBOX_QUALIFICATION_RETRY_MAX,
+    redirectMax: SPLIT_R1_SANDBOX_QUALIFICATION_REDIRECT_MAX,
+    maxConcurrency: SPLIT_R1_SANDBOX_QUALIFICATION_MAX_CONCURRENCY,
+    minimumRequestStartIntervalMs:
+      SPLIT_R1_SANDBOX_QUALIFICATION_MIN_REQUEST_START_INTERVAL_MS,
+    sandboxBaseUrl: SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+    sandboxToProductionFallbackAllowed: false,
+    rawPersistenceAllowed: false,
+  });
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR = 2_500;
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO = 0.02;
 export const SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION =
@@ -438,6 +492,7 @@ export function parseSplitR1Arguments(argv) {
     "--dry-run",
     SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG,
     SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG,
+    SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG,
     targetedFlag,
     sandboxNightlyOracleFlag,
     ourpriceProbeFlag,
@@ -459,13 +514,24 @@ export function parseSplitR1Arguments(argv) {
   const canonicalFullStayCanaryRequested = argv.includes(
     SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG
   );
+  const alternativeFullStayQualificationRequested = argv.includes(
+    SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG
+  );
   if (
-    (boundedLiveRequested || canonicalFullStayCanaryRequested) &&
+    (boundedLiveRequested ||
+      canonicalFullStayCanaryRequested ||
+      alternativeFullStayQualificationRequested) &&
     !argv.includes(sandboxNightlyOracleFlag)
   ) {
     throw new Error("split-r1-sandbox-bounded-live-requires-nightly-oracle-flag");
   }
-  if (boundedLiveRequested && canonicalFullStayCanaryRequested) {
+  if (
+    [
+      boundedLiveRequested,
+      canonicalFullStayCanaryRequested,
+      alternativeFullStayQualificationRequested,
+    ].filter(Boolean).length > 1
+  ) {
     throw new Error("split-r1-sandbox-live-modes-mutually-exclusive");
   }
   if (sandboxConfirmationsPresent.length > 0 && !argv.includes(sandboxNightlyOracleFlag)) {
@@ -475,7 +541,8 @@ export function parseSplitR1Arguments(argv) {
     argv.includes("--dry-run") &&
     (sandboxConfirmationsPresent.length > 0 ||
       boundedLiveRequested ||
-      canonicalFullStayCanaryRequested)
+      canonicalFullStayCanaryRequested ||
+      alternativeFullStayQualificationRequested)
   ) {
     throw new Error("split-r1-sandbox-nightly-oracle-incompatible-mode-flags");
   }
@@ -553,7 +620,8 @@ export function parseSplitR1Arguments(argv) {
     if (
       sandboxConfirmationsPresent.length === 0 &&
       !boundedLiveRequested &&
-      !canonicalFullStayCanaryRequested
+      !canonicalFullStayCanaryRequested &&
+      !alternativeFullStayQualificationRequested
     ) {
       return { mode: "sandbox-nightly-oracle-dry-run" };
     }
@@ -565,6 +633,9 @@ export function parseSplitR1Arguments(argv) {
     }
     if (canonicalFullStayCanaryRequested) {
       return { mode: "sandbox-canonical-full-stay-live-canary" };
+    }
+    if (alternativeFullStayQualificationRequested) {
+      return { mode: "sandbox-alternative-full-stay-live-qualification" };
     }
     return { mode: "sandbox-nightly-oracle-live-contract-hold" };
   }
@@ -3144,6 +3215,158 @@ export function selectSplitR1SandboxCanonicalFullStayBindingV1(searches) {
   return fullStayBindings[0];
 }
 
+function splitR1SandboxQualificationFixtureDiffersOnlyByDates(
+  canonicalFixture,
+  candidateFixture
+) {
+  const restored = structuredClone(candidateFixture);
+  restored.scenario.checkIn = canonicalFixture.scenario.checkIn;
+  restored.scenario.checkOut = canonicalFixture.scenario.checkOut;
+  return stableStringifySplitF0(restored) === stableStringifySplitF0(canonicalFixture);
+}
+
+function splitR1SandboxQualificationBindingDiffersOnlyByDates(
+  canonicalBinding,
+  candidateBinding
+) {
+  const restored = structuredClone(candidateBinding);
+  restored.request.checkIn = canonicalBinding.request.checkIn;
+  restored.request.checkOut = canonicalBinding.request.checkOut;
+  return stableStringifySplitF0(restored) === stableStringifySplitF0(canonicalBinding);
+}
+
+export function buildSplitR1SandboxAlternativeFullStayCandidatesV1(fixture) {
+  const canonicalPlan = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const canonicalBinding = selectSplitR1SandboxCanonicalFullStayBindingV1(canonicalPlan);
+  return SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES.map((candidateRule) => {
+    const candidateFixture = structuredClone(fixture);
+    candidateFixture.scenario.checkIn = candidateRule.checkIn;
+    candidateFixture.scenario.checkOut = candidateRule.checkOut;
+    if (
+      !splitR1SandboxQualificationFixtureDiffersOnlyByDates(
+        fixture,
+        candidateFixture
+      )
+    ) {
+      throw new Error("split-r1-sandbox-qualification-fixture-field-drift");
+    }
+    const candidatePlan = buildSplitR1SandboxNightlyOracleSearchPlanV1(
+      candidateFixture
+    );
+    const fullStayBinding = selectSplitR1SandboxCanonicalFullStayBindingV1(
+      candidatePlan
+    );
+    if (
+      splitR1WindowNights(candidateRule.checkIn, candidateRule.checkOut) !==
+        SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION ||
+      candidatePlan.length !== SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LOGICAL_SEARCHES ||
+      candidateFixture.scenario.breakpoints.length !==
+        SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_BREAKPOINTS ||
+      !splitR1SandboxQualificationBindingDiffersOnlyByDates(
+        canonicalBinding,
+        fullStayBinding
+      )
+    ) {
+      throw new Error("split-r1-sandbox-qualification-candidate-contract-drift");
+    }
+    return Object.freeze({
+      candidateOrdinal: candidateRule.candidateOrdinal,
+      candidateRuleId: candidateRule.candidateRuleId,
+      checkIn: candidateRule.checkIn,
+      checkOut: candidateRule.checkOut,
+      durationNights: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_DURATION,
+      fixture: candidateFixture,
+      canonicalPlan: candidatePlan,
+      fullStayBinding,
+    });
+  });
+}
+
+export function selectSplitR1SandboxAlternativeFullStayCandidateV1(receipts) {
+  if (
+    !Array.isArray(receipts) ||
+    receipts.length !== SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES.length
+  ) {
+    throw new Error("split-r1-sandbox-qualification-receipt-count-invalid");
+  }
+  for (let index = 0; index < receipts.length; index += 1) {
+    const receipt = receipts[index];
+    const frozen = SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES[index];
+    if (
+      receipt?.candidateOrdinal !== frozen.candidateOrdinal ||
+      receipt?.candidateRuleId !== frozen.candidateRuleId
+    ) {
+      throw new Error("split-r1-sandbox-qualification-receipt-order-drift");
+    }
+  }
+  const selected = receipts.find(
+    (receipt) =>
+      receipt.boundedSnapshotUsable === true &&
+      Number.isSafeInteger(receipt.finalDistinctPropertyOfferCount) &&
+      receipt.finalDistinctPropertyOfferCount > 0 &&
+      receipt.baselineCandidateAvailable === true
+  );
+  if (selected === undefined) {
+    return Object.freeze({
+      selectedCandidateOrdinal: null,
+      selectedCandidateRuleId: null,
+      selectionReason: "NO_CANDIDATE_WITH_BASELINE",
+    });
+  }
+  return Object.freeze({
+    selectedCandidateOrdinal: selected.candidateOrdinal,
+    selectedCandidateRuleId: selected.candidateRuleId,
+    selectionReason: "FIRST_ORDERED_CANDIDATE_WITH_BASELINE",
+  });
+}
+
+export function buildSplitR1SandboxAlternativeFullStayPromotionV1(
+  fixture,
+  selection
+) {
+  if (selection?.selectionReason === "NO_CANDIDATE_WITH_BASELINE") {
+    return Object.freeze({
+      promotionEligible: false,
+      promotionStatus: "NO_CANDIDATE_WITH_BASELINE",
+      scenarios: 0,
+      logicalSearches: 0,
+      breakpoints: 0,
+      fullStayBindings: 0,
+    });
+  }
+  if (selection?.selectionReason !== "FIRST_ORDERED_CANDIDATE_WITH_BASELINE") {
+    throw new Error("split-r1-sandbox-qualification-selection-invalid");
+  }
+  const candidate = buildSplitR1SandboxAlternativeFullStayCandidatesV1(fixture).find(
+    (entry) =>
+      entry.candidateOrdinal === selection.selectedCandidateOrdinal &&
+      entry.candidateRuleId === selection.selectedCandidateRuleId
+  );
+  if (candidate === undefined) {
+    throw new Error("split-r1-sandbox-qualification-selected-candidate-invalid");
+  }
+  const fullStayBindings = candidate.canonicalPlan.filter(
+    (search) => search.searchRole === "FULL_STAY"
+  ).length;
+  if (
+    candidate.canonicalPlan.length !== 41 ||
+    candidate.fixture.scenario.breakpoints.length !== 13 ||
+    fullStayBindings !== 1
+  ) {
+    throw new Error("split-r1-sandbox-qualification-promotion-plan-invalid");
+  }
+  return Object.freeze({
+    promotionEligible: true,
+    promotionStatus: "CANONICAL_PLAN_REBUILT_FROM_SELECTED_DATE_OVERLAY",
+    selectedCandidateOrdinal: candidate.candidateOrdinal,
+    selectedCandidateRuleId: candidate.candidateRuleId,
+    scenarios: 1,
+    logicalSearches: candidate.canonicalPlan.length,
+    breakpoints: candidate.fixture.scenario.breakpoints.length,
+    fullStayBindings,
+  });
+}
+
 export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
   const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
   const countRole = (role) => searches.filter((search) => search.searchRole === role).length;
@@ -3266,6 +3489,31 @@ function assertSplitR1SandboxCanonicalFullStayCanaryContractV1(contract) {
     Object.keys(SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_CONTRACT).length
   ) {
     throw new Error("split-r1-sandbox-canary-contract-extra-field-prohibited");
+  }
+  validateSplitR1SandboxBoundedBaseUrlV1(contract.sandboxBaseUrl);
+  return true;
+}
+
+function assertSplitR1SandboxAlternativeFullStayQualificationContractV1(
+  contract
+) {
+  if (contract === null || typeof contract !== "object" || Array.isArray(contract)) {
+    throw new Error("split-r1-sandbox-qualification-contract-invalid");
+  }
+  for (const [field, expected] of Object.entries(
+    SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT
+  )) {
+    if (stableStringifySplitF0(contract[field]) !== stableStringifySplitF0(expected)) {
+      throw new Error(`split-r1-sandbox-qualification-contract-${field}-mismatch`);
+    }
+  }
+  if (
+    Object.keys(contract).length !==
+    Object.keys(
+      SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT
+    ).length
+  ) {
+    throw new Error("split-r1-sandbox-qualification-contract-extra-field-prohibited");
   }
   validateSplitR1SandboxBoundedBaseUrlV1(contract.sandboxBaseUrl);
   return true;
@@ -3403,6 +3651,81 @@ export function validateSplitR1SandboxCanonicalFullStayCanaryPreflightV1({
     minimumRequestStartIntervalMs: contract.minimumRequestStartIntervalMs,
     productionFallbackAllowed: false,
     rawPersistenceAllowed: false,
+  });
+}
+
+export function validateSplitR1SandboxAlternativeFullStayQualificationPreflightV1({
+  fixture,
+  candidates = buildSplitR1SandboxAlternativeFullStayCandidatesV1(fixture),
+  contract = SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT,
+} = {}) {
+  assertSplitR1SandboxAlternativeFullStayQualificationContractV1(contract);
+  const dryRun = buildSplitR1SandboxNightlyOracleDryRunV1(fixture);
+  const generatedCandidates = buildSplitR1SandboxAlternativeFullStayCandidatesV1(
+    fixture
+  );
+  if (
+    dryRun.scenarios !== contract.canonicalScenarios ||
+    dryRun.logicalSearches !== contract.canonicalLogicalSearches ||
+    dryRun.breakpoints !== contract.breakpoints ||
+    dryRun.httpRequests !== 0
+  ) {
+    throw new Error("split-r1-sandbox-qualification-canonical-plan-mismatch");
+  }
+  if (!Array.isArray(candidates) || candidates.length !== contract.candidateCount) {
+    throw new Error("split-r1-sandbox-qualification-candidate-count-mismatch");
+  }
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const generated = generatedCandidates[index];
+    const frozen = SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES[index];
+    if (
+      candidate?.candidateOrdinal !== frozen.candidateOrdinal ||
+      candidate?.candidateRuleId !== frozen.candidateRuleId ||
+      candidate?.checkIn !== frozen.checkIn ||
+      candidate?.checkOut !== frozen.checkOut
+    ) {
+      throw new Error("split-r1-sandbox-qualification-candidate-order-or-date-drift");
+    }
+    if (
+      stableStringifySplitF0(candidate) !== stableStringifySplitF0(generated) ||
+      candidate.durationNights !== 14 ||
+      candidate.canonicalPlan.length !== 41 ||
+      candidate.fixture.scenario.breakpoints.length !== 13 ||
+      candidate.canonicalPlan.filter((search) => search.searchRole === "FULL_STAY")
+        .length !== 1
+    ) {
+      throw new Error("split-r1-sandbox-qualification-candidate-plan-diverged");
+    }
+  }
+  return Object.freeze({
+    schemaVersion:
+      "stayopti.split-r1.sandbox-alternative-full-stay-qualification-preflight@1",
+    eligible: true,
+    canonicalPlanShared: true,
+    canonicalScenarios: dryRun.scenarios,
+    canonicalLogicalSearches: dryRun.logicalSearches,
+    breakpoints: dryRun.breakpoints,
+    candidateCount: candidates.length,
+    executedLogicalSearches: contract.executedLogicalSearches,
+    candidateRuleIds: candidates.map((candidate) => candidate.candidateRuleId),
+    allCandidatesFourteenNights: candidates.every(
+      (candidate) => candidate.durationNights === 14
+    ),
+    authHttpMax: contract.authHttpMax,
+    destinationHttpMax: contract.destinationHttpMax,
+    initialSearchHttpMax: contract.initialSearchHttpMax,
+    continuationHttpMax: contract.continuationHttpMax,
+    totalHttpMax: contract.totalHttpMax,
+    retryMax: contract.retryMax,
+    redirectMax: contract.redirectMax,
+    maxConcurrency: contract.maxConcurrency,
+    minimumRequestStartIntervalMs: contract.minimumRequestStartIntervalMs,
+    productionFallbackAllowed: false,
+    rawPersistenceAllowed: false,
+    collectionCoverageReceiptVersion: SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+    economicEligibilityFunnelReceiptVersion:
+      SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
   });
 }
 
@@ -4880,6 +5203,48 @@ export function assertSplitR1SandboxCanonicalFullStayCanaryRequestAllowedV1({
   return true;
 }
 
+const SPLIT_R1_SANDBOX_QUALIFICATION_REQUESTS = Object.freeze({
+  authentication: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_AUTH_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_QUALIFICATION_AUTH_HTTP_MAX,
+  }),
+  destination: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_DESTINATION_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_QUALIFICATION_DESTINATION_HTTP_MAX,
+  }),
+  initialHotelSearch: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_QUALIFICATION_INITIAL_SEARCH_HTTP_MAX,
+  }),
+  continuation: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_QUALIFICATION_CONTINUATION_HTTP_MAX,
+  }),
+});
+
+export function assertSplitR1SandboxAlternativeFullStayQualificationRequestAllowedV1({
+  requestClass,
+  method,
+  endpointPath,
+}) {
+  const expected = SPLIT_R1_SANDBOX_QUALIFICATION_REQUESTS[requestClass];
+  if (requestClass === "continuation") {
+    throw new Error("split-r1-sandbox-qualification-continuation-prohibited");
+  }
+  if (!expected || expected.limit < 1) {
+    throw new Error("split-r1-sandbox-qualification-request-class-prohibited");
+  }
+  if (method !== expected.method || endpointPath !== expected.endpointPath) {
+    throw new Error("split-r1-sandbox-qualification-route-not-allowlisted");
+  }
+  assertSplitR1EndpointAllowed(method, endpointPath);
+  return true;
+}
+
 export function createSplitR1SandboxBoundedHttpLedgerV1(
   contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT
 ) {
@@ -4976,6 +5341,69 @@ export function createSplitR1SandboxCanonicalFullStayCanaryHttpLedgerV1(
       }
       if (requestsByClass[requestClass] + 1 > limits[requestClass]) {
         throw new Error(`split-r1-sandbox-canary-${requestClass}-budget-exhausted`);
+      }
+      requestsByClass[requestClass] += 1;
+      totalHttpRequests += 1;
+      return Object.freeze({
+        requestClass,
+        classOrdinal: requestsByClass[requestClass],
+        totalOrdinal: totalHttpRequests,
+      });
+    },
+    snapshot() {
+      return Object.freeze({
+        authHttpMax: contract.authHttpMax,
+        destinationHttpMax: contract.destinationHttpMax,
+        initialSearchHttpMax: contract.initialSearchHttpMax,
+        continuationHttpMax: contract.continuationHttpMax,
+        totalHttpMax: contract.totalHttpMax,
+        requestsByClass: Object.freeze({ ...requestsByClass }),
+        totalHttpRequests,
+        totalHttpBudgetRemaining: contract.totalHttpMax - totalHttpRequests,
+        initialSearchBudgetRemaining:
+          contract.initialSearchHttpMax - requestsByClass.initialHotelSearch,
+      });
+    },
+  };
+}
+
+export function createSplitR1SandboxAlternativeFullStayQualificationHttpLedgerV1(
+  contract = SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT
+) {
+  assertSplitR1SandboxAlternativeFullStayQualificationContractV1(contract);
+  let totalHttpRequests = 0;
+  const requestsByClass = {
+    authentication: 0,
+    destination: 0,
+    initialHotelSearch: 0,
+    continuation: 0,
+    otherForbidden: 0,
+  };
+  const limits = {
+    authentication: contract.authHttpMax,
+    destination: contract.destinationHttpMax,
+    initialHotelSearch: contract.initialSearchHttpMax,
+    continuation: contract.continuationHttpMax,
+    otherForbidden: 0,
+  };
+  return {
+    reserve(requestClass) {
+      if (!Object.prototype.hasOwnProperty.call(requestsByClass, requestClass)) {
+        throw new Error("split-r1-sandbox-qualification-request-class-prohibited");
+      }
+      if (requestClass === "continuation") {
+        throw new Error("split-r1-sandbox-qualification-continuation-prohibited");
+      }
+      if (requestClass === "otherForbidden") {
+        throw new Error("split-r1-sandbox-qualification-route-not-allowlisted");
+      }
+      if (totalHttpRequests + 1 > contract.totalHttpMax) {
+        throw new Error("split-r1-sandbox-qualification-total-http-budget-exhausted");
+      }
+      if (requestsByClass[requestClass] + 1 > limits[requestClass]) {
+        throw new Error(
+          `split-r1-sandbox-qualification-${requestClass}-budget-exhausted`
+        );
       }
       requestsByClass[requestClass] += 1;
       totalHttpRequests += 1;
@@ -5394,6 +5822,106 @@ export function createSplitR1SandboxCanonicalFullStayCanaryTransportV1({
       enqueue("initialHotelSearch", SPLIT_R1_HOTEL_SEARCH_ENDPOINT, body, bearerToken),
     postContinuationHotelSearch() {
       throw new Error("split-r1-sandbox-canary-continuation-prohibited");
+    },
+    getBudgetSnapshot: () => ledger.snapshot(),
+    getMaxObservedConcurrency: () => maxObservedConcurrency,
+    getMinimumObservedRequestIntervalMs: () => {
+      if (requestStarts.length < 2) return null;
+      return Math.min(
+        ...requestStarts.slice(1).map((start, index) => start - requestStarts[index])
+      );
+    },
+  });
+}
+
+export function createSplitR1SandboxAlternativeFullStayQualificationTransportV1({
+  baseUrl = SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+  fetchImpl = globalThis.fetch,
+  timeoutMs = SPLIT_R1_HTTP_TIMEOUT_MS,
+  monotonicNow,
+  sleep,
+  minRequestStartIntervalMs =
+    SPLIT_R1_SANDBOX_QUALIFICATION_MIN_REQUEST_START_INTERVAL_MS,
+  contract = SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT,
+} = {}) {
+  assertSplitR1SandboxAlternativeFullStayQualificationContractV1(contract);
+  validateSplitR1SandboxBoundedBaseUrlV1(baseUrl);
+  if (typeof fetchImpl !== "function") {
+    throw new Error("split-r1-sandbox-qualification-native-fetch-unavailable");
+  }
+  if (
+    !Number.isFinite(minRequestStartIntervalMs) ||
+    minRequestStartIntervalMs <
+      SPLIT_R1_SANDBOX_QUALIFICATION_MIN_REQUEST_START_INTERVAL_MS
+  ) {
+    throw new Error("split-r1-sandbox-qualification-rate-interval-too-low");
+  }
+  const ledger =
+    createSplitR1SandboxAlternativeFullStayQualificationHttpLedgerV1(contract);
+  const rateLimiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow,
+    sleep,
+    minRequestStartIntervalMs,
+  });
+  const requestStarts = [];
+  let activeRequests = 0;
+  let maxObservedConcurrency = 0;
+  let serializedTail = Promise.resolve();
+
+  const performPost = async (requestClass, endpointPath, body, bearerToken = null) => {
+    assertSplitR1SandboxAlternativeFullStayQualificationRequestAllowedV1({
+      requestClass,
+      method: "POST",
+      endpointPath,
+    });
+    const requestStart = await rateLimiter.awaitStartSlot();
+    ledger.reserve(requestClass);
+    requestStarts.push(requestStart);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    activeRequests += 1;
+    maxObservedConcurrency = Math.max(maxObservedConcurrency, activeRequests);
+    if (activeRequests > contract.maxConcurrency) {
+      activeRequests -= 1;
+      clearTimeout(timeout);
+      throw new Error("split-r1-sandbox-qualification-concurrency-exceeded");
+    }
+    try {
+      const response = await fetchImpl(`${baseUrl}${endpointPath}`, {
+        method: "POST",
+        redirect: "error",
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(bearerToken === null ? {} : { Authorization: `Bearer ${bearerToken}` }),
+        },
+        body: JSON.stringify(body),
+      });
+      return await parseJsonResponse(response, endpointPath.split("/").at(-1));
+    } finally {
+      activeRequests -= 1;
+      clearTimeout(timeout);
+    }
+  };
+
+  const enqueue = (requestClass, endpointPath, body, bearerToken = null) => {
+    const operation = serializedTail.then(() =>
+      performPost(requestClass, endpointPath, body, bearerToken)
+    );
+    serializedTail = operation.catch(() => undefined);
+    return operation;
+  };
+
+  return Object.freeze({
+    postAuthentication: (body) =>
+      enqueue("authentication", SPLIT_R1_AUTH_ENDPOINT, body),
+    postDestination: (body, bearerToken) =>
+      enqueue("destination", SPLIT_R1_DESTINATION_ENDPOINT, body, bearerToken),
+    postInitialHotelSearch: (body, bearerToken) =>
+      enqueue("initialHotelSearch", SPLIT_R1_HOTEL_SEARCH_ENDPOINT, body, bearerToken),
+    postContinuationHotelSearch() {
+      throw new Error("split-r1-sandbox-qualification-continuation-prohibited");
     },
     getBudgetSnapshot: () => ledger.snapshot(),
     getMaxObservedConcurrency: () => maxObservedConcurrency,
@@ -5874,6 +6402,200 @@ export async function runSplitR1SandboxCanonicalFullStayCanaryV1({
   return result;
 }
 
+export async function runSplitR1SandboxAlternativeFullStayQualificationV1({
+  fixture,
+  options,
+  environment = process.env,
+  execArgv = process.execArgv,
+  fetchImpl = globalThis.fetch,
+  now = Date.now,
+  randomUUID = crypto.randomUUID,
+  ephemeralRunKey = crypto.randomBytes(32),
+  monotonicNow,
+  sleep,
+  candidates = buildSplitR1SandboxAlternativeFullStayCandidatesV1(fixture),
+  contract = SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT,
+} = {}) {
+  if (options?.mode !== "sandbox-alternative-full-stay-live-qualification") {
+    throw new Error("split-r1-sandbox-qualification-live-mode-required");
+  }
+  const preflight =
+    validateSplitR1SandboxAlternativeFullStayQualificationPreflightV1({
+      fixture,
+      candidates,
+      contract,
+    });
+  const configuration = resolveSplitR1SandboxBoundedConfigurationV1(
+    environment,
+    execArgv
+  );
+  const transport =
+    createSplitR1SandboxAlternativeFullStayQualificationTransportV1({
+      baseUrl: configuration.baseUrl,
+      fetchImpl,
+      monotonicNow,
+      sleep,
+      minRequestStartIntervalMs: contract.minimumRequestStartIntervalMs,
+      contract,
+    });
+  const authRequest = createSplitR1PartnerTokenRequest({
+    apiKey: configuration.apiKey,
+    apiSecret: configuration.apiSecret,
+    now,
+    randomUUID,
+  });
+  const authResponse = await transport.postAuthentication(authRequest);
+  let partnerToken = authResponse?.token;
+  if (typeof partnerToken !== "string" || partnerToken.length === 0) {
+    throw new Error("split-r1-sandbox-qualification-partner-token-missing");
+  }
+  const destinationPayload = await transport.postDestination(
+    createSplitR1DestinationRequest(fixture.scenario),
+    partnerToken
+  );
+  const destination = selectSplitR1DestinationCandidate(
+    destinationPayload,
+    fixture.scenario
+  );
+  const candidateReceipts = [];
+  for (const candidate of candidates) {
+    const request = createSplitR1HotelSearchRequest(
+      candidate.fullStayBinding,
+      destination
+    );
+    let payload = await transport.postInitialHotelSearch(request, partnerToken);
+    const initialPage = normalizeSplitR1SearchPage(payload, {
+      logicalSearch: candidate.fullStayBinding,
+      ephemeralRunKey,
+    });
+    const classifiedCoverageReceipt = classifySplitR1CollectionCoverageV1(
+      payload,
+      {
+        httpStatus: 200,
+        jsonValid: true,
+        initialPage,
+        continuationAttempted: false,
+      }
+    );
+    const boundedSnapshotUsable =
+      classifiedCoverageReceipt.initialResultsProcessable &&
+      (classifiedCoverageReceipt.collectionClassification ===
+        "PROVIDER_NO_CONTINUATION_EXPOSED" ||
+        classifiedCoverageReceipt.collectionClassification ===
+          "PROVIDER_CONTINUATION_AVAILABLE");
+    const economicReceipt = buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({
+      payload,
+      logicalSearch: candidate.fullStayBinding,
+      logicalSearchOrdinal: 1,
+      breakpointOrdinal: null,
+      normalizedPage: initialPage,
+      snapshotProcessable: boundedSnapshotUsable,
+    });
+    candidateReceipts.push(
+      Object.freeze({
+        candidateOrdinal: candidate.candidateOrdinal,
+        candidateRuleId: candidate.candidateRuleId,
+        fourteenNightDurationValid: candidate.durationNights === 14,
+        fullStayBindingUnique:
+          candidate.canonicalPlan.filter(
+            (search) => search.searchRole === "FULL_STAY"
+          ).length === 1,
+        httpResultCategory: "HTTP_200_JSON",
+        collectionCoverageReceiptVersion:
+          SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+        economicEligibilityFunnelReceiptVersion:
+          SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
+        collectionClassification:
+          classifiedCoverageReceipt.collectionClassification,
+        coverageClass: classifiedCoverageReceipt.coverageClass,
+        rawResultCount: economicReceipt.rawResultCount,
+        normalizableResultCount: economicReceipt.normalizableResultCount,
+        identityEligibleCount: economicReceipt.identityEligibleCount,
+        numericPriceEligibleCount: economicReceipt.numericPriceEligibleCount,
+        expectedCurrencyMatchCount: economicReceipt.expectedCurrencyMatchCount,
+        missingCurrencyCount: economicReceipt.missingCurrencyCount,
+        nonExpectedCurrencyCount: economicReceipt.nonExpectedCurrencyCount,
+        invalidCurrencyTypeCount: economicReceipt.invalidCurrencyTypeCount,
+        preDedupEconomicOfferCount: economicReceipt.preDedupEconomicOfferCount,
+        duplicatePropertyOffersRemovedCount:
+          economicReceipt.duplicatePropertyOffersRemovedCount,
+        finalDistinctPropertyOfferCount:
+          economicReceipt.finalDistinctPropertyOfferCount,
+        economicEligibilityState: economicReceipt.economicEligibilityState,
+        zeroFinalOffersPrimaryReason:
+          economicReceipt.zeroFinalOffersPrimaryReason,
+        baselineCandidateAvailable: economicReceipt.baselineCandidateAvailable,
+        boundedSnapshotUsable,
+        continuationAvailable:
+          classifiedCoverageReceipt.continuationAvailable,
+        continuationEligible: classifiedCoverageReceipt.continuationEligible,
+        continuationExecuted: false,
+      })
+    );
+    payload = null;
+  }
+  partnerToken = null;
+  const requestBudget = transport.getBudgetSnapshot();
+  if (
+    requestBudget.requestsByClass.authentication !== 1 ||
+    requestBudget.requestsByClass.destination !== 1 ||
+    requestBudget.requestsByClass.initialHotelSearch !== 3 ||
+    requestBudget.requestsByClass.continuation !== 0 ||
+    requestBudget.totalHttpRequests !== 5
+  ) {
+    throw new Error("split-r1-sandbox-qualification-exact-budget-not-consumed");
+  }
+  const selection = selectSplitR1SandboxAlternativeFullStayCandidateV1(
+    candidateReceipts
+  );
+  const promotion = buildSplitR1SandboxAlternativeFullStayPromotionV1(
+    fixture,
+    selection
+  );
+  const result = {
+    schemaVersion:
+      "stayopti.split-r1.sandbox-alternative-full-stay-qualification-result@1",
+    mode: "SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION",
+    environment: "sandbox",
+    privateTechnicalQualificationOnly: true,
+    runStatus: candidateReceipts.every(
+      (receipt) => receipt.boundedSnapshotUsable
+    )
+      ? "COMPLETE"
+      : "INCONCLUSIVE",
+    preflight,
+    candidateReceipts,
+    selection,
+    promotion,
+    fullPilotExecuted: false,
+    httpRequests: requestBudget.totalHttpRequests,
+    requestBudget,
+    maxObservedConcurrency: transport.getMaxObservedConcurrency(),
+    minimumObservedRequestIntervalMs:
+      transport.getMinimumObservedRequestIntervalMs(),
+    retries: 0,
+    redirects: 0,
+    continuationHttpRequests: 0,
+    continuationExecuted: false,
+    priceBasedSelection: false,
+    resultCountMaximization: false,
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    sandboxMarketEvidenceAllowed: false,
+    targetedProductionAuthorized: false,
+    publicRuntimeChanged: false,
+    nonExpectedRawCurrencyPersisted: false,
+    rawMetadataValuesPersisted: 0,
+    rawIdentifiersPersisted: 0,
+    rawContinuationIdentifiersPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+  };
+  assertSplitR1PersistedPayloadSafe(result);
+  return result;
+}
+
 export async function runSplitR1SandboxBoundedLivePilotV1({
   fixture,
   options,
@@ -6107,6 +6829,8 @@ export async function runSplitR1Collector({
   livePlan,
   boundedLiveContract,
   canonicalFullStayCanaryContract,
+  alternativeFullStayQualificationContract,
+  qualificationCandidates,
 }) {
   if (
     options.mode === "ourprice-probe-dry-run" ||
@@ -6185,6 +6909,24 @@ export async function runSplitR1Collector({
       contract:
         canonicalFullStayCanaryContract ??
         SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_CONTRACT,
+    });
+  }
+  if (options.mode === "sandbox-alternative-full-stay-live-qualification") {
+    return runSplitR1SandboxAlternativeFullStayQualificationV1({
+      fixture: matrix,
+      options,
+      environment,
+      execArgv,
+      fetchImpl,
+      now,
+      randomUUID,
+      ephemeralRunKey,
+      monotonicNow,
+      sleep,
+      candidates: qualificationCandidates,
+      contract:
+        alternativeFullStayQualificationContract ??
+        SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT,
     });
   }
   const dryRun = buildSplitR1DryRunPlan(matrix);
@@ -6377,7 +7119,8 @@ async function main() {
       : options.mode === "sandbox-nightly-oracle-dry-run" ||
           options.mode === "sandbox-nightly-oracle-live-contract-hold" ||
           options.mode === "sandbox-nightly-oracle-live-bounded-pilot" ||
-          options.mode === "sandbox-canonical-full-stay-live-canary"
+          options.mode === "sandbox-canonical-full-stay-live-canary" ||
+          options.mode === "sandbox-alternative-full-stay-live-qualification"
         ? await loadSplitR1SandboxNightlyOraclePilotV1()
       : await loadSplitF0ScenarioMatrix();
   const result = await runSplitR1Collector({ matrix, options });
