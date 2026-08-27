@@ -380,3 +380,39 @@ The versioned receipt `stayopti.split-r1.compact-pilot-result@1` retains only sc
 The compact JSON is deterministically ordered and measured once as UTF-8 before emission. `COMPACT_RECEIPT_MAX_UTF8_BYTES` is hard-frozen at 12,000 bytes and cannot be increased by CLI, environment or runtime configuration. Oversize output is never truncated: the process emits one valid allowlisted compact failure receipt and exits non-zero without another provider request. Authoritative economic amounts remain integer minor units, ratios remain integer basis points, and EUR/percentage displays are deterministic derivations. Collection, selected Candidate 1, the promoted 1/41/13 plan, 43/41/0 budget, zero continuation/retry/Production, baseline selection, distinct-property policy, comparability, deduplication, currency policy, formulae, median semantics and tie-breaking are unchanged.
 
 The binding receipt persists only the selected ordinal and allowlisted rule, selected dates and duration, plan counts and structural booleans proving date-window containment, promoted-plan dispatch, absence of historical-date dispatch and absence of mixed scenarios. It contains no payload, provider identifier, continuation value, hotel name, individual price, unexpected raw currency or reusable fingerprint. This offline binding changes neither economic selection, comparability, deduplication, currency policy, Split arithmetic, completeness/global-optimum claims, Sandbox market-evidence boundaries, Production behavior nor public runtime, and authorizes no provider call by itself.
+
+### R1C.27D — First positive bounded-snapshot Split pilot
+
+This evidence seal records the first positive technical Split pilot without changing any runtime, policy, evaluator, comparison rule or public boundary. Its authoritative receipt is `stayopti.split-r1.compact-pilot-result@1` at source SHA `322eb6f2fef3250c033c1abc48322bdbe73ff2c2`.
+
+The frozen Sandbox scenario is Milano from 2026-11-30 through 2026-12-14: fourteen nights, one room, two adults, no children, EUR, distinct properties and at most one change. The run executed all forty-one logical searches and evaluated all thirteen breakpoints inside bounded returned snapshots. Eleven breakpoints had positive observed saving, none was break-even and two made Split more expensive. The best observed diagnostic result was 16,931 minor units (EUR 169.31) and 2,267 basis points (22.67%); the median was 10,185 minor units (EUR 101.85) and 1,364 basis points (13.64%). The observed range began at -3,416 minor units (EUR -34.16) and ended at 16,931 minor units, with winning breakpoint ordinal 2.
+
+Collection was internally coherent: all forty-one snapshots were usable; 35,693 raw results were all normalizable, economically eligible before deduplication and present as final distinct-property offers; numeric-price and expected-currency coverage were both 35,693/35,693. The run-local universe contained 1,056 pseudonymized properties. The full-stay search supplied 814 raw and normalizable results, 814 final distinct-property offers and an available fixed baseline. HTTP accounting was one authentication, one destination lookup and forty-one initial hotel searches, totaling forty-three requests, with zero continuation, retry or Production calls, maximum concurrency one and a minimum observed request-start interval of 1001.2876 ms.
+
+#### Dimostrato
+
+- Il motore tecnico Split è stato eseguito end-to-end sul piano promosso e delimitato.
+- Tutti i 13 breakpoint erano valutabili con baseline full-stay e proprietà distinte.
+- 11 breakpoint su 13 hanno prodotto un risparmio positivo nello snapshot osservato.
+- Il miglior risparmio osservato è stato EUR 169.31 (22.67%).
+- Il risparmio mediano osservato è stato EUR 101.85 (13.64%).
+- Il campione Sandbox osservato dimostra l'esistenza empirica di opportunità Split entro gli snapshot delimitati restituiti.
+
+#### Non dimostrato
+
+- La frequenza generale delle opportunità Split nel mercato.
+- Il risparmio medio reale degli utenti.
+- La completezza dell'inventario RouteStack o del mercato.
+- Un optimum globale o la migliore soluzione disponibile sul mercato.
+- L'equivalenza qualitativa delle strutture.
+- L'equivalenza delle condizioni di cancellazione.
+- L'inclusione completa di tasse, supplementi e altri costi obbligatori.
+- La convenienza netta dopo il fastidio logistico, il tempo, i bagagli e il rischio del cambio.
+- La validità in RouteStack Production.
+- Una validazione commerciale o l'autorizzazione a una raccomandazione pubblica.
+
+#### Conclusione consentita
+
+> Nel pilot tecnico RouteStack Sandbox relativo a Milano, 30 novembre–14 dicembre 2026, lo Split con massimo un cambio e proprietà distinte ha prodotto un risparmio positivo in 11 dei 13 breakpoint valutabili. Il miglior risparmio osservato nello snapshot delimitato è stato 169,31 EUR (22,67%) e la mediana 101,85 EUR (13,64%).
+
+The result scope remains `BOUNDED_RETURNED_SNAPSHOT`. Completeness claims, global-optimum claims, Sandbox market-evidence claims, targeted Production authorization and public recommendations remain prohibited. No raw provider or continuation identifier, payload, response, secret or cross-run identity is sealed here.
