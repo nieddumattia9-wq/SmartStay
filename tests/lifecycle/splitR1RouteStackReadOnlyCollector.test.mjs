@@ -80,6 +80,8 @@ import {
   SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG,
   SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_CONTRACT,
   SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG,
+  SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE,
+  SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
   SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES,
   SPLIT_R1_SANDBOX_QUALIFICATION_AUTH_HTTP_MAX,
   SPLIT_R1_SANDBOX_QUALIFICATION_DESTINATION_HTTP_MAX,
@@ -130,6 +132,7 @@ import {
   buildSplitR1SandboxNightlyOracleSearchPlanV1,
   buildSplitR1SandboxAlternativeFullStayCandidatesV1,
   buildSplitR1SandboxAlternativeFullStayPromotionV1,
+  buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1,
   buildSplitR1TargetedDryRunPlanV1,
   buildSplitR1TargetedLogicalSearchPlanV1,
   classifySplitR1SandboxInitialSearchStateV1,
@@ -185,6 +188,7 @@ import {
   validateSplitR1SandboxBoundedLivePreflightV1,
   validateSplitR1SandboxCanonicalFullStayCanaryPreflightV1,
   validateSplitR1SandboxAlternativeFullStayQualificationPreflightV1,
+  validateSplitR1SandboxSelectedAlternativeBoundedLivePreflightV1,
   validateSplitR1OurpriceSemanticsProbeV1,
   validateSplitR1OurpriceSemanticsProbeV2,
   validateSplitR1OurpriceEmpiricalTotalityReceiptV1,
@@ -1188,6 +1192,189 @@ test("qualification selection is first-ordered only and promotion rebuilds exact
   );
 });
 
+test("selected alternative live mode is explicit, default-disabled and mutually exclusive", async () => {
+  const sandboxFlag = "--sandbox-nightly-oracle-v1";
+  const selectedArgs = [
+    sandboxFlag,
+    SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
+    ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
+  ];
+  assert.deepEqual(parseSplitR1Arguments(selectedArgs), {
+    mode: "sandbox-selected-alternative-bounded-live-pilot",
+  });
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
+      ]),
+    /requires-nightly-oracle-flag/
+  );
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        sandboxFlag,
+        SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
+      ]),
+    /live-confirmations-incomplete/
+  );
+  for (const competingFlag of [
+    SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG,
+    SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG,
+    SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG,
+  ]) {
+    assert.throws(
+      () => parseSplitR1Arguments([...selectedArgs, competingFlag]),
+      /live-modes-mutually-exclusive/
+    );
+  }
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  let credentialReads = 0;
+  const dryRun = await runSplitR1Collector({
+    matrix: fixture,
+    options: { mode: "sandbox-nightly-oracle-dry-run" },
+    environment: new Proxy({}, {
+      get() {
+        credentialReads += 1;
+        throw new Error("credentials-alone-must-not-enable-selected-pilot");
+      },
+    }),
+    fetchImpl: async () => {
+      throw new Error("selected-pilot-default-must-not-fetch");
+    },
+  });
+  assert.equal(dryRun.httpRequests, 0);
+  assert.equal(credentialReads, 0);
+});
+
+test("selected alternative authoritative binding overlays dates only and covers all 13 breakpoints", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const binding =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture);
+  assert.equal(fixture.scenario.checkIn, "2027-10-04");
+  assert.equal(fixture.scenario.checkOut, "2027-10-18");
+  assert.equal(binding.fixture.scenario.checkIn, "2026-11-30");
+  assert.equal(binding.fixture.scenario.checkOut, "2026-12-14");
+  assert.equal(binding.livePlan.length, 41);
+  assert.equal(binding.fixture.scenario.breakpoints.length, 13);
+  assert.equal(
+    binding.livePlan.filter((search) => search.searchRole === "FULL_STAY").length,
+    1
+  );
+  assert.equal(Object.isFrozen(binding), true);
+  assert.equal(Object.isFrozen(binding.fixture), true);
+  assert.equal(Object.isFrozen(binding.livePlan), true);
+  const start = Date.parse("2026-11-30T00:00:00.000Z");
+  const end = Date.parse("2026-12-14T00:00:00.000Z");
+  for (const search of binding.livePlan) {
+    assert.ok(Date.parse(`${search.request.checkIn}T00:00:00.000Z`) >= start);
+    assert.ok(Date.parse(`${search.request.checkOut}T00:00:00.000Z`) <= end);
+    assert.notEqual(search.request.checkIn, "2027-10-04");
+    assert.notEqual(search.request.checkOut, "2027-10-18");
+    assert.deepEqual(search.request.destination, fixture.scenario.destination);
+    assert.deepEqual(search.request.occupancy, fixture.scenario.occupancy);
+    assert.equal(search.request.currency, "EUR");
+  }
+  const fullStay = binding.livePlan.find(
+    (search) => search.searchRole === "FULL_STAY"
+  );
+  assert.equal(fullStay.request.checkIn, "2026-11-30");
+  assert.equal(fullStay.request.checkOut, "2026-12-14");
+  for (const breakpoint of binding.fixture.scenario.breakpoints) {
+    const prefix = binding.livePlan.find(
+      (search) =>
+        search.searchRole === "PREFIX" &&
+        search.breakpointId === breakpoint.breakpointId
+    );
+    const suffix = binding.livePlan.find(
+      (search) =>
+        search.searchRole === "SUFFIX" &&
+        search.breakpointId === breakpoint.breakpointId
+    );
+    assert.equal(prefix.request.checkIn, "2026-11-30");
+    assert.equal(prefix.request.checkOut, suffix.request.checkIn);
+    assert.equal(suffix.request.checkOut, "2026-12-14");
+    assert.equal(
+      (Date.parse(`${prefix.request.checkOut}T00:00:00.000Z`) -
+        Date.parse(`${prefix.request.checkIn}T00:00:00.000Z`) +
+        Date.parse(`${suffix.request.checkOut}T00:00:00.000Z`) -
+        Date.parse(`${suffix.request.checkIn}T00:00:00.000Z`)) /
+        86_400_000,
+      14
+    );
+  }
+  const preflight =
+    validateSplitR1SandboxSelectedAlternativeBoundedLivePreflightV1({
+      canonicalFixture: fixture,
+      authoritativePlanBinding: binding,
+    });
+  assert.equal(preflight.eligible, true);
+  assert.equal(preflight.preflightAndDispatchShareAuthoritativePlan, true);
+  assert.equal(
+    preflight.selectedAlternativeBindingReceipt.originalCanonicalDatesDispatched,
+    false
+  );
+  assert.equal(
+    preflight.selectedAlternativeBindingReceipt.allBreakpointPairsCoverFourteenNights,
+    true
+  );
+  assert.throws(
+    () =>
+      buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture, {
+        selectedCandidateOrdinal: 2,
+        selectedCandidateRuleId:
+          SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES[1].candidateRuleId,
+        selectionReason: "FIRST_ORDERED_CANDIDATE_WITH_BASELINE",
+      }),
+    /candidate-mismatch/
+  );
+});
+
+test("selected alternative binding drift fails before credential access", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const binding =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture);
+  const divergent = structuredClone(binding);
+  divergent.livePlan[0].request.checkIn = "2027-10-04";
+  let credentialReads = 0;
+  await assert.rejects(
+    runSplitR1SandboxBoundedLivePilotV1({
+      fixture,
+      options: { mode: "sandbox-selected-alternative-bounded-live-pilot" },
+      authoritativePlanBinding: divergent,
+      environment: new Proxy({}, {
+        get() {
+          credentialReads += 1;
+          throw new Error("selected-binding-preflight-must-precede-credentials");
+        },
+      }),
+      fetchImpl: async () => {
+        throw new Error("invalid-selected-binding-must-not-fetch");
+      },
+    }),
+    /binding-diverged/
+  );
+  assert.equal(credentialReads, 0);
+});
+
+test("selected alternative protocol preserves the prior R1C.27 blocked result prospectively", async () => {
+  const protocol = await fs.readFile(
+    path.join(
+      SPLIT_R1_REPOSITORY_ROOT,
+      "docs",
+      "engine-v3",
+      "split-r1-routestack-production-pilot.md"
+    ),
+    "utf8"
+  );
+  assert.match(protocol, /preserves the R1C\.27 `BLOCKED` result/u);
+  assert.match(
+    protocol,
+    /SELECTED_CANDIDATE_DATE_OVERLAY_NOT_BOUND_TO_FULL_BOUNDED_LIVE_DISPATCH/u
+  );
+  assert.match(protocol, /2027-10-04 through 2027-10-18 fixture remains byte-unchanged/u);
+  assert.match(protocol, /2026-11-30 through 2026-12-14/u);
+});
+
 test("sandbox base URL is structurally inspected but no routestack subdomain is allowlisted without proof", () => {
   const receipt = inspectSplitR1SandboxBaseUrl("https://evolvemcp.routestack.ai");
   assert.deepEqual(receipt, {
@@ -1761,6 +1948,7 @@ test("qualification ledger and transport enforce exact 5/3/0 budgets before fetc
 function splitR1BoundedFakeFetch(fixture, { failedSearchOrdinal = null, invalidJsonOrdinal = null } = {}) {
   let requestCount = 0;
   let hotelSearchCount = 0;
+  const observedWindows = [];
   const fetchImpl = async (url, init) => {
     requestCount += 1;
     assert.equal(init.method, "POST");
@@ -1782,6 +1970,14 @@ function splitR1BoundedFakeFetch(fixture, { failedSearchOrdinal = null, invalidJ
     }
     assert.equal(pathname, SPLIT_R1_HOTEL_SEARCH_ENDPOINT);
     hotelSearchCount += 1;
+    const request = JSON.parse(init.body);
+    observedWindows.push({
+      checkIn: request.checkIn,
+      checkOut: request.checkOut,
+      currency: request.currency,
+      roomCount: request.roomCount,
+      rooms: request.rooms,
+    });
     if (hotelSearchCount === failedSearchOrdinal) return jsonResponse({ error: "synthetic" }, 503);
     if (hotelSearchCount === invalidJsonOrdinal) {
       return new Response("not-json", {
@@ -1806,6 +2002,7 @@ function splitR1BoundedFakeFetch(fixture, { failedSearchOrdinal = null, invalidJ
     fetchImpl,
     getRequestCount: () => requestCount,
     getHotelSearchCount: () => hotelSearchCount,
+    getObservedWindows: () => structuredClone(observedWindows),
   };
 }
 
@@ -1824,6 +2021,32 @@ async function runSplitR1BoundedFakeLive(fixture, fake) {
     fetchImpl: fake.fetchImpl,
     now: () => 1_800_000_000_000,
     randomUUID: () => "00000000-0000-4000-8000-000000000022",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => monotonic,
+    sleep: async (milliseconds) => {
+      monotonic += milliseconds;
+    },
+  });
+}
+
+async function runSplitR1SelectedAlternativeBoundedFakeLive(fixture, fake) {
+  let monotonic = 0;
+  const serverEnvPath = path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env");
+  return runSplitR1Collector({
+    matrix: fixture,
+    options: { mode: "sandbox-selected-alternative-bounded-live-pilot" },
+    environment: {
+      [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl]:
+        SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+      [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey]:
+        "test-only-selected-alternative-sandbox-key",
+      [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret]:
+        "test-only-selected-alternative-sandbox-secret",
+    },
+    execArgv: [`--env-file=${serverEnvPath}`],
+    fetchImpl: fake.fetchImpl,
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000027",
     ephemeralRunKey: TEST_KEY,
     monotonicNow: () => monotonic,
     sleep: async (milliseconds) => {
@@ -2174,6 +2397,88 @@ test("fake bounded live run materializes exactly 1 auth, 1 destination, 41 initi
   assert.equal(assertSplitR1PersistedPayloadSafe(result), true);
   const serialized = stableStringifySplitF0(result);
   assert.doesNotMatch(serialized, /memory-only-(?:partner|destination|correlation|continuation|next|property)/u);
+});
+
+test("fake selected alternative pilot dispatches the authoritative Candidate 1 plan as exact 43/41/0", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const authoritative =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture);
+  const fake = splitR1BoundedFakeFetch(authoritative.fixture);
+  const result = await runSplitR1SelectedAlternativeBoundedFakeLive(
+    fixture,
+    fake
+  );
+  assert.equal(result.runStatus, "COMPLETE");
+  assert.equal(result.mode, "SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_PILOT");
+  assert.equal(result.logicalSearchesPlanned, 41);
+  assert.equal(result.logicalSearchesExecuted, 41);
+  assert.equal(result.breakpointsPlanned, 13);
+  assert.equal(result.httpRequests, 43);
+  assert.equal(fake.getRequestCount(), 43);
+  assert.equal(fake.getHotelSearchCount(), 41);
+  assert.deepEqual(result.requestBudget.requestsByClass, {
+    authentication: 1,
+    destination: 1,
+    initialHotelSearch: 41,
+    continuation: 0,
+    otherForbidden: 0,
+  });
+  const receipt = result.selectedAlternativeBindingReceipt;
+  assert.equal(receipt.selectedCandidateOrdinal, 1);
+  assert.equal(
+    receipt.selectedCandidateRuleId,
+    "AUDIT_DATE_PLUS_90_DAYS_NEXT_MONDAY"
+  );
+  assert.equal(receipt.selectedScenarioOverlayApplied, true);
+  assert.equal(receipt.selectedCheckIn, "2026-11-30");
+  assert.equal(receipt.selectedCheckOut, "2026-12-14");
+  assert.equal(receipt.selectedDurationNights, 14);
+  assert.equal(receipt.promotedPlanScenarios, 1);
+  assert.equal(receipt.promotedPlanLogicalSearches, 41);
+  assert.equal(receipt.promotedPlanBreakpoints, 13);
+  assert.equal(receipt.promotedPlanFullStayBindings, 1);
+  assert.equal(receipt.dispatcherUsesPromotedPlan, true);
+  assert.equal(receipt.allLogicalSearchesWithinSelectedWindow, true);
+  assert.equal(receipt.originalCanonicalDatesDispatched, false);
+  assert.equal(receipt.mixedScenarioDispatch, false);
+  assert.equal(receipt.allBreakpointPairsCoverFourteenNights, true);
+  assert.equal(result.preflight.preflightAndDispatchShareAuthoritativePlan, true);
+  assert.deepEqual(
+    fake.getObservedWindows().map(({ checkIn, checkOut, currency }) => ({
+      checkIn,
+      checkOut,
+      currency,
+    })),
+    authoritative.livePlan.map((search) => ({
+      checkIn: search.request.checkIn,
+      checkOut: search.request.checkOut,
+      currency: search.request.currency,
+    }))
+  );
+  assert.equal(
+    fake
+      .getObservedWindows()
+      .some(
+        ({ checkIn, checkOut }) =>
+          checkIn === "2027-10-04" || checkOut === "2027-10-18"
+      ),
+    false
+  );
+  assert.equal(result.continuationHttpRequests, 0);
+  assert.equal(result.continuationExecuted, false);
+  assert.equal(result.retries, 0);
+  assert.equal(result.redirects, 0);
+  assert.equal(result.economicEligibilityFunnel.economicSelectionChanged, false);
+  assert.equal(result.economicEligibilityFunnel.comparabilityChanged, false);
+  assert.equal(result.economicEligibilityFunnel.deduplicationChanged, false);
+  assert.equal(result.economicEligibilityFunnel.currencyPolicyChanged, false);
+  assert.equal(result.economicEligibilityFunnel.splitFormulasChanged, false);
+  const serialized = stableStringifySplitF0(result);
+  assert.doesNotMatch(
+    serialized,
+    /memory-only-(?:partner|destination|correlation|continuation|next|property)/u
+  );
+  assert.equal(assertSplitR1PersistedPayloadSafe(result), true);
 });
 
 test("economic eligibility receipt counts valid offers and deduplicates properties without changing selection", async () => {

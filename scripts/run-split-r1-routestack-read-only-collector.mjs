@@ -93,6 +93,8 @@ export const SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG =
   "--live-canonical-full-stay-canary";
 export const SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG =
   "--live-alternative-full-stay-qualification";
+export const SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG =
+  "--live-selected-alternative-bounded-pilot";
 export const SPLIT_R1_SANDBOX_BOUNDED_BASE_URL = "https://evolvemcp.routestack.ai";
 export const SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX = 1;
 export const SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX = 1;
@@ -176,6 +178,14 @@ export const SPLIT_R1_SANDBOX_QUALIFICATION_CANDIDATES = Object.freeze([
     checkOut: "2027-06-07",
   }),
 ]);
+export const SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE = Object.freeze({
+  selectedCandidateOrdinal: 1,
+  selectedCandidateRuleId: "AUDIT_DATE_PLUS_90_DAYS_NEXT_MONDAY",
+  selectionReason: "FIRST_ORDERED_CANDIDATE_WITH_BASELINE",
+  checkIn: "2026-11-30",
+  checkOut: "2026-12-14",
+  durationNights: 14,
+});
 export const SPLIT_R1_SANDBOX_QUALIFICATION_AUTH_HTTP_MAX = 1;
 export const SPLIT_R1_SANDBOX_QUALIFICATION_DESTINATION_HTTP_MAX = 1;
 export const SPLIT_R1_SANDBOX_QUALIFICATION_INITIAL_SEARCH_HTTP_MAX = 3;
@@ -493,6 +503,7 @@ export function parseSplitR1Arguments(argv) {
     SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG,
     SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG,
     SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG,
+    SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
     targetedFlag,
     sandboxNightlyOracleFlag,
     ourpriceProbeFlag,
@@ -517,10 +528,14 @@ export function parseSplitR1Arguments(argv) {
   const alternativeFullStayQualificationRequested = argv.includes(
     SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG
   );
+  const selectedAlternativeBoundedLiveRequested = argv.includes(
+    SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG
+  );
   if (
     (boundedLiveRequested ||
       canonicalFullStayCanaryRequested ||
-      alternativeFullStayQualificationRequested) &&
+      alternativeFullStayQualificationRequested ||
+      selectedAlternativeBoundedLiveRequested) &&
     !argv.includes(sandboxNightlyOracleFlag)
   ) {
     throw new Error("split-r1-sandbox-bounded-live-requires-nightly-oracle-flag");
@@ -530,6 +545,7 @@ export function parseSplitR1Arguments(argv) {
       boundedLiveRequested,
       canonicalFullStayCanaryRequested,
       alternativeFullStayQualificationRequested,
+      selectedAlternativeBoundedLiveRequested,
     ].filter(Boolean).length > 1
   ) {
     throw new Error("split-r1-sandbox-live-modes-mutually-exclusive");
@@ -542,7 +558,8 @@ export function parseSplitR1Arguments(argv) {
     (sandboxConfirmationsPresent.length > 0 ||
       boundedLiveRequested ||
       canonicalFullStayCanaryRequested ||
-      alternativeFullStayQualificationRequested)
+      alternativeFullStayQualificationRequested ||
+      selectedAlternativeBoundedLiveRequested)
   ) {
     throw new Error("split-r1-sandbox-nightly-oracle-incompatible-mode-flags");
   }
@@ -621,7 +638,8 @@ export function parseSplitR1Arguments(argv) {
       sandboxConfirmationsPresent.length === 0 &&
       !boundedLiveRequested &&
       !canonicalFullStayCanaryRequested &&
-      !alternativeFullStayQualificationRequested
+      !alternativeFullStayQualificationRequested &&
+      !selectedAlternativeBoundedLiveRequested
     ) {
       return { mode: "sandbox-nightly-oracle-dry-run" };
     }
@@ -636,6 +654,9 @@ export function parseSplitR1Arguments(argv) {
     }
     if (alternativeFullStayQualificationRequested) {
       return { mode: "sandbox-alternative-full-stay-live-qualification" };
+    }
+    if (selectedAlternativeBoundedLiveRequested) {
+      return { mode: "sandbox-selected-alternative-bounded-live-pilot" };
     }
     return { mode: "sandbox-nightly-oracle-live-contract-hold" };
   }
@@ -3367,6 +3388,159 @@ export function buildSplitR1SandboxAlternativeFullStayPromotionV1(
   });
 }
 
+function freezeSplitR1SelectedPlanValue(value) {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value)) {
+    return value;
+  }
+  for (const child of Object.values(value)) {
+    freezeSplitR1SelectedPlanValue(child);
+  }
+  return Object.freeze(value);
+}
+
+export function buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(
+  canonicalFixture,
+  selection = SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE
+) {
+  if (
+    selection?.selectedCandidateOrdinal !==
+      SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.selectedCandidateOrdinal ||
+    selection?.selectedCandidateRuleId !==
+      SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.selectedCandidateRuleId ||
+    selection?.selectionReason !==
+      SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.selectionReason
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-candidate-mismatch");
+  }
+  const candidate = buildSplitR1SandboxAlternativeFullStayCandidatesV1(
+    canonicalFixture
+  ).find(
+    (entry) =>
+      entry.candidateOrdinal === selection.selectedCandidateOrdinal &&
+      entry.candidateRuleId === selection.selectedCandidateRuleId
+  );
+  if (
+    candidate === undefined ||
+    candidate.checkIn !== SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.checkIn ||
+    candidate.checkOut !== SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.checkOut ||
+    candidate.durationNights !==
+      SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.durationNights
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-date-drift");
+  }
+  const promotedFixture = structuredClone(candidate.fixture);
+  const promotedPlan = structuredClone(candidate.canonicalPlan);
+  const fullStayBindings = promotedPlan.filter(
+    (search) => search?.searchRole === "FULL_STAY"
+  );
+  if (
+    promotedPlan.length !== SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LOGICAL_SEARCHES ||
+    promotedFixture.scenario.breakpoints.length !==
+      SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_BREAKPOINTS ||
+    fullStayBindings.length !== 1
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-plan-shape-invalid");
+  }
+  if (
+    fullStayBindings[0].request.checkIn !== candidate.checkIn ||
+    fullStayBindings[0].request.checkOut !== candidate.checkOut
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-full-stay-date-drift");
+  }
+  const windowStart = splitR1UtcDateMilliseconds(candidate.checkIn);
+  const windowEnd = splitR1UtcDateMilliseconds(candidate.checkOut);
+  const canonicalDestination = stableStringifySplitF0(
+    canonicalFixture.scenario.destination
+  );
+  const canonicalOccupancy = stableStringifySplitF0(
+    canonicalFixture.scenario.occupancy
+  );
+  for (const search of promotedPlan) {
+    const searchStart = splitR1UtcDateMilliseconds(search?.request?.checkIn);
+    const searchEnd = splitR1UtcDateMilliseconds(search?.request?.checkOut);
+    if (
+      searchStart === null ||
+      searchEnd === null ||
+      searchStart < windowStart ||
+      searchEnd > windowEnd ||
+      searchStart >= searchEnd
+    ) {
+      throw new Error("split-r1-sandbox-selected-alternative-search-outside-window");
+    }
+    if (
+      search.request.checkIn === canonicalFixture.scenario.checkIn ||
+      search.request.checkOut === canonicalFixture.scenario.checkOut
+    ) {
+      throw new Error("split-r1-sandbox-selected-alternative-original-date-dispatched");
+    }
+    if (
+      stableStringifySplitF0(search.request.destination) !== canonicalDestination ||
+      stableStringifySplitF0(search.request.occupancy) !== canonicalOccupancy ||
+      search.request.currency !== canonicalFixture.scenario.currency
+    ) {
+      throw new Error("split-r1-sandbox-selected-alternative-search-context-drift");
+    }
+  }
+  for (const breakpoint of promotedFixture.scenario.breakpoints) {
+    const prefixes = promotedPlan.filter(
+      (search) =>
+        search.searchRole === "PREFIX" &&
+        search.breakpointId === breakpoint.breakpointId
+    );
+    const suffixes = promotedPlan.filter(
+      (search) =>
+        search.searchRole === "SUFFIX" &&
+        search.breakpointId === breakpoint.breakpointId
+    );
+    if (prefixes.length !== 1 || suffixes.length !== 1) {
+      throw new Error("split-r1-sandbox-selected-alternative-breakpoint-binding-invalid");
+    }
+    const prefix = prefixes[0];
+    const suffix = suffixes[0];
+    if (
+      prefix.request.checkIn !== candidate.checkIn ||
+      prefix.request.checkOut !== suffix.request.checkIn ||
+      suffix.request.checkOut !== candidate.checkOut ||
+      splitR1WindowNights(prefix.request.checkIn, prefix.request.checkOut) +
+        splitR1WindowNights(suffix.request.checkIn, suffix.request.checkOut) !==
+        candidate.durationNights
+    ) {
+      throw new Error("split-r1-sandbox-selected-alternative-breakpoint-coverage-invalid");
+    }
+  }
+  freezeSplitR1SelectedPlanValue(promotedFixture);
+  freezeSplitR1SelectedPlanValue(promotedPlan);
+  const bindingReceipt = Object.freeze({
+    schemaVersion:
+      "stayopti.split-r1.selected-alternative-full-pilot-binding@1",
+    selectedCandidateOrdinal: candidate.candidateOrdinal,
+    selectedCandidateRuleId: candidate.candidateRuleId,
+    selectionReason: SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE.selectionReason,
+    selectedScenarioOverlayApplied: true,
+    selectedCheckIn: candidate.checkIn,
+    selectedCheckOut: candidate.checkOut,
+    selectedDurationNights: candidate.durationNights,
+    promotedPlanScenarios: 1,
+    promotedPlanLogicalSearches: promotedPlan.length,
+    promotedPlanBreakpoints: promotedFixture.scenario.breakpoints.length,
+    promotedPlanFullStayBindings: fullStayBindings.length,
+    dispatcherUsesPromotedPlan: true,
+    allLogicalSearchesWithinSelectedWindow: true,
+    originalCanonicalDatesDispatched: false,
+    mixedScenarioDispatch: false,
+    allBreakpointPairsCoverFourteenNights: true,
+    priceBasedSelection: false,
+    resultCountMaximization: false,
+  });
+  return Object.freeze({
+    schemaVersion:
+      "stayopti.split-r1.selected-alternative-authoritative-plan@1",
+    fixture: promotedFixture,
+    livePlan: promotedPlan,
+    bindingReceipt,
+  });
+}
+
 export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
   const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
   const countRole = (role) => searches.filter((search) => search.searchRole === role).length;
@@ -3588,6 +3762,47 @@ export function validateSplitR1SandboxBoundedLivePreflightV1({
     boundedSnapshotImpliesGlobalOptimum: false,
     sandboxMarketEvidenceAllowed: false,
     rawPersistenceAllowed: false,
+  });
+}
+
+export function validateSplitR1SandboxSelectedAlternativeBoundedLivePreflightV1({
+  canonicalFixture,
+  authoritativePlanBinding,
+  contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+} = {}) {
+  if (
+    authoritativePlanBinding === null ||
+    typeof authoritativePlanBinding !== "object"
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-binding-required");
+  }
+  const expectedBinding =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(canonicalFixture);
+  if (
+    stableStringifySplitF0(authoritativePlanBinding) !==
+    stableStringifySplitF0(expectedBinding)
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-binding-diverged");
+  }
+  if (
+    !Object.isFrozen(authoritativePlanBinding) ||
+    !Object.isFrozen(authoritativePlanBinding.fixture) ||
+    !Object.isFrozen(authoritativePlanBinding.livePlan)
+  ) {
+    throw new Error("split-r1-sandbox-selected-alternative-binding-not-immutable");
+  }
+  const boundedPreflight = validateSplitR1SandboxBoundedLivePreflightV1({
+    fixture: authoritativePlanBinding.fixture,
+    livePlan: authoritativePlanBinding.livePlan,
+    contract,
+  });
+  return Object.freeze({
+    ...boundedPreflight,
+    schemaVersion:
+      "stayopti.split-r1.sandbox-selected-alternative-bounded-live-preflight@1",
+    selectedAlternativeBindingReceipt:
+      authoritativePlanBinding.bindingReceipt,
+    preflightAndDispatchShareAuthoritativePlan: true,
   });
 }
 
@@ -6607,17 +6822,44 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
   ephemeralRunKey = crypto.randomBytes(32),
   monotonicNow,
   sleep,
-  livePlan = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture),
+  livePlan,
+  authoritativePlanBinding,
   contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
 } = {}) {
-  if (options?.mode !== "sandbox-nightly-oracle-live-bounded-pilot") {
+  const selectedAlternativeMode =
+    options?.mode === "sandbox-selected-alternative-bounded-live-pilot";
+  if (
+    options?.mode !== "sandbox-nightly-oracle-live-bounded-pilot" &&
+    !selectedAlternativeMode
+  ) {
     throw new Error("split-r1-sandbox-bounded-live-mode-required");
   }
-  const preflight = validateSplitR1SandboxBoundedLivePreflightV1({
-    fixture,
-    livePlan,
-    contract,
-  });
+  const executionFixture = selectedAlternativeMode
+    ? authoritativePlanBinding?.fixture
+    : fixture;
+  const executionPlan = selectedAlternativeMode
+    ? authoritativePlanBinding?.livePlan
+    : livePlan ?? buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const preflight = selectedAlternativeMode
+    ? validateSplitR1SandboxSelectedAlternativeBoundedLivePreflightV1({
+        canonicalFixture: fixture,
+        authoritativePlanBinding,
+        contract,
+      })
+    : validateSplitR1SandboxBoundedLivePreflightV1({
+        fixture: executionFixture,
+        livePlan: executionPlan,
+        contract,
+      });
+  if (
+    selectedAlternativeMode &&
+    (executionFixture !== authoritativePlanBinding.fixture ||
+      executionPlan !== authoritativePlanBinding.livePlan)
+  ) {
+    throw new Error(
+      "split-r1-sandbox-selected-alternative-dispatch-plan-identity-mismatch"
+    );
+  }
   const configuration = resolveSplitR1SandboxBoundedConfigurationV1(
     environment,
     execArgv
@@ -6642,17 +6884,17 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
     throw new Error("split-r1-sandbox-bounded-partner-token-missing");
   }
   const destinationPayload = await transport.postDestination(
-    createSplitR1DestinationRequest(fixture.scenario),
+    createSplitR1DestinationRequest(executionFixture.scenario),
     partnerToken
   );
   const destination = selectSplitR1DestinationCandidate(
     destinationPayload,
-    fixture.scenario
+    executionFixture.scenario
   );
   const searchStates = [];
-  for (const [logicalSearchIndex, logicalSearch] of livePlan.entries()) {
+  for (const [logicalSearchIndex, logicalSearch] of executionPlan.entries()) {
     const request = createSplitR1HotelSearchRequest(logicalSearch, destination);
-    const breakpointIndex = fixture.scenario.breakpoints.findIndex(
+    const breakpointIndex = executionFixture.scenario.breakpoints.findIndex(
       (breakpoint) => breakpoint.breakpointId === logicalSearch.breakpointId
     );
     const breakpointOrdinal = breakpointIndex >= 0 ? breakpointIndex + 1 : null;
@@ -6738,13 +6980,13 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
   }
   partnerToken = null;
   const economicResult = evaluateSplitR1SandboxNightlyOracleV1(
-    fixture,
+    executionFixture,
     searchStates
   );
   const economicEligibilityFunnel =
     buildSplitR1EconomicEligibilityFunnelReceiptV1({
-      fixture,
-      livePlan,
+      fixture: executionFixture,
+      livePlan: executionPlan,
       searchStates,
     });
   const coverageCounts = Object.fromEntries(
@@ -6766,7 +7008,9 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
   ).length;
   const result = {
     schemaVersion: "stayopti.split-r1.sandbox-bounded-live-result@1",
-    mode: "SANDBOX_BOUNDED_LIVE_PILOT",
+    mode: selectedAlternativeMode
+      ? "SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_PILOT"
+      : "SANDBOX_BOUNDED_LIVE_PILOT",
     environment: "sandbox",
     privateTechnicalPilotOnly: true,
     runStatus: unprocessableSearches === 0 ? "COMPLETE" : "INCONCLUSIVE",
@@ -6775,9 +7019,12 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
       SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
     economicEligibilityFunnelReceiptVersion:
       SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
-    logicalSearchesPlanned: livePlan.length,
+    logicalSearchesPlanned: executionPlan.length,
     logicalSearchesExecuted: searchStates.length,
-    breakpointsPlanned: fixture.scenario.breakpoints.length,
+    breakpointsPlanned: executionFixture.scenario.breakpoints.length,
+    ...(selectedAlternativeMode
+      ? { selectedAlternativeBindingReceipt: authoritativePlanBinding.bindingReceipt }
+      : {}),
     httpRequests: requestBudget.totalHttpRequests,
     requestBudget,
     maxObservedConcurrency: transport.getMaxObservedConcurrency(),
@@ -6831,6 +7078,7 @@ export async function runSplitR1Collector({
   canonicalFullStayCanaryContract,
   alternativeFullStayQualificationContract,
   qualificationCandidates,
+  selectedAlternativePlanBinding,
 }) {
   if (
     options.mode === "ourprice-probe-dry-run" ||
@@ -6889,6 +7137,26 @@ export async function runSplitR1Collector({
       monotonicNow,
       sleep,
       livePlan,
+      contract:
+        boundedLiveContract ?? SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+    });
+  }
+  if (options.mode === "sandbox-selected-alternative-bounded-live-pilot") {
+    const authoritativePlanBinding =
+      selectedAlternativePlanBinding ??
+      buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(matrix);
+    return runSplitR1SandboxBoundedLivePilotV1({
+      fixture: matrix,
+      options,
+      environment,
+      execArgv,
+      fetchImpl,
+      now,
+      randomUUID,
+      ephemeralRunKey,
+      monotonicNow,
+      sleep,
+      authoritativePlanBinding,
       contract:
         boundedLiveContract ?? SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
     });
@@ -7119,6 +7387,7 @@ async function main() {
       : options.mode === "sandbox-nightly-oracle-dry-run" ||
           options.mode === "sandbox-nightly-oracle-live-contract-hold" ||
           options.mode === "sandbox-nightly-oracle-live-bounded-pilot" ||
+          options.mode === "sandbox-selected-alternative-bounded-live-pilot" ||
           options.mode === "sandbox-canonical-full-stay-live-canary" ||
           options.mode === "sandbox-alternative-full-stay-live-qualification"
         ? await loadSplitR1SandboxNightlyOraclePilotV1()
