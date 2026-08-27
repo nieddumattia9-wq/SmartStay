@@ -88,6 +88,41 @@ export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_INITIAL_HTTP_BUDGET = 41;
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_CONTINUATION_HTTP_BUDGET = 82;
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_HOTEL_HTTP_BUDGET = 123;
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET = 125;
+export const SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG = "--live-bounded-pilot";
+export const SPLIT_R1_SANDBOX_BOUNDED_BASE_URL = "https://evolvemcp.routestack.ai";
+export const SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX = 1;
+export const SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX = 1;
+export const SPLIT_R1_SANDBOX_BOUNDED_INITIAL_SEARCH_HTTP_MAX = 41;
+export const SPLIT_R1_SANDBOX_BOUNDED_CONTINUATION_HTTP_MAX = 0;
+export const SPLIT_R1_SANDBOX_BOUNDED_TOTAL_HTTP_MAX = 43;
+export const SPLIT_R1_SANDBOX_BOUNDED_RETRY_MAX = 0;
+export const SPLIT_R1_SANDBOX_BOUNDED_REDIRECT_MAX = 0;
+export const SPLIT_R1_SANDBOX_BOUNDED_MAX_CONCURRENCY = 1;
+export const SPLIT_R1_SANDBOX_BOUNDED_MIN_REQUEST_START_INTERVAL_MS = 1_000;
+export const SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT = Object.freeze({
+  schemaVersion: "stayopti.split-r1.sandbox-bounded-live-contract@1",
+  scenarios: 1,
+  logicalSearches: 41,
+  breakpoints: 13,
+  authHttpMax: SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX,
+  destinationHttpMax: SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX,
+  initialSearchHttpMax: SPLIT_R1_SANDBOX_BOUNDED_INITIAL_SEARCH_HTTP_MAX,
+  continuationHttpMax: SPLIT_R1_SANDBOX_BOUNDED_CONTINUATION_HTTP_MAX,
+  totalHttpMax: SPLIT_R1_SANDBOX_BOUNDED_TOTAL_HTTP_MAX,
+  retryMax: SPLIT_R1_SANDBOX_BOUNDED_RETRY_MAX,
+  redirectMax: SPLIT_R1_SANDBOX_BOUNDED_REDIRECT_MAX,
+  maxConcurrency: SPLIT_R1_SANDBOX_BOUNDED_MAX_CONCURRENCY,
+  minimumRequestStartIntervalMs:
+    SPLIT_R1_SANDBOX_BOUNDED_MIN_REQUEST_START_INTERVAL_MS,
+  sandboxBaseUrl: SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+  sandboxToProductionFallbackAllowed: false,
+  applicationStatusRequired: false,
+  resultStatusTerminalAuthority: false,
+  completenessClaimAllowed: false,
+  globalOptimumClaimAllowed: false,
+  sandboxMarketEvidenceAllowed: false,
+  rawPersistenceAllowed: false,
+});
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_ABSOLUTE_MINOR = 2_500;
 export const SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO = 0.02;
 export const SPLIT_R1_SANDBOX_QUOTA_CLASSIFICATION =
@@ -354,6 +389,7 @@ export function parseSplitR1Arguments(argv) {
   const ourpriceProbeV2Flag = "--ourprice-semantics-probe-v2";
   const allowed = new Set([
     "--dry-run",
+    SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG,
     targetedFlag,
     sandboxNightlyOracleFlag,
     ourpriceProbeFlag,
@@ -371,10 +407,17 @@ export function parseSplitR1Arguments(argv) {
   const sandboxConfirmationsPresent = SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS.filter(
     (flag) => argv.includes(flag)
   );
+  const boundedLiveRequested = argv.includes(SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG);
+  if (boundedLiveRequested && !argv.includes(sandboxNightlyOracleFlag)) {
+    throw new Error("split-r1-sandbox-bounded-live-requires-nightly-oracle-flag");
+  }
   if (sandboxConfirmationsPresent.length > 0 && !argv.includes(sandboxNightlyOracleFlag)) {
     throw new Error("split-r1-sandbox-nightly-oracle-flag-required");
   }
-  if (argv.includes("--dry-run") && sandboxConfirmationsPresent.length > 0) {
+  if (
+    argv.includes("--dry-run") &&
+    (sandboxConfirmationsPresent.length > 0 || boundedLiveRequested)
+  ) {
     throw new Error("split-r1-sandbox-nightly-oracle-incompatible-mode-flags");
   }
   if (argv.includes("--dry-run") && SPLIT_R1_LIVE_CONFIRMATIONS.some((flag) => argv.includes(flag))) {
@@ -448,11 +491,14 @@ export function parseSplitR1Arguments(argv) {
     throw new Error("split-r1-sandbox-nightly-oracle-live-not-authorized");
   }
   if (argv.includes(sandboxNightlyOracleFlag)) {
-    if (sandboxConfirmationsPresent.length === 0) {
+    if (sandboxConfirmationsPresent.length === 0 && !boundedLiveRequested) {
       return { mode: "sandbox-nightly-oracle-dry-run" };
     }
     if (sandboxConfirmationsPresent.length !== SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS.length) {
       throw new Error("split-r1-sandbox-nightly-oracle-live-confirmations-incomplete");
+    }
+    if (boundedLiveRequested) {
+      return { mode: "sandbox-nightly-oracle-live-bounded-pilot" };
     }
     return { mode: "sandbox-nightly-oracle-live-contract-hold" };
   }
@@ -562,6 +608,14 @@ export function validateSplitR1SandboxBaseUrl(baseUrl) {
     throw new Error("split-r1-sandbox-host-not-allowlisted");
   }
   return `https://${receipt.hostname}`;
+}
+
+export function validateSplitR1SandboxBoundedBaseUrlV1(baseUrl) {
+  const receipt = inspectSplitR1SandboxBaseUrl(baseUrl);
+  if (receipt.hostname !== "evolvemcp.routestack.ai") {
+    throw new Error("split-r1-sandbox-bounded-host-not-allowlisted");
+  }
+  return SPLIT_R1_SANDBOX_BOUNDED_BASE_URL;
 }
 
 export function assertSplitR1EndpointAllowed(method, endpointPath) {
@@ -2848,6 +2902,97 @@ export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
   };
 }
 
+function assertSplitR1SandboxBoundedContractV1(contract) {
+  if (contract === null || typeof contract !== "object" || Array.isArray(contract)) {
+    throw new Error("split-r1-sandbox-bounded-contract-invalid");
+  }
+  for (const [field, expected] of Object.entries(SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT)) {
+    if (stableStringifySplitF0(contract[field]) !== stableStringifySplitF0(expected)) {
+      throw new Error(`split-r1-sandbox-bounded-contract-${field}-mismatch`);
+    }
+  }
+  if (
+    Object.keys(contract).length !==
+    Object.keys(SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT).length
+  ) {
+    throw new Error("split-r1-sandbox-bounded-contract-extra-field-prohibited");
+  }
+  validateSplitR1SandboxBoundedBaseUrlV1(contract.sandboxBaseUrl);
+  return true;
+}
+
+export function validateSplitR1SandboxBoundedLivePreflightV1({
+  fixture,
+  livePlan = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture),
+  contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+} = {}) {
+  assertSplitR1SandboxBoundedContractV1(contract);
+  const dryRun = buildSplitR1SandboxNightlyOracleDryRunV1(fixture);
+  const canonicalPlan = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  if (
+    dryRun.scenarios !== contract.scenarios ||
+    dryRun.logicalSearches !== contract.logicalSearches ||
+    dryRun.breakpoints !== contract.breakpoints ||
+    dryRun.httpRequests !== 0
+  ) {
+    throw new Error("split-r1-sandbox-bounded-dry-run-contract-mismatch");
+  }
+  if (!Array.isArray(livePlan) || livePlan.length !== contract.logicalSearches) {
+    throw new Error("split-r1-sandbox-bounded-live-plan-count-mismatch");
+  }
+  if (stableStringifySplitF0(livePlan) !== stableStringifySplitF0(canonicalPlan)) {
+    throw new Error("split-r1-sandbox-bounded-live-plan-diverged-from-dry-run");
+  }
+  const allowedRoles = new Set(["FULL_STAY", "NIGHTLY", "PREFIX", "SUFFIX"]);
+  const logicalSearchIds = new Set();
+  for (const search of livePlan) {
+    if (!allowedRoles.has(search?.searchRole)) {
+      throw new Error("split-r1-sandbox-bounded-search-role-not-allowlisted");
+    }
+    if (
+      typeof search.logicalSearchId !== "string" ||
+      search.logicalSearchId.length === 0 ||
+      logicalSearchIds.has(search.logicalSearchId)
+    ) {
+      throw new Error("split-r1-sandbox-bounded-logical-search-duplicate-or-invalid");
+    }
+    logicalSearchIds.add(search.logicalSearchId);
+    if (
+      Object.prototype.hasOwnProperty.call(search, "correlationId") ||
+      Object.prototype.hasOwnProperty.call(search, "token") ||
+      Object.prototype.hasOwnProperty.call(search, "nextResultsKey")
+    ) {
+      throw new Error("split-r1-sandbox-bounded-continuation-plan-prohibited");
+    }
+  }
+  return Object.freeze({
+    schemaVersion: "stayopti.split-r1.sandbox-bounded-live-preflight@1",
+    eligible: true,
+    canonicalPlanSharedWithDryRun: true,
+    scenarios: dryRun.scenarios,
+    logicalSearches: dryRun.logicalSearches,
+    breakpoints: dryRun.breakpoints,
+    authHttpMax: contract.authHttpMax,
+    destinationHttpMax: contract.destinationHttpMax,
+    initialSearchHttpMax: contract.initialSearchHttpMax,
+    continuationHttpMax: contract.continuationHttpMax,
+    totalHttpMax: contract.totalHttpMax,
+    retryMax: contract.retryMax,
+    redirectMax: contract.redirectMax,
+    maxConcurrency: contract.maxConcurrency,
+    minimumRequestStartIntervalMs: contract.minimumRequestStartIntervalMs,
+    sandboxHostname: new URL(contract.sandboxBaseUrl).hostname,
+    sandboxToProductionFallbackAllowed: false,
+    collectionCoverageReceiptVersion: SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+    applicationStatusRequired: false,
+    resultStatusTerminalAuthority: false,
+    boundedSnapshotImpliesCompleteness: false,
+    boundedSnapshotImpliesGlobalOptimum: false,
+    sandboxMarketEvidenceAllowed: false,
+    rawPersistenceAllowed: false,
+  });
+}
+
 function splitR1NightlyOracleOfferSort(left, right) {
   return (
     left.totalMinorUnits - right.totalMinorUnits ||
@@ -4034,6 +4179,24 @@ export function resolveSplitR1SandboxConfiguration(environment, execArgv) {
   return { baseUrl, apiKey, apiSecret };
 }
 
+export function resolveSplitR1SandboxBoundedConfigurationV1(environment, execArgv) {
+  ensureServerEnvBinding(execArgv);
+  const baseUrlValue = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl];
+  if (typeof baseUrlValue !== "string" || baseUrlValue.length === 0) {
+    throw new Error("split-r1-sandbox-bounded-base-url-missing");
+  }
+  const baseUrl = validateSplitR1SandboxBoundedBaseUrlV1(baseUrlValue);
+  const apiKey = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey];
+  const apiSecret = environment[SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret];
+  if (typeof apiKey !== "string" || apiKey.length === 0) {
+    throw new Error("split-r1-sandbox-bounded-api-key-missing");
+  }
+  if (typeof apiSecret !== "string" || apiSecret.length === 0) {
+    throw new Error("split-r1-sandbox-bounded-api-secret-missing");
+  }
+  return { baseUrl, apiKey, apiSecret };
+}
+
 async function parseJsonResponse(response, operation) {
   if (response.status !== 200) {
     throw new Error(`split-r1-${operation}-http-${response.status}`);
@@ -4055,6 +4218,109 @@ function requestClassForEndpoint(endpointPath) {
   if (endpointPath === SPLIT_R1_DESTINATION_ENDPOINT) return "destination";
   if (endpointPath === SPLIT_R1_AUTH_ENDPOINT) return "authentication";
   throw new Error("split-r1-request-class-unknown");
+}
+
+const SPLIT_R1_SANDBOX_BOUNDED_REQUESTS = Object.freeze({
+  authentication: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_AUTH_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX,
+  }),
+  destination: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_DESTINATION_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX,
+  }),
+  initialHotelSearch: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_BOUNDED_INITIAL_SEARCH_HTTP_MAX,
+  }),
+  continuation: Object.freeze({
+    method: "POST",
+    endpointPath: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    limit: SPLIT_R1_SANDBOX_BOUNDED_CONTINUATION_HTTP_MAX,
+  }),
+});
+
+export function assertSplitR1SandboxBoundedRequestAllowedV1({
+  requestClass,
+  method,
+  endpointPath,
+}) {
+  const expected = SPLIT_R1_SANDBOX_BOUNDED_REQUESTS[requestClass];
+  if (requestClass === "continuation") {
+    throw new Error("split-r1-sandbox-bounded-continuation-prohibited");
+  }
+  if (!expected || expected.limit < 1) {
+    throw new Error("split-r1-sandbox-bounded-request-class-prohibited");
+  }
+  if (method !== expected.method || endpointPath !== expected.endpointPath) {
+    throw new Error("split-r1-sandbox-bounded-route-not-allowlisted");
+  }
+  assertSplitR1EndpointAllowed(method, endpointPath);
+  return true;
+}
+
+export function createSplitR1SandboxBoundedHttpLedgerV1(
+  contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT
+) {
+  assertSplitR1SandboxBoundedContractV1(contract);
+  let totalHttpRequests = 0;
+  const requestsByClass = {
+    authentication: 0,
+    destination: 0,
+    initialHotelSearch: 0,
+    continuation: 0,
+    otherForbidden: 0,
+  };
+  const limits = {
+    authentication: contract.authHttpMax,
+    destination: contract.destinationHttpMax,
+    initialHotelSearch: contract.initialSearchHttpMax,
+    continuation: contract.continuationHttpMax,
+    otherForbidden: 0,
+  };
+  return {
+    reserve(requestClass) {
+      if (!Object.prototype.hasOwnProperty.call(requestsByClass, requestClass)) {
+        throw new Error("split-r1-sandbox-bounded-request-class-prohibited");
+      }
+      if (requestClass === "continuation") {
+        throw new Error("split-r1-sandbox-bounded-continuation-prohibited");
+      }
+      if (requestClass === "otherForbidden") {
+        throw new Error("split-r1-sandbox-bounded-route-not-allowlisted");
+      }
+      if (totalHttpRequests + 1 > contract.totalHttpMax) {
+        throw new Error("split-r1-sandbox-bounded-total-http-budget-exhausted");
+      }
+      if (requestsByClass[requestClass] + 1 > limits[requestClass]) {
+        throw new Error(`split-r1-sandbox-bounded-${requestClass}-budget-exhausted`);
+      }
+      requestsByClass[requestClass] += 1;
+      totalHttpRequests += 1;
+      return Object.freeze({
+        requestClass,
+        classOrdinal: requestsByClass[requestClass],
+        totalOrdinal: totalHttpRequests,
+      });
+    },
+    snapshot() {
+      return Object.freeze({
+        authHttpMax: contract.authHttpMax,
+        destinationHttpMax: contract.destinationHttpMax,
+        initialSearchHttpMax: contract.initialSearchHttpMax,
+        continuationHttpMax: contract.continuationHttpMax,
+        totalHttpMax: contract.totalHttpMax,
+        requestsByClass: Object.freeze({ ...requestsByClass }),
+        totalHttpRequests,
+        totalHttpBudgetRemaining: contract.totalHttpMax - totalHttpRequests,
+        initialSearchBudgetRemaining:
+          contract.initialSearchHttpMax - requestsByClass.initialHotelSearch,
+      });
+    },
+  };
 }
 
 function validateRestrictiveLimit(value, hardLimit, label) {
@@ -4263,6 +4529,104 @@ export function createSplitR1NativeTransport({
     getBudgetSnapshot: () => budgetLedger.snapshot(),
     getMaxObservedConcurrency: () => maxObservedConcurrency,
   };
+}
+
+export function createSplitR1SandboxBoundedTransportV1({
+  baseUrl = SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+  fetchImpl = globalThis.fetch,
+  timeoutMs = SPLIT_R1_HTTP_TIMEOUT_MS,
+  monotonicNow,
+  sleep,
+  minRequestStartIntervalMs =
+    SPLIT_R1_SANDBOX_BOUNDED_MIN_REQUEST_START_INTERVAL_MS,
+  contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+} = {}) {
+  assertSplitR1SandboxBoundedContractV1(contract);
+  validateSplitR1SandboxBoundedBaseUrlV1(baseUrl);
+  if (typeof fetchImpl !== "function") {
+    throw new Error("split-r1-sandbox-bounded-native-fetch-unavailable");
+  }
+  if (
+    !Number.isFinite(minRequestStartIntervalMs) ||
+    minRequestStartIntervalMs < SPLIT_R1_SANDBOX_BOUNDED_MIN_REQUEST_START_INTERVAL_MS
+  ) {
+    throw new Error("split-r1-sandbox-bounded-rate-interval-too-low");
+  }
+  const ledger = createSplitR1SandboxBoundedHttpLedgerV1(contract);
+  const rateLimiter = createSplitR1MonotonicRateLimiter({
+    monotonicNow,
+    sleep,
+    minRequestStartIntervalMs,
+  });
+  const requestStarts = [];
+  let activeRequests = 0;
+  let maxObservedConcurrency = 0;
+  let serializedTail = Promise.resolve();
+
+  const performPost = async (requestClass, endpointPath, body, bearerToken = null) => {
+    assertSplitR1SandboxBoundedRequestAllowedV1({
+      requestClass,
+      method: "POST",
+      endpointPath,
+    });
+    const requestStart = await rateLimiter.awaitStartSlot();
+    ledger.reserve(requestClass);
+    requestStarts.push(requestStart);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    activeRequests += 1;
+    maxObservedConcurrency = Math.max(maxObservedConcurrency, activeRequests);
+    if (activeRequests > SPLIT_R1_SANDBOX_BOUNDED_MAX_CONCURRENCY) {
+      activeRequests -= 1;
+      clearTimeout(timeout);
+      throw new Error("split-r1-sandbox-bounded-concurrency-exceeded");
+    }
+    try {
+      const response = await fetchImpl(`${baseUrl}${endpointPath}`, {
+        method: "POST",
+        redirect: "error",
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(bearerToken === null ? {} : { Authorization: `Bearer ${bearerToken}` }),
+        },
+        body: JSON.stringify(body),
+      });
+      return await parseJsonResponse(response, endpointPath.split("/").at(-1));
+    } finally {
+      activeRequests -= 1;
+      clearTimeout(timeout);
+    }
+  };
+
+  const enqueue = (requestClass, endpointPath, body, bearerToken = null) => {
+    const operation = serializedTail.then(() =>
+      performPost(requestClass, endpointPath, body, bearerToken)
+    );
+    serializedTail = operation.catch(() => undefined);
+    return operation;
+  };
+
+  return Object.freeze({
+    postAuthentication: (body) =>
+      enqueue("authentication", SPLIT_R1_AUTH_ENDPOINT, body),
+    postDestination: (body, bearerToken) =>
+      enqueue("destination", SPLIT_R1_DESTINATION_ENDPOINT, body, bearerToken),
+    postInitialHotelSearch: (body, bearerToken) =>
+      enqueue("initialHotelSearch", SPLIT_R1_HOTEL_SEARCH_ENDPOINT, body, bearerToken),
+    postContinuationHotelSearch() {
+      throw new Error("split-r1-sandbox-bounded-continuation-prohibited");
+    },
+    getBudgetSnapshot: () => ledger.snapshot(),
+    getMaxObservedConcurrency: () => maxObservedConcurrency,
+    getMinimumObservedRequestIntervalMs: () => {
+      if (requestStarts.length < 2) return null;
+      return Math.min(
+        ...requestStarts.slice(1).map((start, index) => start - requestStarts[index])
+      );
+    },
+  });
 }
 
 export async function runSplitR1OurpriceSemanticsProbeV1({
@@ -4576,6 +4940,207 @@ export async function runSplitR1OurpriceSemanticsProbeV2({
   return result;
 }
 
+function splitR1SandboxBoundedInitialFailure(error) {
+  const message = typeof error?.message === "string" ? error.message : "";
+  const httpMatch = message.match(/^split-r1-search-hotels-http-(\d{3})$/u);
+  if (httpMatch) {
+    return { failureClass: "HTTP_NON_200", httpStatus: Number(httpMatch[1]), jsonValid: true };
+  }
+  if (message === "split-r1-search-hotels-json-invalid") {
+    return { failureClass: "JSON_INVALID", httpStatus: 200, jsonValid: false };
+  }
+  if (message === "split-r1-search-hotels-content-type-invalid") {
+    return { failureClass: "CONTENT_TYPE_INVALID", httpStatus: 200, jsonValid: false };
+  }
+  return null;
+}
+
+export async function runSplitR1SandboxBoundedLivePilotV1({
+  fixture,
+  options,
+  environment = process.env,
+  execArgv = process.execArgv,
+  fetchImpl = globalThis.fetch,
+  now = Date.now,
+  randomUUID = crypto.randomUUID,
+  ephemeralRunKey = crypto.randomBytes(32),
+  monotonicNow,
+  sleep,
+  livePlan = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture),
+  contract = SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+} = {}) {
+  if (options?.mode !== "sandbox-nightly-oracle-live-bounded-pilot") {
+    throw new Error("split-r1-sandbox-bounded-live-mode-required");
+  }
+  const preflight = validateSplitR1SandboxBoundedLivePreflightV1({
+    fixture,
+    livePlan,
+    contract,
+  });
+  const configuration = resolveSplitR1SandboxBoundedConfigurationV1(
+    environment,
+    execArgv
+  );
+  const transport = createSplitR1SandboxBoundedTransportV1({
+    baseUrl: configuration.baseUrl,
+    fetchImpl,
+    monotonicNow,
+    sleep,
+    minRequestStartIntervalMs: contract.minimumRequestStartIntervalMs,
+    contract,
+  });
+  const authRequest = createSplitR1PartnerTokenRequest({
+    apiKey: configuration.apiKey,
+    apiSecret: configuration.apiSecret,
+    now,
+    randomUUID,
+  });
+  const authResponse = await transport.postAuthentication(authRequest);
+  let partnerToken = authResponse?.token;
+  if (typeof partnerToken !== "string" || partnerToken.length === 0) {
+    throw new Error("split-r1-sandbox-bounded-partner-token-missing");
+  }
+  const destinationPayload = await transport.postDestination(
+    createSplitR1DestinationRequest(fixture.scenario),
+    partnerToken
+  );
+  const destination = selectSplitR1DestinationCandidate(
+    destinationPayload,
+    fixture.scenario
+  );
+  const searchStates = [];
+  for (const logicalSearch of livePlan) {
+    const request = createSplitR1HotelSearchRequest(logicalSearch, destination);
+    let payload;
+    try {
+      payload = await transport.postInitialHotelSearch(request, partnerToken);
+    } catch (error) {
+      const failure = splitR1SandboxBoundedInitialFailure(error);
+      if (failure === null) throw error;
+      const coverageReceipt = classifySplitR1CollectionCoverageV1(
+        {},
+        {
+          httpStatus: failure.httpStatus,
+          jsonValid: failure.jsonValid,
+          initialPage: null,
+          continuationAttempted: false,
+        }
+      );
+      searchStates.push({
+        logicalSearchId: logicalSearch.logicalSearchId,
+        completionStatus: "INITIAL_SNAPSHOT_UNPROCESSABLE",
+        initialPageCount: 1,
+        continuationPageCount: 0,
+        rawResultCount: 0,
+        rejectionCounts: { SEARCH_INCOMPLETE: 1 },
+        offers: [],
+        coverageReceipt,
+        failureClass: failure.failureClass,
+      });
+      continue;
+    }
+    const initialPage = normalizeSplitR1SearchPage(payload, {
+      logicalSearch,
+      ephemeralRunKey,
+    });
+    const coverageReceipt = classifySplitR1CollectionCoverageV1(payload, {
+      httpStatus: 200,
+      jsonValid: true,
+      initialPage,
+      continuationAttempted: false,
+    });
+    const boundedSnapshotUsable =
+      coverageReceipt.initialResultsProcessable &&
+      (coverageReceipt.collectionClassification ===
+        "PROVIDER_NO_CONTINUATION_EXPOSED" ||
+        coverageReceipt.collectionClassification ===
+          "PROVIDER_CONTINUATION_AVAILABLE");
+    searchStates.push({
+      logicalSearchId: logicalSearch.logicalSearchId,
+      completionStatus: coverageReceipt.coverageClass,
+      initialPageCount: 1,
+      continuationPageCount: 0,
+      rawResultCount: initialPage.rawResultCount,
+      rejectionCounts: initialPage.rejectionCounts,
+      offers: boundedSnapshotUsable ? initialPage.offers : [],
+      coverageReceipt: {
+        ...coverageReceipt,
+        boundedSnapshotUsable,
+        continuationExecuted: false,
+      },
+      failureClass: null,
+    });
+    payload = null;
+  }
+  partnerToken = null;
+  const economicResult = evaluateSplitR1SandboxNightlyOracleV1(
+    fixture,
+    searchStates
+  );
+  const coverageCounts = Object.fromEntries(
+    SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES.map((classification) => [
+      classification,
+      searchStates.filter(
+        (state) =>
+          state.coverageReceipt?.collectionClassification === classification
+      ).length,
+    ])
+  );
+  const requestBudget = transport.getBudgetSnapshot();
+  const unprocessableSearches = searchStates.filter(
+    (state) =>
+      state.coverageReceipt?.collectionClassification ===
+        "INITIAL_SNAPSHOT_UNPROCESSABLE" ||
+      state.coverageReceipt?.collectionClassification ===
+        "AMBIGUOUS_CONTINUATION_METADATA"
+  ).length;
+  const result = {
+    schemaVersion: "stayopti.split-r1.sandbox-bounded-live-result@1",
+    mode: "SANDBOX_BOUNDED_LIVE_PILOT",
+    environment: "sandbox",
+    privateTechnicalPilotOnly: true,
+    runStatus: unprocessableSearches === 0 ? "COMPLETE" : "INCONCLUSIVE",
+    preflight,
+    collectionCoverageReceiptVersion:
+      SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+    logicalSearchesPlanned: livePlan.length,
+    logicalSearchesExecuted: searchStates.length,
+    breakpointsPlanned: fixture.scenario.breakpoints.length,
+    httpRequests: requestBudget.totalHttpRequests,
+    requestBudget,
+    maxObservedConcurrency: transport.getMaxObservedConcurrency(),
+    minimumObservedRequestIntervalMs:
+      transport.getMinimumObservedRequestIntervalMs(),
+    retries: 0,
+    redirects: 0,
+    continuationHttpRequests: 0,
+    continuationExecuted: false,
+    coverageCounts,
+    searchReceipts: searchStates.map((state) => ({
+      logicalSearchId: state.logicalSearchId,
+      completionStatus: state.completionStatus,
+      rawResultCount: state.rawResultCount,
+      normalizableResultCount: state.offers.length,
+      failureClass: state.failureClass,
+      coverageReceipt: state.coverageReceipt,
+    })),
+    economicResult,
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    sandboxMarketEvidenceAllowed: false,
+    targetedProductionAuthorized: false,
+    publicRuntimeChanged: false,
+    rawMetadataValuesPersisted: 0,
+    rawIdentifiersPersisted: 0,
+    rawContinuationIdentifiersPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+  };
+  assertSplitR1PersistedPayloadSafe(result);
+  return result;
+}
+
 export async function runSplitR1Collector({
   matrix,
   options,
@@ -4588,6 +5153,8 @@ export async function runSplitR1Collector({
   monotonicNow,
   sleep,
   budgetLimits,
+  livePlan,
+  boundedLiveContract,
 }) {
   if (
     options.mode === "ourprice-probe-dry-run" ||
@@ -4631,8 +5198,24 @@ export async function runSplitR1Collector({
     return buildSplitR1SandboxNightlyOracleDryRunV1(matrix);
   }
   if (options.mode === "sandbox-nightly-oracle-live-contract-hold") {
-    resolveSplitR1SandboxConfiguration(environment, execArgv);
     throw new Error("split-r1-sandbox-live-not-authorized-host-allowlist-hold");
+  }
+  if (options.mode === "sandbox-nightly-oracle-live-bounded-pilot") {
+    return runSplitR1SandboxBoundedLivePilotV1({
+      fixture: matrix,
+      options,
+      environment,
+      execArgv,
+      fetchImpl,
+      now,
+      randomUUID,
+      ephemeralRunKey,
+      monotonicNow,
+      sleep,
+      livePlan,
+      contract:
+        boundedLiveContract ?? SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+    });
   }
   const dryRun = buildSplitR1DryRunPlan(matrix);
   if (options.mode === "dry-run") return dryRun;
@@ -4822,7 +5405,8 @@ async function main() {
       : options.mode === "targeted-dry-run"
       ? await loadSplitR1TargetedScenarioMatrixV1()
       : options.mode === "sandbox-nightly-oracle-dry-run" ||
-          options.mode === "sandbox-nightly-oracle-live-contract-hold"
+          options.mode === "sandbox-nightly-oracle-live-contract-hold" ||
+          options.mode === "sandbox-nightly-oracle-live-bounded-pilot"
         ? await loadSplitR1SandboxNightlyOraclePilotV1()
       : await loadSplitF0ScenarioMatrix();
   const result = await runSplitR1Collector({ matrix, options });

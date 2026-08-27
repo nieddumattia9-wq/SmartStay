@@ -53,6 +53,18 @@ import {
   SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_NEAR_BEST_BASELINE_RATIO,
   SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_TOTAL_HTTP_BUDGET,
   SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_VERSION,
+  SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX,
+  SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+  SPLIT_R1_SANDBOX_BOUNDED_CONTINUATION_HTTP_MAX,
+  SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX,
+  SPLIT_R1_SANDBOX_BOUNDED_INITIAL_SEARCH_HTTP_MAX,
+  SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT,
+  SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG,
+  SPLIT_R1_SANDBOX_BOUNDED_MAX_CONCURRENCY,
+  SPLIT_R1_SANDBOX_BOUNDED_MIN_REQUEST_START_INTERVAL_MS,
+  SPLIT_R1_SANDBOX_BOUNDED_REDIRECT_MAX,
+  SPLIT_R1_SANDBOX_BOUNDED_RETRY_MAX,
+  SPLIT_R1_SANDBOX_BOUNDED_TOTAL_HTTP_MAX,
   SPLIT_R1_SANDBOX_BINDING_VERSION,
   SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION,
   SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION,
@@ -75,6 +87,7 @@ import {
   assertSplitR1OurpriceProbeInitialSearchAllowed,
   assertSplitR1OurpriceProbeV2SearchAllowed,
   assertSplitR1EndpointAllowed,
+  assertSplitR1SandboxBoundedRequestAllowedV1,
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
@@ -96,6 +109,8 @@ import {
   createSplitR1HotelSearchRequest,
   createSplitR1MonotonicRateLimiter,
   createSplitR1NativeTransport,
+  createSplitR1SandboxBoundedHttpLedgerV1,
+  createSplitR1SandboxBoundedTransportV1,
   createSplitR1PartnerTokenRequest,
   diagnoseSplitR1AsyncApplicationStatusShapeV1,
   evaluateSplitR1SearchLevelScenario,
@@ -119,11 +134,15 @@ import {
   runSplitR1Collector,
   runSplitR1OurpriceSemanticsProbeV1,
   runSplitR1OurpriceSemanticsProbeV2,
+  runSplitR1SandboxBoundedLivePilotV1,
   replaySplitR1CausalLedger,
   resolveSplitR1SandboxConfiguration,
+  resolveSplitR1SandboxBoundedConfigurationV1,
   selectSplitR1DestinationCandidate,
   validateSplitR1BaseUrl,
   validateSplitR1SandboxBaseUrl,
+  validateSplitR1SandboxBoundedBaseUrlV1,
+  validateSplitR1SandboxBoundedLivePreflightV1,
   validateSplitR1OurpriceSemanticsProbeV1,
   validateSplitR1OurpriceSemanticsProbeV2,
   validateSplitR1OurpriceEmpiricalTotalityReceiptV1,
@@ -667,6 +686,18 @@ test("sandbox live path requires its two dedicated confirmations and remains con
     () => parseSplitR1Arguments([sandboxFlag, "--sandbox-total-http-budget=126"]),
     /unknown-argument/
   );
+  assert.deepEqual(
+    parseSplitR1Arguments([
+      sandboxFlag,
+      SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG,
+      ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
+    ]),
+    { mode: "sandbox-nightly-oracle-live-bounded-pilot" }
+  );
+  assert.throws(
+    () => parseSplitR1Arguments([sandboxFlag, SPLIT_R1_SANDBOX_BOUNDED_LIVE_FLAG]),
+    /live-confirmations-incomplete/
+  );
 });
 
 test("sandbox base URL is structurally inspected but no routestack subdomain is allowlisted without proof", () => {
@@ -692,6 +723,14 @@ test("sandbox base URL is structurally inspected but no routestack subdomain is 
   assert.throws(
     () => validateSplitR1SandboxBaseUrl("https://arbitrary.routestack.ai"),
     /host-officiality-unproven/
+  );
+  assert.equal(
+    validateSplitR1SandboxBoundedBaseUrlV1("https://evolvemcp.routestack.ai"),
+    SPLIT_R1_SANDBOX_BOUNDED_BASE_URL
+  );
+  assert.throws(
+    () => validateSplitR1SandboxBoundedBaseUrlV1("https://sandbox.evolvemcp.routestack.ai"),
+    /bounded-host-not-allowlisted/
   );
   for (const [candidate, expected] of [
     ["https://mcp.routestack.ai", /production-host-prohibited/],
@@ -781,7 +820,7 @@ test("sandbox binding reads dedicated variables only, never falls back and canno
         throw new Error("sandbox-contract-hold-must-not-fetch");
       },
     }),
-    /host-officiality-unproven/
+    /sandbox-live-not-authorized-host-allowlist-hold/
   );
   assert.equal(fetchCalls, 0);
   const afterEnvHash = crypto
@@ -789,6 +828,372 @@ test("sandbox binding reads dedicated variables only, never falls back and canno
     .update(await fs.readFile(serverEnvPath))
     .digest("hex");
   assert.equal(afterEnvHash, beforeEnvHash);
+});
+
+test("bounded live mode is the only Sandbox path that can pass the exact 43/41/0 preflight", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const plan = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const preflight = validateSplitR1SandboxBoundedLivePreflightV1({ fixture, livePlan: plan });
+  assert.equal(preflight.eligible, true);
+  assert.equal(preflight.canonicalPlanSharedWithDryRun, true);
+  assert.equal(preflight.scenarios, 1);
+  assert.equal(preflight.logicalSearches, 41);
+  assert.equal(preflight.breakpoints, 13);
+  assert.equal(preflight.authHttpMax, SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX);
+  assert.equal(preflight.destinationHttpMax, SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX);
+  assert.equal(preflight.initialSearchHttpMax, SPLIT_R1_SANDBOX_BOUNDED_INITIAL_SEARCH_HTTP_MAX);
+  assert.equal(preflight.continuationHttpMax, SPLIT_R1_SANDBOX_BOUNDED_CONTINUATION_HTTP_MAX);
+  assert.equal(preflight.totalHttpMax, SPLIT_R1_SANDBOX_BOUNDED_TOTAL_HTTP_MAX);
+  assert.equal(preflight.retryMax, SPLIT_R1_SANDBOX_BOUNDED_RETRY_MAX);
+  assert.equal(preflight.redirectMax, SPLIT_R1_SANDBOX_BOUNDED_REDIRECT_MAX);
+  assert.equal(preflight.maxConcurrency, SPLIT_R1_SANDBOX_BOUNDED_MAX_CONCURRENCY);
+  assert.equal(
+    preflight.minimumRequestStartIntervalMs,
+    SPLIT_R1_SANDBOX_BOUNDED_MIN_REQUEST_START_INTERVAL_MS
+  );
+  assert.equal(preflight.applicationStatusRequired, false);
+  assert.equal(preflight.resultStatusTerminalAuthority, false);
+  assert.equal(preflight.boundedSnapshotImpliesCompleteness, false);
+  assert.equal(preflight.boundedSnapshotImpliesGlobalOptimum, false);
+
+  for (const [field, value] of [
+    ["totalHttpMax", 125],
+    ["initialSearchHttpMax", 123],
+    ["continuationHttpMax", 82],
+    ["continuationHttpMax", 1],
+    ["totalHttpMax", 44],
+    ["initialSearchHttpMax", 42],
+    ["totalHttpMax", 42],
+    ["scenarios", 2],
+    ["logicalSearches", 40],
+    ["breakpoints", 12],
+    ["retryMax", 1],
+    ["redirectMax", 1],
+    ["maxConcurrency", 2],
+    ["minimumRequestStartIntervalMs", 999],
+  ]) {
+    const contract = structuredClone(SPLIT_R1_SANDBOX_BOUNDED_LIVE_CONTRACT);
+    contract[field] = value;
+    assert.throws(
+      () => validateSplitR1SandboxBoundedLivePreflightV1({ fixture, livePlan: plan, contract }),
+      new RegExp(`bounded-contract-${field}-mismatch`)
+    );
+  }
+  const divergentPlan = structuredClone(plan);
+  [divergentPlan[0], divergentPlan[1]] = [divergentPlan[1], divergentPlan[0]];
+  assert.throws(
+    () => validateSplitR1SandboxBoundedLivePreflightV1({ fixture, livePlan: divergentPlan }),
+    /live-plan-diverged-from-dry-run/
+  );
+});
+
+test("bounded live hold fails before credentials unless the explicit mode is selected", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  let credentialReads = 0;
+  const guardedEnvironment = new Proxy({}, {
+    get() {
+      credentialReads += 1;
+      throw new Error("credentials-must-not-be-read");
+    },
+  });
+  await assert.rejects(
+    runSplitR1Collector({
+      matrix: fixture,
+      options: { mode: "sandbox-nightly-oracle-live-contract-hold" },
+      environment: guardedEnvironment,
+      execArgv: [],
+      fetchImpl: async () => {
+        throw new Error("hold-must-not-fetch");
+      },
+    }),
+    /sandbox-live-not-authorized-host-allowlist-hold/
+  );
+  assert.equal(credentialReads, 0);
+});
+
+test("bounded Sandbox configuration accepts only the exact host and dedicated variables", () => {
+  const serverEnvPath = path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env");
+  const execArgv = [`--env-file=${serverEnvPath}`];
+  const environment = {
+    [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl]: SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+    [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey]: "test-only-sandbox-key",
+    [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret]: "test-only-sandbox-secret",
+  };
+  const guardedEnvironment = new Proxy(environment, {
+    get(target, property, receiver) {
+      if (["ROUTESTACK_BASE_URL", "ROUTESTACK_API_KEY", "ROUTESTACK_API_SECRET"].includes(property)) {
+        throw new Error("production-fallback-prohibited");
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  const configuration = resolveSplitR1SandboxBoundedConfigurationV1(
+    guardedEnvironment,
+    execArgv
+  );
+  assert.equal(configuration.baseUrl, SPLIT_R1_SANDBOX_BOUNDED_BASE_URL);
+  assert.throws(
+    () =>
+      resolveSplitR1SandboxBoundedConfigurationV1(
+        { ...environment, ROUTESTACK_SANDBOX_BASE_URL: SPLIT_R1_OFFICIAL_BASE_URL },
+        execArgv
+      ),
+    /production-host-prohibited/
+  );
+  assert.throws(
+    () =>
+      resolveSplitR1SandboxBoundedConfigurationV1(
+        { ...environment, ROUTESTACK_SANDBOX_BASE_URL: "https://sandbox.evolvemcp.routestack.ai" },
+        execArgv
+    ),
+    /bounded-host-not-allowlisted/
+  );
+  let credentialReadsBeforeHostApproval = 0;
+  const wrongHostEnvironment = new Proxy(
+    { ROUTESTACK_SANDBOX_BASE_URL: "https://sandbox.evolvemcp.routestack.ai" },
+    {
+      get(target, property, receiver) {
+        if (["ROUTESTACK_SANDBOX_API_KEY", "ROUTESTACK_SANDBOX_API_SECRET"].includes(property)) {
+          credentialReadsBeforeHostApproval += 1;
+          throw new Error("credential-read-before-host-approval");
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    }
+  );
+  assert.throws(
+    () => resolveSplitR1SandboxBoundedConfigurationV1(wrongHostEnvironment, execArgv),
+    /bounded-host-not-allowlisted/
+  );
+  assert.equal(credentialReadsBeforeHostApproval, 0);
+});
+
+test("authoritative bounded ledger blocks the 42nd initial, every continuation and any request after 43", () => {
+  const initialOnlyLedger = createSplitR1SandboxBoundedHttpLedgerV1();
+  for (let index = 0; index < 41; index += 1) initialOnlyLedger.reserve("initialHotelSearch");
+  assert.throws(
+    () => initialOnlyLedger.reserve("initialHotelSearch"),
+    /initialHotelSearch-budget-exhausted/
+  );
+  assert.equal(initialOnlyLedger.snapshot().totalHttpRequests, 41);
+
+  const ledger = createSplitR1SandboxBoundedHttpLedgerV1();
+  ledger.reserve("authentication");
+  ledger.reserve("destination");
+  for (let index = 0; index < 41; index += 1) ledger.reserve("initialHotelSearch");
+  const snapshot = ledger.snapshot();
+  assert.equal(snapshot.totalHttpRequests, 43);
+  assert.equal(snapshot.requestsByClass.authentication, 1);
+  assert.equal(snapshot.requestsByClass.destination, 1);
+  assert.equal(snapshot.requestsByClass.initialHotelSearch, 41);
+  assert.equal(snapshot.requestsByClass.continuation, 0);
+  assert.throws(() => ledger.reserve("initialHotelSearch"), /total-http-budget-exhausted/);
+  assert.throws(() => ledger.reserve("continuation"), /continuation-prohibited/);
+  assert.throws(() => ledger.reserve("otherForbidden"), /route-not-allowlisted/);
+  assert.equal(ledger.snapshot().totalHttpRequests, 43);
+});
+
+test("bounded transport enforces routes, redirect error, serialization and zero continuation by construction", async () => {
+  let monotonic = 0;
+  let fetchCalls = 0;
+  const redirects = [];
+  const transport = createSplitR1SandboxBoundedTransportV1({
+    fetchImpl: async (_url, init) => {
+      fetchCalls += 1;
+      redirects.push(init.redirect);
+      return jsonResponse({ result: { currency: "EUR", result: [] } });
+    },
+    monotonicNow: () => monotonic,
+    sleep: async (milliseconds) => {
+      monotonic += milliseconds;
+    },
+  });
+  await transport.postAuthentication({});
+  await transport.postDestination({}, "memory-only-token");
+  for (let index = 0; index < 41; index += 1) {
+    await transport.postInitialHotelSearch({}, "memory-only-token");
+  }
+  assert.equal(fetchCalls, 43);
+  assert.equal(transport.getBudgetSnapshot().totalHttpRequests, 43);
+  assert.equal(transport.getMaxObservedConcurrency(), 1);
+  assert.ok(transport.getMinimumObservedRequestIntervalMs() >= 1000);
+  assert.equal(redirects.every((value) => value === "error"), true);
+  await assert.rejects(
+    transport.postInitialHotelSearch({}, "memory-only-token"),
+    /total-http-budget-exhausted/
+  );
+  assert.throws(
+    () => transport.postContinuationHotelSearch({}, "memory-only-token"),
+    /continuation-prohibited/
+  );
+  assert.equal(fetchCalls, 43);
+  assert.throws(
+    () =>
+      assertSplitR1SandboxBoundedRequestAllowedV1({
+        requestClass: "initialHotelSearch",
+        method: "POST",
+        endpointPath: "/mcp/hotel/details",
+      }),
+    /route-not-allowlisted/
+  );
+  for (const forbidden of ["rates", "recheck", "prebook", "booking", "payment"] ) {
+    assert.throws(
+      () =>
+        assertSplitR1SandboxBoundedRequestAllowedV1({
+          requestClass: "initialHotelSearch",
+          method: "POST",
+          endpointPath: `/mcp/hotel/${forbidden}`,
+        }),
+      /route-not-allowlisted/
+    );
+  }
+});
+
+function splitR1BoundedFakeFetch(fixture, { failedSearchOrdinal = null, invalidJsonOrdinal = null } = {}) {
+  let requestCount = 0;
+  let hotelSearchCount = 0;
+  const fetchImpl = async (url, init) => {
+    requestCount += 1;
+    assert.equal(init.method, "POST");
+    assert.equal(init.redirect, "error");
+    const pathname = new URL(url).pathname;
+    if (pathname === SPLIT_R1_AUTH_ENDPOINT) return jsonResponse({ token: "memory-only-partner-token" });
+    if (pathname === SPLIT_R1_DESTINATION_ENDPOINT) {
+      return jsonResponse({
+        result: [
+          {
+            id: "memory-only-destination-id",
+            coordinates: {
+              lat: fixture.scenario.destination.latitude,
+              long: fixture.scenario.destination.longitude,
+            },
+          },
+        ],
+      });
+    }
+    assert.equal(pathname, SPLIT_R1_HOTEL_SEARCH_ENDPOINT);
+    hotelSearchCount += 1;
+    if (hotelSearchCount === failedSearchOrdinal) return jsonResponse({ error: "synthetic" }, 503);
+    if (hotelSearchCount === invalidJsonOrdinal) {
+      return new Response("not-json", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return jsonResponse({
+      result: {
+        currency: "EUR",
+        correlationId: "memory-only-correlation",
+        token: "memory-only-continuation-token",
+        nextResultsKey: "memory-only-next-results-key",
+        result: [
+          rawHotel("memory-only-property-a", 100 + hotelSearchCount),
+          rawHotel("memory-only-property-b", 110 + hotelSearchCount),
+        ],
+      },
+    });
+  };
+  return {
+    fetchImpl,
+    getRequestCount: () => requestCount,
+    getHotelSearchCount: () => hotelSearchCount,
+  };
+}
+
+async function runSplitR1BoundedFakeLive(fixture, fake) {
+  let monotonic = 0;
+  const serverEnvPath = path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env");
+  return runSplitR1SandboxBoundedLivePilotV1({
+    fixture,
+    options: { mode: "sandbox-nightly-oracle-live-bounded-pilot" },
+    environment: {
+      [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl]: SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
+      [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey]: "test-only-sandbox-key",
+      [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret]: "test-only-sandbox-secret",
+    },
+    execArgv: [`--env-file=${serverEnvPath}`],
+    fetchImpl: fake.fetchImpl,
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "00000000-0000-4000-8000-000000000022",
+    ephemeralRunKey: TEST_KEY,
+    monotonicNow: () => monotonic,
+    sleep: async (milliseconds) => {
+      monotonic += milliseconds;
+    },
+  });
+}
+
+test("fake bounded live run materializes exactly 1 auth, 1 destination, 41 initial and zero continuation", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const fake = splitR1BoundedFakeFetch(fixture);
+  const result = await runSplitR1BoundedFakeLive(fixture, fake);
+  assert.equal(result.runStatus, "COMPLETE");
+  assert.equal(result.logicalSearchesPlanned, 41);
+  assert.equal(result.logicalSearchesExecuted, 41);
+  assert.equal(result.breakpointsPlanned, 13);
+  assert.equal(result.httpRequests, 43);
+  assert.deepEqual(result.requestBudget.requestsByClass, {
+    authentication: 1,
+    destination: 1,
+    initialHotelSearch: 41,
+    continuation: 0,
+    otherForbidden: 0,
+  });
+  assert.equal(result.continuationHttpRequests, 0);
+  assert.equal(result.continuationExecuted, false);
+  assert.equal(result.coverageCounts.PROVIDER_CONTINUATION_AVAILABLE, 41);
+  assert.equal(result.searchReceipts.every((receipt) => receipt.coverageReceipt.continuationEligible), true);
+  assert.equal(result.searchReceipts.every((receipt) => !receipt.coverageReceipt.continuationExecuted), true);
+  assert.equal(result.economicResult.completenessClaimAllowed, false);
+  assert.equal(result.economicResult.globalOptimumClaimAllowed, false);
+  assert.equal(result.sandboxMarketEvidenceAllowed, false);
+  assert.equal(result.rawIdentifiersPersisted, 0);
+  assert.equal(result.rawContinuationIdentifiersPersisted, 0);
+  assert.equal(result.payloadsOrRawResponsesPersisted, 0);
+  assert.equal(fake.getRequestCount(), 43);
+  assert.equal(fake.getHotelSearchCount(), 41);
+  assert.equal(assertSplitR1PersistedPayloadSafe(result), true);
+  const serialized = stableStringifySplitF0(result);
+  assert.doesNotMatch(serialized, /memory-only-(?:partner|destination|correlation|continuation|next|property)/u);
+});
+
+test("bounded live initial HTTP and JSON failures are recorded once without retry or replacement", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  for (const fault of [{ failedSearchOrdinal: 7 }, { invalidJsonOrdinal: 9 }]) {
+    const fake = splitR1BoundedFakeFetch(fixture, fault);
+    const result = await runSplitR1BoundedFakeLive(fixture, fake);
+    assert.equal(result.runStatus, "INCONCLUSIVE");
+    assert.equal(result.logicalSearchesExecuted, 41);
+    assert.equal(result.httpRequests, 43);
+    assert.equal(fake.getRequestCount(), 43);
+    assert.equal(fake.getHotelSearchCount(), 41);
+    assert.equal(
+      result.searchReceipts.filter(
+        (receipt) => receipt.completionStatus === "INITIAL_SNAPSHOT_UNPROCESSABLE"
+      ).length,
+      1
+    );
+    assert.equal(result.retries, 0);
+    assert.equal(result.continuationHttpRequests, 0);
+  }
+});
+
+test("R1C.22 remains a historical blocked zero-network result", async () => {
+  const protocol = await fs.readFile(
+    path.join(
+      SPLIT_R1_REPOSITORY_ROOT,
+      "docs",
+      "engine-v3",
+      "split-r1-routestack-production-pilot.md"
+    ),
+    "utf8"
+  );
+  assert.match(protocol, /R1C\.22 `BLOCKED` result, zero HTTP, unread credentials/u);
+  assert.match(
+    protocol,
+    /SANDBOX_NIGHTLY_ORACLE_LIVE_EXECUTION_NOT_IMPLEMENTED_EXACT_43_HTTP_ZERO_CONTINUATION_CONTRACT/u
+  );
+  assert.match(protocol, /without reinterpretation/u);
 });
 
 test("continuation metadata shape receipt inspects only allowlisted paths and never persists values", () => {
