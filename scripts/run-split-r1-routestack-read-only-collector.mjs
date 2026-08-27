@@ -105,6 +105,8 @@ export const SPLIT_R1_SANDBOX_CONTRACT_CLASSIFICATION = Object.freeze({
 });
 export const SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION =
   "stayopti.split-r1.continuation-metadata-shape@1";
+export const SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION =
+  "stayopti.split-r1.async-status-shape@1";
 export const SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION =
   "stayopti.split-r1.sandbox-initial-search-state@1";
 export const SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES = Object.freeze([
@@ -126,6 +128,12 @@ export const SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS = Object.freeze([
   "result.data.correlationId",
   "result.data.token",
   "result.data.nextResultsKey",
+]);
+export const SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS = Object.freeze([
+  "applicationStatus",
+  "result.applicationStatus",
+  "data.applicationStatus",
+  "result.data.applicationStatus",
 ]);
 export const SPLIT_R1_OURPRICE_PROBE_VERSION =
   "stayopti.split-r1.ourprice-semantics-probe@1";
@@ -722,14 +730,85 @@ export function diagnoseSplitR1ContinuationMetadataShapeV1(payload) {
   return receipt;
 }
 
-function splitR1SandboxInitialApplicationStatus(payload) {
-  const container = normalizeResponseContainer(payload);
-  const value = container?.applicationStatus;
-  return {
-    pathClass: container === payload ? "ROOT" : "RESULT",
-    completed:
-      typeof value === "string" && value.toLowerCase() === "completed",
+function splitR1CanonicalAsyncStatusCategory(observation) {
+  if (!observation.present) return "ABSENT";
+  if (observation.value === null) return "NULL";
+  if (typeof observation.value !== "string") return "INVALID_TYPE";
+  if (observation.value.length === 0) return "EMPTY_STRING";
+  const normalized = observation.value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+  if (normalized === "completed") return "COMPLETED";
+  if (normalized === "pending") return "PENDING";
+  if (normalized === "inprogress") return "IN_PROGRESS";
+  if (normalized === "failed") return "FAILED";
+  return "OTHER_NON_EMPTY_STRING";
+}
+
+export function diagnoseSplitR1AsyncApplicationStatusShapeV1(payload) {
+  const pathDiagnostics = SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS.map((path) => {
+    const observation = splitR1ValueAtAllowlistedPath(payload, path.split("."));
+    const shape = splitR1SanitizedMetadataValueShape(path, observation);
+    const canonicalCategory = splitR1CanonicalAsyncStatusCategory(observation);
+    return {
+      path,
+      presence: observation.present ? "PRESENT" : "ABSENT",
+      jsonType: shape.jsonType,
+      valueShape: shape.valueShape,
+      stringState: shape.stringState,
+      canonicalCategory,
+      applicationStatusEligible:
+        canonicalCategory === "COMPLETED" ||
+        canonicalCategory === "PENDING" ||
+        canonicalCategory === "IN_PROGRESS" ||
+        canonicalCategory === "FAILED" ||
+        canonicalCategory === "OTHER_NON_EMPTY_STRING",
+    };
+  });
+  const eligible = pathDiagnostics.filter(
+    (diagnostic) => diagnostic.applicationStatusEligible
+  );
+  const selected = eligible.length === 1 ? eligible[0] : null;
+  const distinctCategories = new Set(
+    eligible.map((diagnostic) => diagnostic.canonicalCategory)
+  );
+  const multipleEligiblePaths = eligible.length > 1;
+  const contradictoryStatusValues = distinctCategories.size > 1;
+  const statusShapeClassification = contradictoryStatusValues
+    ? "CONTRADICTORY_ASYNC_STATUS_VALUES"
+    : multipleEligiblePaths
+      ? "MULTIPLE_ELIGIBLE_ASYNC_STATUS_PATHS"
+      : selected === null
+        ? "NO_ELIGIBLE_ASYNC_STATUS_PATH"
+        : "UNIQUE_ELIGIBLE_ASYNC_STATUS_PATH";
+  const receipt = {
+    schemaVersion: SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
+    allowlistedPaths: [...SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS],
+    pathDiagnostics,
+    eligiblePathCount: eligible.length,
+    selectedPath: selected?.path ?? null,
+    selectedCanonicalStatus: selected?.canonicalCategory ?? null,
+    multipleEligiblePaths,
+    ambiguous: multipleEligiblePaths,
+    contradictory: contradictoryStatusValues,
+    statusShapeClassification,
+    unknownKeyEnumeration: false,
+    genericStatusPathAdded: false,
+    otherStatusRawValuePersisted: false,
+    rawMetadataValuesPersisted: 0,
+    rawIdentifiersPersisted: 0,
   };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
+}
+
+function splitR1ApplicationStatusPathClass(path) {
+  if (path === "applicationStatus") return "ROOT";
+  if (path === "result.applicationStatus") return "RESULT";
+  if (path === "data.applicationStatus") return "DATA";
+  if (path === "result.data.applicationStatus") return "RESULT_DATA";
+  return path === null ? "NONE" : "AMBIGUOUS";
 }
 
 export function classifySplitR1SandboxInitialSearchStateV1(
@@ -745,7 +824,7 @@ export function classifySplitR1SandboxInitialSearchStateV1(
     throw new Error("split-r1-sandbox-initial-classification-continuation-prohibited");
   }
   const metadataShape = diagnoseSplitR1ContinuationMetadataShapeV1(payload);
-  const applicationStatus = splitR1SandboxInitialApplicationStatus(payload);
+  const asyncStatusShape = diagnoseSplitR1AsyncApplicationStatusShapeV1(payload);
   const resultNextKey = metadataShape.pathDiagnostics.find(
     (diagnostic) => diagnostic.path === "result.nextResultsKey"
   );
@@ -760,12 +839,17 @@ export function classifySplitR1SandboxInitialSearchStateV1(
     metadataShape.completeCandidateContainerCount > 1;
   const terminalCandidate =
     responseValid &&
-    applicationStatus.completed &&
+    asyncStatusShape.eligiblePathCount === 1 &&
+    asyncStatusShape.selectedCanonicalStatus === "COMPLETED" &&
     resultNullKey &&
     initialResultsProcessed;
   const contradictoryState =
     terminalCandidate && metadataShape.completeCandidateContainerCount > 0;
-  const ambiguous = multipleCompleteGroups || contradictoryState;
+  const ambiguous =
+    asyncStatusShape.ambiguous ||
+    asyncStatusShape.contradictory ||
+    multipleCompleteGroups ||
+    contradictoryState;
   const resultContinuationAvailable =
     responseValid && metadataShape.contractualMetadataComplete && !ambiguous;
 
@@ -784,12 +868,27 @@ export function classifySplitR1SandboxInitialSearchStateV1(
         : classification === "SANDBOX_AMBIGUOUS_ASYNC_METADATA"
           ? "ASYNC_METADATA_AMBIGUOUS"
           : "ASYNC_METADATA_INCOMPLETE";
+  const contextualAsyncStatusReceipt = {
+    ...asyncStatusShape,
+    asyncClassification: classification,
+    continuationTechnicallyEligible:
+      classification === "SANDBOX_CONTINUATION_AVAILABLE",
+    providerDeclaredTerminal:
+      classification === "SANDBOX_TERMINAL_COMPLETED_INITIAL",
+  };
+  assertSplitR1PersistedPayloadSafe(contextualAsyncStatusReceipt);
   const receipt = {
     schemaVersion: SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION,
     continuationMetadataShapeVersion: metadataShape.schemaVersion,
     pathDiagnostics: metadataShape.pathDiagnostics,
-    applicationStatusPathClass: applicationStatus.pathClass,
-    applicationStatusCompleted: applicationStatus.completed,
+    asyncStatusShapeVersion: asyncStatusShape.schemaVersion,
+    asyncStatusShape: contextualAsyncStatusReceipt,
+    applicationStatusPathClass: splitR1ApplicationStatusPathClass(
+      asyncStatusShape.ambiguous ? "AMBIGUOUS" : asyncStatusShape.selectedPath
+    ),
+    applicationStatusCompleted:
+      asyncStatusShape.eligiblePathCount === 1 &&
+      asyncStatusShape.selectedCanonicalStatus === "COMPLETED",
     http200JsonValid: responseValid,
     initialResultsProcessed,
     initialRawResultCount: initialResultsProcessed
@@ -809,6 +908,8 @@ export function classifySplitR1SandboxInitialSearchStateV1(
     continuationTechnicallyEligible:
       classification === "SANDBOX_CONTINUATION_AVAILABLE",
     continuationAttempted: false,
+    providerDeclaredTerminal:
+      classification === "SANDBOX_TERMINAL_COMPLETED_INITIAL",
     providerDeclaredTerminalScope:
       coverageClass === "PROVIDER_DECLARED_TERMINAL_INITIAL"
         ? "SINGLE_SANDBOX_SEARCH_ONLY"
@@ -2655,6 +2756,7 @@ export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
     sandboxCurrentQuotaClassification: SPLIT_R1_SANDBOX_CURRENT_QUOTA_CLASSIFICATION,
     continuationMetadataShapeReceiptVersion:
       SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION,
+    asyncStatusShapeReceiptVersion: SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
     budgetsExternallyIncreaseable: false,
     sandboxLiveAuthorized: false,
     nightlyScoutImplemented: true,

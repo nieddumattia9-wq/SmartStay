@@ -6,6 +6,8 @@ import test from "node:test";
 
 import {
   SPLIT_R1_AUTH_ENDPOINT,
+  SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS,
+  SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
   SPLIT_R1_CAUSAL_LEDGER_VERSION,
   SPLIT_R1_DESTINATION_ENDPOINT,
   SPLIT_R1_EXPECTED_DURATIONS,
@@ -93,6 +95,7 @@ import {
   createSplitR1MonotonicRateLimiter,
   createSplitR1NativeTransport,
   createSplitR1PartnerTokenRequest,
+  diagnoseSplitR1AsyncApplicationStatusShapeV1,
   evaluateSplitR1SearchLevelScenario,
   evaluateSplitR1OurpriceSemanticsProbeV1,
   evaluateSplitR1OurpriceSemanticsProbeV2,
@@ -980,6 +983,191 @@ function splitR1SandboxInitialPage(rawResultCount = 1, normalizableResultCount =
     })),
   };
 }
+
+function splitR1PayloadWithApplicationStatus(pathName, value, nextResultsKey = null) {
+  const payload = { result: { nextResultsKey } };
+  const parts = pathName.split(".");
+  let cursor = payload;
+  for (const part of parts.slice(0, -1)) {
+    cursor[part] ??= {};
+    cursor = cursor[part];
+  }
+  cursor[parts.at(-1)] = value;
+  return payload;
+}
+
+test("async application-status receipt diagnoses exactly four allowlisted paths and each can prove Completed", () => {
+  assert.deepEqual(SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS, [
+    "applicationStatus",
+    "result.applicationStatus",
+    "data.applicationStatus",
+    "result.data.applicationStatus",
+  ]);
+  for (const statusPath of SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS) {
+    const payload = splitR1PayloadWithApplicationStatus(statusPath, "cOmPlEtEd");
+    payload.unlisted = { applicationStatus: "must-not-be-enumerated" };
+    const shape = diagnoseSplitR1AsyncApplicationStatusShapeV1(payload);
+    assert.equal(shape.schemaVersion, SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION, statusPath);
+    assert.deepEqual(
+      shape.pathDiagnostics.map((diagnostic) => diagnostic.path),
+      SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS,
+      statusPath
+    );
+    assert.equal(shape.eligiblePathCount, 1, statusPath);
+    assert.equal(shape.selectedPath, statusPath, statusPath);
+    assert.equal(shape.selectedCanonicalStatus, "COMPLETED", statusPath);
+    assert.equal(shape.ambiguous, false, statusPath);
+    assert.equal(shape.contradictory, false, statusPath);
+    assert.equal(shape.unknownKeyEnumeration, false, statusPath);
+    assert.equal(shape.genericStatusPathAdded, false, statusPath);
+    assert.doesNotMatch(JSON.stringify(shape), /must-not-be-enumerated|unlisted/);
+
+    const receipt = classifySplitR1SandboxInitialSearchStateV1(payload, {
+      httpStatus: 200,
+      jsonValid: true,
+      initialPage: splitR1SandboxInitialPage(8, 8),
+    });
+    assert.equal(receipt.classification, "SANDBOX_TERMINAL_COMPLETED_INITIAL", statusPath);
+    assert.equal(receipt.coverageClass, "PROVIDER_DECLARED_TERMINAL_INITIAL", statusPath);
+    assert.equal(
+      receipt.asyncStatusShape.asyncClassification,
+      "SANDBOX_TERMINAL_COMPLETED_INITIAL",
+      statusPath
+    );
+    assert.equal(receipt.asyncStatusShape.providerDeclaredTerminal, true, statusPath);
+    assert.equal(receipt.asyncStatusShape.continuationTechnicallyEligible, false, statusPath);
+    assert.equal(receipt.providerDeclaredTerminal, true, statusPath);
+    assert.equal(receipt.continuationTechnicallyEligible, false, statusPath);
+  }
+});
+
+test("async application-status receipt distinguishes absent, null, empty and invalid values", () => {
+  const cases = [
+    { payload: { result: { nextResultsKey: null } }, category: "ABSENT", jsonType: "absent" },
+    {
+      payload: splitR1PayloadWithApplicationStatus("result.applicationStatus", null),
+      category: "NULL",
+      jsonType: "null",
+    },
+    {
+      payload: splitR1PayloadWithApplicationStatus("result.applicationStatus", ""),
+      category: "EMPTY_STRING",
+      jsonType: "string",
+    },
+    {
+      payload: splitR1PayloadWithApplicationStatus("result.applicationStatus", { value: 1 }),
+      category: "INVALID_TYPE",
+      jsonType: "object",
+    },
+  ];
+  for (const testCase of cases) {
+    const shape = diagnoseSplitR1AsyncApplicationStatusShapeV1(testCase.payload);
+    const diagnostic = shape.pathDiagnostics.find(
+      (entry) => entry.path === "result.applicationStatus"
+    );
+    assert.equal(diagnostic.canonicalCategory, testCase.category);
+    assert.equal(diagnostic.jsonType, testCase.jsonType);
+    assert.equal(diagnostic.applicationStatusEligible, false);
+    assert.equal(shape.eligiblePathCount, 0);
+    const receipt = classifySplitR1SandboxInitialSearchStateV1(testCase.payload, {
+      initialPage: splitR1SandboxInitialPage(),
+    });
+    assert.equal(receipt.classification, "SANDBOX_INCOMPLETE_ASYNC_METADATA");
+    assert.equal(receipt.coverageClass, "ASYNC_METADATA_INCOMPLETE");
+    assert.equal(receipt.providerDeclaredTerminal, false);
+  }
+});
+
+test("Pending and InProgress with a null continuation key remain incomplete fail-closed", () => {
+  for (const [value, category] of [
+    ["Pending", "PENDING"],
+    ["InProgress", "IN_PROGRESS"],
+  ]) {
+    const payload = splitR1PayloadWithApplicationStatus(
+      "result.applicationStatus",
+      value
+    );
+    const receipt = classifySplitR1SandboxInitialSearchStateV1(payload, {
+      initialPage: splitR1SandboxInitialPage(),
+    });
+    assert.equal(receipt.asyncStatusShape.selectedCanonicalStatus, category);
+    assert.equal(receipt.classification, "SANDBOX_INCOMPLETE_ASYNC_METADATA");
+    assert.equal(receipt.continuationTechnicallyEligible, false);
+  }
+});
+
+test("an exact result continuation triple remains eligible with Completed or absent application status", () => {
+  for (const applicationStatus of ["Completed", undefined]) {
+    const result = {
+      correlationId: "memory-correlation",
+      token: "memory-token",
+      nextResultsKey: "memory-next",
+    };
+    if (applicationStatus !== undefined) result.applicationStatus = applicationStatus;
+    const receipt = classifySplitR1SandboxInitialSearchStateV1(
+      { result },
+      { initialPage: splitR1SandboxInitialPage() }
+    );
+    assert.equal(receipt.classification, "SANDBOX_CONTINUATION_AVAILABLE");
+    assert.equal(receipt.coverageClass, "PROVIDER_CONTINUATION_AVAILABLE");
+    assert.equal(receipt.continuationTechnicallyEligible, true);
+    assert.equal(receipt.providerDeclaredTerminal, false);
+  }
+});
+
+test("multiple application-status paths are ambiguous and contradictory values fail closed", () => {
+  const matching = classifySplitR1SandboxInitialSearchStateV1(
+    {
+      applicationStatus: "Completed",
+      result: { applicationStatus: "Completed", nextResultsKey: null },
+    },
+    { initialPage: splitR1SandboxInitialPage() }
+  );
+  assert.equal(matching.asyncStatusShape.eligiblePathCount, 2);
+  assert.equal(matching.asyncStatusShape.ambiguous, true);
+  assert.equal(matching.asyncStatusShape.contradictory, false);
+  assert.equal(matching.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
+  assert.equal(matching.continuationTechnicallyEligible, false);
+
+  const contradictory = classifySplitR1SandboxInitialSearchStateV1(
+    {
+      applicationStatus: "Completed",
+      result: { applicationStatus: "Pending", nextResultsKey: null },
+    },
+    { initialPage: splitR1SandboxInitialPage() }
+  );
+  assert.equal(contradictory.asyncStatusShape.ambiguous, true);
+  assert.equal(contradictory.asyncStatusShape.contradictory, true);
+  assert.equal(
+    contradictory.asyncStatusShape.statusShapeClassification,
+    "CONTRADICTORY_ASYNC_STATUS_VALUES"
+  );
+  assert.equal(contradictory.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
+  assert.equal(contradictory.coverageClass, "ASYNC_METADATA_AMBIGUOUS");
+  assert.equal(contradictory.continuationTechnicallyEligible, false);
+});
+
+test("result count cannot change async classification and unknown status text is never persisted", () => {
+  const classifications = [8, 165, 167].map((count) =>
+    classifySplitR1SandboxInitialSearchStateV1(
+      { result: { nextResultsKey: null } },
+      { initialPage: splitR1SandboxInitialPage(count, count) }
+    ).classification
+  );
+  assert.deepEqual(classifications, [
+    "SANDBOX_INCOMPLETE_ASYNC_METADATA",
+    "SANDBOX_INCOMPLETE_ASYNC_METADATA",
+    "SANDBOX_INCOMPLETE_ASYNC_METADATA",
+  ]);
+
+  const rawOtherStatus = "ProviderSecretPausedState";
+  const shape = diagnoseSplitR1AsyncApplicationStatusShapeV1(
+    splitR1PayloadWithApplicationStatus("result.applicationStatus", rawOtherStatus)
+  );
+  assert.equal(shape.selectedCanonicalStatus, "OTHER_NON_EMPTY_STRING");
+  assert.equal(shape.otherStatusRawValuePersisted, false);
+  assert.doesNotMatch(JSON.stringify(shape), new RegExp(rawOtherStatus));
+});
 
 test("Sandbox Completed with a null result continuation key is terminal initial and keeps processed results", () => {
   const rawCorrelation = "terminal-correlation-value";
