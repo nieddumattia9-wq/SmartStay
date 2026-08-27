@@ -109,11 +109,13 @@ export const SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION =
   "stayopti.split-r1.async-status-shape@1";
 export const SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION =
   "stayopti.split-r1.sandbox-initial-search-state@1";
+export const SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION =
+  "stayopti.split-r1.collection-coverage@1";
 export const SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES = Object.freeze([
-  "PROVIDER_DECLARED_TERMINAL_INITIAL",
+  "BOUNDED_INITIAL_SNAPSHOT_NO_CONTINUATION_EXPOSED",
   "PROVIDER_CONTINUATION_AVAILABLE",
-  "ASYNC_METADATA_INCOMPLETE",
-  "ASYNC_METADATA_AMBIGUOUS",
+  "INITIAL_SNAPSHOT_UNPROCESSABLE",
+  "AMBIGUOUS_CONTINUATION_METADATA",
 ]);
 export const SPLIT_R1_CONTINUATION_METADATA_ALLOWLISTED_PATHS = Object.freeze([
   "correlationId",
@@ -679,7 +681,6 @@ function splitR1ContinuationMetadataTuple(payload, container) {
   return {
     label: container.label,
     complete,
-    values: complete ? values.map((observation) => observation.value) : null,
   };
 }
 
@@ -695,13 +696,8 @@ export function diagnoseSplitR1ContinuationMetadataShapeV1(payload) {
     splitR1ContinuationMetadataTuple(payload, container)
   );
   const completeTuples = tuples.filter((tuple) => tuple.complete);
-  const valuesDiscordant = completeTuples.some(
-    (tuple) =>
-      completeTuples.length > 1 &&
-      tuple.values.some((value, index) => value !== completeTuples[0].values[index])
-  );
   const contractualTuple = tuples.find((tuple) => tuple.label === "result");
-  const ambiguous = completeTuples.length > 1 && valuesDiscordant;
+  const ambiguous = completeTuples.length > 1;
   const continuationAuthorizable = contractualTuple.complete && !ambiguous;
   const classification = ambiguous
     ? "AMBIGUOUS_CONTINUATION_METADATA_SHAPE"
@@ -720,7 +716,7 @@ export function diagnoseSplitR1ContinuationMetadataShapeV1(payload) {
     contractualMetadataComplete: contractualTuple.complete,
     selectedContractualContainer: continuationAuthorizable ? "result" : null,
     continuationAuthorizable,
-    valuesDiscordant,
+    valuesCompared: false,
     classification,
     unknownKeyEnumeration: false,
     rawMetadataValuesPersisted: 0,
@@ -811,7 +807,7 @@ function splitR1ApplicationStatusPathClass(path) {
   return path === null ? "NONE" : "AMBIGUOUS";
 }
 
-export function classifySplitR1SandboxInitialSearchStateV1(
+export function classifySplitR1CollectionCoverageV1(
   payload,
   {
     httpStatus = 200,
@@ -831,54 +827,62 @@ export function classifySplitR1SandboxInitialSearchStateV1(
   const initialResultsProcessed =
     Number.isSafeInteger(initialPage?.rawResultCount) &&
     initialPage.rawResultCount >= 0 &&
-    Array.isArray(initialPage?.offers);
-  const responseValid = httpStatus === 200 && jsonValid === true;
-  const resultNullKey =
-    resultNextKey?.present === true && resultNextKey.jsonType === "null";
-  const multipleCompleteGroups =
-    metadataShape.completeCandidateContainerCount > 1;
-  const terminalCandidate =
-    responseValid &&
-    asyncStatusShape.eligiblePathCount === 1 &&
-    asyncStatusShape.selectedCanonicalStatus === "COMPLETED" &&
-    resultNullKey &&
-    initialResultsProcessed;
-  const contradictoryState =
-    terminalCandidate && metadataShape.completeCandidateContainerCount > 0;
-  const ambiguous =
-    asyncStatusShape.ambiguous ||
-    asyncStatusShape.contradictory ||
-    multipleCompleteGroups ||
-    contradictoryState;
+    Array.isArray(initialPage?.offers) &&
+    initialPage.offers.length <= initialPage.rawResultCount;
+  const initialHttpValid = httpStatus === 200;
+  const initialJsonValid = jsonValid === true;
+  const responseValid = initialHttpValid && initialJsonValid;
+  const nextResultsKeyState = !resultNextKey?.present
+    ? "ABSENT"
+    : resultNextKey.jsonType === "null"
+      ? "NULL"
+      : resultNextKey.jsonType !== "string"
+        ? "INVALID_TYPE"
+        : resultNextKey.stringState === "EMPTY"
+          ? "EMPTY_STRING"
+          : "NON_EMPTY_STRING";
+  const ambiguousBinding =
+    metadataShape.completeCandidateContainerCount > 1 ||
+    (metadataShape.completeCandidateContainerCount === 1 &&
+      !metadataShape.contractualMetadataComplete);
   const resultContinuationAvailable =
-    responseValid && metadataShape.contractualMetadataComplete && !ambiguous;
-
-  const classification = ambiguous
-    ? "SANDBOX_AMBIGUOUS_ASYNC_METADATA"
-    : resultContinuationAvailable
-      ? "SANDBOX_CONTINUATION_AVAILABLE"
-      : terminalCandidate
-        ? "SANDBOX_TERMINAL_COMPLETED_INITIAL"
-        : "SANDBOX_INCOMPLETE_ASYNC_METADATA";
-  const coverageClass =
-    classification === "SANDBOX_TERMINAL_COMPLETED_INITIAL"
-      ? "PROVIDER_DECLARED_TERMINAL_INITIAL"
-      : classification === "SANDBOX_CONTINUATION_AVAILABLE"
+    responseValid &&
+    initialResultsProcessed &&
+    metadataShape.contractualMetadataComplete &&
+    metadataShape.completeCandidateContainerCount === 1 &&
+    !ambiguousBinding;
+  const collectionClassification = !responseValid || !initialResultsProcessed
+    ? "INITIAL_SNAPSHOT_UNPROCESSABLE"
+    : ambiguousBinding
+      ? "AMBIGUOUS_CONTINUATION_METADATA"
+      : resultContinuationAvailable
         ? "PROVIDER_CONTINUATION_AVAILABLE"
-        : classification === "SANDBOX_AMBIGUOUS_ASYNC_METADATA"
-          ? "ASYNC_METADATA_AMBIGUOUS"
-          : "ASYNC_METADATA_INCOMPLETE";
+        : "PROVIDER_NO_CONTINUATION_EXPOSED";
+  const coverageClass =
+    collectionClassification === "PROVIDER_NO_CONTINUATION_EXPOSED"
+      ? "BOUNDED_INITIAL_SNAPSHOT_NO_CONTINUATION_EXPOSED"
+      : collectionClassification;
+  const initialOffers = initialResultsProcessed ? initialPage.offers : [];
+  const currencies = new Set(
+    initialOffers
+      .map((offer) => offer?.currency)
+      .filter((currency) => typeof currency === "string" && currency.length > 0)
+  );
+  const numericPriceCount = initialOffers.filter(
+    (offer) => Number.isSafeInteger(offer?.totalMinorUnits) && offer.totalMinorUnits > 0
+  ).length;
   const contextualAsyncStatusReceipt = {
     ...asyncStatusShape,
-    asyncClassification: classification,
-    continuationTechnicallyEligible:
-      classification === "SANDBOX_CONTINUATION_AVAILABLE",
-    providerDeclaredTerminal:
-      classification === "SANDBOX_TERMINAL_COMPLETED_INITIAL",
+    observationalOnly: true,
+    requiredForSnapshotProcessing: false,
+    terminalAuthority: false,
+    continuationAuthority: false,
+    providerDeclaredTerminal: false,
   };
   assertSplitR1PersistedPayloadSafe(contextualAsyncStatusReceipt);
   const receipt = {
-    schemaVersion: SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION,
+    schemaVersion: SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+    supersedesProspectively: SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION,
     continuationMetadataShapeVersion: metadataShape.schemaVersion,
     pathDiagnostics: metadataShape.pathDiagnostics,
     asyncStatusShapeVersion: asyncStatusShape.schemaVersion,
@@ -886,37 +890,69 @@ export function classifySplitR1SandboxInitialSearchStateV1(
     applicationStatusPathClass: splitR1ApplicationStatusPathClass(
       asyncStatusShape.ambiguous ? "AMBIGUOUS" : asyncStatusShape.selectedPath
     ),
-    applicationStatusCompleted:
+    applicationStatusObservedCompleted:
       asyncStatusShape.eligiblePathCount === 1 &&
       asyncStatusShape.selectedCanonicalStatus === "COMPLETED",
-    http200JsonValid: responseValid,
-    initialResultsProcessed,
-    initialRawResultCount: initialResultsProcessed
+    applicationStatusRequired: false,
+    applicationStatusTerminalAuthority: false,
+    genericStatusUsedAsApplicationStatus: false,
+    resultStatusTerminalAuthority: false,
+    initialHttpValid,
+    initialJsonValid,
+    initialResultsProcessable: initialResultsProcessed,
+    rawResultCount: initialResultsProcessed
       ? initialPage.rawResultCount
       : null,
-    initialNormalizableResultCount: initialResultsProcessed
+    normalizableResultCount: initialResultsProcessed
       ? initialPage.offers.length
       : null,
+    currencyConsistency:
+      initialResultsProcessed && initialOffers.length > 0
+        ? currencies.size === 1 &&
+          initialOffers.every(
+            (offer) => typeof offer?.currency === "string" && offer.currency.length > 0
+          )
+        : null,
+    numericPriceCoverage: initialResultsProcessed
+      ? {
+          numericPositiveCount: numericPriceCount,
+          normalizableResultCount: initialOffers.length,
+          ratio: initialOffers.length > 0 ? numericPriceCount / initialOffers.length : null,
+        }
+      : null,
+    correlationIdPresentNonEmptyString: metadataShape.pathDiagnostics.some(
+      (diagnostic) =>
+        diagnostic.path === "result.correlationId" &&
+        diagnostic.jsonType === "string" &&
+        diagnostic.stringState === "NON_EMPTY"
+    ),
+    tokenPresentNonEmptyString: metadataShape.pathDiagnostics.some(
+      (diagnostic) =>
+        diagnostic.path === "result.token" &&
+        diagnostic.jsonType === "string" &&
+        diagnostic.stringState === "NON_EMPTY"
+    ),
+    nextResultsKeyState,
     completeMetadataGroups: [...metadataShape.completeCandidateContainers],
-    completeMetadataGroupCount:
+    completeContinuationBindingCount:
       metadataShape.completeCandidateContainerCount,
-    resultContinuationTripleComplete:
-      metadataShape.contractualMetadataComplete,
-    resultNextResultsKeyPresentNull: resultNullKey,
-    classification,
+    collectionClassification,
     coverageClass,
-    continuationTechnicallyEligible:
-      classification === "SANDBOX_CONTINUATION_AVAILABLE",
-    continuationAttempted: false,
-    providerDeclaredTerminal:
-      classification === "SANDBOX_TERMINAL_COMPLETED_INITIAL",
-    providerDeclaredTerminalScope:
-      coverageClass === "PROVIDER_DECLARED_TERMINAL_INITIAL"
-        ? "SINGLE_SANDBOX_SEARCH_ONLY"
-        : "NOT_APPLICABLE",
-    universalCoverageClaimAllowed: false,
+    continuationAvailable:
+      collectionClassification === "PROVIDER_CONTINUATION_AVAILABLE",
+    continuationEligible:
+      collectionClassification === "PROVIDER_CONTINUATION_AVAILABLE",
+    continuationExecuted: false,
+    providerDeclaredTerminal: false,
+    providerTerminalSignalDocumented: false,
+    boundedSnapshotUsable:
+      collectionClassification === "PROVIDER_NO_CONTINUATION_EXPOSED",
+    completenessClaimAllowed: false,
     globalOptimumClaimAllowed: false,
     sandboxMarketEvidenceAllowed: false,
+    bestObservedTerminology: "BEST_OBSERVED_WITHIN_RETURNED_BOUNDED_SNAPSHOT",
+    historicalContractSupersededProspectively: true,
+    historicalResultsReinterpreted: false,
     productionContractChanged: false,
     publicRuntimeChanged: false,
     unknownKeyEnumeration: false,
@@ -925,6 +961,10 @@ export function classifySplitR1SandboxInitialSearchStateV1(
   };
   assertSplitR1PersistedPayloadSafe(receipt);
   return receipt;
+}
+
+export function classifySplitR1SandboxInitialSearchStateV1(payload, options = {}) {
+  return classifySplitR1CollectionCoverageV1(payload, options);
 }
 
 export function inspectSplitR1OurpriceProbeV2Continuation(payload) {
@@ -2757,6 +2797,20 @@ export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
     continuationMetadataShapeReceiptVersion:
       SPLIT_R1_CONTINUATION_METADATA_SHAPE_VERSION,
     asyncStatusShapeReceiptVersion: SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
+    collectionCoverageReceiptVersion: SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+    applicationStatusRequired: false,
+    applicationStatusTerminalAuthority: false,
+    genericStatusUsedAsApplicationStatus: false,
+    resultStatusTerminalAuthority: false,
+    providerTerminalSignalDocumented: false,
+    providerDeclaredTerminalDefault: false,
+    boundedInitialSnapshotSupported: true,
+    boundedSnapshotUsableForSplitTechnicalPilot: true,
+    boundedSnapshotImpliesCompleteness: false,
+    boundedSnapshotImpliesGlobalOptimum: false,
+    boundedSnapshotTerminology: "BEST_OBSERVED_WITHIN_RETURNED_BOUNDED_SNAPSHOT",
+    historicalResultsReinterpreted: false,
+    historicalContractSupersededProspectively: true,
     budgetsExternallyIncreaseable: false,
     sandboxLiveAuthorized: false,
     nightlyScoutImplemented: true,
@@ -2776,8 +2830,9 @@ export function buildSplitR1SandboxNightlyOracleDryRunV1(fixture) {
     nearBestThreshold: fixture.nearBestThreshold,
     regretMetricsImplemented: true,
     continuationPolicy: fixture.continuationPolicy.scheduler,
-    coverageClasses: fixture.continuationPolicy.coverageClasses,
-    globalOptimumClaimGuarded: true,
+    historicalContinuationCoverageClasses: fixture.continuationPolicy.coverageClasses,
+    collectionCoverageClasses: [...SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES],
+    globalOptimumClaimAllowed: false,
     causalLedgerVersion: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION,
     priceTemporalSemantics: SPLIT_R1_OURPRICE_TEMPORAL_SEMANTICS,
     taxCompleteness: "UNPROVEN",
@@ -3174,11 +3229,7 @@ export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
         scoutTopIds(k).has(candidate.breakpointId) &&
         splitR1NightlyOracleNearBest(oracleBest, candidate, fixedBaseline?.totalMinorUnits)
     );
-  const coverageClass = searches.every(
-    (search) => stateMap.get(search.logicalSearchId)?.completionStatus === "PROVIDER_COMPLETED"
-  )
-    ? "PROVIDER_COMPLETED"
-    : "BOUNDED_TRUNCATED";
+  const coverageClass = "BOUNDED_RETURNED_SNAPSHOT";
   const searchLedger = searches.map((search) =>
     splitR1NightlyOracleSearchLedgerRecord(
       search,
@@ -3190,10 +3241,10 @@ export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
     schemaVersion: SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION,
     scenarioId: fixture.scenario.scenarioId,
     coverageClass,
-    oracleClaim:
-      coverageClass === "PROVIDER_COMPLETED"
-        ? "GLOBAL_OPTIMUM_WITHIN_PROVIDER_COMPLETED_SEARCH_SET"
-        : "BEST_OBSERVED_WITHIN_EQUAL_COVERAGE",
+    oracleClaim: "BEST_OBSERVED_WITHIN_RETURNED_BOUNDED_SNAPSHOT",
+    providerDeclaredTerminal: false,
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
     searches: searchLedger,
     nightlyCurves: buildSplitR1NightlyScoutCurvesV1(fixture, searchResults),
     breakpointProposals: scoutRanking,
@@ -3220,6 +3271,9 @@ export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
     fixedFullStayBaseline: causalLedger.fixedFullStayBaseline,
     coverageClass,
     oracleClaim: causalLedger.oracleClaim,
+    providerDeclaredTerminal: false,
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
     comparisons: rankedComparisons,
     scoutRecall: {
       TOP_1_EXACT_BEST_RECALL: exactRecall(1),
@@ -3227,7 +3281,7 @@ export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
       TOP_5_EXACT_BEST_RECALL: exactRecall(5),
       TOP_3_NEAR_BEST_RECALL: nearBestRecall(3),
       TOP_5_NEAR_BEST_RECALL: nearBestRecall(5),
-      trueOptimumScoutRank: oracleBest?.scoutRank ?? null,
+      bestObservedBreakpointScoutRank: oracleBest?.scoutRank ?? null,
       top1Regret: splitR1NightlyOracleTopKRegret(
         oracleBest,
         rankedOracle,
@@ -3251,7 +3305,7 @@ export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
       ),
       falseNegativeReasons:
         oracleBest && !exactRecall(5)
-          ? ["NIGHTLY_SCOUT_PROXY_RANKED_TRUE_OPTIMUM_BELOW_TOP_5"]
+          ? ["NIGHTLY_SCOUT_PROXY_RANKED_BEST_OBSERVED_BREAKPOINT_BELOW_TOP_5"]
           : [],
     },
     causalLedger,

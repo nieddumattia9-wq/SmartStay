@@ -9,6 +9,7 @@ import {
   SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS,
   SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
   SPLIT_R1_CAUSAL_LEDGER_VERSION,
+  SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
   SPLIT_R1_DESTINATION_ENDPOINT,
   SPLIT_R1_EXPECTED_DURATIONS,
   SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
@@ -87,6 +88,7 @@ import {
   buildSplitR1TargetedDryRunPlanV1,
   buildSplitR1TargetedLogicalSearchPlanV1,
   classifySplitR1SandboxInitialSearchStateV1,
+  classifySplitR1CollectionCoverageV1,
   classifySplitR1TargetedResultV1,
   classifySplitR1OurpriceSemanticsMetricsV1,
   createSplitR1RequestBudgetLedger,
@@ -208,17 +210,17 @@ function buildNightlyOracleSyntheticStates(fixture) {
       });
     }
     const breakpoint = search.nightsFromStart;
-    const optimum = breakpoint === 7;
+    const bestObserved = breakpoint === 7;
     if (search.searchRole === "PREFIX") {
       return nightlyOracleState(search, {
-        a: optimum ? 70000 : 90000 + breakpoint * 1000,
+        a: bestObserved ? 70000 : 90000 + breakpoint * 1000,
         b: 110000 + breakpoint * 1000,
         c: 120000 + breakpoint * 1000,
       });
     }
     return nightlyOracleState(search, {
-      a: optimum ? 95000 : 120000 - breakpoint * 1000,
-      b: optimum ? 80000 : 125000 - breakpoint * 1000,
+      a: bestObserved ? 95000 : 120000 - breakpoint * 1000,
+      b: bestObserved ? 80000 : 125000 - breakpoint * 1000,
       c: 130000 - breakpoint * 1000,
     });
   });
@@ -810,7 +812,7 @@ test("continuation metadata shape receipt inspects only allowlisted paths and ne
   );
   assert.equal(receipt.classification, "AMBIGUOUS_CONTINUATION_METADATA_SHAPE");
   assert.equal(receipt.continuationAuthorizable, false);
-  assert.equal(receipt.valuesDiscordant, true);
+  assert.equal(receipt.valuesCompared, false);
   assert.equal(receipt.unknownKeyEnumeration, false);
   assert.equal(receipt.rawMetadataValuesPersisted, 0);
   assert.equal(receipt.rawIdentifiersPersisted, 0);
@@ -902,7 +904,7 @@ test("continuation metadata shape preserves the result contract and fails closed
   assert.equal(rootOnly.continuationAuthorizable, false);
 });
 
-test("matching duplicate shapes prefer the existing result contract without changing continuation construction", () => {
+test("matching duplicate shapes are structurally ambiguous while request construction stays exact-result only", () => {
   const metadata = {
     correlationId: "same-correlation",
     token: "same-token",
@@ -912,13 +914,13 @@ test("matching duplicate shapes prefer the existing result contract without chan
     ...metadata,
     result: { ...metadata },
   });
-  assert.equal(receipt.valuesDiscordant, false);
+  assert.equal(receipt.valuesCompared, false);
   assert.equal(
     receipt.classification,
-    "CONTRACTUAL_CONTINUATION_METADATA_SHAPE_COMPLETE"
+    "AMBIGUOUS_CONTINUATION_METADATA_SHAPE"
   );
-  assert.equal(receipt.selectedContractualContainer, "result");
-  assert.equal(receipt.continuationAuthorizable, true);
+  assert.equal(receipt.selectedContractualContainer, null);
+  assert.equal(receipt.continuationAuthorizable, false);
 
   const originalRequest = {
     destinationId: "memory-only-destination",
@@ -996,7 +998,7 @@ function splitR1PayloadWithApplicationStatus(pathName, value, nextResultsKey = n
   return payload;
 }
 
-test("async application-status receipt diagnoses exactly four allowlisted paths and each can prove Completed", () => {
+test("application-status receipt remains an allowlisted observational diagnostic without terminal authority", () => {
   assert.deepEqual(SPLIT_R1_ASYNC_STATUS_ALLOWLISTED_PATHS, [
     "applicationStatus",
     "result.applicationStatus",
@@ -1022,81 +1024,80 @@ test("async application-status receipt diagnoses exactly four allowlisted paths 
     assert.equal(shape.genericStatusPathAdded, false, statusPath);
     assert.doesNotMatch(JSON.stringify(shape), /must-not-be-enumerated|unlisted/);
 
-    const receipt = classifySplitR1SandboxInitialSearchStateV1(payload, {
+    const receipt = classifySplitR1CollectionCoverageV1(payload, {
       httpStatus: 200,
       jsonValid: true,
       initialPage: splitR1SandboxInitialPage(8, 8),
     });
-    assert.equal(receipt.classification, "SANDBOX_TERMINAL_COMPLETED_INITIAL", statusPath);
-    assert.equal(receipt.coverageClass, "PROVIDER_DECLARED_TERMINAL_INITIAL", statusPath);
-    assert.equal(
-      receipt.asyncStatusShape.asyncClassification,
-      "SANDBOX_TERMINAL_COMPLETED_INITIAL",
-      statusPath
-    );
-    assert.equal(receipt.asyncStatusShape.providerDeclaredTerminal, true, statusPath);
-    assert.equal(receipt.asyncStatusShape.continuationTechnicallyEligible, false, statusPath);
-    assert.equal(receipt.providerDeclaredTerminal, true, statusPath);
-    assert.equal(receipt.continuationTechnicallyEligible, false, statusPath);
-  }
-});
-
-test("async application-status receipt distinguishes absent, null, empty and invalid values", () => {
-  const cases = [
-    { payload: { result: { nextResultsKey: null } }, category: "ABSENT", jsonType: "absent" },
-    {
-      payload: splitR1PayloadWithApplicationStatus("result.applicationStatus", null),
-      category: "NULL",
-      jsonType: "null",
-    },
-    {
-      payload: splitR1PayloadWithApplicationStatus("result.applicationStatus", ""),
-      category: "EMPTY_STRING",
-      jsonType: "string",
-    },
-    {
-      payload: splitR1PayloadWithApplicationStatus("result.applicationStatus", { value: 1 }),
-      category: "INVALID_TYPE",
-      jsonType: "object",
-    },
-  ];
-  for (const testCase of cases) {
-    const shape = diagnoseSplitR1AsyncApplicationStatusShapeV1(testCase.payload);
-    const diagnostic = shape.pathDiagnostics.find(
-      (entry) => entry.path === "result.applicationStatus"
-    );
-    assert.equal(diagnostic.canonicalCategory, testCase.category);
-    assert.equal(diagnostic.jsonType, testCase.jsonType);
-    assert.equal(diagnostic.applicationStatusEligible, false);
-    assert.equal(shape.eligiblePathCount, 0);
-    const receipt = classifySplitR1SandboxInitialSearchStateV1(testCase.payload, {
-      initialPage: splitR1SandboxInitialPage(),
-    });
-    assert.equal(receipt.classification, "SANDBOX_INCOMPLETE_ASYNC_METADATA");
-    assert.equal(receipt.coverageClass, "ASYNC_METADATA_INCOMPLETE");
+    assert.equal(receipt.schemaVersion, SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION);
+    assert.equal(receipt.collectionClassification, "PROVIDER_NO_CONTINUATION_EXPOSED");
+    assert.equal(receipt.coverageClass, "BOUNDED_INITIAL_SNAPSHOT_NO_CONTINUATION_EXPOSED");
+    assert.equal(receipt.applicationStatusObservedCompleted, true);
+    assert.equal(receipt.applicationStatusRequired, false);
+    assert.equal(receipt.applicationStatusTerminalAuthority, false);
+    assert.equal(receipt.asyncStatusShape.observationalOnly, true);
+    assert.equal(receipt.asyncStatusShape.providerDeclaredTerminal, false);
     assert.equal(receipt.providerDeclaredTerminal, false);
   }
+  const genericStatus = classifySplitR1CollectionCoverageV1(
+    { status: "Completed", result: { status: "Completed", nextResultsKey: null } },
+    { initialPage: splitR1SandboxInitialPage(8, 8) }
+  );
+  assert.equal(genericStatus.asyncStatusShape.eligiblePathCount, 0);
+  assert.equal(genericStatus.genericStatusUsedAsApplicationStatus, false);
+  assert.equal(genericStatus.resultStatusTerminalAuthority, false);
+  assert.equal(genericStatus.providerDeclaredTerminal, false);
 });
 
-test("Pending and InProgress with a null continuation key remain incomplete fail-closed", () => {
-  for (const [value, category] of [
-    ["Pending", "PENDING"],
-    ["InProgress", "IN_PROGRESS"],
-  ]) {
-    const payload = splitR1PayloadWithApplicationStatus(
-      "result.applicationStatus",
-      value
+test("processable initial snapshots with null, absent, empty or invalid keys expose no continuation", () => {
+  const cases = [
+    { label: "null-8", result: { nextResultsKey: null }, count: 8, state: "NULL" },
+    { label: "null-168", result: { nextResultsKey: null }, count: 168, state: "NULL" },
+    { label: "absent", result: {}, count: 8, state: "ABSENT" },
+    { label: "empty", result: { nextResultsKey: "" }, count: 8, state: "EMPTY_STRING" },
+    { label: "invalid", result: { nextResultsKey: 7 }, count: 8, state: "INVALID_TYPE" },
+  ];
+  for (const testCase of cases) {
+    const receipt = classifySplitR1CollectionCoverageV1(
+      { result: testCase.result },
+      { initialPage: splitR1SandboxInitialPage(testCase.count, testCase.count) }
     );
-    const receipt = classifySplitR1SandboxInitialSearchStateV1(payload, {
-      initialPage: splitR1SandboxInitialPage(),
-    });
-    assert.equal(receipt.asyncStatusShape.selectedCanonicalStatus, category);
-    assert.equal(receipt.classification, "SANDBOX_INCOMPLETE_ASYNC_METADATA");
-    assert.equal(receipt.continuationTechnicallyEligible, false);
+    assert.equal(receipt.collectionClassification, "PROVIDER_NO_CONTINUATION_EXPOSED", testCase.label);
+    assert.equal(receipt.coverageClass, "BOUNDED_INITIAL_SNAPSHOT_NO_CONTINUATION_EXPOSED", testCase.label);
+    assert.equal(receipt.nextResultsKeyState, testCase.state, testCase.label);
+    assert.equal(receipt.continuationAvailable, false, testCase.label);
+    assert.equal(receipt.continuationEligible, false, testCase.label);
+    assert.equal(receipt.boundedSnapshotUsable, true, testCase.label);
+    assert.equal(receipt.providerDeclaredTerminal, false, testCase.label);
+  }
+  assert.deepEqual(SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES, [
+    "BOUNDED_INITIAL_SNAPSHOT_NO_CONTINUATION_EXPOSED",
+    "PROVIDER_CONTINUATION_AVAILABLE",
+    "INITIAL_SNAPSHOT_UNPROCESSABLE",
+    "AMBIGUOUS_CONTINUATION_METADATA",
+  ]);
+});
+
+test("partial continuation metadata never authorizes continuation but leaves a valid bounded snapshot usable", () => {
+  const cases = [
+    { correlationId: "memory-correlation", token: "memory-token" },
+    { correlationId: "memory-correlation", nextResultsKey: "memory-next" },
+    { token: "memory-token", nextResultsKey: "memory-next" },
+    { correlationId: "memory-correlation", token: "memory-token", nextResultsKey: "" },
+  ];
+  for (const result of cases) {
+    const receipt = classifySplitR1CollectionCoverageV1(
+      { result },
+      { initialPage: splitR1SandboxInitialPage() }
+    );
+    assert.equal(receipt.collectionClassification, "PROVIDER_NO_CONTINUATION_EXPOSED");
+    assert.equal(receipt.completeContinuationBindingCount, 0);
+    assert.equal(receipt.continuationEligible, false);
+    assert.equal(receipt.boundedSnapshotUsable, true);
   }
 });
 
-test("an exact result continuation triple remains eligible with Completed or absent application status", () => {
+test("a unique exact result triple is the only continuation-available binding", () => {
   for (const applicationStatus of ["Completed", undefined]) {
     const result = {
       correlationId: "memory-correlation",
@@ -1104,211 +1105,71 @@ test("an exact result continuation triple remains eligible with Completed or abs
       nextResultsKey: "memory-next",
     };
     if (applicationStatus !== undefined) result.applicationStatus = applicationStatus;
-    const receipt = classifySplitR1SandboxInitialSearchStateV1(
+    const receipt = classifySplitR1CollectionCoverageV1(
       { result },
       { initialPage: splitR1SandboxInitialPage() }
     );
-    assert.equal(receipt.classification, "SANDBOX_CONTINUATION_AVAILABLE");
+    assert.equal(receipt.collectionClassification, "PROVIDER_CONTINUATION_AVAILABLE");
     assert.equal(receipt.coverageClass, "PROVIDER_CONTINUATION_AVAILABLE");
-    assert.equal(receipt.continuationTechnicallyEligible, true);
+    assert.equal(receipt.completeContinuationBindingCount, 1);
+    assert.equal(receipt.continuationAvailable, true);
+    assert.equal(receipt.continuationEligible, true);
+    assert.equal(receipt.continuationExecuted, false);
     assert.equal(receipt.providerDeclaredTerminal, false);
   }
 });
 
-test("multiple application-status paths are ambiguous and contradictory values fail closed", () => {
-  const matching = classifySplitR1SandboxInitialSearchStateV1(
-    {
-      applicationStatus: "Completed",
-      result: { applicationStatus: "Completed", nextResultsKey: null },
-    },
-    { initialPage: splitR1SandboxInitialPage() }
-  );
-  assert.equal(matching.asyncStatusShape.eligiblePathCount, 2);
-  assert.equal(matching.asyncStatusShape.ambiguous, true);
-  assert.equal(matching.asyncStatusShape.contradictory, false);
-  assert.equal(matching.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
-  assert.equal(matching.continuationTechnicallyEligible, false);
-
-  const contradictory = classifySplitR1SandboxInitialSearchStateV1(
-    {
-      applicationStatus: "Completed",
-      result: { applicationStatus: "Pending", nextResultsKey: null },
-    },
-    { initialPage: splitR1SandboxInitialPage() }
-  );
-  assert.equal(contradictory.asyncStatusShape.ambiguous, true);
-  assert.equal(contradictory.asyncStatusShape.contradictory, true);
-  assert.equal(
-    contradictory.asyncStatusShape.statusShapeClassification,
-    "CONTRADICTORY_ASYNC_STATUS_VALUES"
-  );
-  assert.equal(contradictory.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
-  assert.equal(contradictory.coverageClass, "ASYNC_METADATA_AMBIGUOUS");
-  assert.equal(contradictory.continuationTechnicallyEligible, false);
-});
-
-test("result count cannot change async classification and unknown status text is never persisted", () => {
-  const classifications = [8, 165, 167].map((count) =>
-    classifySplitR1SandboxInitialSearchStateV1(
-      { result: { nextResultsKey: null } },
-      { initialPage: splitR1SandboxInitialPage(count, count) }
-    ).classification
-  );
-  assert.deepEqual(classifications, [
-    "SANDBOX_INCOMPLETE_ASYNC_METADATA",
-    "SANDBOX_INCOMPLETE_ASYNC_METADATA",
-    "SANDBOX_INCOMPLETE_ASYNC_METADATA",
-  ]);
-
-  const rawOtherStatus = "ProviderSecretPausedState";
-  const shape = diagnoseSplitR1AsyncApplicationStatusShapeV1(
-    splitR1PayloadWithApplicationStatus("result.applicationStatus", rawOtherStatus)
-  );
-  assert.equal(shape.selectedCanonicalStatus, "OTHER_NON_EMPTY_STRING");
-  assert.equal(shape.otherStatusRawValuePersisted, false);
-  assert.doesNotMatch(JSON.stringify(shape), new RegExp(rawOtherStatus));
-});
-
-test("Sandbox Completed with a null result continuation key is terminal initial and keeps processed results", () => {
-  const rawCorrelation = "terminal-correlation-value";
-  const rawToken = "terminal-token-value";
-  const receipt = classifySplitR1SandboxInitialSearchStateV1(
-    {
-      result: {
-        applicationStatus: "cOmPlEtEd",
-        correlationId: rawCorrelation,
-        token: rawToken,
-        nextResultsKey: null,
-      },
-    },
-    { httpStatus: 200, jsonValid: true, initialPage: splitR1SandboxInitialPage(167, 167) }
-  );
-  assert.equal(receipt.schemaVersion, SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION);
-  assert.equal(receipt.classification, "SANDBOX_TERMINAL_COMPLETED_INITIAL");
-  assert.equal(receipt.coverageClass, "PROVIDER_DECLARED_TERMINAL_INITIAL");
-  assert.equal(receipt.initialResultsProcessed, true);
-  assert.equal(receipt.initialRawResultCount, 167);
-  assert.equal(receipt.initialNormalizableResultCount, 167);
-  assert.equal(receipt.continuationTechnicallyEligible, false);
-  assert.equal(receipt.continuationAttempted, false);
-  assert.equal(receipt.providerDeclaredTerminalScope, "SINGLE_SANDBOX_SEARCH_ONLY");
-  assert.equal(receipt.globalOptimumClaimAllowed, false);
-  assert.equal(receipt.sandboxMarketEvidenceAllowed, false);
-  assert.doesNotMatch(JSON.stringify(receipt), new RegExp(`${rawCorrelation}|${rawToken}`));
-});
-
-test("Sandbox exact result continuation triple takes precedence over Completed without executing it", () => {
-  const receipt = classifySplitR1SandboxInitialSearchStateV1(
-    {
-      result: {
-        applicationStatus: "Completed",
-        correlationId: "memory-correlation",
-        token: "memory-token",
-        nextResultsKey: "memory-next",
-      },
-    },
-    { initialPage: splitR1SandboxInitialPage() }
-  );
-  assert.equal(receipt.classification, "SANDBOX_CONTINUATION_AVAILABLE");
-  assert.equal(receipt.coverageClass, "PROVIDER_CONTINUATION_AVAILABLE");
-  assert.equal(receipt.resultContinuationTripleComplete, true);
-  assert.equal(receipt.continuationTechnicallyEligible, true);
-  assert.equal(receipt.continuationAttempted, false);
-});
-
-test("Sandbox non-terminal or partial continuation metadata remains incomplete fail-closed", () => {
-  const cases = [
-    {
-      label: "in-progress-null-key",
-      result: {
-        applicationStatus: "InProgress",
-        correlationId: "memory-correlation",
-        token: "memory-token",
-        nextResultsKey: null,
-      },
-    },
-    {
-      label: "missing-key",
-      result: {
-        applicationStatus: "InProgress",
-        correlationId: "memory-correlation",
-        token: "memory-token",
-      },
-    },
-    {
-      label: "missing-token",
-      result: {
-        applicationStatus: "InProgress",
-        correlationId: "memory-correlation",
-        nextResultsKey: "memory-next",
-      },
-    },
-    {
-      label: "empty-key",
-      result: {
-        applicationStatus: "InProgress",
-        correlationId: "memory-correlation",
-        token: "memory-token",
-        nextResultsKey: "",
-      },
-    },
-    {
-      label: "wrong-key-type",
-      result: {
-        applicationStatus: "InProgress",
-        correlationId: "memory-correlation",
-        token: "memory-token",
-        nextResultsKey: 7,
-      },
-    },
-  ];
-  for (const testCase of cases) {
-    const receipt = classifySplitR1SandboxInitialSearchStateV1(
-      { result: testCase.result },
-      { initialPage: splitR1SandboxInitialPage() }
-    );
-    assert.equal(receipt.classification, "SANDBOX_INCOMPLETE_ASYNC_METADATA", testCase.label);
-    assert.equal(receipt.coverageClass, "ASYNC_METADATA_INCOMPLETE", testCase.label);
-    assert.equal(receipt.continuationTechnicallyEligible, false, testCase.label);
-    assert.equal(receipt.continuationAttempted, false, testCase.label);
-  }
-});
-
-test("Sandbox multiple complete groups and contradictory terminal metadata are ambiguous fail-closed", () => {
+test("multiple or non-contractual complete bindings are ambiguous and fail closed", () => {
   const complete = {
     correlationId: "memory-correlation",
     token: "memory-token",
     nextResultsKey: "memory-next",
   };
-  const multiple = classifySplitR1SandboxInitialSearchStateV1(
-    { ...complete, result: { applicationStatus: "InProgress", ...complete } },
+  const multiple = classifySplitR1CollectionCoverageV1(
+    { ...complete, result: { ...complete } },
     { initialPage: splitR1SandboxInitialPage() }
   );
-  assert.equal(multiple.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
-  assert.equal(multiple.coverageClass, "ASYNC_METADATA_AMBIGUOUS");
-  assert.equal(multiple.completeMetadataGroupCount, 2);
-  assert.equal(multiple.continuationTechnicallyEligible, false);
+  assert.equal(multiple.collectionClassification, "AMBIGUOUS_CONTINUATION_METADATA");
+  assert.equal(multiple.coverageClass, "AMBIGUOUS_CONTINUATION_METADATA");
+  assert.equal(multiple.completeContinuationBindingCount, 2);
+  assert.equal(multiple.continuationEligible, false);
+  assert.equal(multiple.boundedSnapshotUsable, false);
 
-  const contradictory = classifySplitR1SandboxInitialSearchStateV1(
-    {
-      result: {
-        applicationStatus: "Completed",
-        correlationId: "terminal-correlation",
-        token: "terminal-token",
-        nextResultsKey: null,
-      },
-      data: complete,
-    },
+  const nonContractual = classifySplitR1CollectionCoverageV1(
+    { data: complete },
     { initialPage: splitR1SandboxInitialPage() }
   );
-  assert.equal(contradictory.classification, "SANDBOX_AMBIGUOUS_ASYNC_METADATA");
-  assert.equal(contradictory.coverageClass, "ASYNC_METADATA_AMBIGUOUS");
-  assert.equal(contradictory.continuationTechnicallyEligible, false);
+  assert.equal(nonContractual.collectionClassification, "AMBIGUOUS_CONTINUATION_METADATA");
+  assert.equal(nonContractual.completeContinuationBindingCount, 1);
+  assert.equal(nonContractual.continuationEligible, false);
 });
 
-test("Sandbox initial-state receipt is sanitized and cannot be applied after a continuation", () => {
+test("invalid HTTP, JSON or initial results classify as unprocessable and fail closed", () => {
+  const cases = [
+    { httpStatus: 503, jsonValid: true, initialPage: splitR1SandboxInitialPage() },
+    { httpStatus: 200, jsonValid: false, initialPage: splitR1SandboxInitialPage() },
+    { httpStatus: 200, jsonValid: true, initialPage: null },
+    {
+      httpStatus: 200,
+      jsonValid: true,
+      initialPage: { rawResultCount: 0, offers: [splitR1SandboxInitialPage().offers[0]] },
+    },
+  ];
+  for (const options of cases) {
+    const receipt = classifySplitR1CollectionCoverageV1(
+      { result: { nextResultsKey: null } },
+      options
+    );
+    assert.equal(receipt.collectionClassification, "INITIAL_SNAPSHOT_UNPROCESSABLE");
+    assert.equal(receipt.coverageClass, "INITIAL_SNAPSHOT_UNPROCESSABLE");
+    assert.equal(receipt.boundedSnapshotUsable, false);
+    assert.equal(receipt.continuationEligible, false);
+  }
+});
+
+test("bounded collection receipt is sanitized, claim-limited and prospectively supersedes without reinterpretation", () => {
   const rawValues = ["raw-correlation", "raw-token", "raw-next"];
-  const receipt = classifySplitR1SandboxInitialSearchStateV1(
+  const receipt = classifySplitR1CollectionCoverageV1(
     {
       result: {
         applicationStatus: "InProgress",
@@ -1320,12 +1181,6 @@ test("Sandbox initial-state receipt is sanitized and cannot be applied after a c
     },
     { initialPage: splitR1SandboxInitialPage() }
   );
-  assert.deepEqual(SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES, [
-    "PROVIDER_DECLARED_TERMINAL_INITIAL",
-    "PROVIDER_CONTINUATION_AVAILABLE",
-    "ASYNC_METADATA_INCOMPLETE",
-    "ASYNC_METADATA_AMBIGUOUS",
-  ]);
   const serialized = JSON.stringify(receipt);
   for (const forbidden of [...rawValues, "providerIdentifier", "raw-provider-id"]) {
     assert.doesNotMatch(serialized, new RegExp(forbidden));
@@ -1333,9 +1188,19 @@ test("Sandbox initial-state receipt is sanitized and cannot be applied after a c
   assert.equal(receipt.rawMetadataValuesPersisted, 0);
   assert.equal(receipt.rawIdentifiersPersisted, 0);
   assert.equal(receipt.unknownKeyEnumeration, false);
+  assert.equal(receipt.providerTerminalSignalDocumented, false);
+  assert.equal(receipt.providerDeclaredTerminal, false);
+  assert.equal(receipt.completenessClaimAllowed, false);
+  assert.equal(receipt.globalOptimumClaimAllowed, false);
+  assert.equal(receipt.sandboxMarketEvidenceAllowed, false);
+  assert.equal(receipt.bestObservedTerminology, "BEST_OBSERVED_WITHIN_RETURNED_BOUNDED_SNAPSHOT");
+  assert.equal(receipt.historicalContractSupersededProspectively, true);
+  assert.equal(receipt.historicalResultsReinterpreted, false);
+  assert.equal(receipt.productionContractChanged, false);
+  assert.equal(receipt.publicRuntimeChanged, false);
   assert.throws(
     () =>
-      classifySplitR1SandboxInitialSearchStateV1(
+      classifySplitR1CollectionCoverageV1(
         { result: { applicationStatus: "Completed", nextResultsKey: null } },
         { initialPage: splitR1SandboxInitialPage(), continuationAttempted: true }
       ),
@@ -1343,7 +1208,7 @@ test("Sandbox initial-state receipt is sanitized and cannot be applied after a c
   );
 });
 
-test("Sandbox reassessment leaves Production continuation classification unchanged", () => {
+test("bounded-snapshot repair leaves the Production continuation classifier unchanged", () => {
   const payload = {
     result: {
       applicationStatus: "Completed",
@@ -1361,9 +1226,28 @@ test("Sandbox reassessment leaves Production continuation classification unchang
   const sandboxReceipt = classifySplitR1SandboxInitialSearchStateV1(payload, {
     initialPage: splitR1SandboxInitialPage(),
   });
-  assert.equal(sandboxReceipt.classification, "SANDBOX_CONTINUATION_AVAILABLE");
+  assert.equal(sandboxReceipt.collectionClassification, "PROVIDER_CONTINUATION_AVAILABLE");
   assert.equal(sandboxReceipt.productionContractChanged, false);
   assert.equal(sandboxReceipt.publicRuntimeChanged, false);
+});
+
+test("protocol supersedes terminal assumptions prospectively without rewriting historical results", async () => {
+  const protocol = await fs.readFile(
+    path.join(
+      SPLIT_R1_REPOSITORY_ROOT,
+      "docs",
+      "engine-v3",
+      "split-r1-routestack-production-pilot.md"
+    ),
+    "utf8"
+  );
+  assert.match(protocol, /stayopti\.split-r1\.collection-coverage@1/u);
+  assert.match(protocol, /supersedes the R1C\.16\/R1C\.18 terminal assumption prospectively/u);
+  assert.match(protocol, /They are not reinterpreted or promoted/u);
+  assert.match(protocol, /best observed within the returned bounded snapshot/u);
+  assert.match(protocol, /providerDeclaredTerminal=false/u);
+  assert.match(protocol, /applicationStatus.*observational diagnostic only/u);
+  assert.match(protocol, /changes neither the Production contract nor RouteStack provider enablement/u);
 });
 
 test("nightly-oracle plan covers every night, prefix and suffix without treating nightly sums as economic prices", async () => {
@@ -1424,8 +1308,11 @@ test("nightly scout ranks candidates while the oracle uses only exact full, pref
   const result = evaluateSplitR1SandboxNightlyOracleV1(fixture, states);
   assert.equal(result.fixedFullStayBaseline.totalMinorUnits, 200000);
   assert.equal(result.fixedFullStayBaseline.selectedBeforeBreakpoints, true);
-  assert.equal(result.coverageClass, "PROVIDER_COMPLETED");
-  assert.equal(result.oracleClaim, "GLOBAL_OPTIMUM_WITHIN_PROVIDER_COMPLETED_SEARCH_SET");
+  assert.equal(result.coverageClass, "BOUNDED_RETURNED_SNAPSHOT");
+  assert.equal(result.oracleClaim, "BEST_OBSERVED_WITHIN_RETURNED_BOUNDED_SNAPSHOT");
+  assert.equal(result.providerDeclaredTerminal, false);
+  assert.equal(result.completenessClaimAllowed, false);
+  assert.equal(result.globalOptimumClaimAllowed, false);
   const best = result.comparisons.find((comparison) => comparison.oracleRank === 1);
   assert.equal(best.breakpointId, "bp-07");
   assert.equal(best.prefixMinorUnits, 70000);
@@ -1442,7 +1329,7 @@ test("nightly scout ranks candidates while the oracle uses only exact full, pref
   assert.equal(result.scoutRecall.TOP_5_EXACT_BEST_RECALL, true);
   assert.equal(result.scoutRecall.TOP_3_NEAR_BEST_RECALL, true);
   assert.equal(result.scoutRecall.TOP_5_NEAR_BEST_RECALL, true);
-  assert.equal(result.scoutRecall.trueOptimumScoutRank, 1);
+  assert.equal(result.scoutRecall.bestObservedBreakpointScoutRank, 1);
   assert.equal(result.causalLedger.schemaVersion, SPLIT_R1_SANDBOX_NIGHTLY_ORACLE_LEDGER_VERSION);
   assert.equal(result.causalLedger.searches.length, 41);
   assert.equal(result.causalLedger.breakpointQuotes.length, 13);
@@ -1455,7 +1342,7 @@ test("nightly scout ranks candidates while the oracle uses only exact full, pref
   assert.equal(result.policyEligible, false);
 });
 
-test("nightly-oracle near-best thresholds are precommitted and coverage truncation blocks global optimum claims", async () => {
+test("nightly-oracle near-best thresholds are precommitted and every result stays bounded", async () => {
   const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
   assert.equal(
     fixture.nearBestThreshold.maximumAbsoluteRegretMinorUnits,
@@ -1476,9 +1363,9 @@ test("nightly-oracle near-best thresholds are precommitted and coverage truncati
   const states = buildNightlyOracleSyntheticStates(fixture);
   states[1] = { ...states[1], completionStatus: "BOUNDED_TRUNCATED" };
   const result = evaluateSplitR1SandboxNightlyOracleV1(fixture, states);
-  assert.equal(result.coverageClass, "BOUNDED_TRUNCATED");
-  assert.equal(result.oracleClaim, "BEST_OBSERVED_WITHIN_EQUAL_COVERAGE");
-  assert.doesNotMatch(result.oracleClaim, /^GLOBAL_OPTIMUM$/u);
+  assert.equal(result.coverageClass, "BOUNDED_RETURNED_SNAPSHOT");
+  assert.equal(result.oracleClaim, "BEST_OBSERVED_WITHIN_RETURNED_BOUNDED_SNAPSHOT");
+  assert.equal(result.globalOptimumClaimAllowed, false);
 });
 
 test("nightly-oracle causal output is deterministic, sanitized and independent from input ordering", async () => {
