@@ -10,6 +10,10 @@ import {
   SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
   SPLIT_R1_CAUSAL_LEDGER_VERSION,
   SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+  SPLIT_R1_COMPACT_PILOT_RESULT_VERSION,
+  SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES,
+  SPLIT_R1_COMPACT_RESULT_PREFIX,
+  SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG,
   SPLIT_R1_ECONOMIC_ELIGIBILITY_STATES,
   SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
   SPLIT_R1_DESTINATION_ENDPOINT,
@@ -118,6 +122,7 @@ import {
   assertSplitR1SandboxCanonicalFullStayCanaryRequestAllowedV1,
   assertSplitR1SandboxAlternativeFullStayQualificationRequestAllowedV1,
   assertSplitR1PersistedPayloadSafe,
+  buildSplitR1CompactPilotResultV1,
   buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
   buildSplitR1EconomicEligibilityFunnelReceiptV1,
@@ -176,6 +181,8 @@ import {
   runSplitR1SandboxBoundedLivePilotV1,
   runSplitR1SandboxCanonicalFullStayCanaryV1,
   runSplitR1SandboxAlternativeFullStayQualificationV1,
+  serializeSplitR1CompactPilotResultV1,
+  SplitR1CompactResultError,
   replaySplitR1CausalLedger,
   resolveSplitR1SandboxConfiguration,
   resolveSplitR1SandboxBoundedConfigurationV1,
@@ -993,6 +1000,26 @@ test("alternative full-stay qualification is explicit, default-disabled and mutu
   });
   assert.equal(dryRun.httpRequests, 0);
   assert.equal(credentialReads, 0);
+  const binding =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture);
+  await assert.rejects(
+    runSplitR1SandboxBoundedLivePilotV1({
+      fixture,
+      options: { mode: "sandbox-selected-alternative-bounded-live-pilot" },
+      authoritativePlanBinding: binding,
+      environment: new Proxy({}, {
+        get() {
+          credentialReads += 1;
+          throw new Error("compact-hold-must-precede-credentials");
+        },
+      }),
+      fetchImpl: async () => {
+        throw new Error("selected-pilot-without-compact-must-not-fetch");
+      },
+    }),
+    /compact-output-required/
+  );
+  assert.equal(credentialReads, 0);
 });
 
 test("qualification candidates are frozen, date-only overlays that rebuild the canonical 1/41/13 plan", async () => {
@@ -1197,11 +1224,31 @@ test("selected alternative live mode is explicit, default-disabled and mutually 
   const selectedArgs = [
     sandboxFlag,
     SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
+    SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG,
     ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
   ];
   assert.deepEqual(parseSplitR1Arguments(selectedArgs), {
     mode: "sandbox-selected-alternative-bounded-live-pilot",
+    compactOutput: true,
   });
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        sandboxFlag,
+        SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
+        ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
+      ]),
+    /compact-output-required/
+  );
+  assert.throws(
+    () =>
+      parseSplitR1Arguments([
+        sandboxFlag,
+        SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG,
+        ...SPLIT_R1_SANDBOX_LIVE_CONFIRMATIONS,
+      ]),
+    /compact-output-requires-selected-alternative-live-mode/
+  );
   assert.throws(
     () =>
       parseSplitR1Arguments([
@@ -1339,7 +1386,10 @@ test("selected alternative binding drift fails before credential access", async 
   await assert.rejects(
     runSplitR1SandboxBoundedLivePilotV1({
       fixture,
-      options: { mode: "sandbox-selected-alternative-bounded-live-pilot" },
+      options: {
+        mode: "sandbox-selected-alternative-bounded-live-pilot",
+        compactOutput: true,
+      },
       authoritativePlanBinding: divergent,
       environment: new Proxy({}, {
         get() {
@@ -1373,6 +1423,12 @@ test("selected alternative protocol preserves the prior R1C.27 blocked result pr
   );
   assert.match(protocol, /2027-10-04 through 2027-10-18 fixture remains byte-unchanged/u);
   assert.match(protocol, /2026-11-30 through 2026-12-14/u);
+  assert.match(protocol, /preserves the R1C\.27B `FAIL` result/u);
+  assert.match(
+    protocol,
+    /SANITIZED_RESULT_STDOUT_EXCEEDED_CAPTURE_LIMIT_AFTER_SUCCESSFUL_SINGLE_WAVE/u
+  );
+  assert.match(protocol, /stayopti\.split-r1\.compact-pilot-result@1/u);
 });
 
 test("sandbox base URL is structurally inspected but no routestack subdomain is allowlisted without proof", () => {
@@ -2034,7 +2090,10 @@ async function runSplitR1SelectedAlternativeBoundedFakeLive(fixture, fake) {
   const serverEnvPath = path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env");
   return runSplitR1Collector({
     matrix: fixture,
-    options: { mode: "sandbox-selected-alternative-bounded-live-pilot" },
+    options: {
+      mode: "sandbox-selected-alternative-bounded-live-pilot",
+      compactOutput: true,
+    },
     environment: {
       [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl]:
         SPLIT_R1_SANDBOX_BOUNDED_BASE_URL,
@@ -2479,6 +2538,172 @@ test("fake selected alternative pilot dispatches the authoritative Candidate 1 p
     /memory-only-(?:partner|destination|correlation|continuation|next|property)/u
   );
   assert.equal(assertSplitR1PersistedPayloadSafe(result), true);
+});
+
+test("selected alternative compact result is single-line, deterministic, complete and semantically identical", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const authoritative =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture);
+  const fake = splitR1BoundedFakeFetch(authoritative.fixture);
+  const liveResult = await runSplitR1SelectedAlternativeBoundedFakeLive(
+    fixture,
+    fake
+  );
+  const first = serializeSplitR1CompactPilotResultV1(liveResult);
+  const second = serializeSplitR1CompactPilotResultV1(liveResult);
+  assert.equal(first.line, second.line);
+  assert.equal(first.json, second.json);
+  assert.equal(first.utf8Bytes, Buffer.byteLength(first.json, "utf8"));
+  assert.ok(first.utf8Bytes < SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES);
+  assert.equal(first.line.split(/\r?\n/u).length, 1);
+  assert.ok(first.line.startsWith(SPLIT_R1_COMPACT_RESULT_PREFIX));
+  const receipt = JSON.parse(
+    first.line.slice(SPLIT_R1_COMPACT_RESULT_PREFIX.length)
+  );
+  assert.deepEqual(receipt, buildSplitR1CompactPilotResultV1(liveResult));
+  assert.equal(receipt.receiptVersion, SPLIT_R1_COMPACT_PILOT_RESULT_VERSION);
+  assert.equal(receipt.status, "PASS");
+  assert.equal(receipt.selectedCandidateOrdinal, 1);
+  assert.equal(receipt.logicalSearchesPlanned, 41);
+  assert.equal(receipt.logicalSearchesExecuted, 41);
+  assert.equal(receipt.breakpointsPlanned, 13);
+  assert.equal(receipt.authHttpRequests, 1);
+  assert.equal(receipt.destinationHttpRequests, 1);
+  assert.equal(receipt.initialHttpRequests, 41);
+  assert.equal(receipt.continuationHttpRequests, 0);
+  assert.equal(receipt.totalHttpRequests, 43);
+  assert.equal(receipt.productionCalls, 0);
+  assert.equal(receipt.breakpointsEvaluable, 13);
+  assert.equal(receipt.breakpointsNotEvaluable, 0);
+  const comparable = liveResult.economicResult.comparisons.filter(
+    (comparison) =>
+      comparison.comparability === "CONDITIONAL_SEARCH_LEVEL_COMPARABLE"
+  );
+  const deltas = comparable
+    .map((comparison) => comparison.diagnosticGrossPriceDeltaMinor)
+    .sort((left, right) => left - right);
+  const best = [...comparable].sort(
+    (left, right) =>
+      right.diagnosticGrossPriceDeltaMinor - left.diagnosticGrossPriceDeltaMinor ||
+      left.nightsFromStart - right.nightsFromStart
+  )[0];
+  assert.equal(
+    receipt.bestObservedSavingAbsoluteMinorUnits,
+    best.diagnosticGrossPriceDeltaMinor
+  );
+  assert.equal(
+    receipt.medianObservedSavingAbsoluteMinorUnits,
+    deltas[Math.floor(deltas.length / 2)]
+  );
+  assert.equal(
+    receipt.minObservedSavingAbsoluteMinorUnits,
+    Math.min(...deltas)
+  );
+  assert.equal(
+    receipt.maxObservedSavingAbsoluteMinorUnits,
+    Math.max(...deltas)
+  );
+  assert.equal(
+    receipt.winningBreakpointOrdinal,
+    liveResult.economicResult.comparisons.findIndex(
+      (comparison) => comparison.breakpointId === best.breakpointId
+    ) + 1
+  );
+  assert.equal(Number.isSafeInteger(receipt.bestObservedSavingBasisPoints), true);
+  assert.equal(Number.isSafeInteger(receipt.medianObservedSavingBasisPoints), true);
+  assert.match(receipt.bestObservedSavingAbsoluteEurDisplay, /^-?\d+\.\d{2}$/u);
+  assert.match(receipt.bestObservedSavingPercentDisplay, /^-?\d+\.\d{2}%$/u);
+  assert.equal(receipt.distinctPropertySplitRequired, true);
+  assert.equal(receipt.maxPropertyChanges, 1);
+  assert.equal(receipt.completenessClaimAllowed, false);
+  assert.equal(receipt.globalOptimumClaimAllowed, false);
+  assert.equal(receipt.sandboxMarketEvidenceAllowed, false);
+  assert.equal(receipt.rawIdsPersisted, 0);
+  assert.equal(receipt.rawContinuationIdsPersisted, 0);
+  assert.equal(receipt.payloadsOrRawResponsesPersisted, 0);
+  assert.equal(receipt.secretValuesExposed, false);
+  const hasArray = (value) =>
+    Array.isArray(value) ||
+    (value !== null &&
+      typeof value === "object" &&
+      Object.values(value).some((child) => hasArray(child)));
+  assert.equal(hasArray(receipt), false);
+  assert.doesNotMatch(
+    first.line,
+    /searchReceipts|perSearchReceipts|breakpointQuotes|bestObservedPriceByProperty|propertyFingerprint|prefixPropertyFingerprint|suffixPropertyFingerprint/u
+  );
+  assert.doesNotMatch(
+    first.line,
+    /memory-only|correlationId|nextResultsKey|partnerToken|apiSecret|"payload"|"rawResponse"/u
+  );
+  assert.equal(assertSplitR1PersistedPayloadSafe(receipt), true);
+});
+
+test("compact result remains bounded for 25,289 synthetic offers and oversize fails without truncation", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const authoritative =
+    buildSplitR1SandboxSelectedAlternativeAuthoritativePlanV1(fixture);
+  const liveResult = await runSplitR1SelectedAlternativeBoundedFakeLive(
+    fixture,
+    splitR1BoundedFakeFetch(authoritative.fixture)
+  );
+  const large = structuredClone(liveResult);
+  const offersPerSearch = 617;
+  const syntheticProperties = Array.from({ length: offersPerSearch }, (_, index) => ({
+    propertyFingerprint: `hmac-sha256:${index.toString(16).padStart(64, "0")}`,
+    bestOurpriceMinorUnits: 10_000 + index,
+    currency: "EUR",
+    necessaryFieldsPresent: true,
+  }));
+  for (const receipt of large.economicEligibilityFunnel.perSearchReceipts) {
+    receipt.rawResultCount = offersPerSearch;
+    receipt.normalizableResultCount = offersPerSearch;
+    receipt.identityEligibleCount = offersPerSearch;
+    receipt.numericPriceEligibleCount = offersPerSearch;
+    receipt.expectedCurrencyMatchCount = offersPerSearch;
+    receipt.preDedupEconomicOfferCount = offersPerSearch;
+    receipt.duplicatePropertyOffersRemovedCount = 0;
+    receipt.finalDistinctPropertyOfferCount = offersPerSearch;
+  }
+  for (const search of large.economicResult.causalLedger.searches) {
+    search.bestObservedPriceByProperty = structuredClone(syntheticProperties);
+  }
+  const compact = serializeSplitR1CompactPilotResultV1(large);
+  assert.ok(compact.receipt.totalFinalDistinctPropertyOffers >= 25_289);
+  assert.ok(compact.utf8Bytes < SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES);
+  assert.equal(compact.receipt.totalUniquePseudonymizedProperties, offersPerSearch);
+  assert.throws(
+    () =>
+      serializeSplitR1CompactPilotResultV1(large, {
+        maxUtf8Bytes: SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES + 1,
+      }),
+    /byte-limit-invalid/
+  );
+  let oversizeError = null;
+  try {
+    serializeSplitR1CompactPilotResultV1(large, { maxUtf8Bytes: 1 });
+  } catch (error) {
+    oversizeError = error;
+  }
+  assert.ok(oversizeError instanceof SplitR1CompactResultError);
+  assert.equal(
+    oversizeError.failureClassification,
+    "COMPACT_RECEIPT_UTF8_LIMIT_EXCEEDED"
+  );
+  assert.equal(oversizeError.compactLine.split(/\r?\n/u).length, 1);
+  assert.ok(oversizeError.compactLine.startsWith(SPLIT_R1_COMPACT_RESULT_PREFIX));
+  const failureReceipt = JSON.parse(
+    oversizeError.compactLine.slice(SPLIT_R1_COMPACT_RESULT_PREFIX.length)
+  );
+  assert.equal(failureReceipt.status, "FAIL");
+  assert.equal(
+    failureReceipt.failureClassification,
+    "COMPACT_RECEIPT_UTF8_LIMIT_EXCEEDED"
+  );
+  assert.equal(failureReceipt.totalHttpRequests, 43);
+  assert.equal(failureReceipt.rawIdsPersisted, 0);
+  assert.equal(failureReceipt.secretValuesExposed, false);
+  assert.doesNotMatch(oversizeError.compactLine, /stack|memory-only|propertyFingerprint/u);
 });
 
 test("economic eligibility receipt counts valid offers and deduplicates properties without changing selection", async () => {

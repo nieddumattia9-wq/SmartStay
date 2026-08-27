@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
@@ -95,6 +96,14 @@ export const SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG =
   "--live-alternative-full-stay-qualification";
 export const SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG =
   "--live-selected-alternative-bounded-pilot";
+export const SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG =
+  "--compact-sanitized-result";
+export const SPLIT_R1_COMPACT_PILOT_RESULT_VERSION =
+  "stayopti.split-r1.compact-pilot-result@1";
+export const SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES = 12_000;
+export const SPLIT_R1_COMPACT_RESULT_PREFIX = "SPLIT_R1C_COMPACT_RESULT=";
+export const SPLIT_R1_COMPACT_RESULT_SOURCE_SHA =
+  "164a6de8dc7785ec7cf76cd70e3da262ba354ad5";
 export const SPLIT_R1_SANDBOX_BOUNDED_BASE_URL = "https://evolvemcp.routestack.ai";
 export const SPLIT_R1_SANDBOX_BOUNDED_AUTH_HTTP_MAX = 1;
 export const SPLIT_R1_SANDBOX_BOUNDED_DESTINATION_HTTP_MAX = 1;
@@ -504,6 +513,7 @@ export function parseSplitR1Arguments(argv) {
     SPLIT_R1_SANDBOX_CANONICAL_FULL_STAY_CANARY_FLAG,
     SPLIT_R1_SANDBOX_ALTERNATIVE_FULL_STAY_QUALIFICATION_FLAG,
     SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG,
+    SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG,
     targetedFlag,
     sandboxNightlyOracleFlag,
     ourpriceProbeFlag,
@@ -531,6 +541,12 @@ export function parseSplitR1Arguments(argv) {
   const selectedAlternativeBoundedLiveRequested = argv.includes(
     SPLIT_R1_SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_FLAG
   );
+  const compactSanitizedResultRequested = argv.includes(
+    SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG
+  );
+  if (compactSanitizedResultRequested && !selectedAlternativeBoundedLiveRequested) {
+    throw new Error("split-r1-compact-output-requires-selected-alternative-live-mode");
+  }
   if (
     (boundedLiveRequested ||
       canonicalFullStayCanaryRequested ||
@@ -656,7 +672,13 @@ export function parseSplitR1Arguments(argv) {
       return { mode: "sandbox-alternative-full-stay-live-qualification" };
     }
     if (selectedAlternativeBoundedLiveRequested) {
-      return { mode: "sandbox-selected-alternative-bounded-live-pilot" };
+      if (!compactSanitizedResultRequested) {
+        throw new Error("split-r1-sandbox-selected-alternative-compact-output-required");
+      }
+      return {
+        mode: "sandbox-selected-alternative-bounded-live-pilot",
+        compactOutput: true,
+      };
     }
     return { mode: "sandbox-nightly-oracle-live-contract-hold" };
   }
@@ -4581,6 +4603,408 @@ export function evaluateSplitR1SandboxNightlyOracleV1(fixture, searchResults) {
   return result;
 }
 
+const SPLIT_R1_COMPACT_NOT_EVALUABLE_REASONS = Object.freeze([
+  "NO_FIXED_FULL_STAY_BASELINE",
+  "NO_PREFIX_CANDIDATE",
+  "NO_SUFFIX_CANDIDATE",
+  "NO_DISTINCT_PROPERTY_PAIR",
+]);
+
+function splitR1CompactSum(receipts, field) {
+  return receipts.reduce((sum, receipt) => {
+    const value = receipt?.[field];
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new Error(`split-r1-compact-aggregate-invalid:${field}`);
+    }
+    return sum + value;
+  }, 0);
+}
+
+function splitR1CompactRoundedRatio(numerator, denominator, scale) {
+  if (
+    !Number.isSafeInteger(numerator) ||
+    !Number.isSafeInteger(denominator) ||
+    denominator <= 0 ||
+    !Number.isSafeInteger(scale) ||
+    scale <= 0
+  ) {
+    return null;
+  }
+  const sign = numerator < 0 ? -1n : 1n;
+  const absoluteNumerator = BigInt(Math.abs(numerator)) * BigInt(scale);
+  const divisor = BigInt(denominator);
+  const rounded = (absoluteNumerator * 2n + divisor) / (divisor * 2n);
+  const result = Number(sign * rounded);
+  if (!Number.isSafeInteger(result)) {
+    throw new Error("split-r1-compact-ratio-overflow");
+  }
+  return result;
+}
+
+function splitR1CompactMedianInteger(values) {
+  if (!Array.isArray(values) || values.length === 0) return null;
+  if (values.some((value) => !Number.isSafeInteger(value))) {
+    throw new Error("split-r1-compact-median-input-invalid");
+  }
+  const sorted = [...values].sort((left, right) => left - right);
+  const midpoint = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[midpoint];
+  const sum = BigInt(sorted[midpoint - 1]) + BigInt(sorted[midpoint]);
+  const sign = sum < 0n ? -1n : 1n;
+  const rounded = sign * ((sum < 0n ? -sum : sum) + 1n) / 2n;
+  const result = Number(rounded);
+  if (!Number.isSafeInteger(result)) {
+    throw new Error("split-r1-compact-median-overflow");
+  }
+  return result;
+}
+
+function splitR1CompactMinorUnitsDisplay(value) {
+  if (value === null) return null;
+  if (!Number.isSafeInteger(value)) {
+    throw new Error("split-r1-compact-minor-units-display-invalid");
+  }
+  const sign = value < 0 ? "-" : "";
+  const absolute = Math.abs(value);
+  return `${sign}${Math.floor(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
+}
+
+function splitR1CompactBasisPointsDisplay(value) {
+  if (value === null) return null;
+  if (!Number.isSafeInteger(value)) {
+    throw new Error("split-r1-compact-basis-points-display-invalid");
+  }
+  const sign = value < 0 ? "-" : "";
+  const absolute = Math.abs(value);
+  return `${sign}${Math.floor(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}%`;
+}
+
+function splitR1CompactNotEvaluableReasonCounts(comparisons) {
+  const counts = Object.fromEntries(
+    SPLIT_R1_COMPACT_NOT_EVALUABLE_REASONS.map((reason) => [reason, 0])
+  );
+  for (const comparison of comparisons) {
+    if (comparison?.comparability !== "NON_COMPARABLE") continue;
+    for (const reason of comparison.rejectionReasons ?? []) {
+      if (!SPLIT_R1_COMPACT_NOT_EVALUABLE_REASONS.includes(reason)) {
+        throw new Error("split-r1-compact-not-evaluable-reason-not-allowlisted");
+      }
+      counts[reason] += 1;
+    }
+  }
+  return counts;
+}
+
+function splitR1CompactUniquePropertyCount(economicResult) {
+  const fingerprints = new Set();
+  for (const search of economicResult?.causalLedger?.searches ?? []) {
+    for (const offer of search?.bestObservedPriceByProperty ?? []) {
+      if (
+        typeof offer?.propertyFingerprint !== "string" ||
+        !/^hmac-sha256:[0-9a-f]{64}$/u.test(offer.propertyFingerprint)
+      ) {
+        throw new Error("split-r1-compact-property-fingerprint-invalid");
+      }
+      fingerprints.add(offer.propertyFingerprint);
+    }
+  }
+  return fingerprints.size;
+}
+
+export function buildSplitR1CompactPilotResultV1(
+  liveResult,
+  { sourceSha = SPLIT_R1_COMPACT_RESULT_SOURCE_SHA } = {}
+) {
+  if (
+    liveResult?.mode !== "SANDBOX_SELECTED_ALTERNATIVE_BOUNDED_LIVE_PILOT" ||
+    typeof sourceSha !== "string" ||
+    !/^[0-9a-f]{40}$/u.test(sourceSha)
+  ) {
+    throw new Error("split-r1-compact-selected-result-invalid");
+  }
+  const binding = liveResult.selectedAlternativeBindingReceipt;
+  const perSearchReceipts = liveResult.economicEligibilityFunnel?.perSearchReceipts;
+  const searchReceipts = liveResult.searchReceipts;
+  const comparisons = liveResult.economicResult?.comparisons;
+  if (
+    binding?.selectedCandidateOrdinal !== 1 ||
+    !Array.isArray(perSearchReceipts) ||
+    !Array.isArray(searchReceipts) ||
+    !Array.isArray(comparisons)
+  ) {
+    throw new Error("split-r1-compact-required-input-missing");
+  }
+  const comparable = comparisons.filter(
+    (comparison) =>
+      comparison?.comparability === "CONDITIONAL_SEARCH_LEVEL_COMPARABLE" &&
+      Number.isSafeInteger(comparison.diagnosticGrossPriceDeltaMinor) &&
+      Number.isSafeInteger(comparison.fixedFullStayMinorUnits) &&
+      comparison.fixedFullStayMinorUnits > 0
+  );
+  const breakpointIndex = new Map(
+    comparisons.map((comparison, index) => [comparison.breakpointId, index + 1])
+  );
+  const best = [...comparable].sort(
+    (left, right) =>
+      right.diagnosticGrossPriceDeltaMinor - left.diagnosticGrossPriceDeltaMinor ||
+      left.nightsFromStart - right.nightsFromStart
+  )[0] ?? null;
+  const savingMinorUnits = comparable.map(
+    (comparison) => comparison.diagnosticGrossPriceDeltaMinor
+  );
+  const savingBasisPoints = comparable.map((comparison) =>
+    splitR1CompactRoundedRatio(
+      comparison.diagnosticGrossPriceDeltaMinor,
+      comparison.fixedFullStayMinorUnits,
+      10_000
+    )
+  );
+  const medianMinorUnits = splitR1CompactMedianInteger(savingMinorUnits);
+  const medianBasisPoints = splitR1CompactMedianInteger(savingBasisPoints);
+  const bestBasisPoints = best
+    ? splitR1CompactRoundedRatio(
+        best.diagnosticGrossPriceDeltaMinor,
+        best.fixedFullStayMinorUnits,
+        10_000
+      )
+    : null;
+  const fullStay = perSearchReceipts.find(
+    (receipt) => receipt.segmentRole === "FULL_STAY"
+  );
+  if (!fullStay) throw new Error("split-r1-compact-full-stay-receipt-missing");
+  const countClassification = (classification) =>
+    searchReceipts.filter(
+      (receipt) =>
+        receipt?.coverageReceipt?.collectionClassification === classification
+    ).length;
+  const usableBoundedSnapshots = searchReceipts.filter(
+    (receipt) => receipt?.coverageReceipt?.boundedSnapshotUsable === true
+  ).length;
+  const positiveCount = savingMinorUnits.filter((value) => value > 0).length;
+  const breakEvenCount = savingMinorUnits.filter((value) => value === 0).length;
+  const negativeCount = savingMinorUnits.filter((value) => value < 0).length;
+  const status =
+    liveResult.runStatus === "COMPLETE" &&
+    liveResult.logicalSearchesExecuted === liveResult.logicalSearchesPlanned &&
+    comparable.length > 0
+      ? "PASS"
+      : "INCONCLUSIVE";
+  const receipt = {
+    receiptVersion: SPLIT_R1_COMPACT_PILOT_RESULT_VERSION,
+    status,
+    sourceSha,
+    selectedCandidateOrdinal: binding.selectedCandidateOrdinal,
+    selectedCandidateRuleId: binding.selectedCandidateRuleId,
+    selectedCheckin: binding.selectedCheckIn,
+    selectedCheckout: binding.selectedCheckOut,
+    selectedDurationNights: binding.selectedDurationNights,
+    bestResultScope: "BOUNDED_RETURNED_SNAPSHOT",
+    dispatcherUsesPromotedPlan: binding.dispatcherUsesPromotedPlan,
+    preflightAndDispatchShareAuthoritativePlan:
+      liveResult.preflight?.preflightAndDispatchShareAuthoritativePlan === true,
+    allLogicalSearchesWithinSelectedWindow:
+      binding.allLogicalSearchesWithinSelectedWindow,
+    originalCanonicalDatesDispatched: binding.originalCanonicalDatesDispatched,
+    mixedScenarioDispatch: binding.mixedScenarioDispatch,
+    logicalSearchesPlanned: liveResult.logicalSearchesPlanned,
+    logicalSearchesExecuted: liveResult.logicalSearchesExecuted,
+    breakpointsPlanned: liveResult.breakpointsPlanned,
+    breakpointsEvaluable: comparable.length,
+    breakpointsNotEvaluable: comparisons.length - comparable.length,
+    authHttpRequests: liveResult.requestBudget?.requestsByClass?.authentication ?? 0,
+    destinationHttpRequests: liveResult.requestBudget?.requestsByClass?.destination ?? 0,
+    initialHttpRequests: liveResult.requestBudget?.requestsByClass?.initialHotelSearch ?? 0,
+    continuationHttpRequests: liveResult.continuationHttpRequests,
+    totalHttpRequests: liveResult.httpRequests,
+    retries: liveResult.retries,
+    redirects: liveResult.redirects,
+    productionCalls: 0,
+    maxObservedConcurrency: liveResult.maxObservedConcurrency,
+    minObservedRequestIntervalMs: liveResult.minimumObservedRequestIntervalMs,
+    usableBoundedSnapshots,
+    unprocessableSnapshots: countClassification("INITIAL_SNAPSHOT_UNPROCESSABLE"),
+    noContinuationExposedSnapshots: countClassification(
+      "PROVIDER_NO_CONTINUATION_EXPOSED"
+    ),
+    continuationAvailableNotExecutedSnapshots: countClassification(
+      "PROVIDER_CONTINUATION_AVAILABLE"
+    ),
+    ambiguousSnapshots: countClassification("AMBIGUOUS_CONTINUATION_METADATA"),
+    totalRawResults: splitR1CompactSum(perSearchReceipts, "rawResultCount"),
+    totalNormalizableResults: splitR1CompactSum(
+      perSearchReceipts,
+      "normalizableResultCount"
+    ),
+    totalEconomicOffersPreDedup: splitR1CompactSum(
+      perSearchReceipts,
+      "preDedupEconomicOfferCount"
+    ),
+    totalFinalDistinctPropertyOffers: splitR1CompactSum(
+      perSearchReceipts,
+      "finalDistinctPropertyOfferCount"
+    ),
+    numericPriceCoverageNumerator: splitR1CompactSum(
+      perSearchReceipts,
+      "numericPriceEligibleCount"
+    ),
+    numericPriceCoverageDenominator: splitR1CompactSum(
+      perSearchReceipts,
+      "identityEligibleCount"
+    ),
+    expectedCurrencyCoverageNumerator: splitR1CompactSum(
+      perSearchReceipts,
+      "expectedCurrencyMatchCount"
+    ),
+    expectedCurrencyCoverageDenominator: splitR1CompactSum(
+      perSearchReceipts,
+      "numericPriceEligibleCount"
+    ),
+    totalUniquePseudonymizedProperties:
+      splitR1CompactUniquePropertyCount(liveResult.economicResult),
+    fullStayRawResults: fullStay.rawResultCount,
+    fullStayNormalizableResults: fullStay.normalizableResultCount,
+    fullStayFinalDistinctOffers: fullStay.finalDistinctPropertyOfferCount,
+    fullStayBaselineAvailable: fullStay.baselineCandidateAvailable,
+    fullStayEconomicEligibilityState: fullStay.economicEligibilityState,
+    breakpointsPositiveSaving: positiveCount,
+    breakpointsBreakEven: breakEvenCount,
+    breakpointsSplitMoreExpensive: negativeCount,
+    bestObservedSavingAbsoluteMinorUnits:
+      best?.diagnosticGrossPriceDeltaMinor ?? null,
+    bestObservedSavingAbsoluteEurDisplay: splitR1CompactMinorUnitsDisplay(
+      best?.diagnosticGrossPriceDeltaMinor ?? null
+    ),
+    bestObservedSavingBasisPoints: bestBasisPoints,
+    bestObservedSavingPercentDisplay:
+      splitR1CompactBasisPointsDisplay(bestBasisPoints),
+    medianObservedSavingAbsoluteMinorUnits: medianMinorUnits,
+    medianObservedSavingAbsoluteEurDisplay:
+      splitR1CompactMinorUnitsDisplay(medianMinorUnits),
+    medianObservedSavingBasisPoints: medianBasisPoints,
+    medianObservedSavingPercentDisplay:
+      splitR1CompactBasisPointsDisplay(medianBasisPoints),
+    minObservedSavingAbsoluteMinorUnits:
+      savingMinorUnits.length > 0 ? Math.min(...savingMinorUnits) : null,
+    maxObservedSavingAbsoluteMinorUnits:
+      savingMinorUnits.length > 0 ? Math.max(...savingMinorUnits) : null,
+    winningBreakpointOrdinal: best ? breakpointIndex.get(best.breakpointId) : null,
+    distinctPropertySplitRequired: true,
+    maxPropertyChanges: 1,
+    notEvaluableReasonCounts: splitR1CompactNotEvaluableReasonCounts(comparisons),
+    pilotTechnicalConclusion:
+      comparable.length === 0
+        ? "INSUFFICIENT_EVALUABLE_DATA"
+        : positiveCount > 0
+          ? "SPLIT_TECHNICALLY_OBSERVED_WITH_POSITIVE_SAVING"
+          : "SPLIT_TECHNICALLY_OBSERVED_WITHOUT_POSITIVE_SAVING",
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    sandboxMarketEvidenceAllowed: false,
+    targetedProductionAuthorized: false,
+    publicRuntimeChanged: false,
+    repositoryModifications: 0,
+    rawMetadataValuesPersisted: 0,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+    secretValuesExposed: false,
+  };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
+}
+
+function buildSplitR1CompactFailureReceiptV1({
+  failureClassification,
+  liveResult = null,
+  sourceSha = SPLIT_R1_COMPACT_RESULT_SOURCE_SHA,
+} = {}) {
+  const requests = liveResult?.requestBudget?.requestsByClass ?? {};
+  const receipt = {
+    receiptVersion: SPLIT_R1_COMPACT_PILOT_RESULT_VERSION,
+    status: "FAIL",
+    sourceSha,
+    failureClassification,
+    authHttpRequests: requests.authentication ?? 0,
+    destinationHttpRequests: requests.destination ?? 0,
+    initialHttpRequests: requests.initialHotelSearch ?? 0,
+    continuationHttpRequests: requests.continuation ?? 0,
+    totalHttpRequests: liveResult?.httpRequests ?? 0,
+    productionCalls: 0,
+    repositoryModifications: 0,
+    rawMetadataValuesPersisted: 0,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+    secretValuesExposed: false,
+  };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
+}
+
+export class SplitR1CompactResultError extends Error {
+  constructor(failureClassification, compactLine) {
+    super(failureClassification);
+    this.name = "SplitR1CompactResultError";
+    this.failureClassification = failureClassification;
+    this.compactLine = compactLine;
+  }
+}
+
+export function serializeSplitR1CompactPilotResultV1(
+  liveResult,
+  {
+    sourceSha = SPLIT_R1_COMPACT_RESULT_SOURCE_SHA,
+    maxUtf8Bytes = SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES,
+  } = {}
+) {
+  if (
+    !Number.isSafeInteger(maxUtf8Bytes) ||
+    maxUtf8Bytes < 1 ||
+    maxUtf8Bytes > SPLIT_R1_COMPACT_RECEIPT_MAX_UTF8_BYTES
+  ) {
+    throw new Error("split-r1-compact-byte-limit-invalid");
+  }
+  const receipt = buildSplitR1CompactPilotResultV1(liveResult, { sourceSha });
+  const json = stableStringifySplitF0(receipt);
+  const utf8Bytes = Buffer.byteLength(json, "utf8");
+  if (utf8Bytes > maxUtf8Bytes) {
+    const failureClassification = "COMPACT_RECEIPT_UTF8_LIMIT_EXCEEDED";
+    const failureJson = stableStringifySplitF0(
+      buildSplitR1CompactFailureReceiptV1({
+        failureClassification,
+        liveResult,
+        sourceSha,
+      })
+    );
+    throw new SplitR1CompactResultError(
+      failureClassification,
+      `${SPLIT_R1_COMPACT_RESULT_PREFIX}${failureJson}`
+    );
+  }
+  return Object.freeze({
+    receipt,
+    json,
+    utf8Bytes,
+    line: `${SPLIT_R1_COMPACT_RESULT_PREFIX}${json}`,
+  });
+}
+
+function resolveSplitR1CompactRuntimeSourceShaV1() {
+  const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: SPLIT_R1_REPOSITORY_ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha)) {
+    throw new Error("split-r1-compact-runtime-source-sha-invalid");
+  }
+  return sourceSha;
+}
+
 const SPLIT_R1_OURPRICE_PROBE_EXPECTED_SCENARIO = Object.freeze({
   scenarioId: "split-r1-ourprice-semantics-001",
   destination: {
@@ -6834,6 +7258,9 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
   ) {
     throw new Error("split-r1-sandbox-bounded-live-mode-required");
   }
+  if (selectedAlternativeMode && options?.compactOutput !== true) {
+    throw new Error("split-r1-sandbox-selected-alternative-compact-output-required");
+  }
   const executionFixture = selectedAlternativeMode
     ? authoritativePlanBinding?.fixture
     : fixture;
@@ -7376,6 +7803,10 @@ export async function runSplitR1Collector({
 
 async function main() {
   const options = parseSplitR1Arguments(process.argv.slice(2));
+  const compactSourceSha =
+    options.compactOutput === true
+      ? resolveSplitR1CompactRuntimeSourceShaV1()
+      : null;
   const matrix =
     options.mode === "ourprice-probe-dry-run" || options.mode === "ourprice-probe-live"
       ? await loadSplitR1OurpriceSemanticsProbeV1()
@@ -7393,6 +7824,13 @@ async function main() {
         ? await loadSplitR1SandboxNightlyOraclePilotV1()
       : await loadSplitF0ScenarioMatrix();
   const result = await runSplitR1Collector({ matrix, options });
+  if (options.compactOutput === true) {
+    const compact = serializeSplitR1CompactPilotResultV1(result, {
+      sourceSha: compactSourceSha,
+    });
+    process.stdout.write(`${compact.line}\n`);
+    return;
+  }
   process.stdout.write(`${stableStringifySplitF0(result, 2)}\n`);
 }
 
@@ -7402,6 +7840,21 @@ const EXECUTED_AS_MAIN = process.argv[1]
 
 if (EXECUTED_AS_MAIN) {
   main().catch((error) => {
+    if (error instanceof SplitR1CompactResultError) {
+      process.stdout.write(`${error.compactLine}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    if (process.argv.includes(SPLIT_R1_COMPACT_SANITIZED_RESULT_FLAG)) {
+      const failureJson = stableStringifySplitF0(
+        buildSplitR1CompactFailureReceiptV1({
+          failureClassification: "COMPACT_LIVE_EXECUTION_FAILED",
+        })
+      );
+      process.stdout.write(`${SPLIT_R1_COMPACT_RESULT_PREFIX}${failureJson}\n`);
+      process.exitCode = 1;
+      return;
+    }
     process.stderr.write(`SPLIT_R1_COLLECTOR_ERROR=${error?.message ?? "unknown"}\n`);
     process.exitCode = 1;
   });
