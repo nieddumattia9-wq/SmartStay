@@ -10,6 +10,8 @@ import {
   SPLIT_R1_ASYNC_STATUS_SHAPE_VERSION,
   SPLIT_R1_CAUSAL_LEDGER_VERSION,
   SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+  SPLIT_R1_ECONOMIC_ELIGIBILITY_STATES,
+  SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
   SPLIT_R1_DESTINATION_ENDPOINT,
   SPLIT_R1_EXPECTED_DURATIONS,
   SPLIT_R1_HARD_HOTEL_SEARCH_HTTP_BUDGET,
@@ -91,6 +93,8 @@ import {
   assertSplitR1PersistedPayloadSafe,
   buildSplitR1CausalLedger,
   buildSplitR1DryRunPlan,
+  buildSplitR1EconomicEligibilityFunnelReceiptV1,
+  buildSplitR1EconomicEligibilityFunnelSearchReceiptV1,
   buildSplitR1OurpriceSemanticsDryRunV1,
   buildSplitR1OurpriceSemanticsDryRunV2,
   buildSplitR1OurpriceSemanticsLogicalSearchesV1,
@@ -391,6 +395,28 @@ function causalPage(logicalSearch, hotels, {
     { result: { currency, result: hotels } },
     { logicalSearch, ephemeralRunKey: key }
   );
+}
+
+function economicFunnelSearchReceipt(
+  logicalSearch,
+  payload,
+  { logicalSearchOrdinal = 1, breakpointOrdinal = null, pagePayloads = null } = {}
+) {
+  const snapshots = (pagePayloads ?? [payload]).map((pagePayload) => ({
+    payload: pagePayload,
+    normalizedPage: normalizeSplitR1SearchPage(pagePayload, {
+      logicalSearch,
+      ephemeralRunKey: TEST_KEY,
+    }),
+  }));
+  return buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({
+    payload,
+    pageSnapshots: snapshots,
+    logicalSearch,
+    logicalSearchOrdinal,
+    breakpointOrdinal,
+    normalizedPage: snapshots[0].normalizedPage,
+  });
 }
 
 function causalSearchState(logicalSearch, pages, status = "COMPLETE") {
@@ -1141,6 +1167,30 @@ test("fake bounded live run materializes exactly 1 auth, 1 destination, 41 initi
   });
   assert.equal(result.continuationHttpRequests, 0);
   assert.equal(result.continuationExecuted, false);
+  assert.equal(
+    result.economicEligibilityFunnelReceiptVersion,
+    SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION
+  );
+  assert.equal(
+    result.economicEligibilityFunnel.schemaVersion,
+    SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION
+  );
+  assert.equal(result.economicEligibilityFunnel.perSearchReceipts.length, 41);
+  assert.equal(result.economicEligibilityFunnel.canonicalFullStayLogicalSearchCount, 1);
+  assert.equal(
+    result.economicEligibilityFunnel.canonicalFullStaySharedAcrossBreakpointCount,
+    13
+  );
+  assert.equal(
+    result.economicEligibilityFunnel.canonicalFullStayBaselineAvailable,
+    true
+  );
+  assert.equal(
+    result.economicEligibilityFunnel.breakpointEligibilityReceipts.every(
+      (receipt) => receipt.distinctPairCandidateAvailable
+    ),
+    true
+  );
   assert.equal(result.coverageCounts.PROVIDER_CONTINUATION_AVAILABLE, 41);
   assert.equal(result.searchReceipts.every((receipt) => receipt.coverageReceipt.continuationEligible), true);
   assert.equal(result.searchReceipts.every((receipt) => !receipt.coverageReceipt.continuationExecuted), true);
@@ -1155,6 +1205,167 @@ test("fake bounded live run materializes exactly 1 auth, 1 destination, 41 initi
   assert.equal(assertSplitR1PersistedPayloadSafe(result), true);
   const serialized = stableStringifySplitF0(result);
   assert.doesNotMatch(serialized, /memory-only-(?:partner|destination|correlation|continuation|next|property)/u);
+});
+
+test("economic eligibility receipt counts valid offers and deduplicates properties without changing selection", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const fullSearch = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture)[0];
+  const payload = {
+    result: {
+      currency: "EUR",
+      result: [
+        rawHotel("economic-property-a", 100),
+        rawHotel("economic-property-a", 90),
+        rawHotel("economic-property-b", 110),
+      ],
+    },
+  };
+  const receipt = economicFunnelSearchReceipt(fullSearch, payload);
+  assert.equal(receipt.rawResultCount, 3);
+  assert.equal(receipt.normalizableResultCount, 3);
+  assert.equal(receipt.identityEligibleCount, 3);
+  assert.equal(receipt.numericPriceEligibleCount, 3);
+  assert.equal(receipt.expectedCurrencyMatchCount, 3);
+  assert.equal(receipt.preDedupEconomicOfferCount, 3);
+  assert.equal(receipt.duplicatePropertyOffersRemovedCount, 1);
+  assert.equal(receipt.finalDistinctPropertyOfferCount, 2);
+  assert.equal(receipt.economicEligibilityState, "ECONOMIC_OFFERS_AVAILABLE");
+  assert.equal(receipt.zeroFinalOffersPrimaryReason, null);
+  assert.equal(receipt.baselineCandidateAvailable, true);
+  assert.equal(receipt.distinctPairCandidateContributionPossible, false);
+  assert.equal(receipt.expectedCurrencyConfigured, "YES");
+  assert.equal(receipt.expectedCurrencyCategory, "EUR_EXPECTED");
+  assert.equal(receipt.singleObservedCurrencyCategory, "EXPECTED_ONLY");
+  const serialized = stableStringifySplitF0(receipt);
+  assert.doesNotMatch(serialized, /economic-property/u);
+  assert.doesNotMatch(serialized, /totalMinorUnits|correlationId|nextResultsKey|token/u);
+});
+
+test("economic eligibility receipt classifies currency failures without persisting non-expected codes", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const fullSearch = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture)[0];
+  const nonExpected = economicFunnelSearchReceipt(fullSearch, {
+    result: { currency: "USD", result: [rawHotel("currency-other", 100)] },
+  });
+  assert.equal(nonExpected.normalizableResultCount, 1);
+  assert.equal(nonExpected.nonExpectedCurrencyCount, 1);
+  assert.equal(nonExpected.expectedCurrencyMatchCount, 0);
+  assert.equal(nonExpected.finalDistinctPropertyOfferCount, 0);
+  assert.equal(nonExpected.economicEligibilityState, "ALL_RESULTS_NON_EXPECTED_CURRENCY");
+  assert.equal(nonExpected.singleObservedCurrencyCategory, "NON_EXPECTED_ONLY");
+
+  const missing = economicFunnelSearchReceipt(fullSearch, {
+    result: { result: [rawHotel("currency-missing", 100)] },
+  });
+  assert.equal(missing.missingCurrencyCount, 1);
+  assert.equal(missing.economicEligibilityState, "ALL_RESULTS_MISSING_CURRENCY");
+
+  const invalid = economicFunnelSearchReceipt(fullSearch, {
+    result: { currency: 978, result: [rawHotel("currency-invalid", 100)] },
+  });
+  assert.equal(invalid.invalidCurrencyTypeCount, 1);
+  assert.equal(invalid.economicEligibilityState, "ALL_RESULTS_INVALID_CURRENCY_TYPE");
+  assert.equal(invalid.singleObservedCurrencyCategory, "INVALID_PRESENT");
+
+  for (const receipt of [nonExpected, missing, invalid]) {
+    const serialized = stableStringifySplitF0(receipt);
+    assert.doesNotMatch(serialized, /USD|currency-(?:other|missing|invalid)/u);
+    assert.equal(assertSplitR1PersistedPayloadSafe(receipt), true);
+  }
+});
+
+test("economic eligibility receipt deterministically aggregates mixed page currency classes", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const fullSearch = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture)[0];
+  const expectedPage = {
+    result: { currency: "EUR", result: [rawHotel("mixed-expected", 100)] },
+  };
+  const nonExpectedPage = {
+    result: { currency: "USD", result: [rawHotel("mixed-other", 110)] },
+  };
+  const mixedEligible = economicFunnelSearchReceipt(fullSearch, expectedPage, {
+    pagePayloads: [expectedPage, nonExpectedPage],
+  });
+  assert.equal(mixedEligible.expectedCurrencyMatchCount, 1);
+  assert.equal(mixedEligible.nonExpectedCurrencyCount, 1);
+  assert.equal(mixedEligible.preDedupEconomicOfferCount, 1);
+  assert.equal(mixedEligible.finalDistinctPropertyOfferCount, 1);
+  assert.equal(mixedEligible.singleObservedCurrencyCategory, "MIXED");
+  assert.equal(mixedEligible.economicEligibilityState, "ECONOMIC_OFFERS_AVAILABLE");
+
+  const missingPage = {
+    result: { result: [rawHotel("mixed-missing", 100)] },
+  };
+  const mixedFailure = economicFunnelSearchReceipt(fullSearch, missingPage, {
+    pagePayloads: [missingPage, nonExpectedPage],
+  });
+  assert.equal(mixedFailure.missingCurrencyCount, 1);
+  assert.equal(mixedFailure.nonExpectedCurrencyCount, 1);
+  assert.equal(mixedFailure.expectedCurrencyMatchCount, 0);
+  assert.equal(
+    mixedFailure.economicEligibilityState,
+    "MIXED_CURRENCY_ELIGIBILITY_FAILURE"
+  );
+  assert.equal(mixedFailure.singleObservedCurrencyCategory, "MIXED");
+});
+
+test("economic eligibility zero-offer reasons are deterministic for raw identity and price stages", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const fullSearch = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture)[0];
+  const cases = [
+    [{ result: { currency: "EUR", result: [] } }, "NO_RAW_RESULTS"],
+    [
+      { result: { currency: "EUR", result: [{ ourprice: 100 }] } },
+      "NO_IDENTITY_ELIGIBLE_RESULTS",
+    ],
+    [
+      { result: { currency: "EUR", result: [{ id: "price-invalid", ourprice: "x" }] } },
+      "NO_NUMERIC_PRICE_ELIGIBLE_RESULTS",
+    ],
+  ];
+  for (const [payload, expectedState] of cases) {
+    const receipt = economicFunnelSearchReceipt(fullSearch, payload);
+    assert.equal(receipt.finalDistinctPropertyOfferCount, 0);
+    assert.equal(receipt.economicEligibilityState, expectedState);
+    assert.equal(receipt.zeroFinalOffersPrimaryReason, expectedState);
+    assert.equal(receipt.baselineCandidateAvailable, false);
+  }
+  assert.deepEqual(
+    [...SPLIT_R1_ECONOMIC_ELIGIBILITY_STATES].sort(),
+    [...new Set(SPLIT_R1_ECONOMIC_ELIGIBILITY_STATES)].sort()
+  );
+});
+
+test("economic funnel identity is stable cross-query and independent from role ordinal and dates", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const fullSearch = searches.find((search) => search.searchRole === "FULL_STAY");
+  const leftSearch = searches.find((search) => search.searchRole === "PREFIX");
+  const fullPage = normalizeSplitR1SearchPage(
+    { result: { currency: "EUR", result: [rawHotel("cross-query-property", 100)] } },
+    { logicalSearch: fullSearch, ephemeralRunKey: TEST_KEY }
+  );
+  const leftPage = normalizeSplitR1SearchPage(
+    { result: { currency: "EUR", result: [rawHotel("cross-query-property", 50)] } },
+    { logicalSearch: leftSearch, ephemeralRunKey: TEST_KEY }
+  );
+  assert.equal(
+    fullPage.offers[0].propertyFingerprint,
+    leftPage.offers[0].propertyFingerprint
+  );
+  assert.notEqual(
+    fullPage.offers[0].propertyFingerprint,
+    fingerprintSplitR1Identifier("cross-query-property", Buffer.alloc(32, 8))
+  );
+  const leftReceipt = economicFunnelSearchReceipt(
+    leftSearch,
+    { result: { currency: "EUR", result: [rawHotel("left-only", 50)] } },
+    { logicalSearchOrdinal: 16, breakpointOrdinal: 1 }
+  );
+  assert.equal(leftReceipt.segmentRole, "SPLIT_LEFT");
+  assert.equal(leftReceipt.breakpointOrdinal, 1);
+  assert.equal(leftReceipt.distinctPairCandidateContributionPossible, true);
+  assert.equal(leftReceipt.baselineCandidateAvailable, false);
 });
 
 test("bounded live initial HTTP and JSON failures are recorded once without retry or replacement", async () => {
@@ -1787,6 +1998,87 @@ test("nightly-oracle causal output is deterministic, sanitized and independent f
   );
   assert.equal(first.causalLedger.nightlyCurves.every((curve) => curve.propertyFingerprint.startsWith("hmac-sha256:")), true);
   assert.equal(first.causalLedger.crossRunLinkability, false);
+});
+
+test("economic funnel receipt preserves evaluator bytes and multi-label rejection accounting", async () => {
+  const fixture = await loadSplitR1SandboxNightlyOraclePilotV1();
+  const searches = buildSplitR1SandboxNightlyOracleSearchPlanV1(fixture);
+  const states = buildNightlyOracleSyntheticStates(fixture);
+  const fullIndex = searches.findIndex((search) => search.searchRole === "FULL_STAY");
+  states[fullIndex] = { ...states[fullIndex], rawResultCount: 0, offers: [] };
+  const firstBreakpoint = fixture.scenario.breakpoints[0];
+  const leftIndex = searches.findIndex(
+    (search) =>
+      search.searchRole === "PREFIX" &&
+      search.breakpointId === firstBreakpoint.breakpointId
+  );
+  const rightIndex = searches.findIndex(
+    (search) =>
+      search.searchRole === "SUFFIX" &&
+      search.breakpointId === firstBreakpoint.breakpointId
+  );
+  states[leftIndex] = nightlyOracleState(searches[leftIndex], { a: 10_000 });
+  states[rightIndex] = nightlyOracleState(searches[rightIndex], { a: 11_000 });
+
+  const before = evaluateSplitR1SandboxNightlyOracleV1(fixture, states);
+  const decoratedStates = states.map((state, index) => {
+    const logicalSearch = searches[index];
+    const payload = {
+      result: {
+        currency: "EUR",
+        result: state.offers.map((offer, offerIndex) =>
+          rawHotel(`diagnostic-${index}-${offerIndex}`, offer.totalMinorUnits / 100)
+        ),
+      },
+    };
+    const breakpointIndex = fixture.scenario.breakpoints.findIndex(
+      (breakpoint) => breakpoint.breakpointId === logicalSearch.breakpointId
+    );
+    return {
+      ...state,
+      economicEligibilityFunnelReceipt: economicFunnelSearchReceipt(
+        logicalSearch,
+        payload,
+        {
+          logicalSearchOrdinal: index + 1,
+          breakpointOrdinal: breakpointIndex >= 0 ? breakpointIndex + 1 : null,
+        }
+      ),
+    };
+  });
+  const aggregate = buildSplitR1EconomicEligibilityFunnelReceiptV1({
+    fixture,
+    livePlan: searches,
+    searchStates: decoratedStates,
+  });
+  const after = evaluateSplitR1SandboxNightlyOracleV1(fixture, decoratedStates);
+  assert.equal(stableStringifySplitF0(after), stableStringifySplitF0(before));
+  assert.equal(aggregate.canonicalFullStayLogicalSearchCount, 1);
+  assert.equal(aggregate.canonicalFullStaySharedAcrossBreakpointCount, 13);
+  assert.equal(aggregate.canonicalFullStayBaselineAvailable, false);
+  assert.equal(aggregate.canonicalFullStayZeroOffersPrimaryReason, "NO_RAW_RESULTS");
+  assert.equal(
+    aggregate.breakpointEligibilityReceipts[0].distinctPairCandidateAvailable,
+    false
+  );
+  const rejectionCounts = before.comparisons.flatMap(
+    (comparison) => comparison.rejectionReasons
+  );
+  assert.equal(
+    rejectionCounts.filter((reason) => reason === "NO_FIXED_FULL_STAY_BASELINE").length,
+    13
+  );
+  assert.equal(
+    rejectionCounts.filter((reason) => reason === "NO_DISTINCT_PROPERTY_PAIR").length,
+    1
+  );
+  assert.equal(rejectionCounts.length, 14);
+  assert.equal(aggregate.economicSelectionChanged, false);
+  assert.equal(aggregate.comparabilityChanged, false);
+  assert.equal(aggregate.deduplicationChanged, false);
+  assert.equal(aggregate.currencyPolicyChanged, false);
+  assert.equal(aggregate.splitFormulasChanged, false);
+  assert.equal(assertSplitR1PersistedPayloadSafe(aggregate), true);
 });
 
 test("targeted matrix validation fails closed on scenario, split and threshold drift", async () => {

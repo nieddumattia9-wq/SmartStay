@@ -146,6 +146,22 @@ export const SPLIT_R1_SANDBOX_INITIAL_SEARCH_STATE_VERSION =
   "stayopti.split-r1.sandbox-initial-search-state@1";
 export const SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION =
   "stayopti.split-r1.collection-coverage@1";
+export const SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION =
+  "stayopti.split-r1.economic-eligibility-funnel@1";
+export const SPLIT_R1_ECONOMIC_ELIGIBILITY_STATES = Object.freeze([
+  "ECONOMIC_OFFERS_AVAILABLE",
+  "NO_RAW_RESULTS",
+  "NO_NORMALIZABLE_RESULTS",
+  "NO_IDENTITY_ELIGIBLE_RESULTS",
+  "NO_NUMERIC_PRICE_ELIGIBLE_RESULTS",
+  "NO_EXPECTED_CURRENCY_RESULTS",
+  "ALL_RESULTS_MISSING_CURRENCY",
+  "ALL_RESULTS_NON_EXPECTED_CURRENCY",
+  "ALL_RESULTS_INVALID_CURRENCY_TYPE",
+  "MIXED_CURRENCY_ELIGIBILITY_FAILURE",
+  "DEDUPLICATION_LEFT_NO_DISTINCT_PROPERTIES",
+  "OTHER_ALLOWLISTED_ECONOMIC_GATE",
+]);
 export const SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES = Object.freeze([
   "BOUNDED_INITIAL_SNAPSHOT_NO_CONTINUATION_EXPOSED",
   "PROVIDER_CONTINUATION_AVAILABLE",
@@ -1447,6 +1463,253 @@ export function normalizeSplitR1SearchPage(payload, { logicalSearch, ephemeralRu
 
 export function normalizeSplitR1SearchResponse(payload, context) {
   return normalizeSplitR1SearchPage(payload, context).offers;
+}
+
+function splitR1EconomicFunnelSegmentRole(logicalSearch) {
+  if (logicalSearch?.searchRole === "FULL_STAY") return "FULL_STAY";
+  if (logicalSearch?.searchRole === "NIGHTLY") return "NIGHTLY";
+  if (logicalSearch?.searchRole === "PREFIX") return "SPLIT_LEFT";
+  if (logicalSearch?.searchRole === "SUFFIX") return "SPLIT_RIGHT";
+  throw new Error("split-r1-economic-funnel-search-role-invalid");
+}
+
+function splitR1EconomicFunnelCurrencyObservation(payload, expectedCurrency) {
+  const container = normalizeResponseContainer(payload);
+  const present =
+    container !== null &&
+    typeof container === "object" &&
+    !Array.isArray(container) &&
+    Object.prototype.hasOwnProperty.call(container, "currency");
+  const value = present ? container.currency : undefined;
+  const expected =
+    typeof expectedCurrency === "string" && expectedCurrency.length === 3
+      ? expectedCurrency.toUpperCase()
+      : null;
+  if (!present || value === null || value === undefined || value === "") {
+    return { category: "MISSING", expected };
+  }
+  if (typeof value !== "string" || value.length !== 3) {
+    return { category: "INVALID_TYPE", expected };
+  }
+  return {
+    category: value.toUpperCase() === expected ? "MATCH" : "NON_MATCH",
+    expected,
+  };
+}
+
+function splitR1EconomicFunnelPriceEligible(hotel) {
+  if (
+    !Object.prototype.hasOwnProperty.call(hotel ?? {}, "ourprice") ||
+    hotel.ourprice === null ||
+    hotel.ourprice === undefined ||
+    hotel.ourprice === ""
+  ) {
+    return false;
+  }
+  const price = finiteNumber(hotel.ourprice);
+  if (price === null || price <= 0) return false;
+  try {
+    return Number.isSafeInteger(splitF0MoneyToMinorUnitsV1(price));
+  } catch {
+    return false;
+  }
+}
+
+function splitR1EconomicFunnelObservedCurrencyCategory({
+  expectedCurrencyMatchCount,
+  missingCurrencyCount,
+  nonExpectedCurrencyCount,
+  invalidCurrencyTypeCount,
+  numericPriceEligibleCount,
+}) {
+  if (numericPriceEligibleCount === 0) return "NONE";
+  if (invalidCurrencyTypeCount > 0) return "INVALID_PRESENT";
+  if (
+    expectedCurrencyMatchCount === numericPriceEligibleCount &&
+    missingCurrencyCount === 0 &&
+    nonExpectedCurrencyCount === 0
+  ) {
+    return "EXPECTED_ONLY";
+  }
+  if (
+    nonExpectedCurrencyCount === numericPriceEligibleCount &&
+    missingCurrencyCount === 0 &&
+    expectedCurrencyMatchCount === 0
+  ) {
+    return "NON_EXPECTED_ONLY";
+  }
+  if (
+    missingCurrencyCount === numericPriceEligibleCount &&
+    expectedCurrencyMatchCount === 0 &&
+    nonExpectedCurrencyCount === 0
+  ) {
+    return "NONE";
+  }
+  return "MIXED";
+}
+
+function splitR1EconomicFunnelZeroOffersReason(counts, snapshotProcessable) {
+  if (!snapshotProcessable) return "OTHER_ALLOWLISTED_ECONOMIC_GATE";
+  if (counts.rawResultCount === 0) return "NO_RAW_RESULTS";
+  if (counts.identityEligibleCount === 0) return "NO_IDENTITY_ELIGIBLE_RESULTS";
+  if (counts.numericPriceEligibleCount === 0) {
+    return "NO_NUMERIC_PRICE_ELIGIBLE_RESULTS";
+  }
+  if (counts.expectedCurrencyMatchCount === 0) {
+    if (counts.missingCurrencyCount === counts.numericPriceEligibleCount) {
+      return "ALL_RESULTS_MISSING_CURRENCY";
+    }
+    if (counts.nonExpectedCurrencyCount === counts.numericPriceEligibleCount) {
+      return "ALL_RESULTS_NON_EXPECTED_CURRENCY";
+    }
+    if (counts.invalidCurrencyTypeCount === counts.numericPriceEligibleCount) {
+      return "ALL_RESULTS_INVALID_CURRENCY_TYPE";
+    }
+    const currencyClassCount =
+      counts.missingCurrencyCount +
+      counts.nonExpectedCurrencyCount +
+      counts.invalidCurrencyTypeCount;
+    if (currencyClassCount === counts.numericPriceEligibleCount) {
+      return "MIXED_CURRENCY_ELIGIBILITY_FAILURE";
+    }
+    return "NO_EXPECTED_CURRENCY_RESULTS";
+  }
+  if (counts.normalizableResultCount === 0 || counts.preDedupEconomicOfferCount === 0) {
+    return "NO_NORMALIZABLE_RESULTS";
+  }
+  if (counts.finalDistinctPropertyOfferCount === 0) {
+    return "DEDUPLICATION_LEFT_NO_DISTINCT_PROPERTIES";
+  }
+  return "OTHER_ALLOWLISTED_ECONOMIC_GATE";
+}
+
+export function buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({
+  payload,
+  pageSnapshots = null,
+  logicalSearch,
+  logicalSearchOrdinal,
+  breakpointOrdinal = null,
+  normalizedPage,
+  snapshotProcessable = true,
+} = {}) {
+  if (!Number.isSafeInteger(logicalSearchOrdinal) || logicalSearchOrdinal < 1) {
+    throw new Error("split-r1-economic-funnel-search-ordinal-invalid");
+  }
+  if (
+    breakpointOrdinal !== null &&
+    (!Number.isSafeInteger(breakpointOrdinal) || breakpointOrdinal < 1)
+  ) {
+    throw new Error("split-r1-economic-funnel-breakpoint-ordinal-invalid");
+  }
+  const segmentRole = splitR1EconomicFunnelSegmentRole(logicalSearch);
+  const expectedCurrency = logicalSearch?.request?.currency;
+  const normalizedExpectedCurrency =
+    typeof expectedCurrency === "string" && expectedCurrency.length === 3
+      ? expectedCurrency.toUpperCase()
+      : null;
+  const snapshots = Array.isArray(pageSnapshots)
+    ? pageSnapshots
+    : [{ payload, normalizedPage }];
+  if (snapshots.length === 0) {
+    throw new Error("split-r1-economic-funnel-page-snapshots-empty");
+  }
+  let rawResultCount = 0;
+  let normalizableResultCount = 0;
+  let identityEligibleCount = 0;
+  let numericPriceEligibleCount = 0;
+  let expectedCurrencyMatchCount = 0;
+  let missingCurrencyCount = 0;
+  let nonExpectedCurrencyCount = 0;
+  let invalidCurrencyTypeCount = 0;
+  const normalizedOffers = [];
+  for (const snapshot of snapshots) {
+    const items = getResponseItems(snapshot?.payload);
+    const page = snapshot?.normalizedPage;
+    const pageOffers = Array.isArray(page?.offers) ? page.offers : [];
+    rawResultCount += items.length;
+    normalizableResultCount += pageOffers.length;
+    normalizedOffers.push(...pageOffers);
+    const currencyObservation = splitR1EconomicFunnelCurrencyObservation(
+      snapshot?.payload,
+      expectedCurrency
+    );
+    let pageNumericPriceEligibleCount = 0;
+    for (const hotel of items) {
+      const rawId = hotel?.id ?? hotel?.hotelId;
+      if (typeof rawId !== "string" || rawId.length === 0) continue;
+      identityEligibleCount += 1;
+      if (splitR1EconomicFunnelPriceEligible(hotel)) {
+        numericPriceEligibleCount += 1;
+        pageNumericPriceEligibleCount += 1;
+      }
+    }
+    if (currencyObservation.category === "MATCH") {
+      expectedCurrencyMatchCount += pageNumericPriceEligibleCount;
+    } else if (currencyObservation.category === "MISSING") {
+      missingCurrencyCount += pageNumericPriceEligibleCount;
+    } else if (currencyObservation.category === "NON_MATCH") {
+      nonExpectedCurrencyCount += pageNumericPriceEligibleCount;
+    } else if (currencyObservation.category === "INVALID_TYPE") {
+      invalidCurrencyTypeCount += pageNumericPriceEligibleCount;
+    }
+  }
+  const economicNormalizedOffers = snapshotProcessable ? normalizedOffers : [];
+  const preDedupEconomicOfferCount = economicNormalizedOffers.filter(
+    (offer) =>
+      typeof offer?.propertyFingerprint === "string" &&
+      /^hmac-sha256:[0-9a-f]{64}$/u.test(offer.propertyFingerprint) &&
+      Number.isSafeInteger(offer.totalMinorUnits) &&
+      offer.totalMinorUnits > 0 &&
+      offer.currency === normalizedExpectedCurrency
+  ).length;
+  const finalOffers = splitR1NightlyOracleOffersForState(
+    { offers: economicNormalizedOffers },
+    normalizedExpectedCurrency
+  );
+  const counts = {
+    rawResultCount,
+    normalizableResultCount,
+    identityEligibleCount,
+    numericPriceEligibleCount,
+    expectedCurrencyMatchCount,
+    missingCurrencyCount,
+    nonExpectedCurrencyCount,
+    invalidCurrencyTypeCount,
+    preDedupEconomicOfferCount,
+    duplicatePropertyOffersRemovedCount:
+      preDedupEconomicOfferCount - finalOffers.length,
+    finalDistinctPropertyOfferCount: finalOffers.length,
+  };
+  if (counts.duplicatePropertyOffersRemovedCount < 0) {
+    throw new Error("split-r1-economic-funnel-dedup-count-invalid");
+  }
+  const economicEligibilityState =
+    finalOffers.length > 0
+      ? "ECONOMIC_OFFERS_AVAILABLE"
+      : splitR1EconomicFunnelZeroOffersReason(counts, snapshotProcessable);
+  if (!SPLIT_R1_ECONOMIC_ELIGIBILITY_STATES.includes(economicEligibilityState)) {
+    throw new Error("split-r1-economic-funnel-state-invalid");
+  }
+  const receipt = {
+    logicalSearchOrdinal,
+    segmentRole,
+    breakpointOrdinal,
+    ...counts,
+    expectedCurrencyConfigured: normalizedExpectedCurrency === null ? "NO" : "YES",
+    expectedCurrencyCategory:
+      normalizedExpectedCurrency === "EUR" ? "EUR_EXPECTED" : "OTHER_CONFIGURED_EXPECTED",
+    singleObservedCurrencyCategory: splitR1EconomicFunnelObservedCurrencyCategory(counts),
+    economicEligibilityState,
+    zeroFinalOffersPrimaryReason:
+      finalOffers.length === 0 ? economicEligibilityState : null,
+    baselineCandidateAvailable:
+      segmentRole === "FULL_STAY" && finalOffers.length > 0,
+    distinctPairCandidateContributionPossible:
+      (segmentRole === "SPLIT_LEFT" || segmentRole === "SPLIT_RIGHT") &&
+      finalOffers.length > 0,
+  };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
 }
 
 function frictionSensitivity(grossSavingMinorUnits) {
@@ -3207,6 +3470,114 @@ function splitR1NightlyOracleBestSamePropertyPair(firstOffers, secondOffers) {
         left.first.propertyFingerprint.localeCompare(right.first.propertyFingerprint)
     );
   return pairs[0] ?? null;
+}
+
+export function buildSplitR1EconomicEligibilityFunnelReceiptV1({
+  fixture,
+  livePlan,
+  searchStates,
+} = {}) {
+  if (!Array.isArray(livePlan) || !Array.isArray(searchStates)) {
+    throw new Error("split-r1-economic-funnel-input-invalid");
+  }
+  const stateMap = splitR1NightlyOracleStateMap(searchStates);
+  const perSearchReceipts = searchStates.map(
+    (state) => state?.economicEligibilityFunnelReceipt
+  );
+  if (
+    perSearchReceipts.length !== livePlan.length ||
+    perSearchReceipts.some((receipt) => receipt === null || typeof receipt !== "object")
+  ) {
+    throw new Error("split-r1-economic-funnel-search-receipt-missing");
+  }
+  perSearchReceipts.sort(
+    (left, right) => left.logicalSearchOrdinal - right.logicalSearchOrdinal
+  );
+  const fullSearches = livePlan.filter((search) => search.searchRole === "FULL_STAY");
+  const fullReceipts = perSearchReceipts.filter(
+    (receipt) => receipt.segmentRole === "FULL_STAY"
+  );
+  if (fullSearches.length !== 1 || fullReceipts.length !== 1) {
+    throw new Error("split-r1-economic-funnel-canonical-full-stay-count-invalid");
+  }
+  const fullReceipt = fullReceipts[0];
+  const breakpointEligibilityReceipts = fixture.scenario.breakpoints.map(
+    (breakpoint, index) => {
+      const leftSearch = livePlan.find(
+        (search) =>
+          search.searchRole === "PREFIX" &&
+          search.breakpointId === breakpoint.breakpointId
+      );
+      const rightSearch = livePlan.find(
+        (search) =>
+          search.searchRole === "SUFFIX" &&
+          search.breakpointId === breakpoint.breakpointId
+      );
+      if (!leftSearch || !rightSearch) {
+        throw new Error("split-r1-economic-funnel-breakpoint-search-missing");
+      }
+      const leftOffers = splitR1NightlyOracleOffersForState(
+        stateMap.get(leftSearch.logicalSearchId),
+        fixture.scenario.currency
+      );
+      const rightOffers = splitR1NightlyOracleOffersForState(
+        stateMap.get(rightSearch.logicalSearchId),
+        fixture.scenario.currency
+      );
+      return {
+        breakpointOrdinal: index + 1,
+        leftFinalDistinctPropertyOfferCount: leftOffers.length,
+        rightFinalDistinctPropertyOfferCount: rightOffers.length,
+        distinctPairCandidateAvailable:
+          splitR1NightlyOracleBestPair(leftOffers, rightOffers, false) !== null,
+      };
+    }
+  );
+  const receipt = {
+    schemaVersion: SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
+    diagnosticOnly: true,
+    economicSelectionChanged: false,
+    comparabilityChanged: false,
+    deduplicationChanged: false,
+    currencyPolicyChanged: false,
+    splitFormulasChanged: false,
+    logicalSearchCount: perSearchReceipts.length,
+    breakpointCount: breakpointEligibilityReceipts.length,
+    perSearchReceipts,
+    breakpointEligibilityReceipts,
+    canonicalFullStayLogicalSearchCount: fullReceipts.length,
+    canonicalFullStaySharedAcrossBreakpointCount:
+      breakpointEligibilityReceipts.length,
+    canonicalFullStayRawResultCount: fullReceipt.rawResultCount,
+    canonicalFullStayNormalizableResultCount:
+      fullReceipt.normalizableResultCount,
+    canonicalFullStayIdentityEligibleCount: fullReceipt.identityEligibleCount,
+    canonicalFullStayNumericPriceEligibleCount:
+      fullReceipt.numericPriceEligibleCount,
+    canonicalFullStayExpectedCurrencyMatchCount:
+      fullReceipt.expectedCurrencyMatchCount,
+    canonicalFullStayMissingCurrencyCount: fullReceipt.missingCurrencyCount,
+    canonicalFullStayNonExpectedCurrencyCount:
+      fullReceipt.nonExpectedCurrencyCount,
+    canonicalFullStayFinalDistinctPropertyOfferCount:
+      fullReceipt.finalDistinctPropertyOfferCount,
+    canonicalFullStayEconomicEligibilityState:
+      fullReceipt.economicEligibilityState,
+    canonicalFullStayZeroOffersPrimaryReason:
+      fullReceipt.zeroFinalOffersPrimaryReason,
+    canonicalFullStayBaselineAvailable: fullReceipt.baselineCandidateAvailable,
+    nonExpectedRawCurrencyPersisted: false,
+    rawIdentifiersPersisted: 0,
+    rawContinuationIdentifiersPersisted: 0,
+    rawMetadataValuesPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    crossRunLinkability: false,
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    sandboxMarketEvidenceAllowed: false,
+  };
+  assertSplitR1PersistedPayloadSafe(receipt);
+  return receipt;
 }
 
 function splitR1NightlyOracleSearchLedgerRecord(search, state, offers) {
@@ -5009,8 +5380,12 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
     fixture.scenario
   );
   const searchStates = [];
-  for (const logicalSearch of livePlan) {
+  for (const [logicalSearchIndex, logicalSearch] of livePlan.entries()) {
     const request = createSplitR1HotelSearchRequest(logicalSearch, destination);
+    const breakpointIndex = fixture.scenario.breakpoints.findIndex(
+      (breakpoint) => breakpoint.breakpointId === logicalSearch.breakpointId
+    );
+    const breakpointOrdinal = breakpointIndex >= 0 ? breakpointIndex + 1 : null;
     let payload;
     try {
       payload = await transport.postInitialHotelSearch(request, partnerToken);
@@ -5035,6 +5410,15 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
         rejectionCounts: { SEARCH_INCOMPLETE: 1 },
         offers: [],
         coverageReceipt,
+        economicEligibilityFunnelReceipt:
+          buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({
+            payload: {},
+            logicalSearch,
+            logicalSearchOrdinal: logicalSearchIndex + 1,
+            breakpointOrdinal,
+            normalizedPage: { rawResultCount: 0, offers: [] },
+            snapshotProcessable: false,
+          }),
         failureClass: failure.failureClass,
       });
       continue;
@@ -5055,6 +5439,15 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
         "PROVIDER_NO_CONTINUATION_EXPOSED" ||
         coverageReceipt.collectionClassification ===
           "PROVIDER_CONTINUATION_AVAILABLE");
+    const economicEligibilityFunnelReceipt =
+      buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({
+        payload,
+        logicalSearch,
+        logicalSearchOrdinal: logicalSearchIndex + 1,
+        breakpointOrdinal,
+        normalizedPage: initialPage,
+        snapshotProcessable: boundedSnapshotUsable,
+      });
     searchStates.push({
       logicalSearchId: logicalSearch.logicalSearchId,
       completionStatus: coverageReceipt.coverageClass,
@@ -5068,6 +5461,7 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
         boundedSnapshotUsable,
         continuationExecuted: false,
       },
+      economicEligibilityFunnelReceipt,
       failureClass: null,
     });
     payload = null;
@@ -5077,6 +5471,12 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
     fixture,
     searchStates
   );
+  const economicEligibilityFunnel =
+    buildSplitR1EconomicEligibilityFunnelReceiptV1({
+      fixture,
+      livePlan,
+      searchStates,
+    });
   const coverageCounts = Object.fromEntries(
     SPLIT_R1_SANDBOX_INITIAL_COVERAGE_CLASSES.map((classification) => [
       classification,
@@ -5103,6 +5503,8 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
     preflight,
     collectionCoverageReceiptVersion:
       SPLIT_R1_COLLECTION_COVERAGE_RECEIPT_VERSION,
+    economicEligibilityFunnelReceiptVersion:
+      SPLIT_R1_ECONOMIC_FUNNEL_RECEIPT_VERSION,
     logicalSearchesPlanned: livePlan.length,
     logicalSearchesExecuted: searchStates.length,
     breakpointsPlanned: fixture.scenario.breakpoints.length,
@@ -5124,6 +5526,7 @@ export async function runSplitR1SandboxBoundedLivePilotV1({
       failureClass: state.failureClass,
       coverageReceipt: state.coverageReceipt,
     })),
+    economicEligibilityFunnel,
     economicResult,
     completenessClaimAllowed: false,
     globalOptimumClaimAllowed: false,
