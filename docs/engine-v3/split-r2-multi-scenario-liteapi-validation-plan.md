@@ -803,3 +803,228 @@ This implementation is prospective only. R1 sealed evidence, R2.5A's
 `PAGINATION_SENSITIVITY_UNMEASURED` conclusion remain unchanged. Even a stable
 D2 result cannot establish inventory completeness, global optimality, general
 market frequency, user usability, commercial validity, or booking authority.
+
+## 25. R2.8 — Pagination-aware economic collection reassessment and corrected campaign freeze
+
+R2.8 is an offline, document-only reassessment. It makes no provider call,
+implements no live mode and grants no Production authority. It preserves the
+historical R2.5A result as `PARTIALLY_REPRODUCED`, the R2.6 decision as
+`PAGINATION_SENSITIVITY_UNMEASURED`, and the R2.7A result as
+`PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL`; none is retroactively relabelled.
+
+### 25.1 R2.7A evidence seal and prospective supersession
+
+The single R2.7A Production microstudy executed frozen scenarios 1 and 3, six
+breakpoints and fourteen logical searches. It used fourteen initial requests,
+fourteen D1 requests, zero D2 requests and 31 total HTTP requests, with zero
+retry and redirect. D0 returned 572 raw results and 572 cumulative distinct
+offers. D1 returned 13,930 additional page results and raised the cumulative
+distinct-offer count to 13,949 after 553 inter-page duplicates were removed.
+The cumulative distinct-offer multiplier was `13949 / 572 = 24.3863636364`.
+
+All six breakpoints were comparable at both D0 and D1. The full-stay baseline
+changed in 6/6, the best distinct-property Split pair changed in 6/6, the
+saving sign changed in 5/6 and material classification changed in 1/6;
+evaluability changed in 0/6. No logical search exposed an eligible D2. The
+sealed classifications are `PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL`,
+`NOT_DETERMINABLE` stabilization, `BIDIRECTIONAL` observed bias and
+`initialOnlyClassificationRobustWithinStudy=false`.
+
+This evidence prospectively supersedes initial-only collection as a basis for
+primary economic inference:
+
+- `R2_5A_ECONOMIC_INFERENCE_VALIDITY=NOT_ROBUST_TO_PAGINATION`;
+- `R2_5A_FREQUENCY_EVIDENCE_USABLE=NO`;
+- `R2_5A_MATERIAL_RECURRENCE_CONCLUSION_USABLE=NO`;
+- `INITIAL_ONLY_PRIMARY_ECONOMIC_INFERENCE_ALLOWED=NO`.
+
+These annotations do not alter what R2.5A observed. They prohibit using its
+initial-only result prospectively as frequency or material-recurrence evidence.
+R2.7A does not show that continuation favours Split or full stay: observed
+changes were bidirectional. It does not show that D1 is complete or that every
+RouteStack search terminates after D1.
+
+### 25.2 Pagination-aware completion contract
+
+Every logical search begins at D0 and may execute at most D1 and D2. D3 is
+forbidden. Dispatch is breadth-first and equal-depth: every D0 is completed
+before any eligible D1, and every eligible D1 is completed before any eligible
+D2. A continuation is eligible only when the immediately preceding response
+contains one unique, non-ambiguous binding of non-empty string
+`correlationId`, `token` and `nextResultsKey`. Metadata remain ephemeral and
+bound to the same logical search and immediately following depth.
+
+The canonical completion state is assigned exactly once using this precedence:
+
+1. `TRANSPORT_OR_CONTRACT_FAILURE` for an HTTP, JSON or required response-contract failure.
+2. `AMBIGUOUS_CONTINUATION_METADATA` when continuation metadata are multiple, contradictory or not uniquely bindable.
+3. `UNPROCESSABLE_RESPONSE` when the response is valid enough to classify but cannot be economically processed.
+4. `ZERO_RAW_PROVIDER_EXHAUSTED` when cumulative raw results are zero and the current valid response exposes no unique complete continuation binding.
+5. `DEPTH_CAPPED_WITH_MORE_AVAILABLE` when D2 has executed and its valid response still exposes one unique complete continuation binding.
+6. `PROVIDER_EXHAUSTED_AFTER_INITIAL` when D0 is processable, has raw results and exposes no unique complete continuation binding.
+7. `PROVIDER_EXHAUSTED_AFTER_D1` when D1 is processable and exposes no unique complete continuation binding.
+8. `PROVIDER_EXHAUSTED_AFTER_D2` when D2 is processable and exposes no unique complete continuation binding.
+
+The precedence plus the depth predicates make the eight states mutually
+exclusive. Null, absent, empty or wrongly typed continuation components are
+classified as no continuation exposed only when the structure is unambiguous;
+they never establish provider-declared terminality or global completeness.
+Ambiguous structures fail closed rather than falling through to exhaustion.
+
+`PROVIDER_EXHAUSTED_WITHIN_CAP` is the aggregate of the three
+`PROVIDER_EXHAUSTED_AFTER_*` states and `ZERO_RAW_PROVIDER_EXHAUSTED`. It means
+only `PROVIDER_EXPOSED_NO_FURTHER_CONTINUATION` at the observed depth.
+`DEPTH_CAPPED` is exactly `DEPTH_CAPPED_WITH_MORE_AVAILABLE`. Neither term
+means `GLOBAL_PROVIDER_INVENTORY`.
+
+### 25.3 Cumulative collection and primary economic coverage
+
+For each logical search, D0 is the initial page, D1 is the union of D0 and the
+first continuation page, and D2 is the union of D0, D1 and the second
+continuation page. At every depth the existing RouteStack normalizer, EUR
+policy, economic-eligibility funnel, integer minor units, deterministic
+tie-breaking and property deduplication are applied to the cumulative union.
+Deduplication retains the lowest eligible price per property. One ephemeral
+HMAC secret spans the complete run and is never persisted. A later page never
+replaces an earlier page.
+
+A breakpoint may enter primary economic, frequency or material-recurrence
+metrics only when all of these conditions hold:
+
+1. its `FULL_STAY`, `PREFIX` and `SUFFIX` searches each have one of
+   `PROVIDER_EXHAUSTED_AFTER_INITIAL`, `PROVIDER_EXHAUSTED_AFTER_D1` or
+   `PROVIDER_EXHAUSTED_AFTER_D2`;
+2. all three cumulative snapshots are processable, use coherent expected EUR
+   and have complete numeric-price coverage for retained economic offers;
+3. the full-stay baseline exists; and
+4. at least one distinct-property prefix/suffix pair exists.
+
+`DEPTH_CAPPED_WITH_MORE_AVAILABLE`, `AMBIGUOUS_CONTINUATION_METADATA`,
+`UNPROCESSABLE_RESPONSE` and `TRANSPORT_OR_CONTRACT_FAILURE` exclude the
+affected breakpoint from primary metrics. A capped comparison may be emitted
+only as `BOUNDED_CAPPED_DIAGNOSTIC_ONLY`. `ZERO_RAW_PROVIDER_EXHAUSTED` is also
+non-evaluable and yields the role-specific allowlisted reason
+`NO_FULL_STAY_BASELINE`, `NO_PREFIX_CANDIDATE` or `NO_SUFFIX_CANDIDATE`.
+
+For an admitted primary result, `BEST_RESULT_SCOPE` is
+`PROVIDER_EXHAUSTED_RETURNED_SNAPSHOT`. A capped diagnostic uses
+`DEPTH_CAPPED_RETURNED_SNAPSHOT`. `GLOBAL_PROVIDER_INVENTORY` is forbidden.
+
+### 25.4 Corrected three-scenario campaign
+
+The corrected campaign repeats the same frozen R2 scenarios; it is a
+pagination-aware correction of collection, not a new independent sample.
+R2.5A and the corrected wave must not be combined as six scenarios. Frozen
+scenario ordinals are `1,3,5`, with three distinct destinations. Logical-search
+counts remain `41,20,41` (102 total) and breakpoint counts remain `13,6,13`
+(32 total). Cities, dates, duration, occupancy, EUR, breakpoint generator,
+search order and non-evaluable scenarios remain unchanged. Empty or capped
+scenarios cannot be replaced, and price, saving or result count cannot affect
+selection.
+
+The future hard network contract is:
+
+| Request class | Maximum |
+|---|---:|
+| Authentication | 1 |
+| Distinct destination resolution | 3 |
+| Initial D0 | 102 |
+| First continuation D1 | 102 |
+| Second continuation D2 | 102 |
+| All continuation | 204 |
+| Total RouteStack HTTP | 310 |
+
+The exact maximum is `1 + 3 + 102 + 102 + 102 = 310`. Actual use stops below
+the cap whenever provider continuation ends earlier. Retry and redirect are
+zero, concurrency is one, request starts are separated by at least 1,000 ms,
+D3 is forbidden, and the campaign is one wave with no booking or mutation.
+Production cost remains undocumented:
+`COST_CLASSIFICATION=COST_UNKNOWN` and
+`MAX_THEORETICAL_CAMPAIGN_COST=NOT_DETERMINABLE`. The prior 45-request approval
+does not apply. A new explicit user approval for at most 310 Production HTTP
+requests is mandatory before implementation can execute live.
+
+### 25.5 Unchanged economics and reproducibility decision
+
+The evaluator, baseline selection, distinct-property constraint, maximum one
+property change, `segment1 total + segment2 total`, minor units, basis points,
+tie-breaking, median semantics, scenario-primary aggregation, no
+cherry-picking and no scenario replacement remain unchanged. Raw positive is
+still `savingMinorUnits > 0`. A material price signal still requires both
+`savingMinorUnits >= 10000` and `savingBasisPoints >= 1000`.
+
+The frozen R2 reproducibility rule applies only to primary provider-exhausted
+breakpoints: no relevant contract failure, at least two of three scenarios
+evaluable, at least two scenarios with a material signal, and material signals
+across at least two destinations. The unchanged mutually exclusive outcomes
+are `NOT_REPRODUCED`, `PARTIALLY_REPRODUCED`,
+`REPRODUCED_ACROSS_MULTIPLE_SCENARIOS`, `INSUFFICIENT_EVALUABLE_DATA` and
+`PROVIDER_OR_CONTRACT_FAILURE`. Capped diagnostics cannot affect the primary
+classification, and pooled breakpoint medians remain secondary only.
+
+### 25.6 Compact reconstructable receipt and privacy
+
+The corrected campaign receipt is
+`stayopti.split-r2.routestack-public-pagination-aware-multi-scenario@1`. It is
+one deterministic single-line JSON value with stable key order, a 16,000-byte
+UTF-8 maximum checked before output, oversize fail-closed, no truncation and no
+per-search progress on stdout.
+
+Its compact per-search diagnostic contains only scenario ordinal, logical
+search ordinal, allowlisted role (`FULL_STAY`, `PREFIX` or `SUFFIX`), applicable
+breakpoint ordinal, initial category, D1/D2 execution booleans, canonical
+completion state, page raw-result counts, cumulative normalizable count,
+cumulative economic-offer count, cumulative distinct-offer count, zero-raw
+boolean and continuation-available-at-cap boolean. It contains no destination
+or property ID, fingerprint, correlation ID, token, next-results key,
+individual price, raw currency, payload, response or arbitrary metadata.
+
+To keep all 102 diagnostics reconstructable inside the hard receipt limit,
+`searchDiagnostics` is a canonical array of fixed-order tuples with the one-time
+column declaration
+`[scenarioOrdinal,logicalSearchOrdinal,roleCode,breakpointOrdinalOrZero,initialCategoryCode,d1Executed,d2Executed,completionCode,pageRawCountsD0D1D2,cumulativeNormalizableCount,cumulativeEconomicOfferCount,cumulativeDistinctOfferCount,zeroRaw,continuationAvailableAtCap]`.
+Role codes are exactly `F=FULL_STAY`, `P=PREFIX`, `S=SUFFIX`. Completion codes
+are exactly `E0=PROVIDER_EXHAUSTED_AFTER_INITIAL`,
+`E1=PROVIDER_EXHAUSTED_AFTER_D1`, `E2=PROVIDER_EXHAUSTED_AFTER_D2`,
+`C=DEPTH_CAPPED_WITH_MORE_AVAILABLE`, `Z=ZERO_RAW_PROVIDER_EXHAUSTED`,
+`U=UNPROCESSABLE_RESPONSE`, `A=AMBIGUOUS_CONTINUATION_METADATA` and
+`T=TRANSPORT_OR_CONTRACT_FAILURE`. Initial-category codes use the already
+frozen collection-category dictionary stored once in the receipt schema.
+Rows remain in authoritative plan order, so no repeated key names, raw values
+or arbitrary strings are needed. A maximum-shape fixture must prove the full
+receipt remains below 16,000 UTF-8 bytes; the limit is not satisfied by
+dropping required rows or fields.
+
+Each scenario additionally reports full/prefix/suffix completion-state counts,
+zero-raw counts by role, capped counts by role, provider-exhausted counts,
+allowlisted not-evaluable reason counts and breakpoint evaluability. Campaign
+aggregates compare R2.5A initial-only and corrected pagination-aware results
+only through sanitized evaluable-breakpoint, positive/material scenario,
+sign/material-classification and reproducibility-classification counts. No
+property identity is linked across runs, and no HMAC secret is reused.
+
+Raw identifiers, raw continuation identifiers, raw metadata values, payloads
+and responses persisted are zero. Cross-run linkability is false. Provider
+metadata exist only in memory for the immediate continuation dispatch and are
+discarded within the single run.
+
+### 25.7 Claim boundary, quality gate and next step
+
+The corrected campaign may establish only technical and economic
+reproducibility in the three frozen scenarios, pagination-aware robustness and
+the presence or absence of material signals in provider-exhausted returned
+snapshots. It does not automatically establish general market frequency,
+real-user average saving, quality equivalence, user usability, global optimum,
+commercial validity or final bookability.
+
+Quality friction remains unimplemented. Entry requires
+`REPRODUCED_ACROSS_MULTIPLE_SCENARIOS`, at least two scenarios with a material
+signal and at least two destinations with a material signal. Otherwise Split
+remains `TECHNICALLY_AVAILABLE_BUT_NOT_MATERIALLY_VALIDATED`.
+
+The existing unique continuation binding is sufficient to implement this
+contract without asserting provider terminality: exhaustion is inferred only
+as absence of another exposed contractual continuation, while D2 with a
+complete binding is explicitly capped. Therefore the next authorized design
+step is
+`SPLIT-R2.8A_PAGINATION_AWARE_THREE_SCENARIO_IMPLEMENTATION_VALIDATION_AND_SINGLE_LIVE_REEXECUTION`.
