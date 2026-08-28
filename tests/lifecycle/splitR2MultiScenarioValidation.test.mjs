@@ -10,6 +10,10 @@ import {
   SPLIT_R2_LITEAPI_CANARY_BREAKPOINT,
   SPLIT_R2_LITEAPI_CANARY_COMPACT_MAX_UTF8_BYTES,
   SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION,
+  SPLIT_R2_LITEAPI_RESPONSE_SHAPE_RECEIPT_VERSION,
+  SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH,
+  SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_MAX_UTF8_BYTES,
+  SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
   SPLIT_R2_LITEAPI_RATES_PATH,
   SPLIT_R2_LITEAPI_SANDBOX_BASE_URL,
   SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS,
@@ -23,28 +27,38 @@ import {
   aggregateSplitR2Provider,
   assertSplitR2RealTransportBlocked,
   assertSplitR2LiteApiCanaryPreflight,
+  assertSplitR2LiteApiZeroResultDiagnosisPreflight,
   assertSplitR2RouteStackOfflinePreflight,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
   buildSplitR2LiteApiCanaryReceipt,
   buildSplitR2ScenarioPlan,
   buildSplitR2LiteApiCanaryPlan,
+  buildSplitR2LiteApiZeroResultDiagnosisPlan,
   classifySplitR2Saving,
   createSplitR2AuthoritativeHttpCounter,
   createSplitR2LiteApiCanaryCounter,
   createSplitR2LiteApiCanaryRequestBody,
+  createSplitR2LiteApiDiagnosisCounter,
+  createSplitR2LiteApiDiagnosisRatesBody,
   createSplitR2MonotonicLimiter,
   decideSplitR2Campaign,
   evaluateSplitR2Scenario,
   normalizeSplitR2LiteApiCanaryResponse,
+  diagnoseSplitR2LiteApiResponseShape,
   parseSplitR2LiteApiCanaryArguments,
+  parseSplitR2LiteApiZeroResultDiagnosisArguments,
   runSplitR2FakeLiteApiCanary,
+  runSplitR2FakeLiteApiZeroResultDiagnosis,
   runSplitR2LiteApiCanary,
+  runSplitR2LiteApiZeroResultDiagnosis,
   runSplitR2FakeCombinedCampaign,
   runSplitR2FakeProviderCampaign,
   runSplitR2Mode,
   serializeSplitR2CompactReceipt,
   serializeSplitR2LiteApiCanaryReceipt,
+  serializeSplitR2LiteApiZeroResultDiagnosisReceipt,
+  classifySplitR2LiteApiZeroResultCause,
 } from "../../scripts/run-split-r2-multi-scenario-validation.mjs";
 
 const KEY = Buffer.alloc(32, 0x55);
@@ -560,11 +574,13 @@ test("64 missing RouteStack continuation key means no continuation exposed", () 
   assert.equal(snapshot.providerDeclaredTerminal, false);
 });
 
-test("65 only the exact LiteAPI canary capability is implemented", () => {
+test("65 only the exact LiteAPI canary and diagnosis capabilities are implemented", () => {
   assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_CANARY, "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS,
+    "EXACT_MAX_41_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
   assert.equal(
     Object.entries(SPLIT_R2_LIVE_CAPABILITIES)
-      .filter(([name]) => name !== "LITEAPI_SANDBOX_CANARY")
+      .filter(([name]) => !["LITEAPI_SANDBOX_CANARY", "LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS"].includes(name))
       .every(([, value]) => value === "NOT_IMPLEMENTED_OR_LIVE_HOLD"),
     true
   );
@@ -938,4 +954,248 @@ test("101 fake native canary transport performs three sequential POST rates call
   assert.equal(calls.every((entry) => entry.options.method === "POST" && entry.options.redirect === "error"), true);
   assert.equal(receipt.http.minimumObservedRequestIntervalMs >= 1_000, true);
   assert.equal(receipt.http.maxObservedConcurrency, 1);
+});
+
+function diagnosisPreflight(overrides = {}) {
+  return {
+    mode: "LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS",
+    compact: true,
+    environment: "LITEAPI_SANDBOX",
+    acknowledgement: "I_ACKNOWLEDGE_LITEAPI_SANDBOX_MAX_41_DIAGNOSTIC_HTTP",
+    hostname: "api.liteapi.travel",
+    protocol: "https:",
+    productionFallback: false,
+    staticDiscoveryMax: 3,
+    cityRatesMax: 18,
+    hotelIdRatesMax: 18,
+    anchorSuffixMax: 2,
+    totalMax: 41,
+    retries: 0,
+    redirects: 0,
+    concurrency: 1,
+    minimumIntervalMs: 1_000,
+    repositoryGatePassed: true,
+    credentialReader: () => "sand_synthetic_diagnosis",
+    ...overrides,
+  };
+}
+
+function diagnosticProbe(overrides = {}) {
+  return {
+    probeOrdinal: 1,
+    probeType: "CITY_RATES",
+    cityOrdinal: 1,
+    cityCode: "MILANO",
+    cityName: "Milano",
+    countryCode: "IT",
+    windowCategory: "NEAR_TERM",
+    durationCategory: "SEVEN_NIGHTS",
+    durationNights: 7,
+    checkin: "2026-09-28",
+    checkout: "2026-10-05",
+    locationMode: "CITY_COUNTRY",
+    ...overrides,
+  };
+}
+
+test("102 diagnosis live mode is default-disabled and credentials alone do not enable it", () => {
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS,
+    "EXACT_MAX_41_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
+  let reads = 0;
+  assert.throws(() => assertSplitR2LiteApiZeroResultDiagnosisPreflight(diagnosisPreflight({
+    mode: "dry-run", credentialReader: () => { reads += 1; return "sand_forbidden"; },
+  })), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("103 exact diagnosis preflight accepts only 41/3/18/18/2 and Sandbox", () => {
+  const result = assertSplitR2LiteApiZeroResultDiagnosisPreflight(diagnosisPreflight());
+  assert.equal(result.plan.maximumHttpRequests, 41);
+  for (const overrides of [{ totalMax: 42 }, { staticDiscoveryMax: 4 }, { hostname: "api.liteapi.travel.example" },
+    { environment: "LITEAPI_PRODUCTION" }, { retries: 1 }, { redirects: 1 }, { concurrency: 2 },
+    { minimumIntervalMs: 999 }]) {
+    assert.throws(() => assertSplitR2LiteApiZeroResultDiagnosisPreflight(diagnosisPreflight(overrides)), /before-credentials/);
+  }
+});
+
+test("104 diagnosis plan freezes three static, eighteen city, eighteen identity and two anchor probes", () => {
+  const plan = buildSplitR2LiteApiZeroResultDiagnosisPlan();
+  assert.equal(SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH, "/data/hotels");
+  assert.equal(plan.staticDiscoveries.length, 3);
+  assert.equal(plan.rateProbes.length, 38);
+  assert.equal(plan.rateProbes.filter((probe) => probe.probeType === "CITY_RATES").length, 18);
+  assert.equal(plan.rateProbes.filter((probe) => probe.probeType === "HOTEL_ID_RATES").length, 18);
+  assert.equal(plan.rateProbes.filter((probe) => probe.probeType === "ANCHOR_SUFFIX").length, 2);
+});
+
+test("105 diagnosis dates, cities, durations and anchor suffix are exact", () => {
+  const plan = buildSplitR2LiteApiZeroResultDiagnosisPlan();
+  assert.deepEqual(plan.cities.map((city) => city.code), ["MILANO", "FIRENZE", "ROMA"]);
+  assert.deepEqual(plan.windows.map((window) => window.category), ["NEAR_TERM", "PLUS_90", "PLUS_180"]);
+  assert.equal(plan.rateProbes.every((probe) => [7, 14].includes(probe.durationNights)), true);
+  const anchors = plan.rateProbes.filter((probe) => probe.probeType === "ANCHOR_SUFFIX");
+  assert.equal(anchors.every((probe) => probe.checkin === "2026-12-07" && probe.checkout === "2026-12-14"), true);
+});
+
+test("106 city and provider-identity request bindings are mutually exclusive and contract-equivalent", () => {
+  const city = createSplitR2LiteApiDiagnosisRatesBody(diagnosticProbe(), [], "fixed");
+  const ids = createSplitR2LiteApiDiagnosisRatesBody(diagnosticProbe({ locationMode: "HOTEL_IDS_IN_MEMORY" }), ["aa"], "fixed");
+  for (const body of [city, ids]) {
+    assert.deepEqual(body.occupancies, [{ adults: 2, children: [] }]);
+    assert.equal(body.guestNationality, "IT");
+    assert.equal(body.currency, "EUR");
+    assert.equal(body.limit, 80);
+    assert.equal(body.timeout, 12);
+    assert.equal(body.maxRatesPerHotel, 3);
+    assert.equal(body.includeHotelData, true);
+  }
+  assert.equal("hotelIds" in city, false);
+  assert.equal("cityName" in ids || "countryCode" in ids, false);
+  assert.deepEqual(ids.hotelIds, ["aa"]);
+});
+
+test("107 diagnosis authoritative counter blocks the forty-second request pre-transport", () => {
+  const counter = createSplitR2LiteApiDiagnosisCounter();
+  for (let index = 0; index < 3; index += 1) counter.reserve("STATIC_DISCOVERY");
+  for (let index = 0; index < 18; index += 1) counter.reserve("CITY_RATES");
+  for (let index = 0; index < 18; index += 1) counter.reserve("HOTEL_ID_RATES");
+  for (let index = 0; index < 2; index += 1) counter.reserve("ANCHOR_SUFFIX");
+  assert.equal(counter.snapshot().total, 41);
+  assert.throws(() => counter.reserve("ANCHOR_SUFFIX"), /budget-exhausted-before-transport/);
+  assert.throws(() => counter.reserve("OTHER"), /role-forbidden/);
+});
+
+test("108 response-shape receipt inspects only allowlisted paths without recursive enumeration", () => {
+  const receipt = diagnoseSplitR2LiteApiResponseShape({ data: [{ hotelId: "not-persisted" }], unknown: { deep: [] } }, "RATES");
+  assert.equal(receipt.receiptVersion, SPLIT_R2_LITEAPI_RESPONSE_SHAPE_RECEIPT_VERSION);
+  assert.equal(receipt.responseContainerClassification, "UNIQUE");
+  assert.equal(receipt.selectedResultContainerPath, "data");
+  assert.equal(receipt.unknownKeyEnumeration, false);
+  assert.equal(receipt.paths.some((entry) => entry.path.includes("unknown")), false);
+  assert.equal(JSON.stringify(receipt).includes("not-persisted"), false);
+});
+
+test("109 multiple allowlisted result containers are ambiguous and fail closed", () => {
+  const receipt = diagnoseSplitR2LiteApiResponseShape({ data: [{}], results: [{}] }, "RATES");
+  assert.equal(receipt.responseContainerClassification, "AMBIGUOUS");
+  assert.equal(receipt.normalizationAllowed, false);
+  assert.equal(receipt.selectedResultContainerPath, "AMBIGUOUS");
+});
+
+function causalProbe(overrides = {}) {
+  return {
+    probeType: "CITY_RATES", cityOrdinal: 1, windowCategory: "NEAR_TERM",
+    durationCategory: "SEVEN_NIGHTS", locationMode: "CITY_COUNTRY", rawResultCount: 0,
+    finalDistinctComparableOfferCount: 0, responseExtractionMismatch: false, ...overrides,
+  };
+}
+
+test("110 causal classifier distinguishes extractor and both location-binding mismatches", () => {
+  const statics = [{ validProviderIdentityPresent: true }, { validProviderIdentityPresent: true }, { validProviderIdentityPresent: true }];
+  const extractor = classifySplitR2LiteApiZeroResultCause(statics, [causalProbe({ responseExtractionMismatch: true })]);
+  assert.equal(extractor.demonstratedFactors.includes("R2_RESPONSE_EXTRACTION_MISMATCH"), true);
+  const cityEmpty = classifySplitR2LiteApiZeroResultCause(statics, [
+    causalProbe(), causalProbe({ locationMode: "HOTEL_IDS_IN_MEMORY", rawResultCount: 1 }),
+  ]);
+  assert.equal(cityEmpty.demonstratedFactors.includes("CITY_LOCATION_BINDING_EMPTY"), true);
+  const idsEmpty = classifySplitR2LiteApiZeroResultCause(statics, [
+    causalProbe({ rawResultCount: 1 }), causalProbe({ locationMode: "HOTEL_IDS_IN_MEMORY" }),
+  ]);
+  assert.equal(idsEmpty.demonstratedFactors.includes("HOTEL_ID_BINDING_EMPTY"), true);
+});
+
+test("111 causal classifier distinguishes date horizon, long stays and city availability", () => {
+  const statics = [{ validProviderIdentityPresent: true }, { validProviderIdentityPresent: true }, { validProviderIdentityPresent: true }];
+  const probes = [
+    causalProbe({ rawResultCount: 1 }),
+    causalProbe({ durationCategory: "FOURTEEN_NIGHTS" }),
+    causalProbe({ windowCategory: "PLUS_90" }),
+    causalProbe({ windowCategory: "PLUS_90", durationCategory: "FOURTEEN_NIGHTS" }),
+    causalProbe({ windowCategory: "PLUS_180" }),
+    causalProbe({ windowCategory: "PLUS_180", durationCategory: "FOURTEEN_NIGHTS" }),
+    causalProbe({ cityOrdinal: 2 }), causalProbe({ cityOrdinal: 3 }),
+  ];
+  const result = classifySplitR2LiteApiZeroResultCause(statics, probes);
+  assert.equal(result.rootCauseClassification, "MULTIPLE_CAUSAL_FACTORS");
+  for (const factor of ["FUTURE_DATE_INVENTORY_HORIZON", "LONG_STAY_AVAILABILITY_LIMIT", "CITY_SPECIFIC_AVAILABILITY"]) {
+    assert.equal(result.demonstratedFactors.includes(factor), true);
+  }
+});
+
+test("112 causal classifier distinguishes broadly empty, key/content empty and mandatory-component block", () => {
+  const emptyProbe = causalProbe();
+  assert.equal(classifySplitR2LiteApiZeroResultCause([
+    { validProviderIdentityPresent: true }, { validProviderIdentityPresent: true }, { validProviderIdentityPresent: true },
+  ], [emptyProbe]).rootCauseClassification, "SANDBOX_RATE_INVENTORY_BROADLY_EMPTY");
+  assert.equal(classifySplitR2LiteApiZeroResultCause([
+    { validProviderIdentityPresent: false }, { validProviderIdentityPresent: false }, { validProviderIdentityPresent: false },
+  ], [emptyProbe]).rootCauseClassification, "SANDBOX_KEY_OR_CONTENT_SCOPE_EMPTY");
+  assert.equal(classifySplitR2LiteApiZeroResultCause([{ validProviderIdentityPresent: true }], [
+    causalProbe({ rawResultCount: 3, finalDistinctComparableOfferCount: 0 }),
+  ]).demonstratedFactors.includes("LITEAPI_CONTRACT_BLOCKED"), true);
+});
+
+test("113 fake diagnosis performs exact 3/18/18/2/41 with no Production or RouteStack", async () => {
+  const receipt = await runSplitR2FakeLiteApiZeroResultDiagnosis();
+  assert.equal(receipt.status, "PASS");
+  assert.deepEqual([receipt.http.staticDiscovery, receipt.http.cityRates, receipt.http.hotelIdRates,
+    receipt.http.anchorSuffix, receipt.http.total], [3, 18, 18, 2, 41]);
+  assert.equal(receipt.http.liteApiProduction, 0);
+  assert.equal(receipt.http.routeStack, 0);
+  assert.equal(receipt.http.maxObservedConcurrency, 1);
+  assert.equal(receipt.http.minimumObservedRequestIntervalMs >= 1_000, true);
+});
+
+test("114 empty static discovery safely skips identity-bound probes and leaves budget unused", async () => {
+  let now = 0;
+  const calls = [];
+  const response = (payload, url) => ({ status: 200, redirected: false, url,
+    headers: { get: () => "application/json" }, text: async () => JSON.stringify(payload) });
+  const receipt = await runSplitR2LiteApiZeroResultDiagnosis({
+    sourceSha: "a".repeat(40), apiKey: "sand_synthetic_diagnosis",
+    monotonicNow: () => now, sleeper: async (delay) => { now += delay; },
+    fetchImplementation: async (url, options) => {
+      calls.push({ url: String(url), method: options.method });
+      return response({ data: [] }, String(url));
+    },
+  });
+  assert.equal(receipt.http.staticDiscovery, 3);
+  assert.equal(receipt.http.cityRates, 18);
+  assert.equal(receipt.http.hotelIdRates, 0);
+  assert.equal(receipt.http.anchorSuffix, 1);
+  assert.equal(receipt.http.total, 22);
+  assert.equal(calls.length, 22);
+  assert.equal(receipt.causal.rootCauseClassification, "SANDBOX_KEY_OR_CONTENT_SCOPE_EMPTY");
+});
+
+test("115 compact diagnosis receipt is deterministic, single-line, safe and below 16000 bytes", async () => {
+  const receipt = await runSplitR2FakeLiteApiZeroResultDiagnosis();
+  const first = serializeSplitR2LiteApiZeroResultDiagnosisReceipt(receipt);
+  const second = serializeSplitR2LiteApiZeroResultDiagnosisReceipt(receipt);
+  assert.equal(first.json, second.json);
+  assert.equal(first.json.includes("\n"), false);
+  assert.equal(first.byteLength < SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_MAX_UTF8_BYTES, true);
+  const parsed = JSON.parse(first.json);
+  assert.equal(parsed.receiptVersion, SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION);
+  for (const prohibited of ["synthetic-static", "synthetic-city", "not-persisted", "X-Api-Key", "sand_synthetic", "taxesAndFees", "offerRetailRate"]) {
+    assert.equal(first.json.includes(prohibited), false);
+  }
+  assert.equal(parsed.privacy.rawIdsInOutput, 0);
+});
+
+test("116 diagnosis compact receipt oversize fails without truncation", () => {
+  assert.throws(() => serializeSplitR2LiteApiZeroResultDiagnosisReceipt({
+    status: "BLOCKED", receiptVersion: SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
+    padding: "x".repeat(16_100),
+  }), SplitR2CompactReceiptError);
+});
+
+test("117 diagnosis CLI accepts only the exact six-argument acknowledgement", () => {
+  const args = [
+    "--r2-liteapi-sandbox-zero-result-diagnosis", "--compact", "--environment=LITEAPI_SANDBOX",
+    "--acknowledgement=I_ACKNOWLEDGE_LITEAPI_SANDBOX_MAX_41_DIAGNOSTIC_HTTP",
+    `--expected-head=${"a".repeat(40)}`, `--expected-dirty-fingerprint=${"b".repeat(64)}`,
+  ];
+  assert.equal(parseSplitR2LiteApiZeroResultDiagnosisArguments(args).expectedHead, "a".repeat(40));
+  assert.throws(() => parseSplitR2LiteApiZeroResultDiagnosisArguments(args.slice(0, 5)), /cli-contract-invalid/);
 });

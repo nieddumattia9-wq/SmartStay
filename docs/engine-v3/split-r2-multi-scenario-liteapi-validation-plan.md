@@ -386,3 +386,25 @@ Even a passing canary is only `LITEAPI_CONTRACT_CANARY_COMPARABLE`. Its economic
 ### 17.2 RouteStack offline public-API preflight
 
 R2.2 does not implement or call a RouteStack transport. `ROUTESTACK_SANDBOX` and `ROUTESTACK_PUBLIC_PRODUCTION` remain distinct `LIVE_HOLD` capabilities with non-interchangeable environment bindings and no fallback. Sandbox credentials cannot enable Production. Any future public/Production mode requires a separately authorized dedicated flag, authoritative budget, compact receipt, exact host binding, and zero continuation unless a later authorization explicitly changes that cap. RouteStack remains disconnected from the public runtime.
+
+## 18. R2.3 — LiteAPI Sandbox zero-result diagnosis
+
+R2.2 remains `INCONCLUSIVE`: three HTTP 200 responses with zero raw results do not establish general inventory absence, a Split failure, incompatible dates, or an extractor defect. R2.3 adds a separate, explicit, default-disabled diagnostic mode. It does not alter the frozen six-scenario R2 matrix, the R1 evaluator, the public LiteAPI adapter, RouteStack, or the public runtime.
+
+### 18.1 Offline contract audit
+
+The current R2 Rates request has the same material contract as `createLiteApiRatesPayload`: `checkin`, `checkout`, EUR, Italian guest nationality, one occupancy with two adults and no children, limit 80, timeout 12, three rates per hotel, room mapping and included hotel data. The diagnostic builder makes the location binding mutually exclusive: either `cityName` plus `countryCode`, or provider identities obtained from the same run's static discovery. The R2 Rates response-container order is equivalent to the provider mapper's explicit allowlist. The repository OpenAPI describes the StayOpti boundary and does not itself document the upstream LiteAPI provider endpoints; the local LiteAPI client and mapper are therefore the operative local contract evidence. No public-runtime change is authorized or made.
+
+### 18.2 Frozen diagnostic matrix and hard budget
+
+Static discovery uses exactly one `GET /data/hotels` request for Milano, Firenze and Roma. Only the first 80 valid provider identities in provider order are held in memory per city. They are never emitted or persisted. The Rates matrix contains three frozen windows—28 September 2026, 30 November 2026 and 1 March 2027—at seven and fourteen nights for all three cities. Every combination has one city/country request and, only when same-city discovery produced identities, one identity-bound request. Two additional Milano suffix controls cover 7–14 December 2026 in both location modes.
+
+The immutable maxima are 3 static requests, 18 city-bound Rates requests, 18 identity-bound Rates requests, 2 anchor controls and 41 total HTTP. Retry and redirect are zero, concurrency is one and request starts remain at least 1,000 ms apart. A missing same-city identity set skips only its identity-bound probes and leaves budget unused. No alternate city, date, endpoint, pagination request, Production call or RouteStack call is permitted.
+
+### 18.3 Sanitized response-shape and causal receipts
+
+`stayopti.split-r2.liteapi-response-shape@1` inspects only explicit paths already present in the local static-content client/adapter or Rates mapper. For each allowlisted path it records presence, JSON type, array length and result-container eligibility. It never recursively enumerates unknown keys. Multiple eligible containers fail closed as `AMBIGUOUS` and prohibit normalization.
+
+`stayopti.split-r2.liteapi-zero-result-diagnosis@1` records only city/window/duration ordinals and categories, location mode, HTTP/JSON state, selected allowlisted path and aggregate funnel counts. Repeated per-probe keys and response shapes use versioned field dictionaries so the deterministic single-line JSON remains below 16,000 UTF-8 bytes. Raw provider identities, hotel or room names, rates, tax labels, payloads, responses, credentials and cross-run fingerprints are excluded.
+
+The causal classifier is deterministic and allowlisted. It distinguishes extractor or request mismatch, city versus identity binding asymmetry, date horizon, long-stay restriction, city-specific availability, broadly empty rate inventory, empty key/content scope and economically blocked raw rates. Independent simultaneous causes produce `MULTIPLE_CAUSAL_FACTORS`; absent sufficient evidence produces `NOT_DETERMINABLE`. This diagnosis may qualify technical availability only and cannot retroactively select scenarios by price, maximize result counts, or produce economic evidence.
