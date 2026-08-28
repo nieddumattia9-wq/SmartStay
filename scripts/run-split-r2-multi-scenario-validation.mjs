@@ -10,9 +10,11 @@ import {
   SPLIT_R1_DESTINATION_ENDPOINT,
   SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
   SPLIT_R1_OFFICIAL_BASE_URL,
+  buildSplitR1EconomicEligibilityFunnelSearchReceiptV1,
   createSplitR1DestinationRequest,
   createSplitR1HotelSearchRequest,
   createSplitR1PartnerTokenRequest,
+  diagnoseSplitR1ContinuationMetadataShapeV1,
   fingerprintSplitR1Identifier,
   normalizeSplitR1SearchPage,
   selectSplitR1DestinationCandidate,
@@ -41,6 +43,9 @@ export const SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_MAX_UTF8_BYTES = 16_000;
 export const SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_RECEIPT_VERSION =
   "stayopti.split-r2.routestack-public-contract-canary@1";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_MAX_UTF8_BYTES = 8_000;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION =
+  "stayopti.split-r2.routestack-public-multi-scenario@1";
+export const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES = 16_000;
 export const SPLIT_R2_LITEAPI_SANDBOX_BASE_URL = "https://api.liteapi.travel/v3.0";
 export const SPLIT_R2_LITEAPI_RATES_PATH = "/hotels/rates";
 export const SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH = "/data/hotels";
@@ -57,6 +62,7 @@ export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
   ROUTESTACK_SANDBOX_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
   ROUTESTACK_PUBLIC_PRODUCTION_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
   ROUTESTACK_PUBLIC_PRODUCTION_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+  ROUTESTACK_PUBLIC_MULTI_SCENARIO: "EXACT_106_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
 });
 
 export const SPLIT_R2_COMPARABILITY_CLASSES = Object.freeze([
@@ -637,6 +643,13 @@ export function evaluateSplitR2Scenario(provider, scenarioPlan, snapshots) {
     minSavingMinorUnits: savings.length > 0 ? Math.min(...savings) : null,
     bestSavingBasisPoints: basisPoints.length > 0 ? Math.max(...basisPoints) : null,
     medianSavingBasisPoints: splitR1CompactMedianInteger(basisPoints),
+    winningBreakpointOrdinal: evaluable.length > 0
+      ? [...evaluable].sort(
+          (left, right) =>
+            right.savingMinorUnits - left.savingMinorUnits ||
+            left.breakpointOrdinal - right.breakpointOrdinal
+        )[0].breakpointOrdinal
+      : null,
     baselineAvailable: fixedBaseline !== null,
     priceCoverage: {
       numerator: sum(allFunnels.map((funnel) => funnel.numericPriceEligibleCount)),
@@ -2691,6 +2704,676 @@ export async function runSplitR2FakeRouteStackPublicCanary() {
   return receipt;
 }
 
+const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_LIMITS = Object.freeze({
+  AUTHENTICATION: 1,
+  DESTINATION: 3,
+  INITIAL_SEARCH: 102,
+  CONTINUATION: 0,
+  total: 106,
+});
+
+const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_ORDINALS = Object.freeze([1, 3, 5]);
+
+function splitR2RouteStackPublicScenarioBinding(scenario) {
+  return Object.freeze({
+    scenarioId: scenario.scenarioId,
+    destination: Object.freeze({
+      label: scenario.destination,
+      countryCode: scenario.country,
+      latitude: scenario.coordinates.latitude,
+      longitude: scenario.coordinates.longitude,
+    }),
+  });
+}
+
+function splitR2RouteStackPublicLogicalBinding(search) {
+  return Object.freeze({
+    logicalSearchId: search.logicalSearchId,
+    scenarioId: `R2-S${search.scenarioOrdinal}`,
+    kind: search.searchRole === "FULL_STAY" ? "full-stay" :
+      search.searchRole === "NIGHTLY" ? "nightly" : "split-segment",
+    splitPointId: search.breakpointOrdinal === null
+      ? null
+      : `R2-S${search.scenarioOrdinal}-B${search.breakpointOrdinal}`,
+    segmentOrdinal: search.searchRole === "PREFIX" ? 0 : search.searchRole === "SUFFIX" ? 1 : null,
+    request: Object.freeze({
+      checkIn: search.checkin,
+      checkOut: search.checkout,
+      currency: search.expectedCurrency,
+      occupancy: Object.freeze({
+        rooms: search.occupancy.rooms,
+        adults: search.occupancy.adults,
+        childAges: Object.freeze([]),
+      }),
+    }),
+  });
+}
+
+export function assertSplitR2RouteStackPublicMultiScenarioPlan(plan) {
+  const ordinals = plan?.scenarioPlans?.map((entry) => entry.scenario.ordinal) ?? [];
+  const searchCounts = plan?.scenarioPlans?.map((entry) => entry.logicalSearches.length) ?? [];
+  const breakpointCounts = plan?.scenarioPlans?.map((entry) => entry.breakpoints) ?? [];
+  const destinationCount = new Set(
+    plan?.scenarioPlans?.map((entry) => `${entry.scenario.destination}|${entry.scenario.country}`) ?? []
+  ).size;
+  const exact = plan?.provider === "ROUTESTACK_PUBLIC_PRODUCTION" &&
+    plan?.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    stableStringifySplitF0(ordinals, 0) === "[1,3,5]" && destinationCount === 3 &&
+    stableStringifySplitF0(searchCounts, 0) === "[41,20,41]" &&
+    stableStringifySplitF0(breakpointCounts, 0) === "[13,6,13]" &&
+    plan.logicalSearches?.length === 102 && plan.publicLogicalBindings?.length === 102 &&
+    plan.publicScenarioBindings?.length === 3 &&
+    plan.scenarioPlans.every((entry, index) =>
+      entry.logicalSearches.filter((search) => search.searchRole === "FULL_STAY").length === 1 &&
+      plan.publicScenarioBindings[index]?.scenarioId === entry.scenario.scenarioId &&
+      plan.publicScenarioBindings[index]?.destination?.label === entry.scenario.destination &&
+      plan.publicScenarioBindings[index]?.destination?.countryCode === entry.scenario.country &&
+      entry.logicalSearches.every((search) =>
+        search.destination === entry.scenario.destination && search.country === entry.scenario.country &&
+        search.expectedCurrency === "EUR" && search.occupancy.rooms === 1 &&
+        search.occupancy.adults === 2 && search.occupancy.children === 0
+      )
+    ) &&
+    plan.logicalSearches.every((search, index) =>
+      plan.publicLogicalBindings[index]?.logicalSearchId === search.logicalSearchId
+    );
+  if (!exact) throw new Error("split-r2-routestack-public-multi-scenario-plan-divergence");
+  return plan;
+}
+
+export function buildSplitR2RouteStackPublicMultiScenarioPlan() {
+  const frozen = buildSplitR2CampaignPlan("ROUTESTACK_SANDBOX");
+  const plan = Object.freeze({
+    provider: "ROUTESTACK_PUBLIC_PRODUCTION",
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    frozenScenarioOrdinals: SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_ORDINALS,
+    scenarioPlans: frozen.scenarioPlans,
+    logicalSearches: frozen.logicalSearches,
+    publicScenarioBindings: Object.freeze(
+      frozen.scenarioPlans.map((entry) => splitR2RouteStackPublicScenarioBinding(entry.scenario))
+    ),
+    publicLogicalBindings: Object.freeze(
+      frozen.logicalSearches.map(splitR2RouteStackPublicLogicalBinding)
+    ),
+  });
+  return assertSplitR2RouteStackPublicMultiScenarioPlan(plan);
+}
+
+export function classifySplitR2RouteStackPublicReproducibility({
+  contractFailure = false,
+  scenariosEvaluable = 0,
+  scenariosWithRawPositive = 0,
+  scenariosWithMaterialSignal = 0,
+  destinationsWithMaterialSignal = 0,
+} = {}) {
+  if (contractFailure) return "PROVIDER_OR_CONTRACT_FAILURE";
+  if (scenariosEvaluable < 2) return "INSUFFICIENT_EVALUABLE_DATA";
+  if (scenariosWithMaterialSignal >= 2 && destinationsWithMaterialSignal >= 2) {
+    return "REPRODUCED_ACROSS_MULTIPLE_SCENARIOS";
+  }
+  if (scenariosWithMaterialSignal === 0 && scenariosWithRawPositive === 0) {
+    return "NOT_REPRODUCED";
+  }
+  return "PARTIALLY_REPRODUCED";
+}
+
+export function createSplitR2RouteStackPublicMultiScenarioCounter() {
+  const counts = { AUTHENTICATION: 0, DESTINATION: 0, INITIAL_SEARCH: 0, CONTINUATION: 0, total: 0 };
+  let active = 0;
+  let maxObservedConcurrency = 0;
+  return Object.freeze({
+    reserve(requestClass) {
+      if (!Object.hasOwn(SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_LIMITS, requestClass) ||
+          requestClass === "total" || requestClass === "CONTINUATION") {
+        throw new Error("split-r2-routestack-public-multi-scenario-route-forbidden");
+      }
+      if (counts[requestClass] + 1 > SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_LIMITS[requestClass] ||
+          counts.total + 1 > SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_LIMITS.total) {
+        throw new Error("split-r2-routestack-public-multi-scenario-http-budget-exceeded-before-transport");
+      }
+      counts[requestClass] += 1;
+      counts.total += 1;
+    },
+    enterTransport() {
+      active += 1;
+      maxObservedConcurrency = Math.max(maxObservedConcurrency, active);
+      if (active > 1) throw new Error("split-r2-routestack-public-multi-scenario-concurrency-exceeded");
+    },
+    leaveTransport() {
+      active -= 1;
+      if (active < 0) throw new Error("split-r2-routestack-public-multi-scenario-concurrency-ledger-invalid");
+    },
+    snapshot() {
+      return Object.freeze({ ...counts, retries: 0, redirects: 0, maxObservedConcurrency });
+    },
+  });
+}
+
+export function assertSplitR2RouteStackPublicMultiScenarioPreflight(options = {}) {
+  const credentialReader = options.credentialReader ?? (() => null);
+  const evidence = options.contractEvidence ?? inspectSplitR2RouteStackPublicContractEvidence();
+  const plan = assertSplitR2RouteStackPublicMultiScenarioPlan(options.plan);
+  const exact = options.mode === "ROUTESTACK_PUBLIC_MULTI_SCENARIO" &&
+    options.phase === "SPLIT-R2.5A" && options.compact === true &&
+    options.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    options.hostname === "mcp.routestack.ai" && options.protocol === "https:" &&
+    options.acknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_106_HTTP" &&
+    options.unknownCostAcknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN" &&
+    options.noMutationAcknowledgement === "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION" &&
+    options.authMax === 1 && options.destinationMax === 3 && options.initialSearchMax === 102 &&
+    options.continuationMax === 0 && options.totalMax === 106 && options.retries === 0 &&
+    options.redirects === 0 && options.concurrency === 1 && options.minimumIntervalMs >= 1_000 &&
+    options.productionFallback === false && options.sandboxFallback === false &&
+    options.otherLiveModesSelected === 0 && options.repositoryGatePassed === true &&
+    evidence.environmentClassification === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    evidence.hostnameDeterminable === true && evidence.contractDeterminable === true &&
+    evidence.mutativeEndpointsSelected === false && evidence.sandboxFallback === false;
+  if (!exact) {
+    throw new Error("split-r2-routestack-public-multi-scenario-preflight-failed-before-credentials");
+  }
+  const credentials = credentialReader();
+  if (credentials?.baseUrl !== SPLIT_R1_OFFICIAL_BASE_URL ||
+      typeof credentials?.apiKey !== "string" || credentials.apiKey.length === 0 ||
+      typeof credentials?.apiSecret !== "string" || credentials.apiSecret.length === 0) {
+    throw new Error("split-r2-routestack-public-multi-scenario-credentials-missing-or-misbound");
+  }
+  return Object.freeze({ plan, credentials, evidence, credentialsAccessed: true });
+}
+
+function splitR2RouteStackPublicMultiScenarioSnapshot(
+  search,
+  binding,
+  payload,
+  ephemeralKey,
+  logicalSearchOrdinal
+) {
+  const page = normalizeSplitR1SearchPage(payload, { logicalSearch: binding, ephemeralRunKey: ephemeralKey });
+  const funnelReceipt = buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({
+    payload,
+    logicalSearch: { ...search, request: binding.request },
+    logicalSearchOrdinal,
+    breakpointOrdinal: search.breakpointOrdinal,
+    normalizedPage: page,
+    snapshotProcessable: true,
+  });
+  const metadata = diagnoseSplitR1ContinuationMetadataShapeV1(payload);
+  const ambiguous = metadata.completeCandidateContainerCount > 1 ||
+    metadata.classification === "NON_CONTRACTUAL_CONTINUATION_METADATA_SHAPE_PRESENT";
+  const continuationAvailable = metadata.continuationAuthorizable === true && !ambiguous;
+  const expectedOffers = page.offers.filter((offer) => offer.currency === search.expectedCurrency);
+  const funnel = {
+    rawResultCount: funnelReceipt.rawResultCount,
+    identityEligibleCount: funnelReceipt.identityEligibleCount,
+    numericPriceEligibleCount: funnelReceipt.numericPriceEligibleCount,
+    expectedCurrencyMatchCount: funnelReceipt.expectedCurrencyMatchCount,
+    missingCurrencyCount: funnelReceipt.missingCurrencyCount,
+    nonExpectedCurrencyCount: funnelReceipt.nonExpectedCurrencyCount,
+    invalidCurrencyTypeCount: funnelReceipt.invalidCurrencyTypeCount,
+    unknownMandatoryComponentCount: 0,
+    mandatoryComponentComparableCount: funnelReceipt.preDedupEconomicOfferCount,
+    finalEconomicOfferCount: funnelReceipt.finalDistinctPropertyOfferCount,
+  };
+  const collectionCategory = ambiguous
+    ? "CONTINUATION_METADATA_AMBIGUOUS"
+    : page.rawResultCount === 0
+      ? "ZERO_RAW_RESULTS"
+      : expectedOffers.length === 0 && funnel.numericPriceEligibleCount > 0
+        ? "CURRENCY_INCOMPLETE"
+        : expectedOffers.length === 0
+          ? "PRICE_COVERAGE_INCOMPLETE"
+          : continuationAvailable
+            ? "CONTINUATION_AVAILABLE_NOT_EXECUTED"
+            : "USABLE_BOUNDED_SNAPSHOT";
+  const usable = !ambiguous && expectedOffers.length > 0;
+  return assertProviderNeutralSnapshot({
+    contractVersion: SPLIT_R2_PROVIDER_NEUTRAL_CONTRACT_VERSION,
+    logicalSearchId: search.logicalSearchId,
+    scenarioOrdinal: search.scenarioOrdinal,
+    searchRole: search.searchRole,
+    checkin: search.checkin,
+    checkout: search.checkout,
+    durationNights: search.durationNights,
+    expectedCurrency: search.expectedCurrency,
+    boundedSnapshotUsable: usable,
+    collectionClassification: ambiguous
+      ? "AMBIGUOUS_CONTINUATION_METADATA"
+      : continuationAvailable ? "PROVIDER_CONTINUATION_AVAILABLE" : "PROVIDER_NO_CONTINUATION_EXPOSED",
+    publicCollectionCategory: collectionCategory,
+    comparabilityClassification: usable ? "COMPARABLE_COMPLETE_TOTAL" : "INCOMPARABLE_COLLECTION",
+    economicEligibilityFunnel: funnel,
+    normalizableResultCount: page.offers.length,
+    offers: usable
+      ? expectedOffers.map((offer) => ({
+          propertyFingerprint: offer.propertyFingerprint,
+          totalPriceMinorUnits: offer.totalMinorUnits,
+          totalMinorUnits: offer.totalMinorUnits,
+          currency: offer.currency,
+          totalPriceSemantics: "SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED",
+          mandatoryTaxState: "UNPROVEN_R1_PRESERVED",
+          mandatoryTaxMinorUnits: null,
+          payAtPropertyMandatoryMinorUnits: null,
+          cancellationCategory: "UNAVAILABLE",
+          evidenceAvailabilityCategories: ["R2_PUBLIC_BOUNDED_SNAPSHOT", "TEMPORAL_TOTALITY_EMPIRICAL"],
+        }))
+      : [],
+    continuationAvailable,
+    continuationEligible: continuationAvailable,
+    continuationExecuted: false,
+    providerDeclaredTerminal: false,
+  });
+}
+
+function createSplitR2RouteStackPublicMultiScenarioTransport({
+  fetchImplementation,
+  monotonicNow,
+  sleeper,
+} = {}) {
+  if (typeof fetchImplementation !== "function") {
+    throw new Error("split-r2-routestack-public-multi-scenario-fetch-unavailable");
+  }
+  const counter = createSplitR2RouteStackPublicMultiScenarioCounter();
+  const limiter = createSplitR2MonotonicLimiter({ monotonicNow, sleeper });
+  const endpoints = new Map([
+    ["AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT],
+    ["DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT],
+    ["INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT],
+  ]);
+  const post = async (requestClass, endpointPath, body, bearer = null) => {
+    if (endpoints.get(requestClass) !== endpointPath || requestClass === "CONTINUATION") {
+      throw new Error("split-r2-routestack-public-multi-scenario-route-forbidden");
+    }
+    const url = new URL(endpointPath, SPLIT_R1_OFFICIAL_BASE_URL);
+    if (url.protocol !== "https:" || url.hostname !== "mcp.routestack.ai") {
+      throw new Error("split-r2-routestack-public-multi-scenario-host-forbidden");
+    }
+    await limiter.ready();
+    counter.reserve(requestClass);
+    counter.enterTransport();
+    limiter.markStarted();
+    try {
+      const response = await fetchImplementation(url, {
+        method: "POST",
+        redirect: "error",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(bearer === null ? {} : { Authorization: `Bearer ${bearer}` }),
+        },
+        body: JSON.stringify(body),
+      });
+      if (response.redirected === true || (response.status >= 300 && response.status < 400)) {
+        throw new Error("split-r2-routestack-public-multi-scenario-redirect-prohibited");
+      }
+      if (typeof response.url === "string" && response.url.length > 0) {
+        const responseUrl = new URL(response.url);
+        if (responseUrl.protocol !== "https:" || responseUrl.hostname !== "mcp.routestack.ai") {
+          throw new Error("split-r2-routestack-public-multi-scenario-response-host-forbidden");
+        }
+      }
+      const contentType = response.headers?.get?.("content-type") ?? "";
+      let payload = null;
+      let jsonValid = false;
+      if (/(?:application|text)\/(?:[^;]+\+)?json\b/iu.test(contentType)) {
+        try {
+          payload = JSON.parse(await response.text());
+          jsonValid = true;
+        } catch {
+          jsonValid = false;
+        }
+      }
+      if (requestClass !== "INITIAL_SEARCH" && (response.status !== 200 || !jsonValid)) {
+        throw new Error("split-r2-routestack-public-multi-scenario-contract-response-invalid");
+      }
+      return Object.freeze({ payload, status: response.status, httpValid: response.status === 200, jsonValid });
+    } finally {
+      counter.leaveTransport();
+    }
+  };
+  return Object.freeze({
+    post,
+    postContinuation() {
+      throw new Error("split-r2-routestack-public-multi-scenario-continuation-prohibited");
+    },
+    snapshot: () => Object.freeze({ http: counter.snapshot(), limiter: limiter.snapshot() }),
+  });
+}
+
+function splitR2RouteStackPublicUnprocessableSnapshot(search, category) {
+  return assertProviderNeutralSnapshot({
+    contractVersion: SPLIT_R2_PROVIDER_NEUTRAL_CONTRACT_VERSION,
+    logicalSearchId: search.logicalSearchId,
+    scenarioOrdinal: search.scenarioOrdinal,
+    searchRole: search.searchRole,
+    checkin: search.checkin,
+    checkout: search.checkout,
+    durationNights: search.durationNights,
+    expectedCurrency: search.expectedCurrency,
+    boundedSnapshotUsable: false,
+    collectionClassification: "INITIAL_SNAPSHOT_UNPROCESSABLE",
+    publicCollectionCategory: category,
+    comparabilityClassification: "INCOMPARABLE_COLLECTION",
+    economicEligibilityFunnel: emptyFunnel(0),
+    normalizableResultCount: 0,
+    offers: [],
+    continuationAvailable: false,
+    continuationEligible: false,
+    continuationExecuted: false,
+    providerDeclaredTerminal: false,
+  });
+}
+
+function splitR2RouteStackPublicScenarioReceipt(result, scenarioPlan, snapshots) {
+  return Object.freeze({
+    scenarioOrdinal: result.scenarioOrdinal,
+    plannedSearches: scenarioPlan.logicalSearches.length,
+    executedSearches: snapshots.length,
+    plannedBreakpoints: result.plannedBreakpoints,
+    evaluableBreakpoints: result.evaluatedBreakpoints,
+    notEvaluableBreakpoints: result.plannedBreakpoints - result.evaluatedBreakpoints,
+    positiveBreakpoints: result.positiveBreakpoints,
+    breakEvenBreakpoints: result.breakEvenBreakpoints,
+    negativeBreakpoints: result.negativeBreakpoints,
+    rawPositivePresent: result.scenarioHasRawPositive,
+    materialSignalPresent: result.scenarioHasMaterialSignal,
+    bestSavingMinorUnits: result.bestSavingMinorUnits,
+    bestSavingBasisPoints: result.bestSavingBasisPoints,
+    medianSavingMinorUnits: result.medianSavingMinorUnits,
+    medianSavingBasisPoints: result.medianSavingBasisPoints,
+    minimumSavingMinorUnits: result.minSavingMinorUnits,
+    winningBreakpointOrdinal: result.winningBreakpointOrdinal,
+    fullStayBaselineAvailable: result.baselineAvailable,
+    usableSnapshotCount: snapshots.filter((snapshot) => snapshot.boundedSnapshotUsable).length,
+    zeroRawSnapshotCount: snapshots.filter((snapshot) => snapshot.publicCollectionCategory === "ZERO_RAW_RESULTS").length,
+    numericPriceCoverageNumerator: result.priceCoverage.numerator,
+    numericPriceCoverageDenominator: result.priceCoverage.denominator,
+    expectedCurrencyCoverageNumerator: result.currencyCoverage.numerator,
+    expectedCurrencyCoverageDenominator: result.currencyCoverage.denominator,
+  });
+}
+
+export function buildSplitR2RouteStackPublicMultiScenarioReceipt({
+  sourceSha,
+  plan = buildSplitR2RouteStackPublicMultiScenarioPlan(),
+  scenarioSnapshots = [],
+  scenarioResults = [],
+  http = {},
+  limiter = {},
+  failureClassification = null,
+} = {}) {
+  const flatSnapshots = scenarioSnapshots.flat();
+  const perScenarioAggregates = scenarioResults.map((result, index) =>
+    splitR2RouteStackPublicScenarioReceipt(result, plan.scenarioPlans[index], scenarioSnapshots[index] ?? [])
+  );
+  const evaluable = scenarioResults.filter((result) => result.evaluatedBreakpoints > 0);
+  const material = evaluable.filter((result) => result.scenarioHasMaterialSignal);
+  const contractFailure = failureClassification !== null || flatSnapshots.some((snapshot) =>
+    snapshot.publicCollectionCategory === "TRANSPORT_OR_CONTRACT_FAILURE" ||
+    snapshot.publicCollectionCategory === "CONTINUATION_METADATA_AMBIGUOUS"
+  );
+  const scenariosWithRawPositive = evaluable.filter((result) => result.scenarioHasRawPositive).length;
+  const destinationsWithMaterialSignal = new Set(material.map((result) => result.destination)).size;
+  const breakpointsEvaluable = sum(scenarioResults.map((result) => result.evaluatedBreakpoints));
+  const allSearchesExecuted = flatSnapshots.length === 102 && scenarioSnapshots.length === 3;
+  const status = failureClassification !== null || !allSearchesExecuted
+    ? "FAIL"
+    : breakpointsEvaluable > 0 ? "PASS" : "INCONCLUSIVE";
+  const receipt = Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION,
+    status,
+    sourceSha,
+    environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    userApprovalAcknowledged: true,
+    unknownCostAcknowledged: true,
+    frozenScenarioOrdinals: [1, 3, 5],
+    scenarioCount: 3,
+    logicalSearchesPlanned: 102,
+    logicalSearchesExecuted: flatSnapshots.length,
+    breakpointsPlanned: 32,
+    breakpointsEvaluable,
+    breakpointsNotEvaluable: 32 - breakpointsEvaluable,
+    authHttpRequests: http.AUTHENTICATION ?? 0,
+    destinationHttpRequests: http.DESTINATION ?? 0,
+    initialHttpRequests: http.INITIAL_SEARCH ?? 0,
+    continuationHttpRequests: 0,
+    totalHttpRequests: http.total ?? 0,
+    totalHttpBudget: 106,
+    retries: 0,
+    redirects: 0,
+    maxObservedConcurrency: http.maxObservedConcurrency ?? 0,
+    minObservedRequestIntervalMs: limiter.minimumObservedRequestIntervalMs ?? null,
+    usableBoundedSnapshots: flatSnapshots.filter((snapshot) => snapshot.boundedSnapshotUsable).length,
+    zeroRawSnapshots: flatSnapshots.filter((snapshot) => snapshot.publicCollectionCategory === "ZERO_RAW_RESULTS").length,
+    unprocessableSnapshots: flatSnapshots.filter((snapshot) => !snapshot.boundedSnapshotUsable).length,
+    continuationAvailableNotExecutedSnapshots: flatSnapshots.filter((snapshot) => snapshot.continuationAvailable).length,
+    ambiguousSnapshots: flatSnapshots.filter((snapshot) =>
+      snapshot.publicCollectionCategory === "CONTINUATION_METADATA_AMBIGUOUS").length,
+    totalRawResults: sum(flatSnapshots.map((snapshot) => snapshot.economicEligibilityFunnel.rawResultCount)),
+    totalNormalizableResults: sum(flatSnapshots.map((snapshot) => snapshot.normalizableResultCount ?? 0)),
+    numericPriceCoverageNumerator: sum(flatSnapshots.map((snapshot) =>
+      snapshot.economicEligibilityFunnel.numericPriceEligibleCount)),
+    numericPriceCoverageDenominator: sum(flatSnapshots.map((snapshot) =>
+      snapshot.economicEligibilityFunnel.rawResultCount)),
+    expectedCurrencyCoverageNumerator: sum(flatSnapshots.map((snapshot) =>
+      snapshot.economicEligibilityFunnel.expectedCurrencyMatchCount)),
+    expectedCurrencyCoverageDenominator: sum(flatSnapshots.map((snapshot) =>
+      snapshot.economicEligibilityFunnel.rawResultCount)),
+    perScenarioAggregates,
+    scenariosEvaluable: evaluable.length,
+    scenariosWithRawPositive,
+    scenariosWithMaterialSignal: material.length,
+    destinationsWithMaterialSignal,
+    medianOfScenarioMediansMinorUnits: splitR1CompactMedianInteger(
+      evaluable.map((result) => result.medianSavingMinorUnits)
+    ),
+    medianOfScenarioMediansBasisPoints: splitR1CompactMedianInteger(
+      evaluable.map((result) => result.medianSavingBasisPoints)
+    ),
+    reproducibilityClassification: classifySplitR2RouteStackPublicReproducibility({
+      contractFailure,
+      scenariosEvaluable: evaluable.length,
+      scenariosWithRawPositive,
+      scenariosWithMaterialSignal: material.length,
+      destinationsWithMaterialSignal,
+    }),
+    userUsableSplitEvaluated: false,
+    bestResultScope: "BOUNDED_RETURNED_SNAPSHOT",
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    generalMarketFrequencyClaimAllowed: false,
+    productionValidityClaimAllowed: false,
+    commercialValidationClaimAllowed: false,
+    productionBookingAuthorized: false,
+    publicRuntimeChanged: false,
+    repositoryModificationsAfterCommit: 0,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    rawMetadataValuesPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    crossRunLinkability: false,
+    secretValuesExposed: false,
+    failureClassification: failureClassification ??
+      (status === "PASS" ? "NONE" : status === "INCONCLUSIVE" ? "INSUFFICIENT_EVALUABLE_DATA" : "CAMPAIGN_INCOMPLETE"),
+  });
+  return receipt;
+}
+
+export function serializeSplitR2RouteStackPublicMultiScenarioReceipt(
+  receipt,
+  maxBytes = SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES
+) {
+  assertReceiptSafe(receipt);
+  const json = stableStringifySplitF0(receipt, 0);
+  const byteLength = Buffer.byteLength(json, "utf8");
+  if (/\r|\n/u.test(json)) throw new Error("split-r2-routestack-public-multi-scenario-receipt-not-single-line");
+  if (byteLength > maxBytes) {
+    throw new SplitR2CompactReceiptError("split-r2-routestack-public-multi-scenario-receipt-oversize", byteLength);
+  }
+  return Object.freeze({ json, byteLength });
+}
+
+export async function runSplitR2RouteStackPublicMultiScenario({
+  sourceSha,
+  plan,
+  apiKey,
+  apiSecret,
+  fetchImplementation = globalThis.fetch,
+  monotonicNow,
+  sleeper,
+  now,
+  randomUUID,
+} = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha ?? "") || typeof apiKey !== "string" ||
+      apiKey.length === 0 || typeof apiSecret !== "string" || apiSecret.length === 0) {
+    throw new Error("split-r2-routestack-public-multi-scenario-runtime-input-invalid");
+  }
+  const authoritativePlan = assertSplitR2RouteStackPublicMultiScenarioPlan(plan);
+  const transport = createSplitR2RouteStackPublicMultiScenarioTransport({
+    fetchImplementation,
+    monotonicNow,
+    sleeper,
+  });
+  const ephemeralKey = crypto.randomBytes(32);
+  const scenarioSnapshots = authoritativePlan.scenarioPlans.map(() => []);
+  try {
+    const auth = await transport.post(
+      "AUTHENTICATION",
+      SPLIT_R1_AUTH_ENDPOINT,
+      createSplitR1PartnerTokenRequest({ apiKey, apiSecret, now, randomUUID })
+    );
+    let bearer = auth.payload?.token;
+    if (typeof bearer !== "string" || bearer.length === 0) {
+      throw new Error("split-r2-routestack-public-multi-scenario-bearer-missing");
+    }
+    const destinations = [];
+    for (const scenario of authoritativePlan.publicScenarioBindings) {
+      const response = await transport.post(
+        "DESTINATION",
+        SPLIT_R1_DESTINATION_ENDPOINT,
+        createSplitR1DestinationRequest(scenario),
+        bearer
+      );
+      destinations.push(selectSplitR1DestinationCandidate(response.payload, scenario));
+    }
+    let bindingOrdinal = 0;
+    for (let scenarioIndex = 0; scenarioIndex < authoritativePlan.scenarioPlans.length; scenarioIndex += 1) {
+      const scenarioPlan = authoritativePlan.scenarioPlans[scenarioIndex];
+      for (const search of scenarioPlan.logicalSearches) {
+        const binding = authoritativePlan.publicLogicalBindings[bindingOrdinal];
+        bindingOrdinal += 1;
+        const response = await transport.post(
+          "INITIAL_SEARCH",
+          SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+          createSplitR1HotelSearchRequest(binding, destinations[scenarioIndex]),
+          bearer
+        );
+        scenarioSnapshots[scenarioIndex].push(
+          response.httpValid && response.jsonValid
+            ? splitR2RouteStackPublicMultiScenarioSnapshot(
+                search,
+                binding,
+                response.payload,
+                ephemeralKey,
+                bindingOrdinal
+              )
+            : splitR2RouteStackPublicUnprocessableSnapshot(search, "TRANSPORT_OR_CONTRACT_FAILURE")
+        );
+      }
+    }
+    bearer = null;
+    const scenarioResults = authoritativePlan.scenarioPlans.map((scenarioPlan, index) =>
+      evaluateSplitR2Scenario("ROUTESTACK_PUBLIC_PRODUCTION", scenarioPlan, scenarioSnapshots[index])
+    );
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicMultiScenarioReceipt({
+      sourceSha,
+      plan: authoritativePlan,
+      scenarioSnapshots,
+      scenarioResults,
+      http: snapshot.http,
+      limiter: snapshot.limiter,
+    });
+  } catch (error) {
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicMultiScenarioReceipt({
+      sourceSha,
+      plan: authoritativePlan,
+      scenarioSnapshots,
+      scenarioResults: [],
+      http: snapshot.http,
+      limiter: snapshot.limiter,
+      failureClassification: String(error?.message ?? error).startsWith("split-r2-")
+        ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+        : "ROUTESTACK_PUBLIC_MULTI_SCENARIO_TECHNICAL_FAILURE",
+    });
+  } finally {
+    ephemeralKey.fill(0);
+  }
+}
+
+function splitR2FakePublicSearchPayload(search) {
+  const scenarioMaterial = search.scenarioOrdinal === 1 || search.scenarioOrdinal === 3;
+  const price = search.searchRole === "FULL_STAY"
+    ? 1_000
+    : search.searchRole === "PREFIX" || search.searchRole === "SUFFIX"
+      ? scenarioMaterial ? 400 : 550
+      : 100;
+  const roleSuffix = search.searchRole === "PREFIX" ? "left" :
+    search.searchRole === "SUFFIX" ? "right" : search.searchRole.toLowerCase();
+  return {
+    result: {
+      currency: "EUR",
+      correlationId: "synthetic-correlation-memory-only",
+      token: "synthetic-search-token-memory-only",
+      nextResultsKey: null,
+      result: [{
+        id: `synthetic-s${search.scenarioOrdinal}-${roleSuffix}-${search.breakpointOrdinal ?? 0}`,
+        ourprice: price,
+      }],
+    },
+  };
+}
+
+export async function runSplitR2FakeRouteStackPublicMultiScenario() {
+  const plan = buildSplitR2RouteStackPublicMultiScenarioPlan();
+  let monotonic = 0;
+  let requestOrdinal = 0;
+  const receipt = await runSplitR2RouteStackPublicMultiScenario({
+    sourceSha: "b".repeat(40),
+    plan,
+    apiKey: "synthetic-public-key",
+    apiSecret: "synthetic-public-secret",
+    monotonicNow: () => monotonic,
+    sleeper: async (delay) => { monotonic += delay; },
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      if (options.method !== "POST" || options.redirect !== "error") {
+        throw new Error("synthetic-transport-contract-drift");
+      }
+      requestOrdinal += 1;
+      if (requestOrdinal === 1) return fakeJsonResponse({ token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (requestOrdinal >= 2 && requestOrdinal <= 4) {
+        const scenario = plan.publicScenarioBindings[requestOrdinal - 2];
+        return fakeJsonResponse({ result: [{
+          id: `synthetic-destination-${requestOrdinal - 1}`,
+          city: scenario.destination.label,
+          country: scenario.destination.countryCode,
+          type: "City",
+          fullName: `${scenario.destination.label}, Italy`,
+          coordinates: { lat: scenario.destination.latitude, long: scenario.destination.longitude },
+        }] }, 200, String(url));
+      }
+      return fakeJsonResponse(
+        splitR2FakePublicSearchPayload(plan.logicalSearches[requestOrdinal - 5]),
+        200,
+        String(url)
+      );
+    },
+  });
+  return receipt;
+}
+
 function fakeJsonResponse(payload, status, url) {
   return {
     status, redirected: false, url,
@@ -3019,6 +3702,28 @@ export function parseSplitR2RouteStackPublicCanaryArguments(argv) {
   });
 }
 
+export function parseSplitR2RouteStackPublicMultiScenarioArguments(argv) {
+  const requiredLiteral = new Set([
+    "--r2-routestack-public-multi-scenario",
+    "--compact",
+    "--phase=SPLIT-R2.5A",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_106_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+  ]);
+  const expectedHeadArguments = argv.filter((entry) => entry.startsWith("--expected-head="));
+  const fingerprintArguments = argv.filter((entry) => entry.startsWith("--expected-dirty-fingerprint="));
+  if (argv.length !== 9 || [...requiredLiteral].some((entry) => !argv.includes(entry)) ||
+      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1) {
+    throw new Error("split-r2-routestack-public-multi-scenario-cli-contract-invalid");
+  }
+  return Object.freeze({
+    expectedHead: expectedHeadArguments[0].slice("--expected-head=".length),
+    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length),
+  });
+}
+
 function buildSplitR2LiteApiDiagnosisBlockedReceipt(sourceSha, failureClassification) {
   return {
     receiptVersion: SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
@@ -3075,13 +3780,98 @@ function buildSplitR2RouteStackPublicCanaryBlockedReceipt(sourceSha, failureClas
   });
 }
 
+function buildSplitR2RouteStackPublicMultiScenarioBlockedReceipt(sourceSha, failureClassification) {
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION,
+    status: "BLOCKED",
+    sourceSha: /^[0-9a-f]{40}$/u.test(sourceSha ?? "") ? sourceSha : "UNVERIFIED",
+    environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    userApprovalAcknowledged: false,
+    unknownCostAcknowledged: false,
+    authHttpRequests: 0,
+    destinationHttpRequests: 0,
+    initialHttpRequests: 0,
+    continuationHttpRequests: 0,
+    totalHttpRequests: 0,
+    totalHttpBudget: 106,
+    retries: 0,
+    redirects: 0,
+    repositoryModificationsAfterCommit: 0,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    rawMetadataValuesPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    crossRunLinkability: false,
+    secretValuesExposed: false,
+    failureClassification,
+  });
+}
+
 function isMainModule() {
   return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 }
 
 if (isMainModule()) {
   const argv = process.argv.slice(2);
-  if (argv.includes("--r2-routestack-public-contract-canary")) {
+  if (argv.includes("--r2-routestack-public-multi-scenario")) {
+    let expectedHead = null;
+    try {
+      const parsed = parseSplitR2RouteStackPublicMultiScenarioArguments(argv);
+      expectedHead = parsed.expectedHead;
+      const repository = verifySplitR2LiteApiCanaryRepositoryGate(
+        parsed.expectedHead,
+        parsed.expectedDirtyFingerprint
+      );
+      const evidence = inspectSplitR2RouteStackPublicContractEvidence();
+      const authoritativePlan = buildSplitR2RouteStackPublicMultiScenarioPlan();
+      const preflight = assertSplitR2RouteStackPublicMultiScenarioPreflight({
+        mode: "ROUTESTACK_PUBLIC_MULTI_SCENARIO",
+        phase: "SPLIT-R2.5A",
+        compact: true,
+        environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+        hostname: "mcp.routestack.ai",
+        protocol: "https:",
+        acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_106_HTTP",
+        unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+        noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+        authMax: 1,
+        destinationMax: 3,
+        initialSearchMax: 102,
+        continuationMax: 0,
+        totalMax: 106,
+        retries: 0,
+        redirects: 0,
+        concurrency: 1,
+        minimumIntervalMs: 1_000,
+        productionFallback: false,
+        sandboxFallback: false,
+        otherLiveModesSelected: 0,
+        repositoryGatePassed: repository.passed,
+        contractEvidence: evidence,
+        plan: authoritativePlan,
+        credentialReader: readRouteStackPublicCredentials,
+      });
+      const receipt = await runSplitR2RouteStackPublicMultiScenario({
+        sourceSha: parsed.expectedHead,
+        plan: preflight.plan,
+        apiKey: preflight.credentials.apiKey,
+        apiSecret: preflight.credentials.apiSecret,
+      });
+      const serialized = serializeSplitR2RouteStackPublicMultiScenarioReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RESULT=${serialized.json}\n`);
+      if (receipt.status === "FAIL" || receipt.status === "BLOCKED") process.exitCode = 1;
+    } catch (error) {
+      const classification = error instanceof SplitR2CompactReceiptError
+        ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
+        : String(error?.message ?? error).startsWith("split-r2-")
+          ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+          : "ROUTESTACK_PUBLIC_MULTI_SCENARIO_PREFLIGHT_BLOCKED";
+      const receipt = buildSplitR2RouteStackPublicMultiScenarioBlockedReceipt(expectedHead, classification);
+      const serialized = serializeSplitR2RouteStackPublicMultiScenarioReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RESULT=${serialized.json}\n`);
+      process.exitCode = 1;
+    }
+  } else if (argv.includes("--r2-routestack-public-contract-canary")) {
     let expectedHead = null;
     try {
       const parsed = parseSplitR2RouteStackPublicCanaryArguments(argv);

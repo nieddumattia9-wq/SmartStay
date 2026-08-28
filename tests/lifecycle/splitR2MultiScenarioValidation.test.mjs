@@ -16,6 +16,8 @@ import {
   SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
   SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_MAX_UTF8_BYTES,
   SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_RECEIPT_VERSION,
+  SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES,
+  SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION,
   SPLIT_R2_LITEAPI_RATES_PATH,
   SPLIT_R2_LITEAPI_SANDBOX_BASE_URL,
   SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS,
@@ -32,6 +34,8 @@ import {
   assertSplitR2LiteApiZeroResultDiagnosisPreflight,
   assertSplitR2RouteStackOfflinePreflight,
   assertSplitR2RouteStackPublicCanaryPreflight,
+  assertSplitR2RouteStackPublicMultiScenarioPlan,
+  assertSplitR2RouteStackPublicMultiScenarioPreflight,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
   buildSplitR2LiteApiCanaryReceipt,
@@ -39,6 +43,9 @@ import {
   buildSplitR2LiteApiCanaryPlan,
   buildSplitR2LiteApiZeroResultDiagnosisPlan,
   buildSplitR2RouteStackPublicCanaryBinding,
+  buildSplitR2RouteStackPublicMultiScenarioPlan,
+  buildSplitR2RouteStackPublicMultiScenarioReceipt,
+  classifySplitR2RouteStackPublicReproducibility,
   classifySplitR2Saving,
   createSplitR2AuthoritativeHttpCounter,
   createSplitR2LiteApiCanaryCounter,
@@ -47,6 +54,7 @@ import {
   createSplitR2LiteApiDiagnosisRatesBody,
   createSplitR2MonotonicLimiter,
   createSplitR2RouteStackPublicCanaryCounter,
+  createSplitR2RouteStackPublicMultiScenarioCounter,
   decideSplitR2Campaign,
   evaluateSplitR2Scenario,
   normalizeSplitR2LiteApiCanaryResponse,
@@ -54,9 +62,11 @@ import {
   parseSplitR2LiteApiCanaryArguments,
   parseSplitR2LiteApiZeroResultDiagnosisArguments,
   parseSplitR2RouteStackPublicCanaryArguments,
+  parseSplitR2RouteStackPublicMultiScenarioArguments,
   runSplitR2FakeLiteApiCanary,
   runSplitR2FakeLiteApiZeroResultDiagnosis,
   runSplitR2FakeRouteStackPublicCanary,
+  runSplitR2FakeRouteStackPublicMultiScenario,
   runSplitR2LiteApiCanary,
   runSplitR2LiteApiZeroResultDiagnosis,
   runSplitR2RouteStackPublicCanary,
@@ -67,6 +77,7 @@ import {
   serializeSplitR2LiteApiCanaryReceipt,
   serializeSplitR2LiteApiZeroResultDiagnosisReceipt,
   serializeSplitR2RouteStackPublicCanaryReceipt,
+  serializeSplitR2RouteStackPublicMultiScenarioReceipt,
   classifySplitR2LiteApiZeroResultCause,
   inspectSplitR2RouteStackPublicContractEvidence,
 } from "../../scripts/run-split-r2-multi-scenario-validation.mjs";
@@ -584,7 +595,7 @@ test("64 missing RouteStack continuation key means no continuation exposed", () 
   assert.equal(snapshot.providerDeclaredTerminal, false);
 });
 
-test("65 exact live capability registry includes only the three implemented read-only modes", () => {
+test("65 exact live capability registry includes the dedicated public multi-scenario mode", () => {
   assert.deepEqual(SPLIT_R2_LIVE_CAPABILITIES, {
     LITEAPI_SANDBOX_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
     LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS: "EXACT_MAX_41_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
@@ -593,6 +604,7 @@ test("65 exact live capability registry includes only the three implemented read
     ROUTESTACK_SANDBOX_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
     ROUTESTACK_PUBLIC_PRODUCTION_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
     ROUTESTACK_PUBLIC_PRODUCTION_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+    ROUTESTACK_PUBLIC_MULTI_SCENARIO: "EXACT_106_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   });
 });
 
@@ -1428,4 +1440,259 @@ test("132 dry-run remains six scenarios, 285 searches and zero HTTP", () => {
   assert.equal(receipt.frozenMatrix.filter((entry) => entry.routeStackAssigned)
     .reduce((total, entry) => total + entry.logicalSearches, 0), 102);
   assert.equal(receipt.httpCounters.realHttpRequests, 0);
+});
+
+function publicMultiScenarioPreflight(overrides = {}) {
+  return {
+    mode: "ROUTESTACK_PUBLIC_MULTI_SCENARIO",
+    phase: "SPLIT-R2.5A",
+    compact: true,
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    hostname: "mcp.routestack.ai",
+    protocol: "https:",
+    acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_106_HTTP",
+    unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    authMax: 1,
+    destinationMax: 3,
+    initialSearchMax: 102,
+    continuationMax: 0,
+    totalMax: 106,
+    retries: 0,
+    redirects: 0,
+    concurrency: 1,
+    minimumIntervalMs: 1_000,
+    productionFallback: false,
+    sandboxFallback: false,
+    otherLiveModesSelected: 0,
+    repositoryGatePassed: true,
+    plan: buildSplitR2RouteStackPublicMultiScenarioPlan(),
+    credentialReader: () => ({
+      baseUrl: "https://mcp.routestack.ai",
+      apiKey: "synthetic-public-key",
+      apiSecret: "synthetic-public-secret",
+    }),
+    ...overrides,
+  };
+}
+
+const FAKE_PUBLIC_MULTI_PROMISE = runSplitR2FakeRouteStackPublicMultiScenario();
+
+test("133 public multi-scenario mode is default-disabled and credentials alone are insufficient", () => {
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_MULTI_SCENARIO,
+    "EXACT_106_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED");
+  let reads = 0;
+  assert.throws(() => assertSplitR2RouteStackPublicMultiScenarioPreflight(
+    publicMultiScenarioPreflight({ mode: "dry-run", credentialReader: () => { reads += 1; return {}; } })
+  ), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("134 budget, unknown-cost and no-mutation acknowledgements are independently mandatory", () => {
+  for (const overrides of [
+    { acknowledgement: "MISSING" },
+    { unknownCostAcknowledgement: "MISSING" },
+    { noMutationAcknowledgement: "MISSING" },
+  ]) {
+    let reads = 0;
+    assert.throws(() => assertSplitR2RouteStackPublicMultiScenarioPreflight(
+      publicMultiScenarioPreflight({ ...overrides, credentialReader: () => { reads += 1; return {}; } })
+    ), /before-credentials/);
+    assert.equal(reads, 0);
+  }
+});
+
+test("135 public multi-scenario and every other live mode are mutually exclusive", () => {
+  let reads = 0;
+  assert.throws(() => assertSplitR2RouteStackPublicMultiScenarioPreflight(
+    publicMultiScenarioPreflight({ otherLiveModesSelected: 1, credentialReader: () => { reads += 1; return {}; } })
+  ), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("136 authoritative plan is exact 1,3,5 with three destinations and 41,20,41 searches", () => {
+  const plan = buildSplitR2RouteStackPublicMultiScenarioPlan();
+  assert.equal(assertSplitR2RouteStackPublicMultiScenarioPlan(plan), plan);
+  assert.deepEqual(plan.scenarioPlans.map((entry) => entry.scenario.ordinal), [1, 3, 5]);
+  assert.deepEqual(plan.scenarioPlans.map((entry) => entry.logicalSearches.length), [41, 20, 41]);
+  assert.equal(new Set(plan.scenarioPlans.map((entry) => entry.scenario.destination)).size, 3);
+  assert.equal(plan.logicalSearches.length, 102);
+});
+
+test("137 plan has 13,6,13 breakpoints, one full stay each and deterministic equal-depth order", () => {
+  const plan = buildSplitR2RouteStackPublicMultiScenarioPlan();
+  assert.deepEqual(plan.scenarioPlans.map((entry) => entry.breakpoints), [13, 6, 13]);
+  for (const scenario of plan.scenarioPlans) {
+    assert.equal(scenario.logicalSearches.filter((entry) => entry.searchRole === "FULL_STAY").length, 1);
+    const splitRoles = scenario.logicalSearches.filter((entry) => ["PREFIX", "SUFFIX"].includes(entry.searchRole));
+    assert.deepEqual(splitRoles.slice(0, 4).map((entry) => entry.searchRole), ["PREFIX", "SUFFIX", "PREFIX", "SUFFIX"]);
+  }
+  assert.equal(buildSplitR2RouteStackPublicMultiScenarioPlan().logicalSearches
+    .map((entry) => entry.logicalSearchId).join("|"), plan.logicalSearches
+    .map((entry) => entry.logicalSearchId).join("|"));
+});
+
+test("138 plan drift, scenario replacement and count maximization fail before credentials", () => {
+  const plan = buildSplitR2RouteStackPublicMultiScenarioPlan();
+  for (const badPlan of [
+    { ...plan, scenarioPlans: plan.scenarioPlans.slice(0, 2) },
+    { ...plan, logicalSearches: plan.logicalSearches.slice(1) },
+    { ...plan, publicScenarioBindings: plan.publicScenarioBindings.slice().reverse() },
+  ]) {
+    let reads = 0;
+    assert.throws(() => assertSplitR2RouteStackPublicMultiScenarioPreflight(
+      publicMultiScenarioPreflight({ plan: badPlan, credentialReader: () => { reads += 1; return {}; } })
+    ), /plan-divergence/);
+    assert.equal(reads, 0);
+  }
+});
+
+test("139 exact 1/3/102/0/106 contract and limiter are mandatory", () => {
+  assert.equal(assertSplitR2RouteStackPublicMultiScenarioPreflight(
+    publicMultiScenarioPreflight()).credentialsAccessed, true);
+  for (const overrides of [
+    { authMax: 2 }, { destinationMax: 2 }, { initialSearchMax: 101 }, { continuationMax: 1 },
+    { totalMax: 107 }, { retries: 1 }, { redirects: 1 }, { concurrency: 2 },
+    { minimumIntervalMs: 999 }, { hostname: "evolvemcp.routestack.ai" },
+    { hostname: "mcp.routestack.ai.example" }, { sandboxFallback: true },
+  ]) {
+    assert.throws(() => assertSplitR2RouteStackPublicMultiScenarioPreflight(
+      publicMultiScenarioPreflight(overrides)), /before-credentials/);
+  }
+});
+
+test("140 authoritative counter blocks second auth and fourth destination pre-transport", () => {
+  const auth = createSplitR2RouteStackPublicMultiScenarioCounter();
+  auth.reserve("AUTHENTICATION");
+  assert.throws(() => auth.reserve("AUTHENTICATION"), /budget-exceeded-before-transport/);
+  const destination = createSplitR2RouteStackPublicMultiScenarioCounter();
+  for (let index = 0; index < 3; index += 1) destination.reserve("DESTINATION");
+  assert.throws(() => destination.reserve("DESTINATION"), /budget-exceeded-before-transport/);
+});
+
+test("141 authoritative counter blocks initial 103, total 107, continuation and mutation", () => {
+  const counter = createSplitR2RouteStackPublicMultiScenarioCounter();
+  counter.reserve("AUTHENTICATION");
+  for (let index = 0; index < 3; index += 1) counter.reserve("DESTINATION");
+  for (let index = 0; index < 102; index += 1) counter.reserve("INITIAL_SEARCH");
+  assert.equal(counter.snapshot().total, 106);
+  assert.throws(() => counter.reserve("INITIAL_SEARCH"), /budget-exceeded-before-transport/);
+  assert.throws(() => counter.reserve("CONTINUATION"), /route-forbidden/);
+  assert.throws(() => counter.reserve("BOOKING"), /route-forbidden/);
+});
+
+test("142 fake campaign performs exact 106 calls with no continuation, retry or redirect", async () => {
+  const receipt = await FAKE_PUBLIC_MULTI_PROMISE;
+  assert.deepEqual([
+    receipt.authHttpRequests, receipt.destinationHttpRequests, receipt.initialHttpRequests,
+    receipt.continuationHttpRequests, receipt.totalHttpRequests,
+  ], [1, 3, 102, 0, 106]);
+  assert.equal(receipt.retries, 0);
+  assert.equal(receipt.redirects, 0);
+  assert.equal(receipt.maxObservedConcurrency, 1);
+  assert.equal(receipt.minObservedRequestIntervalMs >= 1_000, true);
+});
+
+test("143 fake campaign evaluates three scenarios without treating breakpoints as scenarios", async () => {
+  const receipt = await FAKE_PUBLIC_MULTI_PROMISE;
+  assert.equal(receipt.perScenarioAggregates.length, 3);
+  assert.deepEqual(receipt.perScenarioAggregates.map((entry) => entry.plannedBreakpoints), [13, 6, 13]);
+  assert.equal(receipt.scenarioCount, 3);
+  assert.equal(receipt.breakpointsEvaluable, 32);
+  assert.equal(receipt.scenariosEvaluable, 3);
+});
+
+test("144 two material scenarios on two destinations reproduce across multiple scenarios", () => {
+  assert.equal(classifySplitR2RouteStackPublicReproducibility({
+    scenariosEvaluable: 3, scenariosWithRawPositive: 2, scenariosWithMaterialSignal: 2,
+    destinationsWithMaterialSignal: 2,
+  }), "REPRODUCED_ACROSS_MULTIPLE_SCENARIOS");
+});
+
+test("145 partial, not-reproduced, insufficient and contract-failure categories are exact", () => {
+  assert.equal(classifySplitR2RouteStackPublicReproducibility({
+    scenariosEvaluable: 3, scenariosWithRawPositive: 1, scenariosWithMaterialSignal: 1,
+    destinationsWithMaterialSignal: 1,
+  }), "PARTIALLY_REPRODUCED");
+  assert.equal(classifySplitR2RouteStackPublicReproducibility({ scenariosEvaluable: 3 }), "NOT_REPRODUCED");
+  assert.equal(classifySplitR2RouteStackPublicReproducibility({ scenariosEvaluable: 1 }),
+    "INSUFFICIENT_EVALUABLE_DATA");
+  assert.equal(classifySplitR2RouteStackPublicReproducibility({ contractFailure: true, scenariosEvaluable: 3 }),
+    "PROVIDER_OR_CONTRACT_FAILURE");
+});
+
+test("146 pooled breakpoint values cannot influence scenario-level classification", () => {
+  const input = { scenariosEvaluable: 3, scenariosWithRawPositive: 1, scenariosWithMaterialSignal: 1,
+    destinationsWithMaterialSignal: 1 };
+  assert.equal(classifySplitR2RouteStackPublicReproducibility({ ...input, pooledMedian: 999_999 }),
+    classifySplitR2RouteStackPublicReproducibility({ ...input, pooledMedian: -999_999 }));
+});
+
+test("147 compact receipt is deterministic single-line, complete and below 16000 bytes", async () => {
+  const receipt = await FAKE_PUBLIC_MULTI_PROMISE;
+  const first = serializeSplitR2RouteStackPublicMultiScenarioReceipt(receipt);
+  const second = serializeSplitR2RouteStackPublicMultiScenarioReceipt(receipt);
+  assert.equal(first.json, second.json);
+  assert.equal(first.json.includes("\n"), false);
+  assert.equal(first.byteLength < SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES, true);
+  const parsed = JSON.parse(first.json);
+  assert.equal(parsed.receiptVersion, SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION);
+  assert.equal(parsed.perScenarioAggregates.length, 3);
+  assert.equal(parsed.reproducibilityClassification, "REPRODUCED_ACROSS_MULTIPLE_SCENARIOS");
+});
+
+test("148 maximum aggregate fixture remains compact and oversize fails without truncation", async () => {
+  const receipt = await FAKE_PUBLIC_MULTI_PROMISE;
+  const large = { ...receipt, totalRawResults: 9_999_999, totalNormalizableResults: 9_999_999 };
+  assert.equal(serializeSplitR2RouteStackPublicMultiScenarioReceipt(large).byteLength < 16_000, true);
+  assert.throws(() => serializeSplitR2RouteStackPublicMultiScenarioReceipt({
+    ...receipt, allowlistedDiagnosticPadding: "x".repeat(16_000),
+  }), SplitR2CompactReceiptError);
+});
+
+test("149 compact receipt contains no raw identifiers, payloads, metadata or secrets", async () => {
+  const json = serializeSplitR2RouteStackPublicMultiScenarioReceipt(await FAKE_PUBLIC_MULTI_PROMISE).json;
+  for (const prohibited of [
+    "synthetic-destination", "synthetic-s1", "synthetic-correlation", "synthetic-search-token",
+    "synthetic-public-secret", "Authorization", "nextResultsKey", "propertyFingerprint",
+  ]) assert.equal(json.includes(prohibited), false);
+  const receipt = JSON.parse(json);
+  assert.deepEqual([
+    receipt.rawIdsPersisted, receipt.rawContinuationIdsPersisted,
+    receipt.rawMetadataValuesPersisted, receipt.payloadsOrRawResponsesPersisted,
+  ], [0, 0, 0, 0]);
+});
+
+test("150 campaign keeps public runtime, booking, claims and user usability disabled", async () => {
+  const receipt = await FAKE_PUBLIC_MULTI_PROMISE;
+  assert.equal(receipt.userUsableSplitEvaluated, false);
+  assert.equal(receipt.productionBookingAuthorized, false);
+  assert.equal(receipt.publicRuntimeChanged, false);
+  assert.equal(receipt.completenessClaimAllowed, false);
+  assert.equal(receipt.globalOptimumClaimAllowed, false);
+  assert.equal(receipt.generalMarketFrequencyClaimAllowed, false);
+  assert.equal(receipt.productionValidityClaimAllowed, false);
+  assert.equal(receipt.commercialValidationClaimAllowed, false);
+});
+
+test("151 CLI requires exact mode, compact output and all acknowledgements", () => {
+  const args = [
+    "--r2-routestack-public-multi-scenario", "--compact", "--phase=SPLIT-R2.5A",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_106_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    `--expected-head=${"a".repeat(40)}`, `--expected-dirty-fingerprint=${"b".repeat(64)}`,
+  ];
+  assert.equal(parseSplitR2RouteStackPublicMultiScenarioArguments(args).expectedHead, "a".repeat(40));
+  assert.throws(() => parseSplitR2RouteStackPublicMultiScenarioArguments(args.slice(0, 8)),
+    /cli-contract-invalid/);
+});
+
+test("152 R1, LiteAPI holds, public canary and dry-run remain unchanged", async () => {
+  assert.equal(SPLIT_R2_FROZEN_SCENARIOS.length, 6);
+  assert.equal(buildSplitR2CampaignPlan("LITEAPI_SANDBOX").logicalSearches.length, 183);
+  assert.equal((await runSplitR2FakeRouteStackPublicCanary()).totalHttpRequests, 3);
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_CAMPAIGN, "NOT_IMPLEMENTED_OR_LIVE_HOLD");
+  assert.equal(runSplitR2Mode("dry-run").httpCounters.realHttpRequests, 0);
 });
