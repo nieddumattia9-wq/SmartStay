@@ -14,6 +14,8 @@ import {
   SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH,
   SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_MAX_UTF8_BYTES,
   SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
+  SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_MAX_UTF8_BYTES,
+  SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_RECEIPT_VERSION,
   SPLIT_R2_LITEAPI_RATES_PATH,
   SPLIT_R2_LITEAPI_SANDBOX_BASE_URL,
   SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS,
@@ -29,12 +31,14 @@ import {
   assertSplitR2LiteApiCanaryPreflight,
   assertSplitR2LiteApiZeroResultDiagnosisPreflight,
   assertSplitR2RouteStackOfflinePreflight,
+  assertSplitR2RouteStackPublicCanaryPreflight,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
   buildSplitR2LiteApiCanaryReceipt,
   buildSplitR2ScenarioPlan,
   buildSplitR2LiteApiCanaryPlan,
   buildSplitR2LiteApiZeroResultDiagnosisPlan,
+  buildSplitR2RouteStackPublicCanaryBinding,
   classifySplitR2Saving,
   createSplitR2AuthoritativeHttpCounter,
   createSplitR2LiteApiCanaryCounter,
@@ -42,23 +46,29 @@ import {
   createSplitR2LiteApiDiagnosisCounter,
   createSplitR2LiteApiDiagnosisRatesBody,
   createSplitR2MonotonicLimiter,
+  createSplitR2RouteStackPublicCanaryCounter,
   decideSplitR2Campaign,
   evaluateSplitR2Scenario,
   normalizeSplitR2LiteApiCanaryResponse,
   diagnoseSplitR2LiteApiResponseShape,
   parseSplitR2LiteApiCanaryArguments,
   parseSplitR2LiteApiZeroResultDiagnosisArguments,
+  parseSplitR2RouteStackPublicCanaryArguments,
   runSplitR2FakeLiteApiCanary,
   runSplitR2FakeLiteApiZeroResultDiagnosis,
+  runSplitR2FakeRouteStackPublicCanary,
   runSplitR2LiteApiCanary,
   runSplitR2LiteApiZeroResultDiagnosis,
+  runSplitR2RouteStackPublicCanary,
   runSplitR2FakeCombinedCampaign,
   runSplitR2FakeProviderCampaign,
   runSplitR2Mode,
   serializeSplitR2CompactReceipt,
   serializeSplitR2LiteApiCanaryReceipt,
   serializeSplitR2LiteApiZeroResultDiagnosisReceipt,
+  serializeSplitR2RouteStackPublicCanaryReceipt,
   classifySplitR2LiteApiZeroResultCause,
+  inspectSplitR2RouteStackPublicContractEvidence,
 } from "../../scripts/run-split-r2-multi-scenario-validation.mjs";
 
 const KEY = Buffer.alloc(32, 0x55);
@@ -574,16 +584,16 @@ test("64 missing RouteStack continuation key means no continuation exposed", () 
   assert.equal(snapshot.providerDeclaredTerminal, false);
 });
 
-test("65 only the exact LiteAPI canary and diagnosis capabilities are implemented", () => {
-  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_CANARY, "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
-  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS,
-    "EXACT_MAX_41_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
-  assert.equal(
-    Object.entries(SPLIT_R2_LIVE_CAPABILITIES)
-      .filter(([name]) => !["LITEAPI_SANDBOX_CANARY", "LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS"].includes(name))
-      .every(([, value]) => value === "NOT_IMPLEMENTED_OR_LIVE_HOLD"),
-    true
-  );
+test("65 exact live capability registry includes only the three implemented read-only modes", () => {
+  assert.deepEqual(SPLIT_R2_LIVE_CAPABILITIES, {
+    LITEAPI_SANDBOX_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
+    LITEAPI_SANDBOX_ZERO_RESULT_DIAGNOSIS: "EXACT_MAX_41_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
+    LITEAPI_SANDBOX_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+    ROUTESTACK_SANDBOX_CANARY: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+    ROUTESTACK_SANDBOX_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+    ROUTESTACK_PUBLIC_PRODUCTION_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
+    ROUTESTACK_PUBLIC_PRODUCTION_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+  });
 });
 
 test("66 dry-run has exact matrix and zero HTTP", () => {
@@ -1198,4 +1208,224 @@ test("117 diagnosis CLI accepts only the exact six-argument acknowledgement", ()
   ];
   assert.equal(parseSplitR2LiteApiZeroResultDiagnosisArguments(args).expectedHead, "a".repeat(40));
   assert.throws(() => parseSplitR2LiteApiZeroResultDiagnosisArguments(args.slice(0, 5)), /cli-contract-invalid/);
+});
+
+function publicCanaryPreflight(overrides = {}) {
+  return {
+    mode: "ROUTESTACK_PUBLIC_CONTRACT_CANARY",
+    phase: "SPLIT-R2.4",
+    compact: true,
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    hostname: "mcp.routestack.ai",
+    protocol: "https:",
+    acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_3_HTTP",
+    noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    authMax: 1,
+    destinationMax: 1,
+    initialSearchMax: 1,
+    continuationMax: 0,
+    totalMax: 3,
+    retries: 0,
+    redirects: 0,
+    concurrency: 1,
+    minimumIntervalMs: 1_000,
+    productionFallback: false,
+    sandboxFallback: false,
+    repositoryGatePassed: true,
+    credentialReader: () => ({
+      baseUrl: "https://mcp.routestack.ai",
+      apiKey: "synthetic-public-key",
+      apiSecret: "synthetic-public-secret",
+    }),
+    ...overrides,
+  };
+}
+
+async function runPublicCanaryWithSearchPayload(searchPayload) {
+  let now = 0;
+  let ordinal = 0;
+  const calls = [];
+  const responses = [
+    { token: "synthetic-bearer-memory-only" },
+    { result: [{ id: "synthetic-destination-memory-only", city: "Milano", country: "IT",
+      type: "City", fullName: "Milano, Italy", coordinates: { lat: 45.4642, long: 9.19 } }] },
+    searchPayload,
+  ];
+  const receipt = await runSplitR2RouteStackPublicCanary({
+    sourceSha: "a".repeat(40),
+    apiKey: "synthetic-public-key",
+    apiSecret: "synthetic-public-secret",
+    monotonicNow: () => now,
+    sleeper: async (delay) => { now += delay; },
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      calls.push({ url: String(url), options });
+      const payload = responses[ordinal];
+      ordinal += 1;
+      return { status: 200, redirected: false, url: String(url),
+        headers: { get: () => "application/json" }, text: async () => JSON.stringify(payload) };
+    },
+  });
+  return { receipt, calls };
+}
+
+test("118 public RouteStack canary is explicit, default-disabled and credentials alone do not enable it", () => {
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_PRODUCTION_CANARY,
+    "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
+  let reads = 0;
+  assert.throws(() => assertSplitR2RouteStackPublicCanaryPreflight(publicCanaryPreflight({
+    mode: "dry-run", credentialReader: () => { reads += 1; return {}; },
+  })), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("119 public contract evidence binds exact Production host and three read-only POST endpoints", () => {
+  const evidence = inspectSplitR2RouteStackPublicContractEvidence();
+  assert.equal(evidence.environmentClassification, "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED");
+  assert.equal(evidence.hostnameCategory, "ROUTESTACK_PUBLIC_PRODUCTION_HOST");
+  assert.equal(evidence.contractDeterminable, true);
+  assert.equal(evidence.mutativeEndpointsSelected, false);
+  assert.deepEqual(Object.values(evidence.methods), ["POST", "POST", "POST"]);
+});
+
+test("120 Sandbox, confusable hosts and ambiguous contracts fail before credentials", () => {
+  for (const evidence of [
+    inspectSplitR2RouteStackPublicContractEvidence({ baseUrl: "https://evolvemcp.routestack.ai" }),
+    inspectSplitR2RouteStackPublicContractEvidence({ baseUrl: "https://mcp.routestack.ai.example" }),
+    inspectSplitR2RouteStackPublicContractEvidence({ searchEndpoint: "/mcp/hotel/search-hotels/continue" }),
+  ]) {
+    let reads = 0;
+    assert.throws(() => assertSplitR2RouteStackPublicCanaryPreflight(publicCanaryPreflight({
+      contractEvidence: evidence, credentialReader: () => { reads += 1; return {}; },
+    })), /before-credentials/);
+    assert.equal(reads, 0);
+  }
+});
+
+test("121 exact public preflight accepts only 3/1/1/1/0 and no mutation acknowledgement", () => {
+  const result = assertSplitR2RouteStackPublicCanaryPreflight(publicCanaryPreflight());
+  assert.equal(result.credentialsAccessed, true);
+  for (const overrides of [{ totalMax: 4 }, { initialSearchMax: 2 }, { continuationMax: 1 },
+    { retries: 1 }, { redirects: 1 }, { concurrency: 2 }, { minimumIntervalMs: 999 },
+    { sandboxFallback: true }, { noMutationAcknowledgement: "MISSING" }]) {
+    assert.throws(() => assertSplitR2RouteStackPublicCanaryPreflight(publicCanaryPreflight(overrides)),
+      /before-credentials/);
+  }
+});
+
+test("122 public canary binding freezes Milano full-stay scenario and exact occupancy", () => {
+  const { scenario, logicalSearch } = buildSplitR2RouteStackPublicCanaryBinding();
+  assert.deepEqual([scenario.destination.label, scenario.destination.countryCode], ["Milano", "IT"]);
+  assert.deepEqual([logicalSearch.request.checkIn, logicalSearch.request.checkOut],
+    ["2026-11-30", "2026-12-14"]);
+  assert.deepEqual(logicalSearch.request.occupancy, { rooms: 1, adults: 2, childAges: [] });
+  assert.equal(logicalSearch.request.currency, "EUR");
+});
+
+test("123 authoritative public counter blocks second initial, fourth total, continuation and forbidden routes", () => {
+  const counter = createSplitR2RouteStackPublicCanaryCounter();
+  counter.reserve("AUTHENTICATION");
+  counter.reserve("DESTINATION");
+  counter.reserve("INITIAL_SEARCH");
+  assert.equal(counter.snapshot().total, 3);
+  assert.throws(() => counter.reserve("INITIAL_SEARCH"), /budget-exceeded-before-transport/);
+  assert.throws(() => counter.reserve("AUTHENTICATION"), /budget-exceeded-before-transport/);
+  assert.throws(() => counter.reserve("CONTINUATION"), /route-forbidden/);
+  assert.throws(() => counter.reserve("BOOKING"), /route-forbidden/);
+});
+
+test("124 fake public canary performs exact auth destination initial sequence with zero continuation", async () => {
+  const receipt = await runSplitR2FakeRouteStackPublicCanary();
+  assert.equal(receipt.status, "PASS");
+  assert.equal(receipt.totalHttpRequests, 3);
+  assert.equal(receipt.maxObservedConcurrency, 1);
+  assert.equal(receipt.minObservedRequestIntervalMs >= 1_000, true);
+  assert.equal(receipt.continuationExecuted, false);
+  assert.equal(receipt.publicContractCanaryConclusion,
+    "ROUTESTACK_PUBLIC_READ_ONLY_SEARCH_CONTRACT_VERIFIED");
+});
+
+test("125 complete continuation metadata remains observed-only and cannot create a fourth call", async () => {
+  const { receipt, calls } = await runPublicCanaryWithSearchPayload({ result: { currency: "EUR",
+    correlationId: "synthetic-correlation-memory-only", token: "synthetic-search-memory-only",
+    nextResultsKey: "synthetic-next-memory-only",
+    result: [{ id: "synthetic-property-memory-only", ourprice: 123.45 }] } });
+  assert.equal(receipt.status, "PASS");
+  assert.equal(receipt.continuationMetadataCategory, "COMPLETE_BINDING_PRESENT_NOT_EXECUTED");
+  assert.equal(receipt.continuationExecuted, false);
+  assert.equal(calls.length, 3);
+});
+
+test("126 zero results are contract-reached INCONCLUSIVE without a second wave", async () => {
+  const { receipt, calls } = await runPublicCanaryWithSearchPayload({ result: { currency: "EUR", result: [] } });
+  assert.equal(receipt.status, "INCONCLUSIVE");
+  assert.equal(receipt.rawResultCount, 0);
+  assert.equal(receipt.usableBoundedSnapshot, false);
+  assert.equal(calls.length, 3);
+});
+
+test("127 nonnumeric price and currency mismatch remain visible and INCONCLUSIVE", async () => {
+  const nonnumeric = await runPublicCanaryWithSearchPayload({ result: { currency: "EUR",
+    result: [{ id: "synthetic-property-memory-only", ourprice: "not-a-number" }] } });
+  assert.equal(nonnumeric.receipt.status, "INCONCLUSIVE");
+  assert.equal(nonnumeric.receipt.numericPriceCoverageNumerator, 0);
+  const mismatch = await runPublicCanaryWithSearchPayload({ result: { currency: "USD",
+    result: [{ id: "synthetic-property-memory-only", ourprice: 100 }] } });
+  assert.equal(mismatch.receipt.status, "INCONCLUSIVE");
+  assert.equal(mismatch.receipt.nonExpectedCurrencyCount, 1);
+  assert.equal(mismatch.receipt.expectedCurrencyMatchCount, 0);
+});
+
+test("128 compact public receipt is deterministic, single-line, sanitized and below 8000 bytes", async () => {
+  const receipt = await runSplitR2FakeRouteStackPublicCanary();
+  const first = serializeSplitR2RouteStackPublicCanaryReceipt(receipt);
+  const second = serializeSplitR2RouteStackPublicCanaryReceipt(receipt);
+  assert.equal(first.json, second.json);
+  assert.equal(first.json.includes("\n"), false);
+  assert.equal(first.byteLength < SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_MAX_UTF8_BYTES, true);
+  assert.equal(JSON.parse(first.json).receiptVersion, SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_RECEIPT_VERSION);
+  for (const prohibited of ["synthetic-destination", "synthetic-property", "synthetic-correlation",
+    "synthetic-search-token", "synthetic-next", "synthetic-public-secret", "Authorization"] ) {
+    assert.equal(first.json.includes(prohibited), false);
+  }
+});
+
+test("129 compact public receipt oversize fails without truncation", () => {
+  assert.throws(() => serializeSplitR2RouteStackPublicCanaryReceipt({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_RECEIPT_VERSION,
+    status: "BLOCKED",
+    padding: "x".repeat(8_100),
+  }), SplitR2CompactReceiptError);
+});
+
+test("130 public canary CLI requires phase, compact and both exact acknowledgements", () => {
+  const args = [
+    "--r2-routestack-public-contract-canary", "--compact", "--phase=SPLIT-R2.4",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_3_HTTP",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    `--expected-head=${"a".repeat(40)}`, `--expected-dirty-fingerprint=${"b".repeat(64)}`,
+  ];
+  assert.equal(parseSplitR2RouteStackPublicCanaryArguments(args).expectedHead, "a".repeat(40));
+  assert.throws(() => parseSplitR2RouteStackPublicCanaryArguments(args.slice(0, 7)), /cli-contract-invalid/);
+});
+
+test("131 public canary preserves R1, R2 matrix and public runtime boundaries", async () => {
+  const receipt = await runSplitR2FakeRouteStackPublicCanary();
+  assert.equal(SPLIT_R2_FROZEN_SCENARIOS.length, 6);
+  assert.equal(buildSplitR2CampaignPlan("LITEAPI_SANDBOX").logicalSearches.length, 183);
+  assert.equal(receipt.publicRuntimeChanged, false);
+  assert.equal(receipt.productionBookingAuthorized, false);
+  assert.equal(receipt.completenessClaimAllowed, false);
+  assert.equal(receipt.globalOptimumClaimAllowed, false);
+});
+
+test("132 dry-run remains six scenarios, 285 searches and zero HTTP", () => {
+  const receipt = runSplitR2Mode("dry-run");
+  assert.equal(receipt.frozenMatrix.length, 6);
+  assert.equal(receipt.frozenMatrix.reduce((total, entry) => total + entry.logicalSearches, 0), 183);
+  assert.equal(receipt.frozenMatrix.filter((entry) => entry.routeStackAssigned)
+    .reduce((total, entry) => total + entry.logicalSearches, 0), 102);
+  assert.equal(receipt.httpCounters.realHttpRequests, 0);
 });

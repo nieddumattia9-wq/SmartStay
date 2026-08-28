@@ -408,3 +408,35 @@ The immutable maxima are 3 static requests, 18 city-bound Rates requests, 18 ide
 `stayopti.split-r2.liteapi-zero-result-diagnosis@1` records only city/window/duration ordinals and categories, location mode, HTTP/JSON state, selected allowlisted path and aggregate funnel counts. Repeated per-probe keys and response shapes use versioned field dictionaries so the deterministic single-line JSON remains below 16,000 UTF-8 bytes. Raw provider identities, hotel or room names, rates, tax labels, payloads, responses, credentials and cross-run fingerprints are excluded.
 
 The causal classifier is deterministic and allowlisted. It distinguishes extractor or request mismatch, city versus identity binding asymmetry, date horizon, long-stay restriction, city-specific availability, broadly empty rate inventory, empty key/content scope and economically blocked raw rates. Independent simultaneous causes produce `MULTIPLE_CAUSAL_FACTORS`; absent sufficient evidence produces `NOT_DETERMINABLE`. This diagnosis may qualify technical availability only and cannot retroactively select scenarios by price, maximize result counts, or produce economic evidence.
+
+## 19. R2.4 — LiteAPI rate-feed block seal and RouteStack public read-only canary
+
+R2.2 and R2.3 remain immutable `INCONCLUSIVE` observations. Prospectively, their combined evidence is classified as `LITEAPI_SANDBOX_RATE_FEED_OR_ACCOUNT_SCOPE_UNRESOLVED`: the Sandbox static catalog responded and contained Milano and Roma, both city/country and provider-identity Rates bindings were exercised, request builders and extractors were contract-equivalent to the local public LiteAPI implementation, and near-term, +90, +180, seven-night and fourteen-night searches all returned zero rates. This is compatible with an unresolved Sandbox rate-feed or account-scope condition, but proves neither a LiteAPI defect nor a Split defect, real-inventory absence, Production behavior, or permission to replace frozen scenarios. R2.4 authorizes no additional LiteAPI request.
+
+### 19.1 Sanitized LiteAPI support packet
+
+The optional support packet is documentation only and is not sent automatically. Environment: LiteAPI Sandbox. Host category: `api.liteapi.travel`. The observed aggregate comprises three static-discovery HTTP 200 responses, eighteen city-bound Rates HTTP 200 responses, twelve executable provider-identity Rates HTTP 200 responses and two suffix-control HTTP 200 responses. Milano and Roma had static-catalog identities; Firenze did not. Every Rates probe returned zero raw and zero comparable results across the three frozen date horizons and both seven- and fourteen-night durations. Retry and redirect were zero. The local R2 request builder and explicit response-container extractor follow the operative documented/local contract. No API key, Authorization header, raw hotel or supplier identifier, payload, response, continuation value, secret or arbitrary metadata is included.
+
+Questions for LiteAPI support, if Mattia later chooses to send them:
+
+1. Does this Sandbox key have an active rate feed?
+2. Can static catalog access remain available when no rate supplier is associated with the key?
+3. Is account or feed configuration required for `/v3.0/hotels/rates`?
+4. Is there a guaranteed hotel/date pair for a Sandbox contract test?
+5. Should the key return live availability or simulated inventory?
+6. Are additional public-contract parameters or scopes required?
+7. Are supplier, nationality, currency or market restrictions attached to the key?
+
+### 19.2 RouteStack public contract evidence
+
+The public/Production environment is frozen as `ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED` from concordant local evidence: the versioned provider schema `server/docs/openapi.yaml`, the Production configuration names `ROUTESTACK_BASE_URL`, `ROUTESTACK_API_KEY` and `ROUTESTACK_API_SECRET`, and the sealed R1 Production collector binding `https://mcp.routestack.ai`. The Sandbox host `evolvemcp.routestack.ai` remains a distinct environment and is explicitly rejected in public mode. There is no Sandbox or alternate-host fallback.
+
+The only selected public operations are `POST /mcp/auth/partner-token`, `POST /mcp/hotel/search-destinations` and `POST /mcp/hotel/search-hotels`. Authentication uses the documented HMAC-SHA256 partner request and a returned bearer token. Destination candidates come from `result[]`; hotel items, currency and numeric `ourprice` come from `result.result[]`, `result.currency` and `result.result[].ourprice`. None of the three operations mutates a reservation. Booking, prebooking, cancellation, payment, details, rooms/rates, recheck, availability hold and continuation are outside the allowlist.
+
+### 19.3 Exact canary boundary
+
+`stayopti.split-r2.routestack-public-contract-canary@1` is an explicit, default-disabled compact canary. Credentials alone cannot enable it. It requires the exact R2.4 phase, public-Production environment, both budget and no-mutation acknowledgements, committed HEAD and preserved seven-path dirty fingerprint before credentials are read. The scenario is Milano, 30 November–14 December 2026, one room, two adults, no children and EUR. Prefix, suffix, alternate dates, price-based selection and second waves are prohibited.
+
+The hard pre-transport caps are one authentication, one destination resolution, one initial hotel search, zero continuation and three total HTTP requests. Retry and redirect are zero, concurrency is one and monotonic request starts remain at least 1,000 ms apart. A complete continuation binding may be recorded only as an allowlisted category; it never authorizes a fourth request. The receipt is deterministic single-line JSON, capped at 8,000 UTF-8 bytes, and contains only aggregate HTTP, normalization, numeric-price, expected-currency and bounded-snapshot diagnostics. It contains no raw identifiers, individual fingerprints or offers, continuation values, credentials, payloads or responses.
+
+A valid HTTP 200 search with at least one normalizable numeric EUR result is only `ROUTESTACK_PUBLIC_READ_ONLY_SEARCH_CONTRACT_VERIFIED`. Zero or unusable results remain `ROUTESTACK_PUBLIC_CONTRACT_REACHED_INVENTORY_OR_SHAPE_INCONCLUSIVE`. Neither outcome proves completeness, global optimality, market frequency or booking validity, changes the public runtime, authorizes booking, or supplies R2 economic evidence.
