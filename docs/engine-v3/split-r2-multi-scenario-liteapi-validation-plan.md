@@ -440,3 +440,132 @@ The only selected public operations are `POST /mcp/auth/partner-token`, `POST /m
 The hard pre-transport caps are one authentication, one destination resolution, one initial hotel search, zero continuation and three total HTTP requests. Retry and redirect are zero, concurrency is one and monotonic request starts remain at least 1,000 ms apart. A complete continuation binding may be recorded only as an allowlisted category; it never authorizes a fourth request. The receipt is deterministic single-line JSON, capped at 8,000 UTF-8 bytes, and contains only aggregate HTTP, normalization, numeric-price, expected-currency and bounded-snapshot diagnostics. It contains no raw identifiers, individual fingerprints or offers, continuation values, credentials, payloads or responses.
 
 A valid HTTP 200 search with at least one normalizable numeric EUR result is only `ROUTESTACK_PUBLIC_READ_ONLY_SEARCH_CONTRACT_VERIFIED`. Zero or unusable results remain `ROUTESTACK_PUBLIC_CONTRACT_REACHED_INVENTORY_OR_SHAPE_INCONCLUSIVE`. Neither outcome proves completeness, global optimality, market frequency or booking validity, changes the public runtime, authorizes booking, or supplies R2 economic evidence.
+
+## 20. R2.5 — RouteStack public multi-scenario reproducibility freeze
+
+Freeze source: `7cef3a86086241356bda42c406dc68d2fdba9f2b`
+
+Future receipt version: `stayopti.split-r2.routestack-public-multi-scenario@1`
+
+Status: offline pre-registration only. This section implements no live mode, reads no credential and authorizes no provider request. R1 sealed evidence, the R2.2 and R2.3 `INCONCLUSIVE` observations, the R2.4 `FAIL`, and the R2.4.1 public-canary `PASS` remain separate historical results and are not reinterpreted.
+
+### 20.1 Frozen RouteStack public matrix
+
+The public campaign uses exactly the RouteStack subset precommitted by R2.0 and materialized by R2.1: scenario ordinals `[1, 3, 5]`. Every scenario uses Italy, EUR, one room, two adults, no children, distinct properties and at most one property change. Provider destination identifiers are resolved in memory and are never part of the freeze or receipt.
+
+| Ordinal | Destination | Country | Check-in | Check-out | Nights | Occupancy | Currency | Breakpoints | Logical searches | Canonical roles |
+|---:|---|---|---|---|---:|---|---|---:|---:|---|
+| 1 | Milano | IT | 2026-11-30 | 2026-12-14 | 14 | 1 room, 2 adults, 0 children | EUR | 13 | 41 | 1 full, 14 nightly, 13 prefix, 13 suffix |
+| 3 | Firenze | IT | 2026-11-30 | 2026-12-07 | 7 | 1 room, 2 adults, 0 children | EUR | 6 | 20 | 1 full, 7 nightly, 6 prefix, 6 suffix |
+| 5 | Roma | IT | 2026-11-30 | 2026-12-14 | 14 | 1 room, 2 adults, 0 children | EUR | 13 | 41 | 1 full, 14 nightly, 13 prefix, 13 suffix |
+
+The exact totals are three scenarios, three distinct destinations, 102 logical searches and 32 breakpoints. No empty, sparse, inconclusive, negative or low-saving scenario may be replaced, shifted or omitted.
+
+The logical-search identifiers are frozen by the existing generator:
+
+- `R2-S{ordinal}-FULL_STAY-0` exactly once per scenario;
+- `R2-S{ordinal}-NIGHTLY-{n}` for every night ordinal in ascending order;
+- `R2-S{ordinal}-PREFIX-{b}` and `R2-S{ordinal}-SUFFIX-{b}` for every breakpoint ordinal in ascending order.
+
+The initial-search order is scenario ordinal `1`, then `3`, then `5`. Within each scenario it is `FULL_STAY`, all `NIGHTLY` windows in ascending ordinal, then alternating `PREFIX-b`, `SUFFIX-b` for ascending `b`. All 102 hotel searches are depth-zero initial searches. Auth is first, all three destinations are resolved in scenario order, and all depth-zero searches are dispatched in the frozen order before any deeper acquisition could be considered. Continuation depth is prohibited, so equal-depth breadth-first execution ends after the 102nd initial search.
+
+The canonical sanitized plan was reconstructed with the versioned generator and deterministic serializer. Its fingerprints are:
+
+- ordered logical-search identifiers SHA-256: `2c33cc844d24c8cac7618f2def71ebe433730422854f1e6b05bbc441663f0ebb`;
+- sanitized payload descriptors SHA-256: `028e1a37c7931e5d13e622a462735cd168c5948195574b17d2c34d07aa60dbe1`;
+- scenario 1 plan SHA-256: `466f24c1fd55ac3cbe5d8114df821807ecd195be737900f4b4a8220cfb93ccd7`;
+- scenario 3 plan SHA-256: `fe1f1ed45e7c7a959811cb26247f5163027f809a0b158c3d4bb8d90c8d25617b`;
+- scenario 5 plan SHA-256: `2256f80a17d540f6a72434a559137f30e8f60407a7a0f3a602b0e7e95ae75921`.
+
+The sanitized payload descriptor contains only logical search ID, scenario ordinal, role, breakpoint ordinal, dates, canonical destination/country/coordinates, room count, one room with two adults and zero children, and EUR. The future provider request must be derived from that descriptor through the already sealed RouteStack request contract. It may add only the destination identifier selected from the same campaign's destination response; that identifier stays memory-only. No independently handwritten dates, occupancy, currency, alternate payload or provider ID is authorized.
+
+### 20.2 Immutable public network contract
+
+The only future environment is `ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED` on the exact R2.4.1 public host. Sandbox and alternate-host fallback are prohibited. The only allowed operations remain partner authentication, destination search and initial hotel search.
+
+| Request class | Hard maximum |
+|---|---:|
+| Auth | 1 |
+| Destination | 3 |
+| Initial hotel search | 102 |
+| Continuation | 0 |
+| Total RouteStack HTTP | 106 |
+
+The budget equation is frozen as `1 auth + 3 distinct-destination resolutions + 102 initial searches = 106 total HTTP`. The 103rd initial request, fourth destination request, second auth request, any continuation and the 107th total request must fail before transport. Retry and redirect are zero, concurrency is one, and monotonic request starts are separated by at least 1,000 milliseconds. The future run is one wave only, with no automatic rerun, alternate scenario, payload fallback or second campaign.
+
+Booking, prebook, reservation, cancellation, payment, availability hold, unnecessary hotel or room details, recheck and every non-allowlisted or mutative endpoint are prohibited. A complete continuation binding may be classified but cannot be executed. No continuation identifier may be passed to another transport call or persisted.
+
+### 20.3 Bounded collection classification
+
+Every initial search is classified into exactly one allowlisted category:
+
+- `USABLE_BOUNDED_SNAPSHOT`;
+- `ZERO_RAW_RESULTS`;
+- `UNPROCESSABLE_INITIAL`;
+- `CURRENCY_INCOMPLETE`;
+- `PRICE_COVERAGE_INCOMPLETE`;
+- `CONTINUATION_AVAILABLE_NOT_EXECUTED`;
+- `CONTINUATION_METADATA_AMBIGUOUS`;
+- `TRANSPORT_OR_CONTRACT_FAILURE`.
+
+`PROVIDER_NO_CONTINUATION_EXPOSED` means only that the provider exposed no usable continuation in that response. A complete continuation binding is recorded as `CONTINUATION_AVAILABLE_NOT_EXECUTED`; it does not invalidate an otherwise processable initial snapshot and does not prove completeness. More than one complete binding is ambiguous and fails the affected acquisition closed. No initial snapshot, regardless of result count, implies terminal market coverage, inventory completeness or a global optimum.
+
+### 20.4 Frozen economic semantics
+
+The provider-neutral R2 contract, RouteStack normalization and existing R1 evaluator remain authoritative and unchanged. Prices are positive integer minor units in explicit EUR. The fixed full-stay baseline is selected independently before Split pairs. Each Split total is the prefix window total plus the suffix window total, the two properties must differ, and at most one change is permitted. Identity eligibility, deduplication, ordering, tie-breaking, ratio rounding, integer-median semantics and the full-window-total baseline remain unchanged.
+
+The price-signal thresholds remain:
+
+- raw positive: `savingMinorUnits > 0`;
+- material price signal: `savingMinorUnits >= 10000` **and** `savingBasisPoints >= 1000`;
+- both material conditions are mandatory;
+- neither raw-positive nor material-price signal implies `USER_USABLE_SPLIT`.
+
+Quality equivalence, room equivalence, cancellation, mandatory charges, tax completeness, bookability and switching friction remain separate holds. A future price result is a diagnostic gross delta within returned bounded snapshots only.
+
+### 20.5 Scenario-primary aggregation and reproducibility decision
+
+Each scenario records planned, evaluable, positive, break-even, negative and non-evaluable breakpoints; raw-positive and material-signal presence; best, median and minimum saving in integer minor units and basis points; winning breakpoint ordinal; full-stay baseline availability; and usable-snapshot ratio. Negative and non-evaluable observations remain in their precommitted denominator.
+
+The primary campaign unit is the scenario. Primary aggregation records scenarios with raw-positive evidence, scenarios with a material signal, destinations with a material signal and the median of evaluable scenario medians. A pooled breakpoint distribution is secondary diagnostic context only and is never the primary median.
+
+The following classification preserves the R2.0/R2.1 predicates: the RouteStack evaluability quorum is at least two of three scenarios; a reproduced price signal requires at least two material-signal scenarios covering at least two destinations; promising evidence is at least one raw-positive or material-signal scenario below that reproduced condition; and zero material signals with the evaluability quorum is non-reproduction in this frozen matrix only.
+
+Classification precedence and exact conditions are:
+
+1. `PROVIDER_OR_CONTRACT_FAILURE` when a hard provider/transport contract, budget, route, security, privacy, arithmetic or receipt invariant fails. An individually empty or non-evaluable snapshot is not by itself a campaign contract failure.
+2. `REPRODUCED_ACROSS_MULTIPLE_SCENARIOS` when there is no campaign contract failure, at least two of three scenarios are evaluable, at least two scenarios have a material price signal, those material signals cover at least two destinations, and no price-comparability violation exists.
+3. `NOT_REPRODUCED` when there is no campaign contract failure, at least two of three scenarios are evaluable, and zero scenarios have a material price signal. This rejects reproduction only in the frozen RouteStack matrix.
+4. `PARTIALLY_REPRODUCED` when there is no campaign contract failure, at least one scenario has a raw-positive or material signal, but the reproduced condition is not met and the non-reproduced condition does not apply.
+5. `INSUFFICIENT_EVALUABLE_DATA` for all remaining conforming runs, including fewer than two evaluable scenarios with no raw-positive or material signal.
+
+These categories do not change the R2.0 LiteAPI-primary or cross-provider decision classes. They are the prospective RouteStack-public receipt projection and do not reinterpret R1 or any prior R2 observation.
+
+### 20.6 Compact receipt freeze
+
+The future output is exactly one deterministic, single-line JSON object with receipt version `stayopti.split-r2.routestack-public-multi-scenario@1` and a hard maximum of 16,000 UTF-8 bytes. Stable field ordering is required. The byte length is checked before output; oversize fails closed without truncation, field deletion, partial JSON or a second wave.
+
+The receipt contains only scalar fields, small aggregate objects and three sanitized per-scenario aggregates. It includes phase status and source SHA; public environment; planned/executed scenario, logical-search and breakpoint counts; authoritative HTTP counters; concurrency and minimum observed interval; collection category totals; aggregate raw, normalizable, numeric-price and expected-currency coverage; the three per-scenario aggregates; scenarios with raw-positive and material signals; median of scenario medians in minor units and basis points; reproducibility classification; bounded-snapshot scope; claim boundaries; and privacy invariants.
+
+The receipt never contains raw hotel, property, destination, room, rate or offer IDs; individual property fingerprints or lists; correlation ID, token or next-results key; individual offers or prices; payloads or responses; arbitrary provider metadata; credentials or secrets; commercial URLs; or cross-run identifiers. One campaign-ephemeral HMAC secret may correlate properties only within the single wave and is destroyed without persistence.
+
+### 20.7 Future result policy
+
+A future campaign is technical `PASS` only when all three frozen scenarios were executed within 106 HTTP, the receipt is valid and sanitized, no hard invariant failed, and at least one breakpoint is evaluable. `PASS` does not require a positive saving.
+
+It is `INCONCLUSIVE` when the contract was reached conformingly but evaluable data are insufficient, including missing baselines, incomplete price/currency coverage or unusable bounded snapshots without a runner violation. It is `FAIL` for budget, scenario, continuation, fallback, retry, redirect, endpoint, privacy, arithmetic, threshold, formula or receipt violations, or when a partial campaign is presented as complete. It is `BLOCKED` before credentials or transport when the exact live mode, environment, authority, cost acknowledgement, credentials, plan fingerprints or `3 scenarios / 102 searches / 106 HTTP` contract cannot be established.
+
+The campaign may support only technical RouteStack public reproducibility and observed scenario-level price-signal distribution within bounded returned snapshots. It cannot support market frequency, real-user average saving, complete inventory, a global optimum, equivalent rooms or conditions, final bookability, tax completeness, commercial validity or future provider behavior. No public runtime, booking path or automatic user recommendation is authorized.
+
+### 20.8 Local cost evidence and next-phase authority
+
+The local provider schema, sealed R1/R2 receipts, committed code and tests document request contracts and counters but contain no verifiable RouteStack per-request price, billing rule, billable-operation distinction, currency, quota or account limit. They do not establish whether auth, destination or hotel-search requests are separately billed.
+
+Therefore:
+
+- `COST_CLASSIFICATION=COST_UNKNOWN`;
+- `SEARCH_CALL_UNIT_COST=NOT_DOCUMENTED`;
+- `MAX_THEORETICAL_CAMPAIGN_COST=NOT_DETERMINABLE`;
+- `USER_APPROVAL_REQUIRED_BEFORE_LIVE=YES`.
+
+R2.5 performs zero provider calls and grants no live authority. If this freeze passes, the immediate next phase is one combined phase only: offline implementation, validation, one scoped local commit and—only after every gate passes—a single directly authorized RouteStack public campaign capped at 106 HTTP. No additional intermediate phase is introduced absent a concrete technical blocker.
