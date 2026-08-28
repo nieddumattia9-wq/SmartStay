@@ -18,6 +18,8 @@ import {
   SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_RECEIPT_VERSION,
   SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES,
   SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION,
+  SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES,
+  SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RECEIPT_VERSION,
   SPLIT_R2_LITEAPI_RATES_PATH,
   SPLIT_R2_LITEAPI_SANDBOX_BASE_URL,
   SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS,
@@ -36,6 +38,8 @@ import {
   assertSplitR2RouteStackPublicCanaryPreflight,
   assertSplitR2RouteStackPublicMultiScenarioPlan,
   assertSplitR2RouteStackPublicMultiScenarioPreflight,
+  assertSplitR2RouteStackPublicPaginationSensitivityPlan,
+  assertSplitR2RouteStackPublicPaginationSensitivityPreflight,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
   buildSplitR2LiteApiCanaryReceipt,
@@ -45,7 +49,12 @@ import {
   buildSplitR2RouteStackPublicCanaryBinding,
   buildSplitR2RouteStackPublicMultiScenarioPlan,
   buildSplitR2RouteStackPublicMultiScenarioReceipt,
+  buildSplitR2RouteStackPublicPaginationSensitivityPlan,
   classifySplitR2RouteStackPublicReproducibility,
+  classifySplitR2PaginationBias,
+  classifySplitR2PaginationSensitivity,
+  classifySplitR2PaginationStabilization,
+  splitR2PaginationTransition,
   classifySplitR2Saving,
   createSplitR2AuthoritativeHttpCounter,
   createSplitR2LiteApiCanaryCounter,
@@ -55,6 +64,7 @@ import {
   createSplitR2MonotonicLimiter,
   createSplitR2RouteStackPublicCanaryCounter,
   createSplitR2RouteStackPublicMultiScenarioCounter,
+  createSplitR2RouteStackPublicPaginationSensitivityCounter,
   decideSplitR2Campaign,
   evaluateSplitR2Scenario,
   normalizeSplitR2LiteApiCanaryResponse,
@@ -63,10 +73,13 @@ import {
   parseSplitR2LiteApiZeroResultDiagnosisArguments,
   parseSplitR2RouteStackPublicCanaryArguments,
   parseSplitR2RouteStackPublicMultiScenarioArguments,
+  parseSplitR2RouteStackPublicPaginationSensitivityArguments,
   runSplitR2FakeLiteApiCanary,
   runSplitR2FakeLiteApiZeroResultDiagnosis,
   runSplitR2FakeRouteStackPublicCanary,
   runSplitR2FakeRouteStackPublicMultiScenario,
+  runSplitR2FakeRouteStackPublicPaginationEarlyTerminal,
+  runSplitR2FakeRouteStackPublicPaginationFullDepth,
   runSplitR2LiteApiCanary,
   runSplitR2LiteApiZeroResultDiagnosis,
   runSplitR2RouteStackPublicCanary,
@@ -78,6 +91,7 @@ import {
   serializeSplitR2LiteApiZeroResultDiagnosisReceipt,
   serializeSplitR2RouteStackPublicCanaryReceipt,
   serializeSplitR2RouteStackPublicMultiScenarioReceipt,
+  serializeSplitR2RouteStackPublicPaginationSensitivityReceipt,
   classifySplitR2LiteApiZeroResultCause,
   inspectSplitR2RouteStackPublicContractEvidence,
 } from "../../scripts/run-split-r2-multi-scenario-validation.mjs";
@@ -605,6 +619,8 @@ test("65 exact live capability registry includes the dedicated public multi-scen
     ROUTESTACK_PUBLIC_PRODUCTION_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
     ROUTESTACK_PUBLIC_PRODUCTION_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
     ROUTESTACK_PUBLIC_MULTI_SCENARIO: "EXACT_106_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
+    ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY:
+      "EXACT_45_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   });
 });
 
@@ -1695,4 +1711,308 @@ test("152 R1, LiteAPI holds, public canary and dry-run remain unchanged", async 
   assert.equal((await runSplitR2FakeRouteStackPublicCanary()).totalHttpRequests, 3);
   assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_CAMPAIGN, "NOT_IMPLEMENTED_OR_LIVE_HOLD");
   assert.equal(runSplitR2Mode("dry-run").httpCounters.realHttpRequests, 0);
+});
+
+function paginationPreflight(overrides = {}) {
+  return {
+    mode: "ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY",
+    phase: "SPLIT-R2.7A",
+    compact: true,
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    hostname: "mcp.routestack.ai",
+    protocol: "https:",
+    acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_45_HTTP",
+    unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    authMax: 1,
+    destinationMax: 2,
+    initialSearchMax: 14,
+    continuationD1Max: 14,
+    continuationD2Max: 14,
+    continuationMax: 28,
+    totalMax: 45,
+    maxContinuationDepth: 2,
+    retries: 0,
+    redirects: 0,
+    concurrency: 1,
+    minimumIntervalMs: 1_000,
+    productionFallback: false,
+    sandboxFallback: false,
+    otherLiveModesSelected: 0,
+    repositoryGatePassed: true,
+    plan: buildSplitR2RouteStackPublicPaginationSensitivityPlan(),
+    contractEvidence: {
+      environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+      hostnameDeterminable: true,
+      contractDeterminable: true,
+      mutativeEndpointsSelected: false,
+      sandboxFallback: false,
+    },
+    credentialReader: () => ({
+      baseUrl: "https://mcp.routestack.ai",
+      apiKey: "synthetic-public-key",
+      apiSecret: "synthetic-public-secret",
+    }),
+    ...overrides,
+  };
+}
+
+function transition(overrides = {}) {
+  return {
+    comparable: true,
+    evaluabilityChanged: false,
+    fullBaselineChanged: false,
+    splitPairChanged: false,
+    savingSignChanged: false,
+    materialChanged: false,
+    savingDeltaMinorUnits: 0,
+    ...overrides,
+  };
+}
+
+function depthEntry(d0ToD1 = transition(), d1ToD2 = transition()) {
+  return { d0ToD1, d1ToD2 };
+}
+
+const PAGINATION_FULL_PROMISE = runSplitR2FakeRouteStackPublicPaginationFullDepth();
+const PAGINATION_TERMINAL_PROMISE = runSplitR2FakeRouteStackPublicPaginationEarlyTerminal();
+
+test("153 R2.7A capability is isolated, default-disabled and exact acknowledgements are mandatory", () => {
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY,
+    "EXACT_45_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED");
+  let reads = 0;
+  for (const overrides of [
+    { mode: "dry-run" },
+    { acknowledgement: "MISSING" },
+    { unknownCostAcknowledgement: "MISSING" },
+    { noMutationAcknowledgement: "MISSING" },
+    { otherLiveModesSelected: 1 },
+  ]) {
+    assert.throws(() => assertSplitR2RouteStackPublicPaginationSensitivityPreflight(
+      paginationPreflight({ ...overrides, credentialReader: () => { reads += 1; return {}; } })
+    ), /before-credentials/);
+  }
+  assert.equal(reads, 0);
+  assert.equal(assertSplitR2RouteStackPublicPaginationSensitivityPreflight(
+    paginationPreflight()).credentialsAccessed, true);
+});
+
+test("154 R2.7A authoritative plan is exactly scenarios 1,3 and structural breakpoints", () => {
+  const plan = buildSplitR2RouteStackPublicPaginationSensitivityPlan();
+  assert.equal(assertSplitR2RouteStackPublicPaginationSensitivityPlan(plan), plan);
+  assert.deepEqual(plan.scenarioPlans.map((entry) => entry.scenario.ordinal), [1, 3]);
+  assert.deepEqual(plan.scenarioPlans.map((entry) => entry.selectedBreakpointOrdinals),
+    [[1, 7, 13], [1, 3, 6]]);
+  assert.deepEqual(plan.scenarioPlans.map((entry) => entry.logicalSearches.length), [7, 7]);
+  assert.equal(plan.logicalSearches.length, 14);
+  assert.equal(new Set(plan.scenarioPlans.map((entry) => entry.scenario.destination)).size, 2);
+});
+
+test("155 R2.7A plan drift and substitution fail closed with no price or result-count selector", () => {
+  const plan = buildSplitR2RouteStackPublicPaginationSensitivityPlan();
+  for (const bad of [
+    { ...plan, scenarioPlans: plan.scenarioPlans.slice(0, 1) },
+    { ...plan, logicalSearches: plan.logicalSearches.slice(1) },
+  ]) {
+    assert.throws(() => assertSplitR2RouteStackPublicPaginationSensitivityPlan(bad), /plan-divergence/);
+  }
+  assert.equal(Object.hasOwn(plan, "selectionPrice"), false);
+  assert.equal(Object.hasOwn(plan, "resultCountSelector"), false);
+  assert.equal(Object.hasOwn(plan, "replacementScenario"), false);
+});
+
+test("156 R2.7A exact 1/2/14/14/14/45 contract, D2 and Production host are mandatory", () => {
+  for (const overrides of [
+    { authMax: 2 }, { destinationMax: 3 }, { initialSearchMax: 15 },
+    { continuationD1Max: 13 }, { continuationD2Max: 13 }, { continuationMax: 29 },
+    { totalMax: 46 }, { maxContinuationDepth: 3 }, { retries: 1 }, { redirects: 1 },
+    { concurrency: 2 }, { minimumIntervalMs: 999 }, { hostname: "evolvemcp.routestack.ai" },
+    { sandboxFallback: true },
+  ]) assert.throws(() => assertSplitR2RouteStackPublicPaginationSensitivityPreflight(
+    paginationPreflight(overrides)), /before-credentials/);
+});
+
+test("157 R2.7A counter blocks auth2, destination3, initial15 and forbidden routes pre-transport", () => {
+  const auth = createSplitR2RouteStackPublicPaginationSensitivityCounter();
+  auth.reserve("AUTHENTICATION");
+  assert.throws(() => auth.reserve("AUTHENTICATION"), /budget-exceeded/);
+  const destination = createSplitR2RouteStackPublicPaginationSensitivityCounter();
+  destination.reserve("DESTINATION"); destination.reserve("DESTINATION");
+  assert.throws(() => destination.reserve("DESTINATION"), /budget-exceeded/);
+  const initial = createSplitR2RouteStackPublicPaginationSensitivityCounter();
+  for (let i = 0; i < 14; i += 1) initial.reserve("INITIAL_SEARCH", `q${i}`);
+  assert.throws(() => initial.reserve("INITIAL_SEARCH", "q14"), /budget-exceeded/);
+  assert.throws(() => initial.reserve("BOOKING"), /route-forbidden/);
+  assert.throws(() => initial.reserve("CONTINUATION_D3", "q0"), /route-forbidden/);
+});
+
+test("158 R2.7A counter enforces breadth-first and same-search D1 to D2 binding", () => {
+  const counter = createSplitR2RouteStackPublicPaginationSensitivityCounter();
+  assert.throws(() => counter.reserve("CONTINUATION_D1", "q0"), /d1-order/);
+  for (let i = 0; i < 14; i += 1) counter.reserve("INITIAL_SEARCH", `q${i}`);
+  counter.closeDepth("D0");
+  counter.reserve("CONTINUATION_D1", "q0");
+  assert.throws(() => counter.reserve("CONTINUATION_D1", "q0"), /d1-order-or-cardinality/);
+  assert.throws(() => counter.reserve("CONTINUATION_D2", "q0"), /d2-order/);
+  counter.closeDepth("D1");
+  assert.throws(() => counter.reserve("CONTINUATION_D2", "q1"), /d2-order-or-binding/);
+  counter.reserve("CONTINUATION_D2", "q0");
+  assert.throws(() => counter.reserve("CONTINUATION_D2", "q0"), /d2-order-or-binding/);
+});
+
+test("159 R2.7A fake full-depth campaign is exact breadth-first 45 HTTP", async () => {
+  const receipt = await PAGINATION_FULL_PROMISE;
+  assert.deepEqual([
+    receipt.authHttpRequests, receipt.destinationHttpRequests, receipt.initialHttpRequests,
+    receipt.continuationD1HttpRequests, receipt.continuationD2HttpRequests,
+    receipt.continuationHttpRequests, receipt.totalHttpRequests,
+  ], [1, 2, 14, 14, 14, 28, 45]);
+  assert.equal(receipt.allD0BeforeAnyD1, true);
+  assert.equal(receipt.allD1BeforeAnyD2, true);
+  assert.equal(receipt.retries, 0);
+  assert.equal(receipt.redirects, 0);
+  assert.equal(receipt.maxObservedConcurrency, 1);
+  assert.equal(receipt.minObservedRequestIntervalMs >= 1_000, true);
+});
+
+test("160 R2.7A cumulative union and inter-page dedup preserve the same HMAC identity", async () => {
+  const receipt = await PAGINATION_FULL_PROMISE;
+  assert.deepEqual(receipt.perDepthCumulativeDistinctOffers, { D0: 14, D1: 14, D2: 28 });
+  assert.deepEqual(receipt.interPageDuplicatesRemoved, { D1: 14, D2: 14 });
+  assert.equal(receipt.ephemeralHmacSecretPersisted, false);
+});
+
+test("161 R2.7A fake early-terminal campaign stops without continuation and is inconclusive", async () => {
+  const receipt = await PAGINATION_TERMINAL_PROMISE;
+  assert.equal(receipt.totalHttpRequests, 17);
+  assert.equal(receipt.continuationHttpRequests, 0);
+  assert.equal(receipt.status, "INCONCLUSIVE");
+  assert.equal(receipt.sensitivityClassification, "PAGINATION_SENSITIVITY_INCONCLUSIVE");
+});
+
+test("162 R2.7A sensitivity categories are exact and mutually exclusive", () => {
+  assert.equal(classifySplitR2PaginationSensitivity([
+    depthEntry(transition({ savingSignChanged: true })),
+  ]), "PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL");
+  assert.equal(classifySplitR2PaginationSensitivity([
+    depthEntry(transition({ materialChanged: true })),
+  ]), "PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL");
+  assert.equal(classifySplitR2PaginationSensitivity([
+    depthEntry(transition({ evaluabilityChanged: true })),
+  ]), "PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL");
+  assert.equal(classifySplitR2PaginationSensitivity([
+    depthEntry(transition({ fullBaselineChanged: true })),
+  ]), "PAGINATION_SENSITIVITY_ECONOMIC_MINIMUM_ONLY");
+  assert.equal(classifySplitR2PaginationSensitivity([depthEntry()]),
+    "NO_PAGINATION_SENSITIVITY_OBSERVED_WITHIN_D2");
+  assert.equal(classifySplitR2PaginationSensitivity([
+    depthEntry({ comparable: false }, { comparable: false }),
+  ]), "PAGINATION_SENSITIVITY_INCONCLUSIVE");
+});
+
+test("163 R2.7A stabilization categories are exact", () => {
+  assert.equal(classifySplitR2PaginationStabilization([depthEntry()]), "STABLE_BY_D1");
+  assert.equal(classifySplitR2PaginationStabilization([
+    depthEntry(transition({ splitPairChanged: true }), transition()),
+  ]), "STABLE_BY_D2");
+  assert.equal(classifySplitR2PaginationStabilization([
+    depthEntry(transition(), transition({ fullBaselineChanged: true })),
+  ]), "STILL_CHANGING_AT_D2");
+  assert.equal(classifySplitR2PaginationStabilization([
+    depthEntry({ comparable: false }, transition()),
+  ]), "NOT_DETERMINABLE");
+});
+
+test("164 R2.7A bias direction derives only from saving deltas", () => {
+  assert.equal(classifySplitR2PaginationBias([
+    depthEntry(transition({ savingDeltaMinorUnits: 1 }), transition({ savingDeltaMinorUnits: 0 })),
+  ]), "FAVORS_SPLIT");
+  assert.equal(classifySplitR2PaginationBias([
+    depthEntry(transition({ savingDeltaMinorUnits: -1 }), transition({ savingDeltaMinorUnits: 0 })),
+  ]), "FAVORS_FULL_STAY");
+  assert.equal(classifySplitR2PaginationBias([
+    depthEntry(transition({ savingDeltaMinorUnits: -1 }), transition({ savingDeltaMinorUnits: 1 })),
+  ]), "BIDIRECTIONAL");
+  assert.equal(classifySplitR2PaginationBias([depthEntry()]), "NO_DIRECTIONAL_CHANGE");
+});
+
+test("164A R2.7A baseline, pair, sign, material and evaluability events derive from canonical values", () => {
+  const base = { depthObserved: true, evaluable: true, fullBaselineMinorUnits: 20_000,
+    bestDistinctSplitPairTotalMinorUnits: 19_000, savingMinorUnits: 1_000,
+    savingBasisPoints: 500, materialSignal: false };
+  const changed = { ...base, fullBaselineMinorUnits: 21_000,
+    bestDistinctSplitPairTotalMinorUnits: 19_500, savingMinorUnits: -500,
+    savingBasisPoints: -238, materialSignal: true };
+  const event = splitR2PaginationTransition(base, changed);
+  assert.equal(event.fullBaselineChanged, true);
+  assert.equal(event.splitPairChanged, true);
+  assert.equal(event.savingSignChanged, true);
+  assert.equal(event.materialChanged, true);
+  assert.equal(event.savingDeltaMinorUnits, -1_500);
+  assert.equal(splitR2PaginationTransition(base, { ...changed, evaluable: false }).evaluabilityChanged, true);
+});
+
+test("165 R2.7A receipt is deterministic, single-line, complete and below 12000 bytes", async () => {
+  const receipt = await PAGINATION_FULL_PROMISE;
+  const first = serializeSplitR2RouteStackPublicPaginationSensitivityReceipt(receipt);
+  const second = serializeSplitR2RouteStackPublicPaginationSensitivityReceipt(receipt);
+  assert.equal(first.json, second.json);
+  assert.equal(first.json.includes("\n"), false);
+  assert.equal(first.byteLength < SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES, true);
+  assert.equal(JSON.parse(first.json).receiptVersion,
+    SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RECEIPT_VERSION);
+  assert.equal(receipt.perBreakpointDepthEconomics.length, 6);
+});
+
+test("166 R2.7A maximum receipt fixture fits and oversize fails without truncation", async () => {
+  const receipt = await PAGINATION_FULL_PROMISE;
+  assert.equal(serializeSplitR2RouteStackPublicPaginationSensitivityReceipt({
+    ...receipt,
+    perDepthCollectionCounts: {
+      D0: { ...receipt.perDepthCollectionCounts.D0, cumulativeRawResults: 99_999_999 },
+      D1: receipt.perDepthCollectionCounts.D1,
+      D2: receipt.perDepthCollectionCounts.D2,
+    },
+  }).byteLength < 12_000, true);
+  assert.throws(() => serializeSplitR2RouteStackPublicPaginationSensitivityReceipt({
+    ...receipt, allowlistedDiagnosticPadding: "x".repeat(12_000),
+  }), SplitR2CompactReceiptError);
+});
+
+test("167 R2.7A compact receipt excludes raw identifiers, continuation metadata, payloads and secrets", async () => {
+  const json = serializeSplitR2RouteStackPublicPaginationSensitivityReceipt(await PAGINATION_FULL_PROMISE).json;
+  for (const prohibited of [
+    "synthetic-property", "synthetic-destination", "synthetic-correlation", "synthetic-token",
+    "synthetic-next", "Authorization", "nextResultsKey", "propertyFingerprint",
+  ]) assert.equal(json.includes(prohibited), false);
+  const receipt = JSON.parse(json);
+  assert.deepEqual([receipt.rawIdsPersisted, receipt.rawContinuationIdsPersisted,
+    receipt.rawMetadataValuesPersisted, receipt.payloadsOrRawResponsesPersisted], [0, 0, 0, 0]);
+  assert.equal(receipt.secretValuesExposed, false);
+});
+
+test("168 R2.7A historical modes still prohibit continuation and runtime claims remain false", async () => {
+  const historical = createSplitR2RouteStackPublicMultiScenarioCounter();
+  assert.throws(() => historical.reserve("CONTINUATION"), /route-forbidden/);
+  const receipt = await PAGINATION_FULL_PROMISE;
+  assert.equal(receipt.continuationContractChangedOutsideMicrostudy, false);
+  assert.equal(receipt.publicRuntimeChanged, false);
+  assert.equal(receipt.productionBookingAuthorized, false);
+  assert.equal(receipt.completenessClaimAllowed, false);
+  assert.equal(receipt.globalOptimumClaimAllowed, false);
+  assert.equal(receipt.marketFrequencyClaimAllowed, false);
+});
+
+test("169 R2.7A CLI requires exact flag, phase, compact mode and acknowledgements", () => {
+  const args = [
+    "--r2-routestack-public-pagination-sensitivity", "--compact", "--phase=SPLIT-R2.7A",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_45_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    `--expected-head=${"a".repeat(40)}`, `--expected-dirty-fingerprint=${"b".repeat(64)}`,
+  ];
+  assert.equal(parseSplitR2RouteStackPublicPaginationSensitivityArguments(args).expectedHead, "a".repeat(40));
+  assert.throws(() => parseSplitR2RouteStackPublicPaginationSensitivityArguments(args.slice(0, 8)),
+    /cli-contract-invalid/);
 });

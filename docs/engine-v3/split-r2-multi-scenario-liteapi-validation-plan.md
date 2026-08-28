@@ -766,3 +766,40 @@ The microstudy may support only observed pagination sensitivity within D2, its o
 - `PAGINATION_SENSITIVITY_INCONCLUSIVE` routes to `SPLIT-R2.8_PAGINATION_MICROSTUDY_DIAGNOSTIC_REPAIR`.
 
 R2.7 itself makes zero provider calls and authorizes no live execution. The immediate next step is `SPLIT-R2.7A_PUBLIC_PAGINATION_SENSITIVITY_IMPLEMENTATION_VALIDATION_AND_SINGLE_LIVE_MICROSTUDY`.
+
+## 24. R2.7A isolated pagination-sensitivity execution contract
+
+R2.7A implements the frozen R2.7 study as the isolated capability
+`ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY`. It is disabled by default, is not
+enabled by credentials alone, and requires the exact R2.7A flag, compact mode,
+verified Production host, phase acknowledgement, 45-HTTP acknowledgement,
+unknown-cost acknowledgement, and no-booking/no-mutation acknowledgement.
+Selection of any other live mode at the same time fails before credentials.
+Continuation remains prohibited in R1, the public contract canary, the R2.5A
+multi-scenario campaign, legacy modes, and the StayOpti public runtime.
+
+The preflight and dispatcher share one authoritative in-memory plan derived
+from the frozen R2 matrix. It contains scenarios 1 and 3, breakpoint ordinals
+`1,7,13` and `1,3,6`, two destinations, six breakpoint comparisons, and exactly
+fourteen searches. Dispatch is breadth-first: all D0 requests precede every D1
+request, and all eligible D1 requests precede every D2 request. D2 can use only
+the complete, unique contractual metadata returned by D1 for the same logical
+search. The pre-transport ledger rejects cross-search metadata use, repeated
+depths, D3, retry, redirect, alternate hosts, non-allowlisted routes, mutation,
+request 46, continuation 29, initial 15, destination 3, or authentication 2.
+
+Each depth is a cumulative union. A single ephemeral HMAC key spans the wave;
+the existing normalizer, EUR policy, integer price contract, deduplication,
+distinct-property evaluator, tie-breaking, median semantics, and material
+thresholds are unchanged. The final receipt is
+`stayopti.split-r2.routestack-public-pagination-sensitivity@1`, deterministic
+single-line JSON capped at 12,000 UTF-8 bytes. It contains only sanitized
+counts, six depth-economic comparisons, derived change events, and the frozen
+sensitivity, stabilization, and bias categories. It persists no raw identifier,
+continuation value, payload, response, HMAC secret, or arbitrary metadata.
+
+This implementation is prospective only. R1 sealed evidence, R2.5A's
+`PARTIALLY_REPRODUCED` outcome, and R2.6's
+`PAGINATION_SENSITIVITY_UNMEASURED` conclusion remain unchanged. Even a stable
+D2 result cannot establish inventory completeness, global optimality, general
+market frequency, user usability, commercial validity, or booking authority.

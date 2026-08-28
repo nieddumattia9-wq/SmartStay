@@ -13,6 +13,7 @@ import {
   buildSplitR1EconomicEligibilityFunnelSearchReceiptV1,
   createSplitR1DestinationRequest,
   createSplitR1HotelSearchRequest,
+  createSplitR1ContinuationRequest,
   createSplitR1PartnerTokenRequest,
   diagnoseSplitR1ContinuationMetadataShapeV1,
   fingerprintSplitR1Identifier,
@@ -46,6 +47,9 @@ export const SPLIT_R2_ROUTESTACK_PUBLIC_CANARY_MAX_UTF8_BYTES = 8_000;
 export const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION =
   "stayopti.split-r2.routestack-public-multi-scenario@1";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES = 16_000;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RECEIPT_VERSION =
+  "stayopti.split-r2.routestack-public-pagination-sensitivity@1";
+export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES = 12_000;
 export const SPLIT_R2_LITEAPI_SANDBOX_BASE_URL = "https://api.liteapi.travel/v3.0";
 export const SPLIT_R2_LITEAPI_RATES_PATH = "/hotels/rates";
 export const SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH = "/data/hotels";
@@ -63,6 +67,8 @@ export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
   ROUTESTACK_PUBLIC_PRODUCTION_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
   ROUTESTACK_PUBLIC_PRODUCTION_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
   ROUTESTACK_PUBLIC_MULTI_SCENARIO: "EXACT_106_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
+  ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY:
+    "EXACT_45_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
 });
 
 export const SPLIT_R2_COMPARABILITY_CLASSES = Object.freeze([
@@ -3374,6 +3380,704 @@ export async function runSplitR2FakeRouteStackPublicMultiScenario() {
   return receipt;
 }
 
+const SPLIT_R2_PAGINATION_SCENARIO_ORDINALS = Object.freeze([1, 3]);
+const SPLIT_R2_PAGINATION_BREAKPOINTS = Object.freeze({
+  1: Object.freeze([1, 7, 13]),
+  3: Object.freeze([1, 3, 6]),
+});
+const SPLIT_R2_PAGINATION_LIMITS = Object.freeze({
+  AUTHENTICATION: 1,
+  DESTINATION: 2,
+  INITIAL_SEARCH: 14,
+  CONTINUATION_D1: 14,
+  CONTINUATION_D2: 14,
+  CONTINUATION_TOTAL: 28,
+  total: 45,
+});
+
+export function assertSplitR2RouteStackPublicPaginationSensitivityPlan(plan) {
+  const ordinals = plan?.scenarioPlans?.map((entry) => entry.scenario.ordinal) ?? [];
+  const breakpointOrdinals = plan?.scenarioPlans?.map((entry) => entry.selectedBreakpointOrdinals) ?? [];
+  const searchesByScenario = plan?.scenarioPlans?.map((entry) => entry.logicalSearches.length) ?? [];
+  const exact = plan?.provider === "ROUTESTACK_PUBLIC_PRODUCTION" &&
+    plan?.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    stableStringifySplitF0(ordinals, 0) === "[1,3]" &&
+    stableStringifySplitF0(breakpointOrdinals, 0) === "[[1,7,13],[1,3,6]]" &&
+    stableStringifySplitF0(searchesByScenario, 0) === "[7,7]" &&
+    plan.logicalSearches?.length === 14 && plan.publicLogicalBindings?.length === 14 &&
+    plan.publicScenarioBindings?.length === 2 &&
+    new Set(plan.scenarioPlans.map((entry) => `${entry.scenario.destination}|${entry.scenario.country}`)).size === 2 &&
+    plan.scenarioPlans.every((entry) => {
+      const roles = entry.logicalSearches.map((search) => search.searchRole);
+      return roles[0] === "FULL_STAY" && roles.filter((role) => role === "FULL_STAY").length === 1 &&
+        roles.filter((role) => role === "PREFIX").length === 3 &&
+        roles.filter((role) => role === "SUFFIX").length === 3 &&
+        entry.logicalSearches.every((search) =>
+          search.destination === entry.scenario.destination && search.country === entry.scenario.country &&
+          search.expectedCurrency === "EUR" && search.occupancy.rooms === 1 &&
+          search.occupancy.adults === 2 && search.occupancy.children === 0
+        );
+    }) &&
+    plan.logicalSearches.every((search, index) =>
+      plan.publicLogicalBindings[index]?.logicalSearchId === search.logicalSearchId
+    );
+  if (!exact) throw new Error("split-r2-pagination-sensitivity-plan-divergence");
+  return plan;
+}
+
+export function buildSplitR2RouteStackPublicPaginationSensitivityPlan() {
+  const frozen = buildSplitR2RouteStackPublicMultiScenarioPlan();
+  const scenarioPlans = Object.freeze(SPLIT_R2_PAGINATION_SCENARIO_ORDINALS.map((ordinal) => {
+    const source = frozen.scenarioPlans.find((entry) => entry.scenario.ordinal === ordinal);
+    const selectedBreakpointOrdinals = SPLIT_R2_PAGINATION_BREAKPOINTS[ordinal];
+    const logicalSearches = Object.freeze(source.logicalSearches.filter((search) =>
+      search.searchRole === "FULL_STAY" ||
+      (["PREFIX", "SUFFIX"].includes(search.searchRole) &&
+        selectedBreakpointOrdinals.includes(search.breakpointOrdinal))
+    ));
+    return Object.freeze({
+      scenario: source.scenario,
+      selectedBreakpointOrdinals,
+      logicalSearches,
+    });
+  }));
+  const logicalSearches = Object.freeze(scenarioPlans.flatMap((entry) => entry.logicalSearches));
+  const plan = Object.freeze({
+    provider: "ROUTESTACK_PUBLIC_PRODUCTION",
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    selectedScenarioOrdinals: SPLIT_R2_PAGINATION_SCENARIO_ORDINALS,
+    scenarioPlans,
+    logicalSearches,
+    publicScenarioBindings: Object.freeze(
+      scenarioPlans.map((entry) => splitR2RouteStackPublicScenarioBinding(entry.scenario))
+    ),
+    publicLogicalBindings: Object.freeze(logicalSearches.map(splitR2RouteStackPublicLogicalBinding)),
+  });
+  return assertSplitR2RouteStackPublicPaginationSensitivityPlan(plan);
+}
+
+export function assertSplitR2RouteStackPublicPaginationSensitivityPreflight(options = {}) {
+  const credentialReader = options.credentialReader ?? (() => null);
+  const evidence = options.contractEvidence ?? inspectSplitR2RouteStackPublicContractEvidence();
+  const plan = assertSplitR2RouteStackPublicPaginationSensitivityPlan(options.plan);
+  const exact = options.mode === "ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY" &&
+    options.phase === "SPLIT-R2.7A" && options.compact === true &&
+    options.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    options.hostname === "mcp.routestack.ai" && options.protocol === "https:" &&
+    options.acknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_45_HTTP" &&
+    options.unknownCostAcknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN" &&
+    options.noMutationAcknowledgement === "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION" &&
+    options.authMax === 1 && options.destinationMax === 2 && options.initialSearchMax === 14 &&
+    options.continuationD1Max === 14 && options.continuationD2Max === 14 &&
+    options.continuationMax === 28 && options.totalMax === 45 && options.maxContinuationDepth === 2 &&
+    options.retries === 0 && options.redirects === 0 && options.concurrency === 1 &&
+    options.minimumIntervalMs >= 1_000 && options.productionFallback === false &&
+    options.sandboxFallback === false && options.otherLiveModesSelected === 0 &&
+    options.repositoryGatePassed === true &&
+    evidence.environmentClassification === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    evidence.hostnameDeterminable === true && evidence.contractDeterminable === true &&
+    evidence.mutativeEndpointsSelected === false && evidence.sandboxFallback === false;
+  if (!exact) throw new Error("split-r2-pagination-sensitivity-preflight-failed-before-credentials");
+  const credentials = credentialReader();
+  if (credentials?.baseUrl !== SPLIT_R1_OFFICIAL_BASE_URL ||
+      typeof credentials?.apiKey !== "string" || credentials.apiKey.length === 0 ||
+      typeof credentials?.apiSecret !== "string" || credentials.apiSecret.length === 0) {
+    throw new Error("split-r2-pagination-sensitivity-credentials-missing-or-misbound");
+  }
+  return Object.freeze({ plan, credentials, evidence, credentialsAccessed: true });
+}
+
+export function createSplitR2RouteStackPublicPaginationSensitivityCounter() {
+  const counts = {
+    AUTHENTICATION: 0, DESTINATION: 0, INITIAL_SEARCH: 0,
+    CONTINUATION_D1: 0, CONTINUATION_D2: 0, CONTINUATION_TOTAL: 0, total: 0,
+  };
+  const d0 = new Set();
+  const d1 = new Set();
+  const d2 = new Set();
+  let d0Closed = false;
+  let d1Closed = false;
+  let active = 0;
+  let maxObservedConcurrency = 0;
+  return Object.freeze({
+    reserve(requestClass, logicalSearchId = null) {
+      if (!["AUTHENTICATION", "DESTINATION", "INITIAL_SEARCH", "CONTINUATION_D1", "CONTINUATION_D2"]
+        .includes(requestClass)) {
+        throw new Error("split-r2-pagination-sensitivity-route-forbidden");
+      }
+      if (requestClass.startsWith("CONTINUATION") &&
+          (typeof logicalSearchId !== "string" || logicalSearchId.length === 0)) {
+        throw new Error("split-r2-pagination-sensitivity-continuation-binding-invalid");
+      }
+      if (requestClass === "INITIAL_SEARCH" && d0Closed) {
+        throw new Error("split-r2-pagination-sensitivity-d0-order-closed");
+      }
+      if (requestClass === "CONTINUATION_D1") {
+        if (!d0Closed || d1Closed || d1.has(logicalSearchId)) {
+          throw new Error("split-r2-pagination-sensitivity-d1-order-or-cardinality-invalid");
+        }
+      }
+      if (requestClass === "CONTINUATION_D2") {
+        if (!d0Closed || !d1Closed || !d1.has(logicalSearchId) || d2.has(logicalSearchId)) {
+          throw new Error("split-r2-pagination-sensitivity-d2-order-or-binding-invalid");
+        }
+      }
+      if (counts[requestClass] + 1 > SPLIT_R2_PAGINATION_LIMITS[requestClass] ||
+          counts.total + 1 > SPLIT_R2_PAGINATION_LIMITS.total ||
+          (requestClass.startsWith("CONTINUATION") &&
+            counts.CONTINUATION_TOTAL + 1 > SPLIT_R2_PAGINATION_LIMITS.CONTINUATION_TOTAL)) {
+        throw new Error("split-r2-pagination-sensitivity-http-budget-exceeded-before-transport");
+      }
+      counts[requestClass] += 1;
+      counts.total += 1;
+      if (requestClass === "INITIAL_SEARCH") d0.add(logicalSearchId);
+      if (requestClass === "CONTINUATION_D1") { counts.CONTINUATION_TOTAL += 1; d1.add(logicalSearchId); }
+      if (requestClass === "CONTINUATION_D2") { counts.CONTINUATION_TOTAL += 1; d2.add(logicalSearchId); }
+    },
+    closeDepth(depth) {
+      if (depth === "D0") {
+        if (counts.INITIAL_SEARCH !== 14) throw new Error("split-r2-pagination-sensitivity-d0-incomplete");
+        d0Closed = true;
+        return;
+      }
+      if (depth === "D1") {
+        if (!d0Closed) throw new Error("split-r2-pagination-sensitivity-d1-before-d0");
+        d1Closed = true;
+        return;
+      }
+      throw new Error("split-r2-pagination-sensitivity-depth-invalid");
+    },
+    enterTransport() {
+      active += 1;
+      maxObservedConcurrency = Math.max(maxObservedConcurrency, active);
+      if (active > 1) throw new Error("split-r2-pagination-sensitivity-concurrency-exceeded");
+    },
+    leaveTransport() {
+      active -= 1;
+      if (active < 0) throw new Error("split-r2-pagination-sensitivity-concurrency-ledger-invalid");
+    },
+    snapshot() {
+      return Object.freeze({ ...counts, retries: 0, redirects: 0, maxObservedConcurrency,
+        allD0BeforeAnyD1: d0Closed, allD1BeforeAnyD2: d1Closed });
+    },
+  });
+}
+
+function createSplitR2PaginationTransport({ fetchImplementation, monotonicNow, sleeper } = {}) {
+  if (typeof fetchImplementation !== "function") {
+    throw new Error("split-r2-pagination-sensitivity-fetch-unavailable");
+  }
+  const counter = createSplitR2RouteStackPublicPaginationSensitivityCounter();
+  const limiter = createSplitR2MonotonicLimiter({ monotonicNow, sleeper });
+  const expectedEndpoint = new Map([
+    ["AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT],
+    ["DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT],
+    ["INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT],
+    ["CONTINUATION_D1", SPLIT_R1_HOTEL_SEARCH_ENDPOINT],
+    ["CONTINUATION_D2", SPLIT_R1_HOTEL_SEARCH_ENDPOINT],
+  ]);
+  return Object.freeze({
+    async post(requestClass, endpointPath, body, bearer = null, logicalSearchId = null) {
+      if (expectedEndpoint.get(requestClass) !== endpointPath) {
+        throw new Error("split-r2-pagination-sensitivity-route-forbidden");
+      }
+      const url = new URL(endpointPath, SPLIT_R1_OFFICIAL_BASE_URL);
+      if (url.protocol !== "https:" || url.hostname !== "mcp.routestack.ai") {
+        throw new Error("split-r2-pagination-sensitivity-host-forbidden");
+      }
+      await limiter.ready();
+      counter.reserve(requestClass, logicalSearchId);
+      counter.enterTransport();
+      limiter.markStarted();
+      try {
+        const response = await fetchImplementation(url, {
+          method: "POST", redirect: "error", cache: "no-store",
+          headers: { Accept: "application/json", "Content-Type": "application/json",
+            ...(bearer === null ? {} : { Authorization: `Bearer ${bearer}` }) },
+          body: JSON.stringify(body),
+        });
+        if (response.redirected === true || (response.status >= 300 && response.status < 400)) {
+          throw new Error("split-r2-pagination-sensitivity-redirect-prohibited");
+        }
+        if (typeof response.url === "string" && response.url.length > 0) {
+          const responseUrl = new URL(response.url);
+          if (responseUrl.protocol !== "https:" || responseUrl.hostname !== "mcp.routestack.ai") {
+            throw new Error("split-r2-pagination-sensitivity-response-host-forbidden");
+          }
+        }
+        const contentType = response.headers?.get?.("content-type") ?? "";
+        let payload = null;
+        let jsonValid = false;
+        if (/(?:application|text)\/(?:[^;]+\+)?json\b/iu.test(contentType)) {
+          try { payload = JSON.parse(await response.text()); jsonValid = true; } catch { jsonValid = false; }
+        }
+        if (response.status !== 200 || !jsonValid) {
+          throw new Error("split-r2-pagination-sensitivity-contract-response-invalid");
+        }
+        return Object.freeze({ payload, status: response.status, httpValid: true, jsonValid: true });
+      } finally {
+        counter.leaveTransport();
+      }
+    },
+    closeDepth: (depth) => counter.closeDepth(depth),
+    snapshot: () => Object.freeze({ http: counter.snapshot(), limiter: limiter.snapshot() }),
+  });
+}
+
+function splitR2PaginationContinuationBinding(payload) {
+  const diagnostic = diagnoseSplitR1ContinuationMetadataShapeV1(payload);
+  if (diagnostic.continuationAuthorizable !== true ||
+      diagnostic.completeCandidateContainerCount !== 1 ||
+      diagnostic.selectedContractualContainer !== "result") return null;
+  return payload;
+}
+
+function splitR2PaginationDeduplicate(offers) {
+  const byProperty = new Map();
+  for (const offer of offers) {
+    const prior = byProperty.get(offer.propertyFingerprint);
+    if (!prior || offer.totalMinorUnits < prior.totalMinorUnits) byProperty.set(offer.propertyFingerprint, offer);
+  }
+  return [...byProperty.values()].sort((left, right) =>
+    left.totalMinorUnits - right.totalMinorUnits || left.propertyFingerprint.localeCompare(right.propertyFingerprint)
+  );
+}
+
+function splitR2PaginationAddPage(state, depth, payload, ephemeralKey) {
+  const page = normalizeSplitR1SearchPage(payload, {
+    logicalSearch: state.binding,
+    ephemeralRunKey: ephemeralKey,
+  });
+  const economicOffers = page.offers.filter((offer) => offer.currency === state.search.expectedCurrency);
+  state.pages.push(Object.freeze({
+    depth,
+    rawResultCount: page.rawResultCount,
+    normalizableResultCount: page.offers.length,
+    economicOfferCount: economicOffers.length,
+    offers: economicOffers,
+  }));
+  state.latestResponse = payload;
+  state.depthReached = depth;
+}
+
+function splitR2PaginationCumulativeState(state, depth) {
+  const pages = state.pages.filter((page) => page.depth <= depth);
+  const offers = pages.flatMap((page) => page.offers);
+  const distinct = splitR2PaginationDeduplicate(offers);
+  return Object.freeze({
+    depthObserved: state.depthReached >= depth,
+    pageRawResults: pages.filter((page) => page.depth === depth).reduce((n, page) => n + page.rawResultCount, 0),
+    pageNormalizableResults: pages.filter((page) => page.depth === depth)
+      .reduce((n, page) => n + page.normalizableResultCount, 0),
+    pageEconomicOffers: pages.filter((page) => page.depth === depth)
+      .reduce((n, page) => n + page.economicOfferCount, 0),
+    cumulativeRawResults: pages.reduce((n, page) => n + page.rawResultCount, 0),
+    cumulativeNormalizableResults: pages.reduce((n, page) => n + page.normalizableResultCount, 0),
+    cumulativePreDedupOffers: offers.length,
+    interPageDuplicatesRemoved: offers.length - distinct.length,
+    cumulativeDistinctOffers: distinct.length,
+    offers: distinct,
+  });
+}
+
+function splitR2PaginationBreakpointEconomics(plan, states, scenarioOrdinal, breakpointOrdinal, depth) {
+  const scenario = plan.scenarioPlans.find((entry) => entry.scenario.ordinal === scenarioOrdinal);
+  const find = (role) => scenario.logicalSearches.find((search) =>
+    search.searchRole === role && (role === "FULL_STAY" || search.breakpointOrdinal === breakpointOrdinal)
+  );
+  const cumulative = (search) => splitR2PaginationCumulativeState(states.get(search.logicalSearchId), depth);
+  const full = cumulative(find("FULL_STAY"));
+  const prefix = cumulative(find("PREFIX"));
+  const suffix = cumulative(find("SUFFIX"));
+  const depthObserved = full.depthObserved && prefix.depthObserved && suffix.depthObserved;
+  const baseline = full.offers[0] ?? null;
+  const pair = splitR1NightlyOracleBestPair(prefix.offers, suffix.offers, false);
+  if (!depthObserved || baseline === null || pair === null) {
+    return Object.freeze({ depthObserved, evaluable: false, fullBaselineMinorUnits: null,
+      bestDistinctSplitPairTotalMinorUnits: null, savingMinorUnits: null,
+      savingBasisPoints: null, rawPositive: false, materialSignal: false });
+  }
+  const saving = classifySplitR2Saving(
+    baseline.totalMinorUnits - pair.splitTotalMinorUnits,
+    baseline.totalMinorUnits
+  );
+  return Object.freeze({
+    depthObserved: true,
+    evaluable: true,
+    fullBaselineMinorUnits: baseline.totalMinorUnits,
+    bestDistinctSplitPairTotalMinorUnits: pair.splitTotalMinorUnits,
+    savingMinorUnits: saving.savingMinorUnits,
+    savingBasisPoints: saving.savingBasisPoints,
+    rawPositive: saving.savingMinorUnits > 0,
+    materialSignal: saving.materialPriceSignal,
+  });
+}
+
+export function splitR2PaginationTransition(left, right) {
+  if (!left.depthObserved || !right.depthObserved) return Object.freeze({ comparable: false });
+  const evaluabilityChanged = left.evaluable !== right.evaluable;
+  if (!left.evaluable || !right.evaluable) {
+    return Object.freeze({ comparable: true, evaluabilityChanged,
+      fullBaselineChanged: false, splitPairChanged: false, savingSignChanged: false,
+      materialChanged: false, savingDeltaMinorUnits: null });
+  }
+  return Object.freeze({
+    comparable: true,
+    evaluabilityChanged,
+    fullBaselineChanged: left.fullBaselineMinorUnits !== right.fullBaselineMinorUnits,
+    splitPairChanged: left.bestDistinctSplitPairTotalMinorUnits !== right.bestDistinctSplitPairTotalMinorUnits,
+    savingSignChanged: Math.sign(left.savingMinorUnits) !== Math.sign(right.savingMinorUnits),
+    materialChanged: left.materialSignal !== right.materialSignal,
+    savingDeltaMinorUnits: right.savingMinorUnits - left.savingMinorUnits,
+  });
+}
+
+export function classifySplitR2PaginationSensitivity(perBreakpointDepthEconomics) {
+  const transitions = perBreakpointDepthEconomics.flatMap((entry) => [entry.d0ToD1, entry.d1ToD2])
+    .filter((transition) => transition.comparable);
+  if (transitions.length === 0) return "PAGINATION_SENSITIVITY_INCONCLUSIVE";
+  if (transitions.some((transition) => transition.savingSignChanged || transition.materialChanged ||
+      transition.evaluabilityChanged)) return "PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL";
+  if (transitions.some((transition) => transition.fullBaselineChanged || transition.splitPairChanged)) {
+    return "PAGINATION_SENSITIVITY_ECONOMIC_MINIMUM_ONLY";
+  }
+  return "NO_PAGINATION_SENSITIVITY_OBSERVED_WITHIN_D2";
+}
+
+export function classifySplitR2PaginationStabilization(perBreakpointDepthEconomics) {
+  const d01 = perBreakpointDepthEconomics.map((entry) => entry.d0ToD1).filter((entry) => entry.comparable);
+  const d12 = perBreakpointDepthEconomics.map((entry) => entry.d1ToD2).filter((entry) => entry.comparable);
+  if (d01.length === 0 || d12.length === 0) return "NOT_DETERMINABLE";
+  const changed = (entry) => entry.evaluabilityChanged || entry.fullBaselineChanged ||
+    entry.splitPairChanged || entry.savingSignChanged || entry.materialChanged;
+  if (d12.some(changed)) return "STILL_CHANGING_AT_D2";
+  if (d01.some(changed)) return "STABLE_BY_D2";
+  return "STABLE_BY_D1";
+}
+
+export function classifySplitR2PaginationBias(perBreakpointDepthEconomics) {
+  const deltas = perBreakpointDepthEconomics.flatMap((entry) => [entry.d0ToD1, entry.d1ToD2])
+    .filter((entry) => entry.comparable && Number.isSafeInteger(entry.savingDeltaMinorUnits))
+    .map((entry) => entry.savingDeltaMinorUnits);
+  if (deltas.length === 0) return "NOT_DETERMINABLE";
+  const positive = deltas.some((value) => value > 0);
+  const negative = deltas.some((value) => value < 0);
+  if (positive && negative) return "BIDIRECTIONAL";
+  if (positive && deltas.every((value) => value >= 0)) return "FAVORS_SPLIT";
+  if (negative && deltas.every((value) => value <= 0)) return "FAVORS_FULL_STAY";
+  return "NO_DIRECTIONAL_CHANGE";
+}
+
+function splitR2PaginationEconomics(plan, states) {
+  return Object.freeze(plan.scenarioPlans.flatMap((scenario) =>
+    scenario.selectedBreakpointOrdinals.map((breakpointOrdinal) => {
+      const d0 = splitR2PaginationBreakpointEconomics(plan, states, scenario.scenario.ordinal, breakpointOrdinal, 0);
+      const d1 = splitR2PaginationBreakpointEconomics(plan, states, scenario.scenario.ordinal, breakpointOrdinal, 1);
+      const d2 = splitR2PaginationBreakpointEconomics(plan, states, scenario.scenario.ordinal, breakpointOrdinal, 2);
+      return Object.freeze({
+        scenarioOrdinal: scenario.scenario.ordinal,
+        breakpointOrdinal,
+        depths: Object.freeze({ D0: d0, D1: d1, D2: d2 }),
+        d0ToD1: splitR2PaginationTransition(d0, d1),
+        d1ToD2: splitR2PaginationTransition(d1, d2),
+      });
+    })
+  ));
+}
+
+function splitR2PaginationDepthCounts(states, depth) {
+  const cumulative = [...states.values()].map((state) => splitR2PaginationCumulativeState(state, depth));
+  return Object.freeze({
+    pageRawResults: sum(cumulative.map((entry) => entry.pageRawResults)),
+    pageNormalizableResults: sum(cumulative.map((entry) => entry.pageNormalizableResults)),
+    pageEconomicOffers: sum(cumulative.map((entry) => entry.pageEconomicOffers)),
+    cumulativeRawResults: sum(cumulative.map((entry) => entry.cumulativeRawResults)),
+    cumulativeNormalizableResults: sum(cumulative.map((entry) => entry.cumulativeNormalizableResults)),
+    cumulativePreDedupOffers: sum(cumulative.map((entry) => entry.cumulativePreDedupOffers)),
+    interPageDuplicatesRemoved: sum(cumulative.map((entry) => entry.interPageDuplicatesRemoved)),
+    cumulativeDistinctOffers: sum(cumulative.map((entry) => entry.cumulativeDistinctOffers)),
+  });
+}
+
+export function buildSplitR2RouteStackPublicPaginationSensitivityReceipt({
+  sourceSha,
+  plan = buildSplitR2RouteStackPublicPaginationSensitivityPlan(),
+  states = new Map(),
+  http = {},
+  limiter = {},
+  failureClassification = null,
+} = {}) {
+  const economics = states.size === 14 ? splitR2PaginationEconomics(plan, states) : [];
+  const sensitivity = economics.length > 0
+    ? classifySplitR2PaginationSensitivity(economics)
+    : "PAGINATION_SENSITIVITY_INCONCLUSIVE";
+  const stabilization = economics.length > 0
+    ? classifySplitR2PaginationStabilization(economics)
+    : "NOT_DETERMINABLE";
+  const bias = economics.length > 0 ? classifySplitR2PaginationBias(economics) : "NOT_DETERMINABLE";
+  const countEvents = (name, transition) => economics.filter((entry) => entry[transition]?.[name] === true).length;
+  const comparable = (depth) => economics.filter((entry) => entry.depths?.[depth]?.evaluable === true).length;
+  const d0 = states.size === 14 ? splitR2PaginationDepthCounts(states, 0) : null;
+  const d1 = states.size === 14 ? splitR2PaginationDepthCounts(states, 1) : null;
+  const d2 = states.size === 14 ? splitR2PaginationDepthCounts(states, 2) : null;
+  const multiDepthComparable = economics.some((entry) => entry.d0ToD1.comparable || entry.d1ToD2.comparable);
+  const allSixFullyComparable = economics.length === 6 && economics.every((entry) =>
+    entry.depths.D0.evaluable && entry.depths.D1.evaluable && entry.depths.D2.evaluable
+  );
+  const status = failureClassification !== null ? "FAIL" :
+    sensitivity === "PAGINATION_SENSITIVITY_INCONCLUSIVE" || !multiDepthComparable ? "INCONCLUSIVE" : "PASS";
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RECEIPT_VERSION,
+    status,
+    sourceSha,
+    environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    userApprovalAcknowledged: true,
+    unknownCostAcknowledged: true,
+    singleWaveEnforced: true,
+    selectedScenarioOrdinals: [1, 3],
+    selectedBreakpointOrdinals: Object.freeze({ 1: [1, 7, 13], 3: [1, 3, 6] }),
+    logicalSearchesPlanned: 14,
+    logicalSearchesExecuted: http.INITIAL_SEARCH ?? 0,
+    maxContinuationDepth: 2,
+    authHttpRequests: http.AUTHENTICATION ?? 0,
+    destinationHttpRequests: http.DESTINATION ?? 0,
+    initialHttpRequests: http.INITIAL_SEARCH ?? 0,
+    continuationD1HttpRequests: http.CONTINUATION_D1 ?? 0,
+    continuationD2HttpRequests: http.CONTINUATION_D2 ?? 0,
+    continuationHttpRequests: http.CONTINUATION_TOTAL ?? 0,
+    totalHttpRequests: http.total ?? 0,
+    totalHttpBudget: 45,
+    retries: 0,
+    redirects: 0,
+    maxObservedConcurrency: http.maxObservedConcurrency ?? 0,
+    minObservedRequestIntervalMs: limiter.minimumObservedRequestIntervalMs ?? null,
+    allD0BeforeAnyD1: http.allD0BeforeAnyD1 === true,
+    allD1BeforeAnyD2: http.allD1BeforeAnyD2 === true,
+    perDepthCollectionCounts: Object.freeze({ D0: d0, D1: d1, D2: d2 }),
+    perDepthCumulativeDistinctOffers: Object.freeze({
+      D0: d0?.cumulativeDistinctOffers ?? 0,
+      D1: d1?.cumulativeDistinctOffers ?? 0,
+      D2: d2?.cumulativeDistinctOffers ?? 0,
+    }),
+    interPageDuplicatesRemoved: Object.freeze({
+      D1: d1?.interPageDuplicatesRemoved ?? 0,
+      D2: d2?.interPageDuplicatesRemoved ?? 0,
+    }),
+    breakpointsComparableAtD0: comparable("D0"),
+    breakpointsComparableAtD1: comparable("D1"),
+    breakpointsComparableAtD2: comparable("D2"),
+    perBreakpointDepthEconomics: economics,
+    fullBaselineChanges: Object.freeze({
+      D0_TO_D1: countEvents("fullBaselineChanged", "d0ToD1"),
+      D1_TO_D2: countEvents("fullBaselineChanged", "d1ToD2"),
+    }),
+    splitPairChanges: Object.freeze({
+      D0_TO_D1: countEvents("splitPairChanged", "d0ToD1"),
+      D1_TO_D2: countEvents("splitPairChanged", "d1ToD2"),
+    }),
+    savingSignChanges: Object.freeze({
+      D0_TO_D1: countEvents("savingSignChanged", "d0ToD1"),
+      D1_TO_D2: countEvents("savingSignChanged", "d1ToD2"),
+    }),
+    materialClassificationChanges: Object.freeze({
+      D0_TO_D1: countEvents("materialChanged", "d0ToD1"),
+      D1_TO_D2: countEvents("materialChanged", "d1ToD2"),
+    }),
+    evaluabilityChanges: Object.freeze({
+      D0_TO_D1: countEvents("evaluabilityChanged", "d0ToD1"),
+      D1_TO_D2: countEvents("evaluabilityChanged", "d1ToD2"),
+    }),
+    sensitivityClassification: sensitivity,
+    stabilizationClassification: stabilization,
+    observedBiasDirection: bias,
+    initialOnlyClassificationRobustWithinStudy:
+      sensitivity === "PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL" ? false :
+        allSixFullyComparable ? true : "NOT_DETERMINABLE",
+    noSensitivityImpliesCompleteness: false,
+    bestResultScope: "BOUNDED_RETURNED_SNAPSHOT_WITHIN_D2",
+    completenessClaimAllowed: false,
+    globalOptimumClaimAllowed: false,
+    marketFrequencyClaimAllowed: false,
+    userUsableSplitEvaluated: false,
+    productionBookingAuthorized: false,
+    continuationContractChangedOutsideMicrostudy: false,
+    publicRuntimeChanged: false,
+    repositoryModificationsAfterCommit: 0,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    rawMetadataValuesPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+    secretValuesExposed: false,
+    failureClassification: failureClassification ??
+      (status === "INCONCLUSIVE" ? "PAGINATION_SENSITIVITY_INCONCLUSIVE" : "NONE"),
+  });
+}
+
+export function serializeSplitR2RouteStackPublicPaginationSensitivityReceipt(
+  receipt,
+  maxBytes = SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES
+) {
+  assertReceiptSafe(receipt);
+  const json = stableStringifySplitF0(receipt, 0);
+  const byteLength = Buffer.byteLength(json, "utf8");
+  if (/\r|\n/u.test(json)) throw new Error("split-r2-pagination-sensitivity-receipt-not-single-line");
+  if (byteLength > maxBytes) {
+    throw new SplitR2CompactReceiptError("split-r2-pagination-sensitivity-receipt-oversize", byteLength);
+  }
+  return Object.freeze({ json, byteLength });
+}
+
+export async function runSplitR2RouteStackPublicPaginationSensitivity({
+  sourceSha,
+  plan,
+  apiKey,
+  apiSecret,
+  fetchImplementation = globalThis.fetch,
+  monotonicNow,
+  sleeper,
+  now,
+  randomUUID,
+} = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha ?? "") || typeof apiKey !== "string" || apiKey.length === 0 ||
+      typeof apiSecret !== "string" || apiSecret.length === 0) {
+    throw new Error("split-r2-pagination-sensitivity-runtime-input-invalid");
+  }
+  const authoritativePlan = assertSplitR2RouteStackPublicPaginationSensitivityPlan(plan);
+  const transport = createSplitR2PaginationTransport({ fetchImplementation, monotonicNow, sleeper });
+  const ephemeralKey = crypto.randomBytes(32);
+  const states = new Map(authoritativePlan.logicalSearches.map((search, index) => [search.logicalSearchId, {
+    search,
+    binding: authoritativePlan.publicLogicalBindings[index],
+    originalRequest: null,
+    latestResponse: null,
+    depthReached: -1,
+    pages: [],
+  }]));
+  try {
+    const auth = await transport.post("AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT,
+      createSplitR1PartnerTokenRequest({ apiKey, apiSecret, now, randomUUID }));
+    let bearer = auth.payload?.token;
+    if (typeof bearer !== "string" || bearer.length === 0) {
+      throw new Error("split-r2-pagination-sensitivity-bearer-missing");
+    }
+    const destinations = new Map();
+    for (const scenario of authoritativePlan.publicScenarioBindings) {
+      const response = await transport.post("DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT,
+        createSplitR1DestinationRequest(scenario), bearer);
+      destinations.set(scenario.scenarioId, selectSplitR1DestinationCandidate(response.payload, scenario));
+    }
+    for (const search of authoritativePlan.logicalSearches) {
+      const state = states.get(search.logicalSearchId);
+      state.originalRequest = createSplitR1HotelSearchRequest(
+        state.binding,
+        destinations.get(state.binding.scenarioId)
+      );
+      const response = await transport.post("INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        state.originalRequest, bearer, search.logicalSearchId);
+      splitR2PaginationAddPage(state, 0, response.payload, ephemeralKey);
+    }
+    transport.closeDepth("D0");
+    for (const search of authoritativePlan.logicalSearches) {
+      const state = states.get(search.logicalSearchId);
+      const metadataSource = splitR2PaginationContinuationBinding(state.latestResponse);
+      if (metadataSource === null) continue;
+      const request = createSplitR1ContinuationRequest(state.originalRequest, metadataSource, 1);
+      const response = await transport.post("CONTINUATION_D1", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        request, bearer, search.logicalSearchId);
+      splitR2PaginationAddPage(state, 1, response.payload, ephemeralKey);
+    }
+    transport.closeDepth("D1");
+    for (const search of authoritativePlan.logicalSearches) {
+      const state = states.get(search.logicalSearchId);
+      if (state.depthReached !== 1) continue;
+      const metadataSource = splitR2PaginationContinuationBinding(state.latestResponse);
+      if (metadataSource === null) continue;
+      const request = createSplitR1ContinuationRequest(state.originalRequest, metadataSource, 2);
+      const response = await transport.post("CONTINUATION_D2", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        request, bearer, search.logicalSearchId);
+      splitR2PaginationAddPage(state, 2, response.payload, ephemeralKey);
+    }
+    bearer = null;
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicPaginationSensitivityReceipt({
+      sourceSha, plan: authoritativePlan, states, http: snapshot.http, limiter: snapshot.limiter,
+    });
+  } catch (error) {
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicPaginationSensitivityReceipt({
+      sourceSha, plan: authoritativePlan, states, http: snapshot.http, limiter: snapshot.limiter,
+      failureClassification: String(error?.message ?? error).startsWith("split-r2-")
+        ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+        : "ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_TECHNICAL_FAILURE",
+    });
+  } finally {
+    for (const state of states.values()) {
+      state.latestResponse = null;
+      state.originalRequest = null;
+    }
+    ephemeralKey.fill(0);
+  }
+}
+
+function splitR2FakePaginationPayload(search, depth, terminalAtInitial = false) {
+  const base = search.searchRole === "FULL_STAY" ? 1_000 : 450;
+  return {
+    result: {
+      currency: "EUR",
+      correlationId: `synthetic-correlation-${search.logicalSearchId}-${depth}`,
+      token: `synthetic-token-${search.logicalSearchId}-${depth}`,
+      nextResultsKey: terminalAtInitial || depth === 2 ? null :
+        `synthetic-next-${search.logicalSearchId}-${depth + 1}`,
+      result: [{
+        id: `synthetic-property-${search.logicalSearchId}-${depth === 1 ? 0 : depth}`,
+        ourprice: base + depth * 100,
+      }],
+    },
+  };
+}
+
+async function runSplitR2FakePaginationCampaign(terminalAtInitial) {
+  const plan = buildSplitR2RouteStackPublicPaginationSensitivityPlan();
+  let monotonic = 0;
+  let requestOrdinal = 0;
+  return runSplitR2RouteStackPublicPaginationSensitivity({
+    sourceSha: "c".repeat(40), plan, apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret",
+    monotonicNow: () => monotonic,
+    sleeper: async (delay) => { monotonic += delay; },
+    now: () => 1_800_000_000_000,
+    randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      requestOrdinal += 1;
+      if (requestOrdinal === 1) return fakeJsonResponse({ token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (requestOrdinal <= 3) {
+        const scenario = plan.publicScenarioBindings[requestOrdinal - 2];
+        return fakeJsonResponse({ result: [{
+          id: `synthetic-destination-${requestOrdinal - 1}`,
+          city: scenario.destination.label, country: scenario.destination.countryCode, type: "City",
+          fullName: `${scenario.destination.label}, Italy`,
+          coordinates: { lat: scenario.destination.latitude, long: scenario.destination.longitude },
+        }] }, 200, String(url));
+      }
+      const requestBody = JSON.parse(options.body);
+      const depth = typeof requestBody.nextResultsKey !== "string" ? 0 :
+        requestBody.nextResultsKey.endsWith("-1") ? 1 : 2;
+      const offset = depth === 0 ? 4 : depth === 1 ? 18 : 32;
+      const search = plan.logicalSearches[requestOrdinal - offset];
+      return fakeJsonResponse(splitR2FakePaginationPayload(search, depth, terminalAtInitial), 200, String(url));
+    },
+  });
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationFullDepth() {
+  return runSplitR2FakePaginationCampaign(false);
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationEarlyTerminal() {
+  return runSplitR2FakePaginationCampaign(true);
+}
+
 function fakeJsonResponse(payload, status, url) {
   return {
     status, redirected: false, url,
@@ -3724,6 +4428,28 @@ export function parseSplitR2RouteStackPublicMultiScenarioArguments(argv) {
   });
 }
 
+export function parseSplitR2RouteStackPublicPaginationSensitivityArguments(argv) {
+  const requiredLiteral = new Set([
+    "--r2-routestack-public-pagination-sensitivity",
+    "--compact",
+    "--phase=SPLIT-R2.7A",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_45_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+  ]);
+  const expectedHeadArguments = argv.filter((entry) => entry.startsWith("--expected-head="));
+  const fingerprintArguments = argv.filter((entry) => entry.startsWith("--expected-dirty-fingerprint="));
+  if (argv.length !== 9 || [...requiredLiteral].some((entry) => !argv.includes(entry)) ||
+      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1) {
+    throw new Error("split-r2-pagination-sensitivity-cli-contract-invalid");
+  }
+  return Object.freeze({
+    expectedHead: expectedHeadArguments[0].slice("--expected-head=".length),
+    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length),
+  });
+}
+
 function buildSplitR2LiteApiDiagnosisBlockedReceipt(sourceSha, failureClassification) {
   return {
     receiptVersion: SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
@@ -3807,13 +4533,112 @@ function buildSplitR2RouteStackPublicMultiScenarioBlockedReceipt(sourceSha, fail
   });
 }
 
+function buildSplitR2RouteStackPublicPaginationSensitivityBlockedReceipt(sourceSha, failureClassification) {
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RECEIPT_VERSION,
+    status: "BLOCKED",
+    sourceSha: /^[0-9a-f]{40}$/u.test(sourceSha ?? "") ? sourceSha : "UNVERIFIED",
+    environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    userApprovalAcknowledged: false,
+    unknownCostAcknowledged: false,
+    singleWaveEnforced: true,
+    selectedScenarioOrdinals: [1, 3],
+    selectedBreakpointOrdinals: { 1: [1, 7, 13], 3: [1, 3, 6] },
+    logicalSearchesPlanned: 14,
+    logicalSearchesExecuted: 0,
+    maxContinuationDepth: 2,
+    authHttpRequests: 0,
+    destinationHttpRequests: 0,
+    initialHttpRequests: 0,
+    continuationD1HttpRequests: 0,
+    continuationD2HttpRequests: 0,
+    continuationHttpRequests: 0,
+    totalHttpRequests: 0,
+    totalHttpBudget: 45,
+    retries: 0,
+    redirects: 0,
+    continuationContractChangedOutsideMicrostudy: false,
+    publicRuntimeChanged: false,
+    repositoryModificationsAfterCommit: 0,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    rawMetadataValuesPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false,
+    secretValuesExposed: false,
+    failureClassification,
+  });
+}
+
 function isMainModule() {
   return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 }
 
 if (isMainModule()) {
   const argv = process.argv.slice(2);
-  if (argv.includes("--r2-routestack-public-multi-scenario")) {
+  if (argv.includes("--r2-routestack-public-pagination-sensitivity")) {
+    let expectedHead = null;
+    try {
+      const parsed = parseSplitR2RouteStackPublicPaginationSensitivityArguments(argv);
+      expectedHead = parsed.expectedHead;
+      const repository = verifySplitR2LiteApiCanaryRepositoryGate(
+        parsed.expectedHead,
+        parsed.expectedDirtyFingerprint
+      );
+      const evidence = inspectSplitR2RouteStackPublicContractEvidence();
+      const authoritativePlan = buildSplitR2RouteStackPublicPaginationSensitivityPlan();
+      const preflight = assertSplitR2RouteStackPublicPaginationSensitivityPreflight({
+        mode: "ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY",
+        phase: "SPLIT-R2.7A",
+        compact: true,
+        environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+        hostname: "mcp.routestack.ai",
+        protocol: "https:",
+        acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_45_HTTP",
+        unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+        noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+        authMax: 1,
+        destinationMax: 2,
+        initialSearchMax: 14,
+        continuationD1Max: 14,
+        continuationD2Max: 14,
+        continuationMax: 28,
+        totalMax: 45,
+        maxContinuationDepth: 2,
+        retries: 0,
+        redirects: 0,
+        concurrency: 1,
+        minimumIntervalMs: 1_000,
+        productionFallback: false,
+        sandboxFallback: false,
+        otherLiveModesSelected: 0,
+        repositoryGatePassed: repository.passed,
+        contractEvidence: evidence,
+        plan: authoritativePlan,
+        credentialReader: readRouteStackPublicCredentials,
+      });
+      const receipt = await runSplitR2RouteStackPublicPaginationSensitivity({
+        sourceSha: parsed.expectedHead,
+        plan: preflight.plan,
+        apiKey: preflight.credentials.apiKey,
+        apiSecret: preflight.credentials.apiSecret,
+      });
+      const serialized = serializeSplitR2RouteStackPublicPaginationSensitivityReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RESULT=${serialized.json}\n`);
+      if (receipt.status === "FAIL" || receipt.status === "BLOCKED") process.exitCode = 1;
+    } catch (error) {
+      const classification = error instanceof SplitR2CompactReceiptError
+        ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
+        : String(error?.message ?? error).startsWith("split-r2-")
+          ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+          : "ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_PREFLIGHT_BLOCKED";
+      const receipt = buildSplitR2RouteStackPublicPaginationSensitivityBlockedReceipt(expectedHead, classification);
+      const serialized = serializeSplitR2RouteStackPublicPaginationSensitivityReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RESULT=${serialized.json}\n`);
+      process.exitCode = 1;
+    }
+  } else if (argv.includes("--r2-routestack-public-multi-scenario")) {
     let expectedHead = null;
     try {
       const parsed = parseSplitR2RouteStackPublicMultiScenarioArguments(argv);
