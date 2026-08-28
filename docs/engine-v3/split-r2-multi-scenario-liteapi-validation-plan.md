@@ -358,3 +358,31 @@ The primary unit is the frozen scenario. Each provider aggregate uses the median
 Authoritative pre-transport fake counters enforce LiteAPI 183 search requests, RouteStack one auth plus three destination resolutions plus 102 initial searches (106 total), and 289 combined requests. The 184th LiteAPI search, second RouteStack auth, fourth RouteStack destination, 103rd RouteStack initial, any continuation, 107th RouteStack total, and 290th combined request fail before fake transport. Retry and redirect remain zero; concurrency remains one; the future monotonic interval remains 1,000 ms.
 
 The compact receipt is deterministic single-line JSON with a hard 16,000-byte UTF-8 limit checked before output. It contains the frozen matrix, aggregate provider/scenario results, decision classes, fake counters, environment holds, privacy invariants, and claim boundaries. It contains no individual properties or pseudonym lists, raw identifiers, payloads, responses, continuation values, credentials, or commercial fields. Oversize output fails closed without truncation. Public provider adapters, the public runtime, V2/V3 decision cores, and public Split remain unchanged and disabled.
+
+## 17. R2.2 minimal LiteAPI Sandbox contract canary
+
+Canary receipt version: `stayopti.split-r2.liteapi-contract-canary@1`
+
+R2.2 adds one explicit, default-disabled live mode for the separately authorized LiteAPI Sandbox contract canary. Credentials alone cannot activate it. The mode requires the exact canary flag, compact output, explicit `LITEAPI_SANDBOX` environment, an acknowledgement of the three-request budget, the committed HEAD, and the preserved seven-path working-tree fingerprint before any credential is read.
+
+The live boundary is a dedicated Rates-only native transport. It permits exactly three sequential `POST https://api.liteapi.travel/v3.0/hotels/rates` requests and no implicit authentication, destination, hotel metadata, facility, pagination, continuation, details, review, recheck, Prebook, booking, White Label, or payment request. Roles and dates are frozen to Scenario 1 at deterministic midpoint breakpoint 7:
+
+- `FULL_STAY`: 2026-11-30 through 2026-12-14;
+- `PREFIX`: 2026-11-30 through 2026-12-07;
+- `SUFFIX`: 2026-12-07 through 2026-12-14.
+
+The canary does not use the R1 winning breakpoint and does not select an outcome opportunistically. Each request body is derived from the canonical Scenario 1 binding and preserves Milano, Italy, one room, two adults, no children, EUR, and Italian guest nationality. An authoritative role counter blocks a repeated role, a fourth request, and any other route before transport. Retry and redirect are zero, concurrency is one, and a monotonic early-wake loop does not permit a request start before a real 1,000 ms interval.
+
+### 17.1 Strict live normalization
+
+Only explicit response containers already supported by the local LiteAPI contract are inspected. Economic admission requires a property identity, positive `offerRetailRate.amount` convertible exactly to integer minor units, explicit EUR in `offerRetailRate.currency`, the exact requested occupancy, and complete known mandatory components. Compatibility price paths such as SSP, `price`, `total`, `totalPrice`, net, markup, or commission are not accepted.
+
+An explicitly present empty `taxesAndFees` array is treated as known-none for that rate. Every present mandatory component must have a non-negative exact amount, EUR, and an explicit included/excluded state. Included components are not added again. Excluded mandatory components, including known pay-at-property components, are added exactly once. A missing, malformed, unquantified, wrong-currency, or ambiguous mandatory-component container fails that offer closed. Raw tax labels and non-expected currency values never enter the receipt.
+
+The receipt reports only aggregate per-search funnel counts, collection/comparability classes, availability of the fixed full-stay baseline and distinct-property segment pair, and the optional diagnostic saving in integer minor units and basis points. It is deterministic single-line JSON, capped at 8,000 UTF-8 bytes, and fails without truncation when oversized. Raw provider identifiers, individual fingerprints, provider names, room names, individual prices, tax labels, payloads, responses, credentials, URLs, and cross-run correlations are excluded.
+
+Even a passing canary is only `LITEAPI_CONTRACT_CANARY_COMPARABLE`. Its economic delta is not matrix evidence, is not entered into the future R2 denominator, and cannot establish recurrence, frequency, user-usable Split, completeness, a global optimum, Production behavior, or a public recommendation.
+
+### 17.2 RouteStack offline public-API preflight
+
+R2.2 does not implement or call a RouteStack transport. `ROUTESTACK_SANDBOX` and `ROUTESTACK_PUBLIC_PRODUCTION` remain distinct `LIVE_HOLD` capabilities with non-interchangeable environment bindings and no fallback. Sandbox credentials cannot enable Production. Any future public/Production mode requires a separately authorized dedicated flag, authoritative budget, compact receipt, exact host binding, and zero continuation unless a later authorization explicitly changes that cap. RouteStack remains disconnected from the public runtime.

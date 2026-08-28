@@ -7,6 +7,11 @@ import {
   SPLIT_R2_COMPACT_MAX_UTF8_BYTES,
   SPLIT_R2_FROZEN_SCENARIOS,
   SPLIT_R2_LIVE_CAPABILITIES,
+  SPLIT_R2_LITEAPI_CANARY_BREAKPOINT,
+  SPLIT_R2_LITEAPI_CANARY_COMPACT_MAX_UTF8_BYTES,
+  SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION,
+  SPLIT_R2_LITEAPI_RATES_PATH,
+  SPLIT_R2_LITEAPI_SANDBOX_BASE_URL,
   SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS,
   SPLIT_R2_MATERIAL_BASIS_POINTS,
   SPLIT_R2_PROVIDER_NEUTRAL_CONTRACT_VERSION,
@@ -17,17 +22,29 @@ import {
   adaptRouteStackSearchSnapshotR2,
   aggregateSplitR2Provider,
   assertSplitR2RealTransportBlocked,
+  assertSplitR2LiteApiCanaryPreflight,
+  assertSplitR2RouteStackOfflinePreflight,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
+  buildSplitR2LiteApiCanaryReceipt,
   buildSplitR2ScenarioPlan,
+  buildSplitR2LiteApiCanaryPlan,
   classifySplitR2Saving,
   createSplitR2AuthoritativeHttpCounter,
+  createSplitR2LiteApiCanaryCounter,
+  createSplitR2LiteApiCanaryRequestBody,
+  createSplitR2MonotonicLimiter,
   decideSplitR2Campaign,
   evaluateSplitR2Scenario,
+  normalizeSplitR2LiteApiCanaryResponse,
+  parseSplitR2LiteApiCanaryArguments,
+  runSplitR2FakeLiteApiCanary,
+  runSplitR2LiteApiCanary,
   runSplitR2FakeCombinedCampaign,
   runSplitR2FakeProviderCampaign,
   runSplitR2Mode,
   serializeSplitR2CompactReceipt,
+  serializeSplitR2LiteApiCanaryReceipt,
 } from "../../scripts/run-split-r2-multi-scenario-validation.mjs";
 
 const KEY = Buffer.alloc(32, 0x55);
@@ -543,8 +560,14 @@ test("64 missing RouteStack continuation key means no continuation exposed", () 
   assert.equal(snapshot.providerDeclaredTerminal, false);
 });
 
-test("65 future live capabilities all remain held", () => {
-  assert.equal(Object.values(SPLIT_R2_LIVE_CAPABILITIES).every((value) => value === "NOT_IMPLEMENTED_OR_LIVE_HOLD"), true);
+test("65 only the exact LiteAPI canary capability is implemented", () => {
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.LITEAPI_SANDBOX_CANARY, "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED");
+  assert.equal(
+    Object.entries(SPLIT_R2_LIVE_CAPABILITIES)
+      .filter(([name]) => name !== "LITEAPI_SANDBOX_CANARY")
+      .every(([, value]) => value === "NOT_IMPLEMENTED_OR_LIVE_HOLD"),
+    true
+  );
 });
 
 test("66 dry-run has exact matrix and zero HTTP", () => {
@@ -616,4 +639,303 @@ test("73 currency diagnostics distinguish missing non-expected and invalid types
   assert.equal(missing.economicEligibilityFunnel.missingCurrencyCount, 1);
   assert.equal(nonExpected.economicEligibilityFunnel.nonExpectedCurrencyCount, 1);
   assert.equal(invalid.economicEligibilityFunnel.invalidCurrencyTypeCount, 1);
+});
+
+function canaryPreflight(overrides = {}) {
+  return {
+    mode: "LITEAPI_SANDBOX_CONTRACT_CANARY",
+    compact: true,
+    environment: "LITEAPI_SANDBOX",
+    ackHttpBudget: 3,
+    hostname: "api.liteapi.travel",
+    protocol: "https:",
+    productionFallback: false,
+    scenarioOrdinal: 1,
+    breakpointOrdinal: 7,
+    fullStayMax: 1,
+    prefixMax: 1,
+    suffixMax: 1,
+    totalMax: 3,
+    otherHttpMax: 0,
+    retries: 0,
+    redirects: 0,
+    concurrency: 1,
+    minimumIntervalMs: 1_000,
+    repositoryGatePassed: true,
+    credentialReader: () => "sand_synthetic_test_key",
+    ...overrides,
+  };
+}
+
+function canaryPayload({
+  identities = ["aa", "bb"],
+  amount = "100.00",
+  currency = "EUR",
+  taxesAndFees = [],
+  extra = {},
+} = {}) {
+  return {
+    data: identities.map((hotelId) => ({
+      hotelId,
+      rates: [{ offerRetailRate: { amount, currency }, taxesAndFees }],
+    })),
+    ...extra,
+  };
+}
+
+function canaryNormalized(role, payload = canaryPayload()) {
+  const search = buildSplitR2LiteApiCanaryPlan().searches.find((entry) => entry.searchRole === role);
+  return normalizeSplitR2LiteApiCanaryResponse(search, payload, KEY, 200);
+}
+
+test("74 exact canary binding is full midpoint prefix suffix", () => {
+  const plan = buildSplitR2LiteApiCanaryPlan();
+  assert.equal(plan.breakpointOrdinal, SPLIT_R2_LITEAPI_CANARY_BREAKPOINT);
+  assert.deepEqual(plan.searches.map((entry) => [entry.searchRole, entry.checkin, entry.checkout]), [
+    ["FULL_STAY", "2026-11-30", "2026-12-14"],
+    ["PREFIX", "2026-11-30", "2026-12-07"],
+    ["SUFFIX", "2026-12-07", "2026-12-14"],
+  ]);
+});
+
+test("75 canary is disabled by default before credential read", () => {
+  let reads = 0;
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight({ credentialReader: () => { reads += 1; } }), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("76 credentials alone do not enable canary", () => {
+  let reads = 0;
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight({ credentialsPresent: true, credentialReader: () => { reads += 1; } }), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("77 incomplete compact and budget flags block before credentials", () => {
+  let reads = 0;
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ compact: false, credentialReader: () => { reads += 1; } })), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("78 non Sandbox environment and production fallback are blocked", () => {
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ environment: "LITEAPI_PRODUCTION" })), /before-credentials/);
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ productionFallback: true })), /before-credentials/);
+});
+
+test("79 exact LiteAPI hostname and HTTPS are mandatory", () => {
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ hostname: "api.liteapi.travel.example" })), /before-credentials/);
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ protocol: "http:" })), /before-credentials/);
+  assert.equal(SPLIT_R2_LITEAPI_SANDBOX_BASE_URL, "https://api.liteapi.travel/v3.0");
+});
+
+test("80 scenario and breakpoint drift block before credentials", () => {
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ scenarioOrdinal: 2 })), /before-credentials/);
+  assert.throws(() => assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ breakpointOrdinal: 2 })), /before-credentials/);
+});
+
+test("81 exact canary preflight reads one valid Sandbox credential", () => {
+  let reads = 0;
+  const result = assertSplitR2LiteApiCanaryPreflight(canaryPreflight({ credentialReader: () => { reads += 1; return "sand_synthetic_test_key"; } }));
+  assert.equal(result.credentialsAccessed, true);
+  assert.equal(reads, 1);
+});
+
+test("82 role budgets allow exactly three requests and block the fourth", () => {
+  const counter = createSplitR2LiteApiCanaryCounter();
+  counter.reserve("FULL_STAY");
+  counter.reserve("PREFIX");
+  counter.reserve("SUFFIX");
+  assert.equal(counter.snapshot().total, 3);
+  assert.throws(() => counter.reserve("SUFFIX"), /budget-exceeded/);
+});
+
+test("83 endpoint roles other than the three rates windows are blocked", () => {
+  const counter = createSplitR2LiteApiCanaryCounter();
+  for (const role of ["AUTH", "DETAILS", "RECHECK", "PREBOOK", "BOOKING", "PAGINATION", "CONTINUATION"]) {
+    assert.throws(() => counter.reserve(role), /role-forbidden/);
+  }
+  assert.equal(SPLIT_R2_LITEAPI_RATES_PATH, "/hotels/rates");
+});
+
+test("84 request body derives only from canonical binding", () => {
+  const search = buildSplitR2LiteApiCanaryPlan().searches[0];
+  const body = createSplitR2LiteApiCanaryRequestBody(search, "synthetic");
+  assert.equal(body.checkin, search.checkin);
+  assert.equal(body.checkout, search.checkout);
+  assert.equal(body.cityName, "Milano");
+  assert.deepEqual(body.occupancies, [{ adults: 2, children: [] }]);
+  assert.throws(() => createSplitR2LiteApiCanaryRequestBody({ ...search, checkout: "2026-12-13" }, "synthetic"), /not-canonical/);
+});
+
+test("85 monotonic limiter waits through an early wake and never weakens 1000ms", async () => {
+  let now = 0;
+  const waits = [];
+  const limiter = createSplitR2MonotonicLimiter({
+    monotonicNow: () => now,
+    sleeper: async (milliseconds) => { waits.push(milliseconds); now += waits.length === 1 ? milliseconds - 3 : milliseconds; },
+  });
+  limiter.markStarted();
+  await limiter.ready();
+  limiter.markStarted();
+  assert.equal(now >= 1_000, true);
+  assert.equal(waits.length >= 2, true);
+  assert.equal(limiter.snapshot().minimumObservedRequestIntervalMs >= 1_000, true);
+});
+
+test("86 included mandatory tax is known and not added twice", () => {
+  const result = canaryNormalized("FULL_STAY", canaryPayload({
+    taxesAndFees: [{ amount: "10.00", currency: "EUR", included: true }],
+  }));
+  assert.equal(result.diagnostics.knownIncludedTaxOfferCount, 2);
+  assert.equal(result.deduplicatedOffers[0].totalMinorUnits, 10_000);
+});
+
+test("87 excluded mandatory tax is added once", () => {
+  const result = canaryNormalized("FULL_STAY", canaryPayload({ identities: ["aa"],
+    taxesAndFees: [{ amount: "10.00", currency: "EUR", included: false }],
+  }));
+  assert.equal(result.diagnostics.knownExcludedTaxOfferCount, 1);
+  assert.equal(result.deduplicatedOffers[0].totalMinorUnits, 11_000);
+});
+
+test("88 known pay at property component is counted and added once", () => {
+  const result = canaryNormalized("FULL_STAY", canaryPayload({ identities: ["aa"],
+    taxesAndFees: [{ amount: "8.00", currency: "EUR", included: false, payAtProperty: true }],
+  }));
+  assert.equal(result.diagnostics.knownMandatoryPayAtPropertyOfferCount, 1);
+  assert.equal(result.snapshot.offers[0].payAtPropertyMandatoryMinorUnits, 800);
+  assert.equal(result.snapshot.offers[0].totalMinorUnits, 10_800);
+});
+
+test("89 missing or malformed mandatory components fail closed", () => {
+  const missing = canaryNormalized("FULL_STAY", { data: [{ hotelId: "aa", rates: [{ offerRetailRate: { amount: "100.00", currency: "EUR" } }] }] });
+  const malformed = canaryNormalized("FULL_STAY", canaryPayload({ identities: ["aa"], taxesAndFees: [{ amount: "10.00", currency: "EUR" }] }));
+  assert.equal(missing.diagnostics.unknownMandatoryComponentOfferCount, 1);
+  assert.equal(malformed.diagnostics.unknownMandatoryComponentOfferCount, 1);
+  assert.equal(missing.deduplicatedOffers.length, 0);
+});
+
+test("90 missing wrong and invalid currency fail closed without persisting raw value", () => {
+  const missing = canaryNormalized("FULL_STAY", canaryPayload({ identities: ["aa"], currency: null }));
+  const wrong = canaryNormalized("FULL_STAY", canaryPayload({ identities: ["aa"], currency: "ZZZ" }));
+  const invalid = canaryNormalized("FULL_STAY", canaryPayload({ identities: ["aa"], currency: 7 }));
+  assert.equal(missing.diagnostics.missingCurrencyCount, 1);
+  assert.equal(wrong.diagnostics.nonExpectedCurrencyCount, 1);
+  assert.equal(invalid.diagnostics.invalidCurrencyTypeCount, 1);
+  assert.equal(JSON.stringify(wrong).includes("ZZZ"), false);
+});
+
+test("91 non offerRetailRate price fallback is prohibited", () => {
+  const payload = { data: [{ hotelId: "aa", rates: [{ totalPrice: "100.00", taxesAndFees: [] }] }] };
+  const result = canaryNormalized("FULL_STAY", payload);
+  assert.equal(result.diagnostics.numericTotalPriceEligibleCount, 0);
+  assert.equal(result.deduplicatedOffers.length, 0);
+});
+
+test("92 pagination or continuation signal makes collection incomparable", () => {
+  const result = canaryNormalized("FULL_STAY", canaryPayload({ extra: { hasMore: true } }));
+  assert.equal(result.boundedSnapshotUsable, false);
+  assert.equal(result.comparabilityClassification, "INCOMPARABLE_COLLECTION");
+});
+
+test("93 fake canary provides baseline and a distinct-property pair", () => {
+  const receipt = runSplitR2FakeLiteApiCanary();
+  assert.equal(receipt.status, "PASS");
+  assert.equal(receipt.evaluation.fullStayBaselineAvailable, true);
+  assert.equal(receipt.evaluation.distinctPropertyPairAvailable, true);
+  assert.equal(receipt.failureClassification, "LITEAPI_CONTRACT_CANARY_COMPARABLE");
+});
+
+test("94 an empty segment makes the canary inventory-inconclusive", () => {
+  const plan = buildSplitR2LiteApiCanaryPlan();
+  const results = plan.searches.map((search) => normalizeSplitR2LiteApiCanaryResponse(
+    search,
+    search.searchRole === "SUFFIX" ? { data: [] } : canaryPayload(),
+    KEY,
+    200
+  ));
+  const receipt = buildSplitR2LiteApiCanaryReceipt({
+    sourceSha: "a".repeat(40), results,
+    http: { FULL_STAY: 1, PREFIX: 1, SUFFIX: 1, total: 3, maxObservedConcurrency: 1 },
+    limiter: { minimumObservedRequestIntervalMs: 1_000 },
+  });
+  assert.equal(receipt.status, "INCONCLUSIVE");
+  assert.equal(receipt.evaluation.distinctPropertyPairAvailable, false);
+});
+
+test("95 compact canary receipt is deterministic single-line and versioned", () => {
+  const receipt = runSplitR2FakeLiteApiCanary();
+  const first = serializeSplitR2LiteApiCanaryReceipt(receipt);
+  const second = serializeSplitR2LiteApiCanaryReceipt(runSplitR2FakeLiteApiCanary());
+  assert.equal(first.json, second.json);
+  assert.equal(first.json.includes("\n"), false);
+  assert.equal(JSON.parse(first.json).receiptVersion, SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION);
+  assert.equal(first.byteLength < SPLIT_R2_LITEAPI_CANARY_COMPACT_MAX_UTF8_BYTES, true);
+});
+
+test("96 compact canary oversize fails without truncation", () => {
+  assert.throws(
+    () => serializeSplitR2LiteApiCanaryReceipt({ receiptVersion: SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION, padding: "x".repeat(8_100) }),
+    SplitR2CompactReceiptError
+  );
+});
+
+test("97 compact output excludes raw identifiers tax labels payloads and secrets", () => {
+  const json = serializeSplitR2LiteApiCanaryReceipt(runSplitR2FakeLiteApiCanary()).json;
+  for (const prohibited of ["fake-hotel", "local taxes", "propertyIdentity", "X-Api-Key", "sand_synthetic", "secret-test-value"]) {
+    assert.equal(json.toLowerCase().includes(prohibited.toLowerCase()), false);
+  }
+});
+
+test("98 fake canary accounts exactly three fake HTTP and zero real HTTP", () => {
+  const receipt = runSplitR2FakeLiteApiCanary();
+  assert.deepEqual([receipt.http.fullStay, receipt.http.prefix, receipt.http.suffix, receipt.http.total], [1, 1, 1, 3]);
+  assert.equal(receipt.http.liteApiProduction, 0);
+  assert.equal(receipt.http.routeStackSandbox, 0);
+});
+
+test("99 RouteStack Sandbox and public transports remain distinct held capabilities", () => {
+  const result = assertSplitR2RouteStackOfflinePreflight();
+  assert.equal(result.sandboxRealTransportStatus, "LIVE_HOLD");
+  assert.equal(result.publicProductionTransportStatus, "LIVE_HOLD");
+  assert.equal(result.environmentsSeparated, true);
+  assert.equal(result.hostnamesInterchangeable, false);
+  assert.equal(result.productionFallback, false);
+  assert.equal(result.publicRuntimeChanged, false);
+});
+
+test("100 canary CLI accepts only the exact six-argument contract", () => {
+  const args = [
+    "--r2-liteapi-sandbox-contract-canary", "--compact", "--environment=LITEAPI_SANDBOX",
+    "--ack-http-budget=3", `--expected-head=${"a".repeat(40)}`,
+    `--expected-dirty-fingerprint=${"b".repeat(64)}`,
+  ];
+  assert.equal(parseSplitR2LiteApiCanaryArguments(args).expectedHead, "a".repeat(40));
+  assert.throws(() => parseSplitR2LiteApiCanaryArguments(args.slice(0, 5)), /cli-contract-invalid/);
+});
+
+test("101 fake native canary transport performs three sequential POST rates calls", async () => {
+  let now = 0;
+  const calls = [];
+  const receipt = await runSplitR2LiteApiCanary({
+    sourceSha: "a".repeat(40),
+    apiKey: "sand_synthetic_test_key",
+    monotonicNow: () => now,
+    sleeper: async (milliseconds) => { now += milliseconds; },
+    fetchImplementation: async (url, options) => {
+      calls.push({ url: String(url), options });
+      return {
+        status: 200,
+        redirected: false,
+        url: String(url),
+        headers: { get: () => "application/json" },
+        text: async () => JSON.stringify(canaryPayload()),
+      };
+    },
+  });
+  assert.equal(receipt.status, "PASS");
+  assert.equal(calls.length, 3);
+  assert.equal(calls.every((entry) => entry.url === "https://api.liteapi.travel/v3.0/hotels/rates"), true);
+  assert.equal(calls.every((entry) => entry.options.method === "POST" && entry.options.redirect === "error"), true);
+  assert.equal(receipt.http.minimumObservedRequestIntervalMs >= 1_000, true);
+  assert.equal(receipt.http.maxObservedConcurrency, 1);
 });

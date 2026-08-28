@@ -1,4 +1,7 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { stableStringifySplitF0 } from "./run-split-f0-read-only-collector.mjs";
@@ -17,12 +20,18 @@ export const SPLIT_R2_PROVIDER_NEUTRAL_CONTRACT_VERSION =
 export const SPLIT_R2_RECEIPT_VERSION =
   "stayopti.split-r2.multi-scenario-reproducibility@1";
 export const SPLIT_R2_COMPACT_MAX_UTF8_BYTES = 16_000;
+export const SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION =
+  "stayopti.split-r2.liteapi-contract-canary@1";
+export const SPLIT_R2_LITEAPI_CANARY_COMPACT_MAX_UTF8_BYTES = 8_000;
+export const SPLIT_R2_LITEAPI_SANDBOX_BASE_URL = "https://api.liteapi.travel/v3.0";
+export const SPLIT_R2_LITEAPI_RATES_PATH = "/hotels/rates";
+export const SPLIT_R2_LITEAPI_CANARY_BREAKPOINT = 7;
 export const SPLIT_R2_MIN_REQUEST_START_INTERVAL_MS = 1_000;
 export const SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS = 10_000;
 export const SPLIT_R2_MATERIAL_BASIS_POINTS = 1_000;
 export const SPLIT_R2_ROUTE_STACK_SUBSET = Object.freeze([1, 3, 5]);
 export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
-  LITEAPI_SANDBOX_CANARY: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
+  LITEAPI_SANDBOX_CANARY: "EXACT_3_HTTP_EXPLICIT_FLAG_AND_COMPACT_REQUIRED",
   LITEAPI_SANDBOX_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
   ROUTESTACK_SANDBOX_CANARY: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
   ROUTESTACK_SANDBOX_CAMPAIGN: "NOT_IMPLEMENTED_OR_LIVE_HOLD",
@@ -1010,6 +1019,808 @@ export function buildSplitR2CompactReceipt(mode, campaign = null) {
   return receipt;
 }
 
+const SPLIT_R2_LITEAPI_CANARY_LIMITS = Object.freeze({
+  FULL_STAY: 1,
+  PREFIX: 1,
+  SUFFIX: 1,
+  total: 3,
+});
+
+const SPLIT_R2_SCOPE_PATHS = Object.freeze([
+  "docs/engine-v3/split-r2-multi-scenario-liteapi-validation-plan.md",
+  "scripts/run-split-r2-multi-scenario-validation.mjs",
+  "tests/lifecycle/splitR2MultiScenarioValidation.test.mjs",
+]);
+
+function isPlainRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function valueAtPath(value, segments) {
+  let current = value;
+  for (const segment of segments) {
+    if (!isPlainRecord(current) && !Array.isArray(current)) return undefined;
+    current = current[segment];
+  }
+  return current;
+}
+
+function firstStringAtPaths(value, paths) {
+  for (const segments of paths) {
+    const candidate = valueAtPath(value, segments);
+    if (typeof candidate === "string" && candidate.trim().length > 0) return candidate.trim();
+    if (typeof candidate === "number" && Number.isFinite(candidate)) return String(candidate);
+  }
+  return null;
+}
+
+function exactMinorUnits(value) {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (!/^[0-9]+(?:\.[0-9]{1,2})?$/u.test(normalized)) return null;
+    const [major, fraction = ""] = normalized.split(".");
+    const result = Number(major) * 100 + Number(fraction.padEnd(2, "0"));
+    return Number.isSafeInteger(result) && result > 0 ? result : null;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  const scaled = value * 100;
+  const rounded = Math.round(scaled);
+  if (!Number.isSafeInteger(rounded) || Math.abs(scaled - rounded) > 1e-7) return null;
+  return rounded;
+}
+
+function exactNonNegativeMinorUnits(value) {
+  if (value === 0 || value === "0" || value === "0.0" || value === "0.00") return 0;
+  return exactMinorUnits(value);
+}
+
+function extractLiteApiCanaryRecords(payload) {
+  if (Array.isArray(payload)) return payload.filter(isPlainRecord);
+  if (!isPlainRecord(payload)) return [];
+  const candidates = [
+    payload.data,
+    payload.data?.rates,
+    payload.data?.results,
+    payload.data?.items,
+    payload.data?.hotels,
+    payload.rates,
+    payload.results,
+    payload.items,
+    payload.hotels,
+    payload.response,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate.filter(isPlainRecord);
+    if (isPlainRecord(candidate)) {
+      for (const nested of [candidate.rates, candidate.results, candidate.items, candidate.hotels, candidate.data]) {
+        if (Array.isArray(nested)) return nested.filter(isPlainRecord);
+      }
+    }
+  }
+  return [];
+}
+
+function liteApiCanaryPropertyIdentity(record) {
+  const hotel = [record.hotel, record.hotelData, record.hotelInfo, record.property, record.accommodation]
+    .find(isPlainRecord) ?? record;
+  return firstStringAtPaths(record, [
+    ["hotelId"], ["hotelID"], ["hotel_id"], ["id"], ["hotel", "id"], ["hotel", "hotelId"],
+    ["hotelData", "id"], ["hotelData", "hotelId"],
+  ]) ?? firstStringAtPaths(hotel, [["hotelId"], ["hotelID"], ["hotel_id"], ["id"], ["code"]]);
+}
+
+function mergeLiteApiCanaryRate(room, rate) {
+  return { ...room, ...rate };
+}
+
+function extractLiteApiCanaryRates(record) {
+  const collected = [];
+  for (const roomContainer of [record.roomTypes, record.rooms, record.roomRates, record.availableRooms, record.offers]) {
+    if (!Array.isArray(roomContainer)) continue;
+    for (const room of roomContainer.filter(isPlainRecord)) {
+      if (room.offerRetailRate !== undefined) {
+        collected.push(room);
+        continue;
+      }
+      for (const rates of [room.rates, room.rate, room.offers, room.availableRates, room.roomRates]) {
+        const list = Array.isArray(rates) ? rates : isPlainRecord(rates) ? [rates] : [];
+        for (const rate of list.filter(isPlainRecord)) collected.push(mergeLiteApiCanaryRate(room, rate));
+      }
+    }
+  }
+  for (const rates of [record.rates, record.rate, record.availableRates, record.roomRates]) {
+    const list = Array.isArray(rates) ? rates : isPlainRecord(rates) ? [rates] : [];
+    for (const rate of list.filter(isPlainRecord)) collected.push(rate);
+  }
+  if (collected.length === 0 && record.offerRetailRate !== undefined) collected.push(record);
+  return collected;
+}
+
+function booleanOrNull(value) {
+  if (value === true || value === false) return value;
+  return null;
+}
+
+function paymentTimingCategory(value) {
+  const values = [value.paymentType, value.paymentTiming, value.collectType]
+    .filter((entry) => typeof entry === "string")
+    .map((entry) => entry.toLowerCase());
+  if (value.payAtProperty === true || value.payAtHotel === true || values.some((entry) => /pay.?at.?(property|hotel)|property.?pay/u.test(entry))) {
+    return "PAY_AT_PROPERTY";
+  }
+  if (values.some((entry) => /pay.?now|prepaid|merchant/u.test(entry))) return "PAY_NOW";
+  return "UNSPECIFIED";
+}
+
+function liteApiMandatoryComponents(rate, expectedCurrency) {
+  const sources = Array.isArray(rate.rates) && rate.rates.some(isPlainRecord)
+    ? rate.rates.filter(isPlainRecord)
+    : [rate];
+  const components = [];
+  let explicitTaxContainerCount = 0;
+  for (const source of sources) {
+    const directPresent = Object.hasOwn(source, "taxesAndFees");
+    const nestedPresent = isPlainRecord(source.retailRate) && Object.hasOwn(source.retailRate, "taxesAndFees");
+    if (!directPresent && !nestedPresent) continue;
+    explicitTaxContainerCount += 1;
+    const rawTaxes = directPresent ? source.taxesAndFees : source.retailRate.taxesAndFees;
+    if (!Array.isArray(rawTaxes)) return { complete: false, components: [], included: false, excluded: false, payAtProperty: false };
+    for (const tax of rawTaxes) {
+      if (!isPlainRecord(tax) || tax.mandatory === false) continue;
+      const amount = exactNonNegativeMinorUnits(tax.amount ?? tax.value ?? tax.total);
+      const currency = tax.currency;
+      const included = booleanOrNull(tax.included ?? tax.includedInPrice ?? tax.taxIncluded);
+      if (amount === null || typeof currency !== "string" || currency !== expectedCurrency || included === null) {
+        return { complete: false, components: [], included: false, excluded: false, payAtProperty: false };
+      }
+      components.push({
+        mandatory: true,
+        known: true,
+        amountMinorUnits: amount,
+        currency: expectedCurrency,
+        included,
+        payAtProperty: paymentTimingCategory({ ...source, ...tax }) === "PAY_AT_PROPERTY",
+      });
+    }
+  }
+  if (explicitTaxContainerCount !== sources.length) {
+    return { complete: false, components: [], included: false, excluded: false, payAtProperty: false };
+  }
+  return {
+    complete: true,
+    components,
+    included: components.some((entry) => entry.included),
+    excluded: components.some((entry) => !entry.included),
+    payAtProperty: components.some((entry) => entry.payAtProperty),
+  };
+}
+
+function continuationOrPaginationSignalPresent(payload) {
+  if (!isPlainRecord(payload)) return false;
+  if (payload.hasMore === true || payload.truncated === true || payload.continuation !== undefined ||
+      payload.nextPageToken !== undefined || payload.nextToken !== undefined) return true;
+  for (const container of [payload.pagination, payload.meta]) {
+    if (isPlainRecord(container) && (container.hasMore === true || container.truncated === true ||
+        container.next !== undefined || container.continuation !== undefined || container.nextPageToken !== undefined)) return true;
+  }
+  return false;
+}
+
+export function normalizeSplitR2LiteApiCanaryResponse(search, payload, ephemeralKey, httpStatus = 200) {
+  const records = extractLiteApiCanaryRecords(payload);
+  const rawRates = records.flatMap((record) =>
+    extractLiteApiCanaryRates(record).map((rate) => ({ record, rate }))
+  );
+  const diagnostics = {
+    rawResultCount: rawRates.length,
+    normalizableResultCount: 0,
+    identityEligibleCount: 0,
+    numericTotalPriceEligibleCount: 0,
+    expectedCurrencyMatchCount: 0,
+    missingCurrencyCount: 0,
+    nonExpectedCurrencyCount: 0,
+    invalidCurrencyTypeCount: 0,
+    completeMandatoryComponentOfferCount: 0,
+    unknownMandatoryComponentOfferCount: 0,
+    knownIncludedTaxOfferCount: 0,
+    knownExcludedTaxOfferCount: 0,
+    knownMandatoryPayAtPropertyOfferCount: 0,
+    preDedupEconomicOfferCount: 0,
+    duplicatePropertyOffersRemovedCount: 0,
+    finalDistinctComparableOfferCount: 0,
+  };
+  const offers = [];
+  for (const { record, rate } of rawRates) {
+    diagnostics.normalizableResultCount += 1;
+    const propertyIdentity = liteApiCanaryPropertyIdentity(record);
+    if (!propertyIdentity) continue;
+    diagnostics.identityEligibleCount += 1;
+    const amountMinor = exactMinorUnits(valueAtPath(rate, ["offerRetailRate", "amount"]));
+    if (amountMinor === null) continue;
+    diagnostics.numericTotalPriceEligibleCount += 1;
+    const currency = valueAtPath(rate, ["offerRetailRate", "currency"]);
+    if (currency === undefined || currency === null || currency === "") {
+      diagnostics.missingCurrencyCount += 1;
+      continue;
+    }
+    if (typeof currency !== "string") {
+      diagnostics.invalidCurrencyTypeCount += 1;
+      continue;
+    }
+    if (currency !== search.expectedCurrency) {
+      diagnostics.nonExpectedCurrencyCount += 1;
+      continue;
+    }
+    diagnostics.expectedCurrencyMatchCount += 1;
+    const mandatory = liteApiMandatoryComponents(rate, search.expectedCurrency);
+    if (!mandatory.complete) {
+      diagnostics.unknownMandatoryComponentOfferCount += 1;
+      continue;
+    }
+    diagnostics.completeMandatoryComponentOfferCount += 1;
+    if (mandatory.included) diagnostics.knownIncludedTaxOfferCount += 1;
+    if (mandatory.excluded) diagnostics.knownExcludedTaxOfferCount += 1;
+    if (mandatory.payAtProperty) diagnostics.knownMandatoryPayAtPropertyOfferCount += 1;
+    diagnostics.preDedupEconomicOfferCount += 1;
+    offers.push({
+      propertyIdentity,
+      occupancy: { rooms: 1, adults: 2, children: 0 },
+      offerRetailRate: {
+        totalMinorUnits: amountMinor,
+        currency: search.expectedCurrency,
+        semantics: "SEARCH_WINDOW_TOTAL_CONFIRMED",
+      },
+      mandatoryComponentsComplete: true,
+      mandatoryComponents: mandatory.components,
+      cancellationCategory: "UNAVAILABLE",
+    });
+  }
+  const acquisition = {
+    environment: "LITEAPI_SANDBOX",
+    productionFallback: false,
+    httpValid: httpStatus === 200,
+    jsonValid: isPlainRecord(payload) || Array.isArray(payload),
+    collectionComplete: !continuationOrPaginationSignalPresent(payload),
+    offers,
+  };
+  const snapshot = adaptLiteApiSearchSnapshotR2(search, acquisition, ephemeralKey);
+  const deduplicated = splitR1NightlyOracleOffersForState(searchState(snapshot), search.expectedCurrency);
+  diagnostics.duplicatePropertyOffersRemovedCount = offers.length - deduplicated.length;
+  diagnostics.finalDistinctComparableOfferCount = deduplicated.length;
+  let zeroFinalOffersPrimaryReason = "NOT_APPLICABLE";
+  if (deduplicated.length === 0) {
+    zeroFinalOffersPrimaryReason = diagnostics.rawResultCount === 0
+      ? "NO_RAW_RESULTS"
+      : diagnostics.identityEligibleCount === 0
+        ? "NO_IDENTITY_ELIGIBLE_RESULTS"
+        : diagnostics.numericTotalPriceEligibleCount === 0
+          ? "NO_NUMERIC_TOTAL_PRICE_RESULTS"
+          : diagnostics.expectedCurrencyMatchCount === 0
+            ? "NO_EXPECTED_CURRENCY_RESULTS"
+            : diagnostics.completeMandatoryComponentOfferCount === 0
+              ? "MANDATORY_COMPONENTS_UNKNOWN"
+              : "OTHER_ALLOWLISTED_ECONOMIC_GATE";
+  }
+  return {
+    httpStatus,
+    boundedSnapshotUsable: snapshot.boundedSnapshotUsable,
+    collectionClassification: snapshot.collectionClassification,
+    comparabilityClassification: snapshot.comparabilityClassification,
+    economicEligibilityState: deduplicated.length > 0 ? "ECONOMIC_OFFERS_AVAILABLE" : zeroFinalOffersPrimaryReason,
+    zeroFinalOffersPrimaryReason,
+    diagnostics,
+    snapshot,
+    deduplicatedOffers: deduplicated,
+  };
+}
+
+export function buildSplitR2LiteApiCanaryPlan() {
+  const scenario = SPLIT_R2_FROZEN_SCENARIOS[0];
+  const plan = buildSplitR2ScenarioPlan(scenario);
+  const searches = [
+    plan.logicalSearches.find((entry) => entry.searchRole === "FULL_STAY"),
+    plan.logicalSearches.find((entry) => entry.searchRole === "PREFIX" && entry.breakpointOrdinal === SPLIT_R2_LITEAPI_CANARY_BREAKPOINT),
+    plan.logicalSearches.find((entry) => entry.searchRole === "SUFFIX" && entry.breakpointOrdinal === SPLIT_R2_LITEAPI_CANARY_BREAKPOINT),
+  ];
+  if (searches.some((entry) => !entry) || searches[0].checkin !== "2026-11-30" ||
+      searches[0].checkout !== "2026-12-14" || searches[1].checkout !== "2026-12-07" ||
+      searches[2].checkin !== "2026-12-07") {
+    throw new Error("split-r2-liteapi-canary-canonical-binding-drift");
+  }
+  return Object.freeze({ scenario, breakpointOrdinal: 7, searches: Object.freeze(searches) });
+}
+
+export function createSplitR2LiteApiCanaryCounter() {
+  const counts = { FULL_STAY: 0, PREFIX: 0, SUFFIX: 0, total: 0 };
+  let active = 0;
+  let maxObservedConcurrency = 0;
+  return {
+    reserve(role) {
+      if (!Object.hasOwn(SPLIT_R2_LITEAPI_CANARY_LIMITS, role) || role === "total") {
+        throw new Error("split-r2-liteapi-canary-http-role-forbidden");
+      }
+      if (counts[role] + 1 > SPLIT_R2_LITEAPI_CANARY_LIMITS[role] ||
+          counts.total + 1 > SPLIT_R2_LITEAPI_CANARY_LIMITS.total) {
+        throw new Error("split-r2-liteapi-canary-http-budget-exceeded");
+      }
+      counts[role] += 1;
+      counts.total += 1;
+    },
+    enterTransport() {
+      active += 1;
+      maxObservedConcurrency = Math.max(maxObservedConcurrency, active);
+      if (active > 1) throw new Error("split-r2-liteapi-canary-concurrency-exceeded");
+    },
+    leaveTransport() {
+      active -= 1;
+      if (active < 0) throw new Error("split-r2-liteapi-canary-concurrency-ledger-invalid");
+    },
+    snapshot() {
+      return { ...counts, retries: 0, redirects: 0, maxObservedConcurrency };
+    },
+  };
+}
+
+export function createSplitR2MonotonicLimiter({
+  monotonicNow = () => performance.now(),
+  sleeper = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  minimumIntervalMs = SPLIT_R2_MIN_REQUEST_START_INTERVAL_MS,
+} = {}) {
+  if (minimumIntervalMs < 1_000) throw new Error("split-r2-liteapi-canary-rate-limit-too-low");
+  let priorStart = null;
+  let minimumObserved = null;
+  return {
+    async ready() {
+      if (priorStart === null) return;
+      let cycles = 0;
+      let waited = 0;
+      while (true) {
+        const elapsed = monotonicNow() - priorStart;
+        if (elapsed >= minimumIntervalMs) return;
+        if (cycles >= 10 || waited >= 5_000) throw new Error("split-r2-rate-limit-clock-did-not-progress");
+        const delay = Math.ceil(minimumIntervalMs - elapsed) + 2;
+        if (waited + delay > 5_000) throw new Error("split-r2-rate-limit-clock-did-not-progress");
+        cycles += 1;
+        waited += delay;
+        await sleeper(delay);
+      }
+    },
+    markStarted() {
+      const now = monotonicNow();
+      if (priorStart !== null) {
+        const interval = now - priorStart;
+        if (interval < minimumIntervalMs) throw new Error("split-r2-liteapi-canary-rate-interval-undershoot");
+        minimumObserved = minimumObserved === null ? interval : Math.min(minimumObserved, interval);
+      }
+      priorStart = now;
+    },
+    snapshot() {
+      return { minimumObservedRequestIntervalMs: minimumObserved };
+    },
+  };
+}
+
+export function assertSplitR2LiteApiCanaryPreflight(options = {}) {
+  const credentialReader = options.credentialReader ?? (() => null);
+  const exact = options.mode === "LITEAPI_SANDBOX_CONTRACT_CANARY" &&
+    options.compact === true && options.environment === "LITEAPI_SANDBOX" &&
+    options.ackHttpBudget === 3 && options.hostname === "api.liteapi.travel" &&
+    options.protocol === "https:" && options.productionFallback === false &&
+    options.scenarioOrdinal === 1 && options.breakpointOrdinal === 7 &&
+    options.fullStayMax === 1 && options.prefixMax === 1 && options.suffixMax === 1 &&
+    options.totalMax === 3 && options.otherHttpMax === 0 && options.retries === 0 &&
+    options.redirects === 0 && options.concurrency === 1 && options.minimumIntervalMs >= 1_000 &&
+    options.repositoryGatePassed === true;
+  if (!exact) throw new Error("split-r2-liteapi-canary-preflight-failed-before-credentials");
+  const plan = buildSplitR2LiteApiCanaryPlan();
+  if (plan.searches.length !== 3) throw new Error("split-r2-liteapi-canary-plan-invalid");
+  const credential = credentialReader();
+  if (typeof credential !== "string" || !credential.startsWith("sand_") || credential.length <= 5) {
+    throw new Error("split-r2-liteapi-sandbox-credential-invalid");
+  }
+  return { plan, credential, credentialsAccessed: true };
+}
+
+export function createSplitR2LiteApiCanaryRequestBody(search, sessionNonce = "canary") {
+  const matchesCanonical = buildSplitR2LiteApiCanaryPlan().searches.some((entry) =>
+    entry.logicalSearchId === search?.logicalSearchId &&
+    entry.scenarioOrdinal === search?.scenarioOrdinal &&
+    entry.searchRole === search?.searchRole &&
+    entry.breakpointOrdinal === search?.breakpointOrdinal &&
+    entry.checkin === search?.checkin && entry.checkout === search?.checkout &&
+    entry.durationNights === search?.durationNights && entry.destination === search?.destination &&
+    entry.country === search?.country && entry.expectedCurrency === search?.expectedCurrency &&
+    entry.coordinates?.latitude === search?.coordinates?.latitude &&
+    entry.coordinates?.longitude === search?.coordinates?.longitude &&
+    entry.occupancy?.rooms === search?.occupancy?.rooms &&
+    entry.occupancy?.adults === search?.occupancy?.adults &&
+    entry.occupancy?.children === search?.occupancy?.children
+  );
+  if (!matchesCanonical) {
+    throw new Error("split-r2-liteapi-canary-search-not-canonical");
+  }
+  return {
+    checkin: search.checkin,
+    checkout: search.checkout,
+    currency: "EUR",
+    guestNationality: "IT",
+    occupancies: [{ adults: 2, children: [] }],
+    limit: 80,
+    timeout: 12,
+    maxRatesPerHotel: 3,
+    roomMapping: true,
+    includeHotelData: true,
+    sessionId: `splitr2_${sessionNonce}`,
+    cityName: "Milano",
+    countryCode: "IT",
+  };
+}
+
+function buildCanarySearchReceipt(result) {
+  return {
+    role: result.snapshot.searchRole,
+    httpStatus: result.httpStatus,
+    collectionClassification: result.collectionClassification,
+    comparabilityClassification: result.comparabilityClassification,
+    ...result.diagnostics,
+    economicEligibilityState: result.economicEligibilityState,
+    zeroFinalOffersPrimaryReason: result.zeroFinalOffersPrimaryReason,
+  };
+}
+
+function aggregateCanaryTaxes(results) {
+  return {
+    completeMandatoryComponentResults: sum(results.map((entry) => entry.diagnostics.completeMandatoryComponentOfferCount)),
+    unknownMandatoryComponentOffers: sum(results.map((entry) => entry.diagnostics.unknownMandatoryComponentOfferCount)),
+    knownIncludedTaxOffers: sum(results.map((entry) => entry.diagnostics.knownIncludedTaxOfferCount)),
+    knownExcludedTaxOffers: sum(results.map((entry) => entry.diagnostics.knownExcludedTaxOfferCount)),
+    knownMandatoryPayAtPropertyOffers: sum(results.map((entry) => entry.diagnostics.knownMandatoryPayAtPropertyOfferCount)),
+    doubleCountingDetected: false,
+  };
+}
+
+export function buildSplitR2LiteApiCanaryReceipt({ sourceSha, results, http, limiter, failureClassification = null }) {
+  const byRole = new Map(results.map((entry) => [entry.snapshot.searchRole, entry]));
+  const full = byRole.get("FULL_STAY");
+  const prefix = byRole.get("PREFIX");
+  const suffix = byRole.get("SUFFIX");
+  const baseline = full?.deduplicatedOffers?.[0] ?? null;
+  const pair = prefix && suffix
+    ? splitR1NightlyOracleBestPair(prefix.deduplicatedOffers, suffix.deduplicatedOffers, false)
+    : null;
+  const comparable = results.length === 3 && results.every((entry) =>
+    entry.httpStatus === 200 && entry.boundedSnapshotUsable &&
+    entry.comparabilityClassification === "COMPARABLE_COMPLETE_TOTAL"
+  ) && baseline !== null && pair !== null;
+  const rawInventoryMissing = results.length === 3 && results.some((entry) => entry.diagnostics.rawResultCount === 0);
+  const contractBlocked = results.some((entry) => entry.diagnostics.rawResultCount > 0 &&
+    entry.comparabilityClassification !== "COMPARABLE_COMPLETE_TOTAL");
+  let economic = null;
+  if (baseline && pair) {
+    economic = classifySplitR2Saving(
+      baseline.totalMinorUnits - pair.splitTotalMinorUnits,
+      baseline.totalMinorUnits
+    );
+  }
+  const status = failureClassification || contractBlocked
+    ? "FAIL"
+    : comparable
+      ? "PASS"
+      : rawInventoryMissing || results.length === 3
+        ? "INCONCLUSIVE"
+        : "FAIL";
+  const classification = failureClassification ?? (comparable
+    ? "LITEAPI_CONTRACT_CANARY_COMPARABLE"
+    : contractBlocked
+      ? "LITEAPI_CONTRACT_INTERPRETATION_BLOCKED"
+      : "LITEAPI_CANARY_INVENTORY_OR_PAIR_INCONCLUSIVE");
+  return {
+    receiptVersion: SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION,
+    status,
+    sourceSha,
+    environment: "LITEAPI_SANDBOX",
+    hostname: "api.liteapi.travel",
+    scenarioOrdinal: 1,
+    breakpointOrdinal: 7,
+    breakpointSelection: "DETERMINISTIC_MIDPOINT_NOT_PRICE_BASED",
+    searches: results.map(buildCanarySearchReceipt),
+    http: {
+      fullStay: http.FULL_STAY,
+      prefix: http.PREFIX,
+      suffix: http.SUFFIX,
+      other: 0,
+      total: http.total,
+      totalBudget: 3,
+      retries: 0,
+      redirects: 0,
+      maxObservedConcurrency: http.maxObservedConcurrency,
+      minimumObservedRequestIntervalMs: limiter.minimumObservedRequestIntervalMs,
+      liteApiProduction: 0,
+      routeStackSandbox: 0,
+      routeStackPublicProduction: 0,
+    },
+    taxes: aggregateCanaryTaxes(results),
+    evaluation: {
+      priceSemantics: "SEARCH_WINDOW_TOTAL_CONFIRMED",
+      mandatoryComponentComparability: comparable ? "COMPLETE" : contractBlocked ? "INCOMPLETE" : "NOT_EVALUABLE",
+      fullStayBaselineAvailable: baseline !== null,
+      prefixCandidateAvailable: (prefix?.deduplicatedOffers.length ?? 0) > 0,
+      suffixCandidateAvailable: (suffix?.deduplicatedOffers.length ?? 0) > 0,
+      distinctPropertyPairAvailable: pair !== null,
+      comparabilityClassification: comparable ? "COMPARABLE_COMPLETE_TOTAL" : "NOT_EVALUABLE_OR_CONTRACT_BLOCKED",
+      rawPositiveSplit: economic ? economic.savingMinorUnits > 0 : null,
+      materialPriceSignal: economic?.materialPriceSignal ?? null,
+      savingMinorUnits: economic?.savingMinorUnits ?? null,
+      savingBasisPoints: economic?.savingBasisPoints ?? null,
+    },
+    routeStackPreflight: {
+      sandboxRealTransportStatus: "LIVE_HOLD",
+      publicProductionTransportStatus: "LIVE_HOLD",
+      environmentsSeparated: true,
+      productionFallback: false,
+      publicDedicatedFlagRequired: true,
+      publicDedicatedBudgetRequired: true,
+      publicCompactReceiptRequired: true,
+      publicContinuationMaxWithoutFutureAuthorization: 0,
+      publicRuntimeChanged: false,
+      status: "PASS",
+    },
+    boundaries: {
+      canaryEconomicEvidenceAllowed: false,
+      generalFrequencyClaimAllowed: false,
+      userUsableSplitClaimAllowed: false,
+      futureMatrixDenominatorEntry: false,
+      publicRuntimeChanged: false,
+    },
+    privacy: {
+      rawIdsInOutput: 0,
+      pseudonymListsInOutput: 0,
+      rawTaxLabelsInOutput: 0,
+      rawPayloadsInOutput: 0,
+      rawResponsesInOutput: 0,
+      crossRunLinkability: false,
+      secretValuesExposed: false,
+    },
+    failureClassification: classification,
+  };
+}
+
+export function serializeSplitR2LiteApiCanaryReceipt(receipt, maxBytes = SPLIT_R2_LITEAPI_CANARY_COMPACT_MAX_UTF8_BYTES) {
+  assertReceiptSafe(receipt);
+  const json = stableStringifySplitF0(receipt, 0);
+  const byteLength = Buffer.byteLength(json, "utf8");
+  if (/\r|\n/u.test(json)) throw new Error("split-r2-liteapi-canary-receipt-not-single-line");
+  if (byteLength > maxBytes) throw new SplitR2CompactReceiptError("split-r2-liteapi-canary-receipt-oversize", byteLength);
+  return { json, byteLength };
+}
+
+export function runSplitR2FakeLiteApiCanary() {
+  const { plan, credential } = assertSplitR2LiteApiCanaryPreflight({
+    mode: "LITEAPI_SANDBOX_CONTRACT_CANARY", compact: true, environment: "LITEAPI_SANDBOX",
+    ackHttpBudget: 3, hostname: "api.liteapi.travel", protocol: "https:", productionFallback: false,
+    scenarioOrdinal: 1, breakpointOrdinal: 7, fullStayMax: 1, prefixMax: 1, suffixMax: 1,
+    totalMax: 3, otherHttpMax: 0, retries: 0, redirects: 0, concurrency: 1,
+    minimumIntervalMs: 1_000, repositoryGatePassed: true, credentialReader: () => "sand_fake_canary",
+  });
+  void credential;
+  const counter = createSplitR2LiteApiCanaryCounter();
+  const key = Buffer.alloc(32, 0x61);
+  const results = [];
+  for (const search of plan.searches) {
+    counter.reserve(search.searchRole);
+    counter.enterTransport();
+    try {
+      const rawOffers = fakeRawOffers("LITEAPI_SANDBOX", search, plan.scenario);
+      const data = rawOffers.map((offer, index) => ({
+        hotelId: `fake-hotel-${index + 1}`,
+        rates: [{
+          offerRetailRate: {
+            amount: (offer.offerRetailRate.totalMinorUnits / 100).toFixed(2),
+            currency: "EUR",
+          },
+          taxesAndFees: [],
+        }],
+      }));
+      results.push(normalizeSplitR2LiteApiCanaryResponse(search, { data }, key, 200));
+    } finally {
+      counter.leaveTransport();
+    }
+  }
+  return buildSplitR2LiteApiCanaryReceipt({
+    sourceSha: SPLIT_R2_SOURCE_SHA,
+    results,
+    http: counter.snapshot(),
+    limiter: { minimumObservedRequestIntervalMs: 1_000 },
+  });
+}
+
+export function assertSplitR2RouteStackOfflinePreflight() {
+  return {
+    sandboxRealTransportStatus: "LIVE_HOLD",
+    publicProductionTransportStatus: "LIVE_HOLD",
+    environmentsSeparated: true,
+    hostnamesInterchangeable: false,
+    productionFallback: false,
+    sandboxCredentialsEnableProduction: false,
+    publicDedicatedFlagRequired: true,
+    publicDedicatedBudgetRequired: true,
+    publicCompactReceiptRequired: true,
+    publicContinuationMaxWithoutAuthorization: 0,
+    publicRuntimeChanged: false,
+    providerCalls: 0,
+    status: "PASS",
+  };
+}
+
+function gitText(args) {
+  return execFileSync("git", args, { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+function splitNul(value) {
+  return value.split("\0").filter(Boolean);
+}
+
+function repositoryDirtySnapshot() {
+  const staged = splitNul(execFileSync("git", ["diff", "--cached", "--name-only", "-z"], {
+    cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }));
+  const unstaged = splitNul(execFileSync("git", ["diff", "--name-only", "-z"], {
+    cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }));
+  const untracked = splitNul(execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], {
+    cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }));
+  const entries = [
+    ...unstaged.map((relativePath) => ({ category: "TRACKED_UNSTAGED", relativePath })),
+    ...untracked.map((relativePath) => ({ category: "UNTRACKED", relativePath })),
+  ].sort((left, right) => `${left.category}|${left.relativePath}`.localeCompare(`${right.category}|${right.relativePath}`));
+  const lines = entries.map(({ category, relativePath }) => {
+    const absolute = path.resolve(relativePath);
+    const stat = fs.lstatSync(absolute);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("split-r2-dirty-path-type-prohibited");
+    const digest = crypto.createHash("sha256").update(fs.readFileSync(absolute)).digest("hex");
+    return `${category}|${relativePath.replaceAll("\\", "/")}|file|${stat.size}|${digest}`;
+  });
+  return {
+    staged,
+    unstaged,
+    untracked,
+    entries,
+    fingerprint: crypto.createHash("sha256").update(lines.join("\n"), "utf8").digest("hex"),
+  };
+}
+
+export function verifySplitR2LiteApiCanaryRepositoryGate(expectedHead, expectedDirtyFingerprint) {
+  if (!/^[0-9a-f]{40}$/u.test(expectedHead) || !/^[0-9a-f]{64}$/u.test(expectedDirtyFingerprint)) {
+    throw new Error("split-r2-liteapi-canary-repository-ack-invalid");
+  }
+  if (gitText(["branch", "--show-current"]) !== "main" || gitText(["rev-parse", "HEAD"]) !== expectedHead) {
+    throw new Error("split-r2-liteapi-canary-head-mismatch");
+  }
+  const dirty = repositoryDirtySnapshot();
+  if (dirty.staged.length !== 0 || dirty.unstaged.length !== 1 || dirty.untracked.length !== 6 ||
+      dirty.entries.length !== 7 || dirty.fingerprint !== expectedDirtyFingerprint) {
+    throw new Error("split-r2-liteapi-canary-dirty-state-mismatch");
+  }
+  const prohibited = new Set([...SPLIT_R2_SCOPE_PATHS, "package.json", "package-lock.json", "server/.env"]);
+  if (dirty.entries.some((entry) => prohibited.has(entry.relativePath.replaceAll("\\", "/")))) {
+    throw new Error("split-r2-liteapi-canary-dirty-scope-overlap");
+  }
+  if (gitText(["rev-parse", "refs/remotes/origin/main"]) !== "38a7937a2c1a9dc74914ea97c679ab475feaa959") {
+    throw new Error("split-r2-liteapi-canary-origin-reference-drift");
+  }
+  if (crypto.createHash("sha256").update(fs.readFileSync("package.json")).digest("hex") !==
+      "be8465d3ab65240ee82173109a99c7269b70047ec1119bd2c5d59eae2c64c8bf" ||
+      crypto.createHash("sha256").update(fs.readFileSync("package-lock.json")).digest("hex") !==
+      "992da4b3d00c590bd48c4c1d955953938b053c73bf1b7243f189ebb1b3df6613") {
+    throw new Error("split-r2-liteapi-canary-package-drift");
+  }
+  const ignored = execFileSync("git", ["check-ignore", "-q", "--", "server/.env"], { cwd: process.cwd(), stdio: "ignore" });
+  void ignored;
+  if (!fs.existsSync("server/.env")) throw new Error("split-r2-liteapi-canary-env-file-absent");
+  return { passed: true, dirtyFingerprint: dirty.fingerprint };
+}
+
+function readLiteApiSandboxCredential() {
+  const parsed = new Map();
+  const text = fs.readFileSync("server/.env", "utf8");
+  for (const line of text.split(/\r?\n/u)) {
+    const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/u);
+    if (!match || match[1].startsWith("#")) continue;
+    let value = match[2];
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    parsed.set(match[1], value);
+  }
+  const candidates = [process.env.SPLIT_F0_SANDBOX_API_KEY, process.env.LITEAPI_API_KEY,
+    parsed.get("SPLIT_F0_SANDBOX_API_KEY"), parsed.get("LITEAPI_API_KEY")]
+    .filter((value) => typeof value === "string" && value.length > 0);
+  const distinct = [...new Set(candidates)];
+  if (distinct.length !== 1) throw new Error("split-r2-liteapi-sandbox-credential-ambiguous-or-missing");
+  return distinct[0];
+}
+
+async function requestLiteApiCanaryRate({ search, apiKey, fetchImplementation, counter, limiter, sessionNonce }) {
+  if (search.searchRole === "NIGHTLY" || !["FULL_STAY", "PREFIX", "SUFFIX"].includes(search.searchRole)) {
+    throw new Error("split-r2-liteapi-canary-search-role-forbidden");
+  }
+  const url = new URL(`${SPLIT_R2_LITEAPI_SANDBOX_BASE_URL}${SPLIT_R2_LITEAPI_RATES_PATH}`);
+  if (url.protocol !== "https:" || url.hostname !== "api.liteapi.travel" || url.pathname !== "/v3.0/hotels/rates") {
+    throw new Error("split-r2-liteapi-canary-route-forbidden");
+  }
+  await limiter.ready();
+  counter.reserve(search.searchRole);
+  counter.enterTransport();
+  limiter.markStarted();
+  try {
+    const response = await fetchImplementation(url, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Api-Key": apiKey },
+      body: JSON.stringify(createSplitR2LiteApiCanaryRequestBody(search, sessionNonce)),
+      redirect: "error",
+      cache: "no-store",
+    });
+    if (response.redirected === true || (response.status >= 300 && response.status < 400)) {
+      throw new Error("split-r2-liteapi-canary-redirect-prohibited");
+    }
+    if (typeof response.url === "string" && response.url.length > 0) {
+      const responseUrl = new URL(response.url);
+      if (responseUrl.protocol !== "https:" || responseUrl.hostname !== "api.liteapi.travel") {
+        throw new Error("split-r2-liteapi-canary-response-host-prohibited");
+      }
+    }
+    if (response.status !== 200) throw new Error("split-r2-liteapi-canary-http-status-failure");
+    const contentType = response.headers?.get?.("content-type") ?? "";
+    if (!/(?:application|text)\/(?:[^;]+\+)?json\b/iu.test(contentType)) {
+      throw new Error("split-r2-liteapi-canary-content-type-invalid");
+    }
+    let payload;
+    try {
+      payload = JSON.parse(await response.text());
+    } catch {
+      throw new Error("split-r2-liteapi-canary-json-invalid");
+    }
+    if (continuationOrPaginationSignalPresent(payload)) {
+      throw new Error("split-r2-liteapi-canary-pagination-prohibited");
+    }
+    return { payload, status: response.status };
+  } finally {
+    counter.leaveTransport();
+  }
+}
+
+export async function runSplitR2LiteApiCanary({ sourceSha, apiKey, fetchImplementation = globalThis.fetch,
+  monotonicNow, sleeper } = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha) || typeof fetchImplementation !== "function") {
+    throw new Error("split-r2-liteapi-canary-runtime-input-invalid");
+  }
+  const plan = buildSplitR2LiteApiCanaryPlan();
+  const counter = createSplitR2LiteApiCanaryCounter();
+  const limiter = createSplitR2MonotonicLimiter({ monotonicNow, sleeper });
+  const key = crypto.randomBytes(32);
+  const sessionNonce = crypto.randomBytes(12).toString("hex");
+  const results = [];
+  try {
+    for (const search of plan.searches) {
+      const response = await requestLiteApiCanaryRate({ search, apiKey, fetchImplementation, counter, limiter, sessionNonce });
+      results.push(normalizeSplitR2LiteApiCanaryResponse(search, response.payload, key, response.status));
+    }
+    return buildSplitR2LiteApiCanaryReceipt({
+      sourceSha, results, http: counter.snapshot(), limiter: limiter.snapshot(),
+    });
+  } catch (error) {
+    return buildSplitR2LiteApiCanaryReceipt({
+      sourceSha, results, http: counter.snapshot(), limiter: limiter.snapshot(),
+      failureClassification: String(error?.message ?? error).startsWith("split-r2-")
+        ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+        : "LITEAPI_CANARY_TECHNICAL_FAILURE",
+    });
+  } finally {
+    key.fill(0);
+  }
+}
+
 export function assertSplitR2RealTransportBlocked(options = {}) {
   if (options.mode === "real" || options.liveCapability) {
     throw new Error("split-r2-real-transport-live-hold");
@@ -1053,32 +1864,106 @@ function parseMode(argv) {
   return allowed.get(flags[0]);
 }
 
+export function parseSplitR2LiteApiCanaryArguments(argv) {
+  const requiredLiteral = new Set([
+    "--r2-liteapi-sandbox-contract-canary",
+    "--compact",
+    "--environment=LITEAPI_SANDBOX",
+    "--ack-http-budget=3",
+  ]);
+  const expectedHeadArguments = argv.filter((entry) => entry.startsWith("--expected-head="));
+  const fingerprintArguments = argv.filter((entry) => entry.startsWith("--expected-dirty-fingerprint="));
+  if (argv.length !== 6 || [...requiredLiteral].some((entry) => !argv.includes(entry)) ||
+      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1) {
+    throw new Error("split-r2-liteapi-canary-cli-contract-invalid");
+  }
+  return {
+    expectedHead: expectedHeadArguments[0].slice("--expected-head=".length),
+    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length),
+  };
+}
+
+function buildSplitR2LiteApiCanaryBlockedReceipt(sourceSha, failureClassification) {
+  return {
+    receiptVersion: SPLIT_R2_LITEAPI_CANARY_RECEIPT_VERSION,
+    status: "BLOCKED",
+    sourceSha: /^[0-9a-f]{40}$/u.test(sourceSha ?? "") ? sourceSha : "UNVERIFIED",
+    environment: "LITEAPI_SANDBOX",
+    hostname: "api.liteapi.travel",
+    failureClassification,
+    http: {
+      fullStay: 0, prefix: 0, suffix: 0, other: 0, total: 0, totalBudget: 3,
+      retries: 0, redirects: 0, maxObservedConcurrency: 0,
+      minimumObservedRequestIntervalMs: null, liteApiProduction: 0,
+      routeStackSandbox: 0, routeStackPublicProduction: 0,
+    },
+    boundaries: { canaryEconomicEvidenceAllowed: false, publicRuntimeChanged: false },
+    privacy: {
+      rawIdsInOutput: 0, pseudonymListsInOutput: 0, rawTaxLabelsInOutput: 0,
+      rawPayloadsInOutput: 0, rawResponsesInOutput: 0, crossRunLinkability: false,
+      secretValuesExposed: false,
+    },
+  };
+}
+
 function isMainModule() {
   return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 }
 
 if (isMainModule()) {
-  try {
-    const mode = parseMode(process.argv.slice(2));
-    const receipt = runSplitR2Mode(mode);
-    const serialized = serializeSplitR2CompactReceipt(receipt);
-    process.stdout.write(`SPLIT_R2_RESULT=${serialized.json}\n`);
-  } catch (error) {
-    const failure = {
-      receiptVersion: SPLIT_R2_RECEIPT_VERSION,
-      status: "FAIL",
-      failureClassification:
-        error instanceof SplitR2CompactReceiptError
-          ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
-          : "OFFLINE_CONTRACT_FAIL_CLOSED",
-      providerCalls: 0,
-      httpRequests: 0,
-      credentialsAccessed: false,
-      publicRuntimeChanged: false,
-      rawIdsPersisted: 0,
-      secretValuesExposed: false,
-    };
-    process.stdout.write(`SPLIT_R2_RESULT=${stableStringifySplitF0(failure, 0)}\n`);
-    process.exitCode = 1;
+  const argv = process.argv.slice(2);
+  if (argv.includes("--r2-liteapi-sandbox-contract-canary")) {
+    let expectedHead = null;
+    try {
+      const parsed = parseSplitR2LiteApiCanaryArguments(argv);
+      expectedHead = parsed.expectedHead;
+      const repository = verifySplitR2LiteApiCanaryRepositoryGate(parsed.expectedHead, parsed.expectedDirtyFingerprint);
+      const preflight = assertSplitR2LiteApiCanaryPreflight({
+        mode: "LITEAPI_SANDBOX_CONTRACT_CANARY", compact: true, environment: "LITEAPI_SANDBOX",
+        ackHttpBudget: 3, hostname: "api.liteapi.travel", protocol: "https:", productionFallback: false,
+        scenarioOrdinal: 1, breakpointOrdinal: 7, fullStayMax: 1, prefixMax: 1, suffixMax: 1,
+        totalMax: 3, otherHttpMax: 0, retries: 0, redirects: 0, concurrency: 1,
+        minimumIntervalMs: 1_000, repositoryGatePassed: repository.passed,
+        credentialReader: readLiteApiSandboxCredential,
+      });
+      const receipt = await runSplitR2LiteApiCanary({ sourceSha: parsed.expectedHead, apiKey: preflight.credential });
+      const serialized = serializeSplitR2LiteApiCanaryReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_LITEAPI_CANARY_RESULT=${serialized.json}\n`);
+      if (receipt.status === "FAIL" || receipt.status === "BLOCKED") process.exitCode = 1;
+    } catch (error) {
+      const classification = error instanceof SplitR2CompactReceiptError
+        ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
+        : String(error?.message ?? error).startsWith("split-r2-")
+          ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+          : "LITEAPI_CANARY_PREFLIGHT_BLOCKED";
+      const receipt = buildSplitR2LiteApiCanaryBlockedReceipt(expectedHead, classification);
+      const serialized = serializeSplitR2LiteApiCanaryReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_LITEAPI_CANARY_RESULT=${serialized.json}\n`);
+      process.exitCode = 1;
+    }
+  } else {
+    try {
+      const mode = parseMode(argv);
+      const receipt = runSplitR2Mode(mode);
+      const serialized = serializeSplitR2CompactReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_RESULT=${serialized.json}\n`);
+    } catch (error) {
+      const failure = {
+        receiptVersion: SPLIT_R2_RECEIPT_VERSION,
+        status: "FAIL",
+        failureClassification:
+          error instanceof SplitR2CompactReceiptError
+            ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
+            : "OFFLINE_CONTRACT_FAIL_CLOSED",
+        providerCalls: 0,
+        httpRequests: 0,
+        credentialsAccessed: false,
+        publicRuntimeChanged: false,
+        rawIdsPersisted: 0,
+        secretValuesExposed: false,
+      };
+      process.stdout.write(`SPLIT_R2_RESULT=${stableStringifySplitF0(failure, 0)}\n`);
+      process.exitCode = 1;
+    }
   }
 }
