@@ -162,6 +162,10 @@ import {
   evaluateSplitR1OurpriceSemanticsProbeV2,
   evaluateSplitR1SandboxNightlyOracleV1,
   fingerprintSplitR1Identifier,
+  splitR1CompactMedianInteger,
+  splitR1CompactRoundedRatio,
+  splitR1NightlyOracleBestPair,
+  splitR1NightlyOracleOffersForState,
   hasSplitR1OurpriceProbeContinuationMetadata,
   diagnoseSplitR1ContinuationMetadataShapeV1,
   inspectSplitR1OurpriceProbeV2Continuation,
@@ -5425,4 +5429,23 @@ test("collector stays isolated from barrels, server, frontend, decision cores an
   assert.equal(source.includes("rooms-and-rates"), false);
   assert.equal(source.includes("prebook"), true);
   assert.equal(source.includes("publicRecommendationAllowed: false"), true);
+});
+
+test("R1 pure economic primitives exported for R2 preserve ordering, median and basis points", () => {
+  const a = `hmac-sha256:${"a".repeat(64)}`;
+  const b = `hmac-sha256:${"b".repeat(64)}`;
+  const offers = splitR1NightlyOracleOffersForState(
+    {
+      offers: [
+        { propertyFingerprint: a, totalMinorUnits: 12000, currency: "EUR" },
+        { propertyFingerprint: a, totalMinorUnits: 10000, currency: "EUR" },
+        { propertyFingerprint: b, totalMinorUnits: 11000, currency: "EUR" },
+      ],
+    },
+    "EUR"
+  );
+  assert.deepEqual(offers.map((offer) => offer.totalMinorUnits), [10000, 11000]);
+  assert.equal(splitR1NightlyOracleBestPair(offers, offers, false).splitTotalMinorUnits, 21000);
+  assert.equal(splitR1CompactMedianInteger([100, 300]), 200);
+  assert.equal(splitR1CompactRoundedRatio(10000, 100000, 10000), 1000);
 });

@@ -306,3 +306,55 @@ This phase authorizes no live call. Before R2.2 or R2.3, the user must explicitl
 - one wave only and no automatic rerun.
 
 Until that authorization and a passing contract canary exist, LiteAPI economic validation remains planned, not authorized.
+
+## 16. R2.1 offline acquisition and reproducibility implementation
+
+Implementation version: `stayopti.split-r2.provider-neutral-search-snapshot@1`
+
+Compact receipt version: `stayopti.split-r2.multi-scenario-reproducibility@1`
+
+R2.1 implements only an offline runner with dependency-injected fake acquisition. It does not contain a real provider transport, does not read credentials, and exposes no live mode. The only executable modes are plan/dry-run, fake LiteAPI Sandbox, fake RouteStack Sandbox, and fake combined campaign. Every requested real or future-live mode remains `NOT_IMPLEMENTED_OR_LIVE_HOLD` and fails before credentials, host resolution, sockets, or HTTP.
+
+The runner materializes the frozen six-scenario matrix through one duration-parameterized generator. Seven-night scenarios produce six breakpoints and twenty logical searches; fourteen-night scenarios produce thirteen breakpoints and forty-one logical searches. LiteAPI receives all six frozen scenarios for 183 logical searches. RouteStack receives only ordinals `[1,3,5]` for 102 logical searches. Empty or non-evaluable scenarios are retained and cannot be replaced after an outcome is observed.
+
+The acquisition boundary is:
+
+```text
+fake provider transport
+→ provider-specific acquisition adapter
+→ stayopti.split-r2.provider-neutral-search-snapshot@1
+→ allowlisted economic comparability gate
+→ unchanged exported R1 primitives
+→ scenario result
+→ provider aggregate
+→ campaign decision
+→ stayopti.split-r2.multi-scenario-reproducibility@1
+```
+
+The provider-neutral snapshot contains only logical search context, bounded collection status, run-local property fingerprints, integer-minor-unit search-window totals, mandatory-component state, canonical cancellation availability, allowlisted collection/comparability classifications, and a diagnostic funnel. Raw property, room, rate, offer, destination, continuation, payload, response, URL, credential, commission, and markup fields are excluded.
+
+### 16.1 LiteAPI boundary
+
+The R2 wrapper binds only `LITEAPI_SANDBOX` and prohibits Production fallback. It accepts only a positive public `offerRetailRate` explicitly classified as `SEARCH_WINDOW_TOTAL_CONFIRMED`, with the expected currency and exact frozen occupancy. Known included mandatory components remain included; known excluded mandatory components are added exactly once; known mandatory pay-at-property components remain separately observable; any unknown or unquantified mandatory component fails comparison closed. No SSP, net, markup, White Label, legacy price fallback, commission, metadata enrichment, or provider-order signal enters the evaluator.
+
+The adapter emits only the frozen comparability allowlist. A diagnostic snapshot remains available when collection, semantics, occupancy, currency, or mandatory-component gates fail, but its offers cannot become economic candidates.
+
+### 16.2 RouteStack boundary
+
+The R2 wrapper binds only `ROUTESTACK_SANDBOX`; `ROUTESTACK_PUBLIC_PRODUCTION` is a separate held capability. It preserves the prospective R1 bounded-snapshot contract: `applicationStatus` is not required, no status proves terminality, a unique complete continuation binding may be detected, and no continuation can execute. Missing continuation metadata means only `PROVIDER_NO_CONTINUATION_EXPOSED`. A bounded snapshot never implies completeness or global optimality.
+
+### 16.3 Unchanged economic kernel
+
+R2 imports the existing R1 offer normalization/deduplication, best distinct-property pair, integer median, and rounded ratio primitives. Their bodies and callers remain unchanged; R1 adds exports only. The fixed full-stay baseline is selected before breakpoint pairs, the two segment totals are added, properties must differ, at most one change is allowed, price remains in integer minor units, saving ratios remain basis points, and ordering, tie-breaking, currency policy, and median semantics are preserved.
+
+`RAW_POSITIVE_SPLIT` requires a positive minor-unit delta. `MATERIAL_PRICE_SIGNAL` requires both at least 10,000 minor units and at least 1,000 basis points. Neither label establishes `USER_USABLE_SPLIT`, quality equivalence, market evidence, completeness, Production validity, or a public recommendation.
+
+### 16.4 Aggregation and decision contract
+
+The primary unit is the frozen scenario. Each provider aggregate uses the median of evaluable scenario medians; it does not use a pooled-breakpoint median as the primary metric. Provider decisions implement the pre-registered classes `PRIMARY_PROVIDER_REPRODUCED`, `PRIMARY_PROVIDER_PROMISING_BUT_INSUFFICIENT`, `PRIMARY_PROVIDER_NOT_REPRODUCED`, `LITEAPI_CONTRACT_BLOCKED`, `CROSS_PROVIDER_RECURRENCE_SUPPORTED`, `ROUTESTACK_ONLY_SIGNAL`, and `INSUFFICIENT_EVALUABLE_DATA`. Cross-provider recurrence never requires or infers property-identity equality.
+
+### 16.5 Offline budgets, compact receipt, and privacy
+
+Authoritative pre-transport fake counters enforce LiteAPI 183 search requests, RouteStack one auth plus three destination resolutions plus 102 initial searches (106 total), and 289 combined requests. The 184th LiteAPI search, second RouteStack auth, fourth RouteStack destination, 103rd RouteStack initial, any continuation, 107th RouteStack total, and 290th combined request fail before fake transport. Retry and redirect remain zero; concurrency remains one; the future monotonic interval remains 1,000 ms.
+
+The compact receipt is deterministic single-line JSON with a hard 16,000-byte UTF-8 limit checked before output. It contains the frozen matrix, aggregate provider/scenario results, decision classes, fake counters, environment holds, privacy invariants, and claim boundaries. It contains no individual properties or pseudonym lists, raw identifiers, payloads, responses, continuation values, credentials, or commercial fields. Oversize output fails closed without truncation. Public provider adapters, the public runtime, V2/V3 decision cores, and public Split remain unchanged and disabled.

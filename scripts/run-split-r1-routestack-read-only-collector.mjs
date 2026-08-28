@@ -3973,7 +3973,7 @@ function splitR1NightlyOracleOfferSort(left, right) {
   );
 }
 
-function splitR1NightlyOracleOffersForState(state, currency) {
+export function splitR1NightlyOracleOffersForState(state, currency) {
   const bestByProperty = new Map();
   for (const offer of state?.offers ?? []) {
     if (
@@ -4141,7 +4141,7 @@ export function rankSplitR1NightlyScoutBreakpointsV1(fixture, searchResults) {
   return ranked.map((entry, index) => ({ ...entry, scoutRank: index + 1 }));
 }
 
-function splitR1NightlyOracleBestPair(firstOffers, secondOffers, allowSameProperty) {
+export function splitR1NightlyOracleBestPair(firstOffers, secondOffers, allowSameProperty) {
   const pairs = [];
   for (const first of firstOffers) {
     for (const second of secondOffers) {
@@ -4620,7 +4620,7 @@ function splitR1CompactSum(receipts, field) {
   }, 0);
 }
 
-function splitR1CompactRoundedRatio(numerator, denominator, scale) {
+export function splitR1CompactRoundedRatio(numerator, denominator, scale) {
   if (
     !Number.isSafeInteger(numerator) ||
     !Number.isSafeInteger(denominator) ||
@@ -4641,7 +4641,7 @@ function splitR1CompactRoundedRatio(numerator, denominator, scale) {
   return result;
 }
 
-function splitR1CompactMedianInteger(values) {
+export function splitR1CompactMedianInteger(values) {
   if (!Array.isArray(values) || values.length === 0) return null;
   if (values.some((value) => !Number.isSafeInteger(value))) {
     throw new Error("split-r1-compact-median-input-invalid");
