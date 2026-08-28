@@ -634,3 +634,135 @@ Non-evaluable scenarios remain visible in the first denominator. Scenario-level 
 The three levels remain separate: `RAW_POSITIVE` requires only `savingMinorUnits > 0`; `MATERIAL_PRICE_SIGNAL` requires both `savingMinorUnits >= 10000` and `savingBasisPoints >= 1000`; `USER_USABLE_SPLIT` was not evaluated in R2.5A. Quality friction must not be designed until a sufficient number of material price signals exists. R2.6 introduces no arbitrary euro penalty, rating or room equivalence, location or transfer penalty, luggage friction, cancellation equivalence, tax-completeness assumption or final-bookability claim.
 
 Because initial-page economic sufficiency is not supported by verifiable provider evidence, the next step is `SPLIT-R2.7_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MICROSTUDY_FREEZE`. That study must remain small and precommit a comparison of initial-only minima against initial-plus-continuation minima, including changes in saving sign and material classification, before any 20–30-scenario campaign is frozen or run.
+
+## 23. R2.7 — RouteStack public pagination-sensitivity microstudy freeze
+
+R2.7 is an offline, document-only freeze for a future RouteStack public Production microstudy. It preserves R1, R2.5A and R2.6 without reinterpretation, changes no evaluator or material threshold, implements no live mode, grants no provider-call authority and does not estimate market frequency or user usability. Before the study, pagination sensitivity remains `PAGINATION_SENSITIVITY_UNMEASURED`.
+
+### 23.1 Structural sample and canonical bindings
+
+The future study uses only frozen R2 scenarios 1 and 3 because they are the only R2.5A scenarios with at least one evaluable breakpoint. Scenario 5 is excluded structurally because its zero-raw full-stay search provided no baseline on which pagination sensitivity could be measured. This is an evaluability-based diagnostic selection, not a price-based or market-representative sample. No destination, date, duration, occupancy, currency, breakpoint generator or scenario result may be replaced or altered.
+
+Exactly three breakpoint ordinals are selected per scenario by the precommitted `FIRST_CENTRAL_LAST` rule:
+
+- scenario 1 of thirteen breakpoints: `1, 7, 13`;
+- scenario 3 of six breakpoints: `1, 3, 6`.
+
+The central ordinal is the deterministic centre for an odd count and the lower central ordinal for an even count. Selection cannot depend on saving, winning breakpoint, materiality, price, result count or availability. An empty or non-evaluable selected breakpoint remains in the study.
+
+For each scenario the canonical plan contributes one `FULL_STAY` search and one `PREFIX` plus one `SUFFIX` search for each of its three selected breakpoints: seven distinct logical searches per scenario and fourteen total. The versioned plan reconstructs all fourteen as distinct logical IDs and bindings. Deduplication is allowed only if the canonical plan proves both payload and economic role identical; no such identity exists in this frozen set, and heuristic deduplication cannot reduce the total below fourteen. `NIGHTLY` searches and all unselected breakpoints are outside the microstudy.
+
+### 23.2 Depth, eligibility and hard network budget
+
+Each logical search has at most three page requests:
+
+- `D0`: one initial page;
+- `D1`: the cumulative state after at most one first continuation;
+- `D2`: the cumulative state after at most one second continuation.
+
+A next depth is eligible only when the immediately preceding response exposes one unique, non-ambiguous contractual binding whose `correlationId`, `token` and `nextResultsKey` are non-empty strings. Null, absent, empty or wrongly typed keys, absent or invalid correlation/token components, ambiguous metadata, invalid JSON, no further continuation, or arrival at D2 stops that logical search. No identifier is invented, substituted or resolved through a fallback. A stop at an earlier depth does not authorize replacement of the search.
+
+The future hard budget is:
+
+| Request class | Maximum |
+|---|---:|
+| Authentication | 1 |
+| Distinct destination resolution | 2 |
+| Initial D0 | 14 |
+| First continuation D1 | 14 |
+| Second continuation D2 | 14 |
+| All continuation | 28 |
+| Total RouteStack HTTP | 45 |
+
+The exact maximum equation is `1 + 2 + 14 + 14 + 14 = 45`. Retry and redirect are zero, concurrency is one, and monotonic request starts remain separated by at least 1,000 ms. The run is one wave. Booking, prebook, payment, cancellation and every mutative or non-allowlisted endpoint remain prohibited. `COST_CLASSIFICATION=COST_UNKNOWN` and `MAX_THEORETICAL_CAMPAIGN_COST=NOT_DETERMINABLE`; a future live phase requires new explicit user authorization for at most 45 Production HTTP requests.
+
+Dispatch is breadth-first and equal-depth: authenticate once; resolve the two destinations; dispatch all fourteen D0 searches in canonical order; dispatch all eligible D1 requests in that same logical-search order; then dispatch all eligible D2 requests in that order; stop and emit the compact receipt. Per-search depth-first dispatch (`D0 → D1 → D2` before the other D0 searches) is prohibited.
+
+### 23.3 Cumulative acquisition and economic comparison
+
+One run-ephemeral HMAC secret, the existing identity function, EUR policy, `ourprice` search-window-total semantics, integer minor units, deterministic tie-breaking, deduplication and the unchanged R1/R2 evaluator apply across every depth. D0 normalizes and deduplicates the initial page. D1 unions the D0 and first-continuation offers and deduplicates the cumulative set again. D2 unions every available D0, D1 and second-continuation page and deduplicates the complete observed cumulative set again. A later page never replaces an earlier page.
+
+For each page depth the sanitized collection diagnostics record raw results, normalizable results, pre-dedup offers, newly introduced distinct properties, inter-page duplicates removed and cumulative distinct offers. They never retain a provider ID, individual fingerprint, property list, individual offer, payload, raw response or continuation value.
+
+For each of the six selected breakpoints, each available D0/D1/D2 cumulative state records only the full-stay baseline minor units, best distinct-pair total minor units, saving minor units, saving basis points, raw-positive boolean, material boolean and evaluability boolean. The full baseline and distinct pair are recomputed from the cumulative depth state with the unchanged evaluator. Property identities and individual offer prices are not emitted.
+
+The following sensitivity events are computed as booleans from the authoritative minor-unit/basis-point states:
+
+- `FULL_BASELINE_CHANGED_D0_TO_D1` and `FULL_BASELINE_CHANGED_D1_TO_D2`;
+- `SPLIT_PAIR_TOTAL_CHANGED_D0_TO_D1` and `SPLIT_PAIR_TOTAL_CHANGED_D1_TO_D2`;
+- `SAVING_SIGN_CHANGED_D0_TO_D1` and `SAVING_SIGN_CHANGED_D1_TO_D2`;
+- `MATERIAL_CLASS_CHANGED_D0_TO_D1` and `MATERIAL_CLASS_CHANGED_D1_TO_D2`;
+- `EVALUABILITY_CHANGED_WITH_DEPTH`.
+
+No event compares raw payload values. A transition is comparable only when the required cumulative depth states exist; unavailable transitions remain explicitly not observed rather than being coerced to `false`.
+
+### 23.4 Mutually exclusive sensitivity, stabilization and bias decisions
+
+Sensitivity uses this deterministic precedence:
+
+1. `PAGINATION_SENSITIVITY_INCONCLUSIVE` when a hard contract error occurs or no breakpoint supplies a constructible multi-depth economic comparison.
+2. `PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL` when at least one constructible breakpoint changes saving sign, material classification or evaluability with depth.
+3. `PAGINATION_SENSITIVITY_ECONOMIC_MINIMUM_ONLY` when sign, materiality and evaluability remain invariant but at least one full baseline or distinct-pair minimum changes.
+4. `NO_PAGINATION_SENSITIVITY_OBSERVED_WITHIN_D2` when sufficient multi-depth comparison exists and every observed comparable breakpoint remains economically identical, including when new offers do not alter baseline, pair, saving or classification.
+
+The first applicable rule wins, so the four categories are mutually exclusive. `NO_PAGINATION_SENSITIVITY_OBSERVED_WITHIN_D2` means only that no sensitivity was observed within the selected sample and two-continuation bound; it never proves complete inventory or universal D2 sufficiency.
+
+The receipt separately derives `D0_TO_D1_CHANGE_OBSERVED` and `D1_TO_D2_CHANGE_OBSERVED`. Stabilization is:
+
+- `STABLE_BY_D1` only when both transitions are sufficiently observed and no relevant economic quantity changes in either;
+- `STABLE_BY_D2` when at least one relevant quantity changes D0→D1 and none changes D1→D2;
+- `STILL_CHANGING_AT_D2` when at least one relevant economic quantity changes D1→D2;
+- `NOT_DETERMINABLE` when the required depth comparisons are unavailable.
+
+“Stable” always means observed stability within D2, never provider completeness.
+
+Bias direction uses all observed saving deltas for transitions whose endpoints are evaluable:
+
+- `FAVORS_SPLIT` only when every delta is non-negative and at least one is positive;
+- `FAVORS_FULL_STAY` only when every delta is non-positive and at least one is negative;
+- `BIDIRECTIONAL` when both positive and negative deltas occur;
+- `NO_DIRECTIONAL_CHANGE` when every comparable saving delta is zero;
+- `NOT_DETERMINABLE` when no comparable saving delta exists.
+
+More results are never assumed to favor Split. `initialOnlyClassificationRobustWithinStudy` is `true` only when all six selected breakpoints have sufficient D0/D1/D2 comparisons and no saving-sign, material-classification or evaluability event changes the D0 classification; it is `false` when at least one such change occurs and `NOT_DETERMINABLE` otherwise.
+
+### 23.5 Compact receipt and claim boundary
+
+The future receipt is `stayopti.split-r2.routestack-public-pagination-sensitivity@1`: deterministic single-line JSON, stable key order, no stdout progress, maximum 12,000 UTF-8 bytes, size checked before emission, oversize fail-closed, and no truncation or partial JSON.
+
+It contains the phase status, source SHA, verified public environment, scenario ordinals `[1,3]`, breakpoint binding `{1:[1,7,13],3:[1,3,6]}`, planned/executed logical-search counts, authoritative auth/destination/initial/D1/D2/total counters, retry/redirect/concurrency/limiter metrics, per-depth collection and distinct-offer aggregates, inter-page duplicate counts, six compact per-breakpoint depth-economic objects, comparable-breakpoint counts at D0/D1/D2, aggregate baseline/pair/sign/material/evaluability change counts, sensitivity/stabilization/bias classifications, D0 robustness, claim boundaries and privacy invariants.
+
+The minimum stable field set is:
+
+```text
+status, sourceSha, environmentClassification, scenarioOrdinals,
+selectedBreakpointOrdinals, logicalSearchesPlanned, logicalSearchesExecuted,
+authHttpRequests, destinationHttpRequests, initialHttpRequests,
+continuationD1HttpRequests, continuationD2HttpRequests, totalHttpRequests,
+totalHttpBudget, retries, redirects, maxObservedConcurrency,
+minObservedRequestIntervalMs, perDepthCollectionCounts,
+perDepthDistinctOfferCounts, interPageDuplicatesRemoved,
+perBreakpointDepthEconomics, breakpointsComparableAtD0,
+breakpointsComparableAtD1, breakpointsComparableAtD2, fullBaselineChanges,
+splitPairChanges, savingSignChanges, materialClassificationChanges,
+evaluabilityChanges, sensitivityClassification, stabilizationClassification,
+observedBiasDirection, initialOnlyClassificationRobustWithinStudy,
+completenessClaimAllowed, globalOptimumClaimAllowed,
+marketFrequencyClaimAllowed, userUsableSplitEvaluated,
+productionBookingAuthorized, publicRuntimeChanged, rawIdsPersisted,
+rawContinuationIdsPersisted, rawMetadataValuesPersisted,
+payloadsOrRawResponsesPersisted, crossRunLinkability, secretValuesExposed
+```
+
+It contains no raw hotel, property, destination, room, rate or offer ID; fingerprint list; individual offer; payload; response; arbitrary provider metadata; correlation ID; token; next-results key; credential or secret. Raw IDs, raw continuation IDs, raw metadata values and payload/raw-response persistence are zero. The HMAC secret remains memory-only, cross-run linkability is false and secret exposure is false.
+
+The microstudy may support only observed pagination sensitivity within D2, its observed direction and stabilization, and robustness or non-robustness of D0 classifications within this structurally selected sample. It cannot support inventory completeness, global optimality, market frequency, commercial validity, user usability, universal two-continuation sufficiency or quality equivalence. Completeness, global-optimum and market-frequency claims remain false; user usability remains unevaluated; Production booking and public runtime changes remain unauthorized.
+
+### 23.6 Prospective result routing
+
+- `PAGINATION_SENSITIVITY_SIGN_OR_MATERIAL` or `STILL_CHANGING_AT_D2` routes to `SPLIT-R2.8_PAGINATION_AWARE_ECONOMIC_COLLECTION_CONTRACT_REASSESSMENT`; a 20–30-scenario campaign remains blocked.
+- `PAGINATION_SENSITIVITY_ECONOMIC_MINIMUM_ONLY` together with `STABLE_BY_D2` may route to `SPLIT-R2.8_20_TO_30_SCENARIO_PAGINATION_DEPTH_CALIBRATION_FREEZE`.
+- `NO_PAGINATION_SENSITIVITY_OBSERVED_WITHIN_D2` with sufficient data routes to `SPLIT-R2.8_20_TO_30_SCENARIO_PRODUCTION_CALIBRATION_FREEZE`.
+- `PAGINATION_SENSITIVITY_INCONCLUSIVE` routes to `SPLIT-R2.8_PAGINATION_MICROSTUDY_DIAGNOSTIC_REPAIR`.
+
+R2.7 itself makes zero provider calls and authorizes no live execution. The immediate next step is `SPLIT-R2.7A_PUBLIC_PAGINATION_SENSITIVITY_IMPLEMENTATION_VALIDATION_AND_SINGLE_LIVE_MICROSTUDY`.
