@@ -25,6 +25,7 @@ import {
   SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION,
   SPLIT_R2_PAGINATION_AWARE_COMPLETION_STATES,
   SPLIT_R2_PAGINATION_AWARE_EXECUTION_STATES,
+  SPLIT_R2_PAGINATION_AWARE_RECEIPT_COMPLETENESS,
   SPLIT_R2_PAGINATION_AWARE_UNPROCESSABLE_REASONS,
   SPLIT_R2_LITEAPI_RATES_PATH,
   SPLIT_R2_LITEAPI_SANDBOX_BASE_URL,
@@ -98,6 +99,10 @@ import {
   runSplitR2FakeRouteStackPublicPaginationAwareEarlyTerminal,
   runSplitR2FakeRouteStackPublicPaginationAwareEconomicCoverage,
   runSplitR2FakeRouteStackPublicPaginationAwareFailureBoundary,
+  runSplitR2FakeRouteStackPublicPaginationAwareExactR2_9A,
+  runSplitR2FakeRouteStackPublicPaginationAwareNoD2Eligible,
+  runSplitR2FakeRouteStackPublicPaginationAwareNoEvaluableFailureBoundary,
+  runSplitR2FakeRouteStackPublicPaginationAwareD2FailureBoundary,
   runSplitR2OfflineR2_9ForensicDiagnosis,
   runSplitR2LiteApiCanary,
   runSplitR2LiteApiZeroResultDiagnosis,
@@ -644,6 +649,8 @@ test("65 exact live capability registry includes the dedicated public multi-scen
       "EXACT_45_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
     ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO:
       "EXACT_MAX_310_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
+    ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_R2_9A:
+      "EXACT_R2_9A_MAX_310_HTTP_D2_PARTIAL_SALVAGE_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   });
 });
 
@@ -2065,6 +2072,12 @@ function paginationAwarePreflight(overrides = {}) {
 const PAGINATION_AWARE_FULL_PROMISE = runSplitR2FakeRouteStackPublicPaginationAwareFullDepth();
 const PAGINATION_AWARE_EARLY_PROMISE = runSplitR2FakeRouteStackPublicPaginationAwareEarlyTerminal();
 const PAGINATION_AWARE_FAILURE_PROMISE = runSplitR2FakeRouteStackPublicPaginationAwareFailureBoundary();
+const PAGINATION_AWARE_R2_9A_PROMISE = runSplitR2FakeRouteStackPublicPaginationAwareExactR2_9A();
+const PAGINATION_AWARE_NO_D2_PROMISE = runSplitR2FakeRouteStackPublicPaginationAwareNoD2Eligible();
+const PAGINATION_AWARE_NO_EVALUABLE_PROMISE =
+  runSplitR2FakeRouteStackPublicPaginationAwareNoEvaluableFailureBoundary();
+const PAGINATION_AWARE_D2_FAILURE_PROMISE =
+  runSplitR2FakeRouteStackPublicPaginationAwareD2FailureBoundary();
 
 test("170 R2.8A capability is default-disabled and exact mode precedes credentials", () => {
   assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO,
@@ -2395,4 +2408,118 @@ test("197 R2.9 forensic diagnosis is offline with no credential or transport sur
   assert.deepEqual([diagnosis.providerCalls, diagnosis.httpRequests, diagnosis.credentialsAccessed,
     diagnosis.liveWaveAuthorized], [0, 0, false, false]);
   assert.equal(diagnosis.historicalRecord.status, "FAIL");
+});
+
+test("198 R2.9B exact R2.9A phase is accepted without weakening the CLI contract", () => {
+  const args = ["--r2-routestack-public-pagination-aware-multi-scenario", "--compact",
+    "--phase=SPLIT-R2.9A", "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    `--expected-head=${"a".repeat(40)}`, `--expected-dirty-fingerprint=${"b".repeat(64)}`];
+  const parsed = parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments(args);
+  assert.equal(parsed.phase, "SPLIT-R2.9A");
+  assert.equal(assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight(
+    paginationAwarePreflight({ phase: parsed.phase })).phase, "SPLIT-R2.9A");
+  for (const invalid of [args.filter((entry) => !entry.startsWith("--phase=")),
+    args.map((entry) => entry === "--phase=SPLIT-R2.9A" ? "--phase=split-r2.9a" : entry),
+    args.map((entry) => entry === "--phase=SPLIT-R2.9A" ? "--phase=SPLIT-R2.9" : entry)]) {
+    assert.throws(() => parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments(invalid),
+      /cli-contract-invalid/);
+  }
+});
+
+test("199 R2.9B historical R2.8A phase remains exact and credentials alone enable neither phase", () => {
+  const historical = ["--r2-routestack-public-pagination-aware-multi-scenario", "--compact",
+    "--phase=SPLIT-R2.8A", "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    `--expected-head=${"a".repeat(40)}`, `--expected-dirty-fingerprint=${"b".repeat(64)}`];
+  assert.equal(parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments(historical).phase,
+    "SPLIT-R2.8A");
+  let reads = 0;
+  assert.throws(() => assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight(
+    paginationAwarePreflight({ phase: undefined, credentialReader: () => { reads += 1; return {}; } })),
+  /before-credentials/);
+  assert.throws(() => assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight(
+    paginationAwarePreflight({ phase: "SPLIT-R2.9A", otherLiveModesSelected: 1,
+      credentialReader: () => { reads += 1; return {}; } })), /before-credentials/);
+  assert.equal(reads, 0);
+});
+
+test("200 R2.9B capability registry distinguishes R2.8A and R2.9A deterministically", () => {
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO,
+    "EXACT_MAX_310_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED");
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_R2_9A,
+    "EXACT_R2_9A_MAX_310_HTTP_D2_PARTIAL_SALVAGE_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED");
+  assert.deepEqual(Object.keys(SPLIT_R2_LIVE_CAPABILITIES), [...Object.keys(SPLIT_R2_LIVE_CAPABILITIES)]);
+});
+
+test("201 R2.9B d2PhaseCompleted distinguishes full, empty, D1-abort and D2-abort phases", async () => {
+  const [full, noD2, d1Abort, d2Abort] = await Promise.all([PAGINATION_AWARE_R2_9A_PROMISE,
+    PAGINATION_AWARE_NO_D2_PROMISE, PAGINATION_AWARE_FAILURE_PROMISE, PAGINATION_AWARE_D2_FAILURE_PROMISE]);
+  assert.deepEqual([full.d2PhaseStarted, full.d2PhaseCompleted], [true, true]);
+  assert.deepEqual([noD2.d1PhaseCompleted, noD2.d2PhaseStarted, noD2.d2PhaseCompleted], [true, false, true]);
+  assert.deepEqual([d1Abort.d1PhaseCompleted, d1Abort.d2PhaseStarted, d1Abort.d2PhaseCompleted],
+    [false, false, false]);
+  assert.deepEqual([d2Abort.d1PhaseCompleted, d2Abort.d2PhaseStarted, d2Abort.d2PhaseCompleted],
+    [true, true, false]);
+});
+
+test("202 R2.9B receipt completeness enums preserve history and distinguish salvage coverage", async () => {
+  assert.deepEqual(SPLIT_R2_PAGINATION_AWARE_RECEIPT_COMPLETENESS, [
+    "COMPLETE_TECHNICAL_AND_ECONOMIC",
+    "COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE",
+    "PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS",
+    "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS",
+    "PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS",
+    "NOT_EMITTED",
+  ]);
+  const salvage = await PAGINATION_AWARE_FAILURE_PROMISE;
+  const noEvaluable = await PAGINATION_AWARE_NO_EVALUABLE_PROMISE;
+  const nonReconstructable = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({
+    sourceSha: "6".repeat(40), phase: "SPLIT-R2.9A", states: [], scenarioResults: [],
+    partialScenarioResults: null, failureClassification: "SYNTHETIC_HISTORICAL_DATA_DESTROYED",
+  });
+  assert.equal(salvage.receiptCompleteness, "PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS");
+  assert.equal(noEvaluable.partialWaveAnalysis.economicallyEvaluableBreakpoints, 0);
+  assert.equal(noEvaluable.receiptCompleteness, "PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS");
+  assert.equal(nonReconstructable.partialWaveAnalysis, null);
+  assert.equal(nonReconstructable.receiptCompleteness,
+    "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS");
+  assert.equal(buildSplitR2HistoricalR2_8AForensicRecord().receiptCompleteness,
+    "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS");
+});
+
+test("203 R2.9B exact-mode and abort receipts are numeric-sized, private and below 16000 bytes", async () => {
+  const receipts = await Promise.all([PAGINATION_AWARE_R2_9A_PROMISE, PAGINATION_AWARE_FAILURE_PROMISE,
+    PAGINATION_AWARE_NO_EVALUABLE_PROMISE]);
+  const serialized = receipts.map((receipt) =>
+    serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(receipt));
+  assert.deepEqual(receipts.map((receipt) => receipt.phase), ["SPLIT-R2.9A", "SPLIT-R2.8A", "SPLIT-R2.9A"]);
+  for (const entry of serialized) {
+    const parsed = JSON.parse(entry.json);
+    assert.equal(Number.isInteger(parsed.compactReceiptUtf8Bytes), true);
+    assert.equal(parsed.compactReceiptUtf8Bytes, entry.byteLength);
+    assert.equal(entry.byteLength < 16_000, true);
+    for (const prohibited of ["synthetic-property", "synthetic-destination", "synthetic-c-",
+      "synthetic-t-", "synthetic-n-", "Authorization", "nextResultsKey", "propertyFingerprint"])
+      assert.equal(entry.json.includes(prohibited), false);
+  }
+});
+
+test("204 R2.9B exact-mode fake preserves plan, budget ceiling, guards and economics", async () => {
+  const receipt = await PAGINATION_AWARE_R2_9A_PROMISE;
+  assert.equal(receipt.phase, "SPLIT-R2.9A");
+  assert.deepEqual([receipt.scenarioCount, receipt.logicalSearchesPlanned, receipt.breakpointsPlanned], [3, 102, 32]);
+  assert.deepEqual([receipt.authHttpRequests, receipt.destinationHttpRequests, receipt.initialHttpRequests,
+    receipt.continuationD1HttpRequests, receipt.continuationD2HttpRequests, receipt.totalHttpRequests],
+  [1, 3, 102, 102, 102, 310]);
+  assert.equal(receipt.d3HttpRequests, 0);
+  assert.equal(receipt.retries, 0);
+  assert.equal(receipt.redirects, 0);
+  assert.equal(SPLIT_R2_MATERIAL_ABSOLUTE_MINOR_UNITS, 10_000);
+  assert.equal(SPLIT_R2_MATERIAL_BASIS_POINTS, 1_000);
+  assert.equal(receipt.publicRuntimeChanged, false);
 });

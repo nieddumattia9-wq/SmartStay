@@ -53,6 +53,14 @@ export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES = 
 export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION =
   "stayopti.split-r2.routestack-public-pagination-aware-multi-scenario@1";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_MAX_UTF8_BYTES = 16_000;
+export const SPLIT_R2_PAGINATION_AWARE_RECEIPT_COMPLETENESS = Object.freeze([
+  "COMPLETE_TECHNICAL_AND_ECONOMIC",
+  "COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE",
+  "PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS",
+  "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS",
+  "PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS",
+  "NOT_EMITTED",
+]);
 export const SPLIT_R2_LITEAPI_SANDBOX_BASE_URL = "https://api.liteapi.travel/v3.0";
 export const SPLIT_R2_LITEAPI_RATES_PATH = "/hotels/rates";
 export const SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH = "/data/hotels";
@@ -74,6 +82,8 @@ export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
     "EXACT_45_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO:
     "EXACT_MAX_310_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
+  ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_R2_9A:
+    "EXACT_R2_9A_MAX_310_HTTP_D2_PARTIAL_SALVAGE_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
 });
 
 export const SPLIT_R2_COMPARABILITY_CLASSES = Object.freeze([
@@ -4180,8 +4190,9 @@ export function assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflig
   const credentialReader = options.credentialReader ?? (() => null);
   const evidence = options.contractEvidence ?? inspectSplitR2RouteStackPublicContractEvidence();
   const plan = assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(options.plan);
+  const exactPhase = options.phase === "SPLIT-R2.8A" || options.phase === "SPLIT-R2.9A";
   const exact = options.mode === "ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO" &&
-    options.phase === "SPLIT-R2.8A" && options.compact === true &&
+    exactPhase && options.compact === true &&
     options.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
     options.hostname === "mcp.routestack.ai" && options.protocol === "https:" &&
     options.acknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP" &&
@@ -4204,7 +4215,7 @@ export function assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflig
       typeof credentials?.apiSecret !== "string" || credentials.apiSecret.length === 0) {
     throw new Error("split-r2-pagination-aware-credentials-missing-or-misbound");
   }
-  return Object.freeze({ plan, credentials, evidence, credentialsAccessed: true });
+  return Object.freeze({ plan, credentials, evidence, phase: options.phase, credentialsAccessed: true });
 }
 
 export function createSplitR2RouteStackPublicPaginationAwareMultiScenarioCounter() {
@@ -4215,6 +4226,7 @@ export function createSplitR2RouteStackPublicPaginationAwareMultiScenarioCounter
   const d2 = new Set();
   let d0Closed = false;
   let d1Closed = false;
+  let d2Closed = false;
   let active = 0;
   let maxObservedConcurrency = 0;
   return Object.freeze({
@@ -4251,6 +4263,9 @@ export function createSplitR2RouteStackPublicPaginationAwareMultiScenarioCounter
       } else if (depth === "D1") {
         if (!d0Closed) throw new Error("split-r2-pagination-aware-d1-before-d0");
         d1Closed = true;
+      } else if (depth === "D2") {
+        if (!d1Closed) throw new Error("split-r2-pagination-aware-d2-before-d1");
+        d2Closed = true;
       } else throw new Error("split-r2-pagination-aware-depth-invalid");
     },
     enterTransport() {
@@ -4269,6 +4284,7 @@ export function createSplitR2RouteStackPublicPaginationAwareMultiScenarioCounter
         d0PhaseCompleted: d0Closed,
         d1PhaseCompleted: d1Closed,
         d2PhaseStarted: d2.size > 0,
+        d2PhaseCompleted: d2Closed,
         breadthFirstOrderViolation: false });
     },
   });
@@ -4539,8 +4555,9 @@ function splitR2PaginationAwarePartialAnalysis(partialScenarioResults, plan, sta
 }
 
 export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({
-  sourceSha, plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(), states = [],
-  scenarioResults = [], partialScenarioResults = [], http = {}, limiter = {}, failureClassification = null,
+  sourceSha, phase = "SPLIT-R2.8A",
+  plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(), states = [],
+  scenarioResults = [], partialScenarioResults = null, http = {}, limiter = {}, failureClassification = null,
   failureBoundary = null,
 } = {}) {
   const stateCounts = Object.fromEntries(SPLIT_R2_PAGINATION_AWARE_COMPLETION_STATES.map((name) =>
@@ -4575,7 +4592,8 @@ export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(
     [name, states.filter((state) => state.executionState === name).length]));
   const accountingSum = sum(Object.values(executionStateCounts));
   const aborted = failureClassification !== null;
-  const partialWaveAnalysis = splitR2PaginationAwarePartialAnalysis(partialScenarioResults, plan, states, aborted);
+  const partialWaveAnalysis = Array.isArray(partialScenarioResults)
+    ? splitR2PaginationAwarePartialAnalysis(partialScenarioResults, plan, states, aborted) : null;
   const unprocessableStates = states.filter((state) => state.completionState === "UNPROCESSABLE_RESPONSE");
   const unprocessableReasonCounts = Object.fromEntries(SPLIT_R2_PAGINATION_AWARE_UNPROCESSABLE_REASONS
     .map((reason) => [reason, unprocessableStates.filter((state) => state.unprocessableReason === reason).length])
@@ -4586,7 +4604,7 @@ export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(
     [role, unprocessableStates.filter((state) => state.search.searchRole === role).length]));
   return Object.freeze({
     receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION,
-    status, sourceSha, environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    status, sourceSha, phase, environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
     userApprovalAcknowledged: true, unknownCostAcknowledged: true, singleWaveEnforced: true,
     frozenScenarioOrdinals: [1, 3, 5], scenarioCount: 3, logicalSearchesPlanned: 102,
     logicalSearchesExecuted: http.INITIAL_SEARCH ?? 0, breakpointsPlanned: 32,
@@ -4600,7 +4618,7 @@ export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(
     minObservedRequestIntervalMs: limiter.minimumObservedRequestIntervalMs ?? null,
     allD0BeforeAnyD1: http.allD0BeforeAnyD1 === true, allD1BeforeAnyD2: http.allD1BeforeAnyD2 === true,
     d0PhaseCompleted: http.d0PhaseCompleted === true, d1PhaseCompleted: http.d1PhaseCompleted === true,
-    d2PhaseStarted: http.d2PhaseStarted === true,
+    d2PhaseStarted: http.d2PhaseStarted === true, d2PhaseCompleted: http.d2PhaseCompleted === true,
     breadthFirstOrderViolation: http.breadthFirstOrderViolation === true,
     d3HttpRequests: 0, d0RawResults: pageRaw(0), d1PageRawResults: pageRaw(1), d2PageRawResults: pageRaw(2),
     finalCumulativeRawResults: sum(cumulatives.map((entry) => entry.raw)),
@@ -4641,9 +4659,11 @@ export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(
     compactReceiptGenerationSupported: true, compactReceiptEmitted: true,
     compactSingleLineJson: true, compactReceiptUtf8Bytes: 0,
     receiptCompleteness: aborted
-      ? (partialWaveAnalysis?.economicallyEvaluableBreakpoints > 0
+      ? (partialWaveAnalysis === null
+        ? "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS"
+        : partialWaveAnalysis.economicallyEvaluableBreakpoints > 0
         ? "PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS"
-        : "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS")
+        : "PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS")
       : breakpointsEvaluable > 0 ? "COMPLETE_TECHNICAL_AND_ECONOMIC" :
         "COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE",
     r2_5aResultPreserved: true, r2_5aEconomicInferenceValidity: "NOT_ROBUST_TO_PAGINATION",
@@ -4680,7 +4700,8 @@ export function serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioRece
   return Object.freeze({ json, byteLength });
 }
 
-export async function runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha, plan, apiKey, apiSecret,
+export async function runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha, phase = "SPLIT-R2.8A",
+  plan, apiKey, apiSecret,
   fetchImplementation = globalThis.fetch, monotonicNow, sleeper, now, randomUUID } = {}) {
   if (!/^[0-9a-f]{40}$/u.test(sourceSha ?? "") || typeof apiKey !== "string" || apiKey.length === 0 ||
       typeof apiSecret !== "string" || apiSecret.length === 0) throw new Error("split-r2-pagination-aware-runtime-input-invalid");
@@ -4748,13 +4769,15 @@ export async function runSplitR2RouteStackPublicPaginationAwareMultiScenario({ s
       splitR2PaginationAwareMarkTerminal(state);
     }
     currentState = null;
+    transport.closeDepth("D2");
     bearer = null;
     const scenarioSnapshots = authoritativePlan.scenarioPlans.map((scenario) => scenario.logicalSearches.map((search) =>
       splitR2PaginationAwareSnapshot(states.find((state) => state.search.logicalSearchId === search.logicalSearchId))));
     const scenarioResults = authoritativePlan.scenarioPlans.map((scenario, index) =>
       evaluateSplitR2Scenario("ROUTESTACK_PUBLIC_PRODUCTION", scenario, scenarioSnapshots[index]));
     const snapshot = transport.snapshot();
-    return buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({ sourceSha, plan: authoritativePlan,
+    return buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({ sourceSha, phase,
+      plan: authoritativePlan,
       states, scenarioResults, http: snapshot.http, limiter: snapshot.limiter });
   } catch (error) {
     const detail = splitR2PaginationAwareFailureDetail(error);
@@ -4770,7 +4793,8 @@ export async function runSplitR2RouteStackPublicPaginationAwareMultiScenario({ s
     const partialScenarioResults = authoritativePlan.scenarioPlans.map((scenario, index) =>
       evaluateSplitR2Scenario("ROUTESTACK_PUBLIC_PRODUCTION", scenario, scenarioSnapshots[index]));
     const snapshot = transport.snapshot();
-    return buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({ sourceSha, plan: authoritativePlan,
+    return buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({ sourceSha, phase,
+      plan: authoritativePlan,
       states, scenarioResults: [], partialScenarioResults,
       http: snapshot.http, limiter: snapshot.limiter,
       failureBoundary: Object.freeze({ failedDepth: currentDepth === null ? null : `D${currentDepth}`,
@@ -4805,11 +4829,11 @@ function splitR2FakePaginationAwarePayload(search, depth, terminalDepth, variant
       ourprice: base + depth * 10 }] } };
 }
 
-async function runSplitR2FakePaginationAwareCampaign(profile = "full") {
+async function runSplitR2FakePaginationAwareCampaign(profile = "full", phase = "SPLIT-R2.8A") {
   const plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
   let monotonic = 0;
   let requestOrdinal = 0;
-  return runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha: "d".repeat(40), plan,
+  return runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha: "d".repeat(40), phase, plan,
     apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret", monotonicNow: () => monotonic,
     sleeper: async (delay) => { monotonic += delay; }, now: () => 1_800_000_000_000,
     randomUUID: () => "synthetic-nonce-memory-only",
@@ -4830,7 +4854,8 @@ async function runSplitR2FakePaginationAwareCampaign(profile = "full") {
       const search = plan.logicalSearches[searchIndex];
       let terminalDepth = 2;
       let variant = "full";
-      if (profile !== "full") {
+      if (profile === "no-d2") terminalDepth = 1;
+      if (profile !== "full" && profile !== "no-d2") {
         const selector = searchIndex % 7;
         if (selector === 0) terminalDepth = 0;
         if (selector === 1) terminalDepth = 1;
@@ -4855,6 +4880,14 @@ export function runSplitR2FakeRouteStackPublicPaginationAwareEarlyTerminal() {
 
 export function runSplitR2FakeRouteStackPublicPaginationAwareEconomicCoverage() {
   return runSplitR2FakePaginationAwareCampaign("mixed");
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareExactR2_9A() {
+  return runSplitR2FakePaginationAwareCampaign("full", "SPLIT-R2.9A");
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareNoD2Eligible() {
+  return runSplitR2FakePaginationAwareCampaign("no-d2", "SPLIT-R2.9A");
 }
 
 export function runSplitR2FakeRouteStackPublicPaginationAwareFailureBoundary() {
@@ -4895,6 +4928,63 @@ export function runSplitR2FakeRouteStackPublicPaginationAwareFailureBoundary() {
   });
 }
 
+export function runSplitR2FakeRouteStackPublicPaginationAwareNoEvaluableFailureBoundary() {
+  const plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+  let monotonic = 0;
+  let requestOrdinal = 0;
+  return runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha: "8".repeat(40),
+    phase: "SPLIT-R2.9A", plan, apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret",
+    monotonicNow: () => monotonic, sleeper: async (delay) => { monotonic += delay; },
+    now: () => 1_800_000_000_000, randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      requestOrdinal += 1;
+      if (requestOrdinal === 1) return fakeJsonResponse({ token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (requestOrdinal <= 4) {
+        const scenario = plan.publicScenarioBindings[requestOrdinal - 2];
+        return fakeJsonResponse({ result: [{ id: `synthetic-destination-${requestOrdinal - 1}`,
+          city: scenario.destination.label, country: scenario.destination.countryCode, type: "City",
+          fullName: `${scenario.destination.label}, Italy`, coordinates: { lat: scenario.destination.latitude,
+            long: scenario.destination.longitude } }] }, 200, String(url));
+      }
+      const body = JSON.parse(options.body);
+      if (typeof body.nextResultsKey === "string") {
+        throw new Error("synthetic-first-d1-boundary-without-sensitive-detail");
+      }
+      const search = plan.logicalSearches[requestOrdinal - 5];
+      return fakeJsonResponse(splitR2FakePaginationAwarePayload(search, 0, 1), 200, String(url));
+    },
+  });
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareD2FailureBoundary() {
+  const plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+  let monotonic = 0;
+  let requestOrdinal = 0;
+  return runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha: "7".repeat(40),
+    phase: "SPLIT-R2.9A", plan, apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret",
+    monotonicNow: () => monotonic, sleeper: async (delay) => { monotonic += delay; },
+    now: () => 1_800_000_000_000, randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      requestOrdinal += 1;
+      if (requestOrdinal === 1) return fakeJsonResponse({ token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (requestOrdinal <= 4) {
+        const scenario = plan.publicScenarioBindings[requestOrdinal - 2];
+        return fakeJsonResponse({ result: [{ id: `synthetic-destination-${requestOrdinal - 1}`,
+          city: scenario.destination.label, country: scenario.destination.countryCode, type: "City",
+          fullName: `${scenario.destination.label}, Italy`, coordinates: { lat: scenario.destination.latitude,
+            long: scenario.destination.longitude } }] }, 200, String(url));
+      }
+      const body = JSON.parse(options.body);
+      const depth = typeof body.nextResultsKey !== "string" ? 0 : body.nextResultsKey.endsWith("-1") ? 1 : 2;
+      const searchIndex = depth === 0 ? requestOrdinal - 5 :
+        plan.logicalSearches.findIndex((search) => body.nextResultsKey.includes(search.logicalSearchId));
+      if (depth === 2) throw new Error("synthetic-first-d2-boundary-without-sensitive-detail");
+      return fakeJsonResponse(splitR2FakePaginationAwarePayload(plan.logicalSearches[searchIndex], depth, 2),
+        200, String(url));
+    },
+  });
+}
+
 export function buildSplitR2HistoricalR2_8AForensicRecord() {
   return Object.freeze({
     status: "FAIL", sourceSha: "100f2776ea6af018a798feb19fca7c742e257fea",
@@ -4909,7 +4999,7 @@ export function buildSplitR2HistoricalR2_8AForensicRecord() {
     failureHttpStatusCategory: "UNKNOWN_NOT_RETAINED",
     failureReconstructability: "INSUFFICIENT_SANITIZED_FAILURE_DETAIL",
     failureSanitizedDetailAvailable: false,
-    d0PhaseCompleted: true, d1PhaseCompleted: false, d2PhaseStarted: false,
+    d0PhaseCompleted: true, d1PhaseCompleted: false, d2PhaseStarted: false, d2PhaseCompleted: false,
     breadthFirstOrderViolation: false, allD0BeforeAnyD1: true, allD1BeforeAnyD2: true,
     executionStateCounts: { EXECUTED_TO_TERMINAL_STATE: 66, FAILED_DURING_EXECUTION: 1,
       NOT_EXECUTED_AFTER_WAVE_ABORT: 35 },
@@ -4926,6 +5016,7 @@ export function buildSplitR2HistoricalR2_8AForensicRecord() {
       "NORMALIZED_OFFER_PRICES_AND_COMPLETE_BREAKPOINT_INPUTS_WERE_DESTROYED_WITH_PROCESS_MEMORY",
     partialWaveEconomicResultsComputed: false,
     partialWaveEvidenceClassification: "PARTIAL_WAVE_EXPLORATORY_ECONOMIC_EVIDENCE",
+    receiptCompleteness: "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS",
   });
 }
 
@@ -5398,7 +5489,6 @@ export function parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArgument
   const requiredLiteral = new Set([
     "--r2-routestack-public-pagination-aware-multi-scenario",
     "--compact",
-    "--phase=SPLIT-R2.8A",
     "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
     "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP",
     "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
@@ -5406,12 +5496,16 @@ export function parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArgument
   ]);
   const expectedHeadArguments = argv.filter((entry) => entry.startsWith("--expected-head="));
   const fingerprintArguments = argv.filter((entry) => entry.startsWith("--expected-dirty-fingerprint="));
+  const phaseArguments = argv.filter((entry) => entry.startsWith("--phase="));
+  const acceptedPhases = new Set(["--phase=SPLIT-R2.8A", "--phase=SPLIT-R2.9A"]);
   if (argv.length !== 9 || [...requiredLiteral].some((entry) => !argv.includes(entry)) ||
-      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1) {
+      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1 ||
+      phaseArguments.length !== 1 || !acceptedPhases.has(phaseArguments[0])) {
     throw new Error("split-r2-pagination-aware-cli-contract-invalid");
   }
   return Object.freeze({ expectedHead: expectedHeadArguments[0].slice("--expected-head=".length),
-    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length) });
+    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length),
+    phase: phaseArguments[0].slice("--phase=".length) });
 }
 
 function buildSplitR2LiteApiDiagnosisBlockedReceipt(sourceSha, failureClassification) {
@@ -5535,10 +5629,13 @@ function buildSplitR2RouteStackPublicPaginationSensitivityBlockedReceipt(sourceS
   });
 }
 
-function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(sourceSha, failureClassification) {
+function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(
+  sourceSha, failureClassification, phase = null
+) {
   return Object.freeze({
     receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION,
     status: "BLOCKED", sourceSha: /^[0-9a-f]{40}$/u.test(sourceSha ?? "") ? sourceSha : "UNVERIFIED",
+    phase: phase === "SPLIT-R2.8A" || phase === "SPLIT-R2.9A" ? phase : null,
     environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
     userApprovalAcknowledged: false, unknownCostAcknowledged: false, singleWaveEnforced: true,
     frozenScenarioOrdinals: [1, 3, 5], scenarioCount: 3, logicalSearchesPlanned: 102,
@@ -5546,7 +5643,8 @@ function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(
     authHttpRequests: 0, destinationHttpRequests: 0, initialHttpRequests: 0,
     continuationD1HttpRequests: 0, continuationD2HttpRequests: 0, continuationHttpRequests: 0,
     totalHttpRequests: 0, totalHttpBudget: 310, totalHttpBudgetRemaining: 310,
-    retries: 0, redirects: 0, d3HttpRequests: 0, repositoryModificationsAfterCommit: 0,
+    retries: 0, redirects: 0, d2PhaseStarted: false, d2PhaseCompleted: false,
+    d3HttpRequests: 0, repositoryModificationsAfterCommit: 0,
     rawIdsPersisted: 0, rawContinuationIdsPersisted: 0, rawMetadataValuesPersisted: 0,
     payloadsOrRawResponsesPersisted: 0, ephemeralHmacSecretPersisted: false,
     crossRunLinkability: false, secretValuesExposed: false, failureClassification,
@@ -5561,16 +5659,18 @@ if (isMainModule()) {
   const argv = process.argv.slice(2);
   if (argv.includes("--r2-routestack-public-pagination-aware-multi-scenario")) {
     let expectedHead = null;
+    let expectedPhase = null;
     try {
       const parsed = parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments(argv);
       expectedHead = parsed.expectedHead;
+      expectedPhase = parsed.phase;
       const repository = verifySplitR2PaginationAwareRepositoryGate(
         parsed.expectedHead, parsed.expectedDirtyFingerprint
       );
       const evidence = inspectSplitR2RouteStackPublicContractEvidence();
       const authoritativePlan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
       const preflight = assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight({
-        mode: "ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO", phase: "SPLIT-R2.8A", compact: true,
+        mode: "ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO", phase: parsed.phase, compact: true,
         environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED", hostname: "mcp.routestack.ai", protocol: "https:",
         acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP",
         unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
@@ -5583,7 +5683,8 @@ if (isMainModule()) {
         contractEvidence: evidence, plan: authoritativePlan, credentialReader: readRouteStackPublicCredentials,
       });
       const receipt = await runSplitR2RouteStackPublicPaginationAwareMultiScenario({
-        sourceSha: parsed.expectedHead, plan: preflight.plan, apiKey: preflight.credentials.apiKey,
+        sourceSha: parsed.expectedHead, phase: preflight.phase, plan: preflight.plan,
+        apiKey: preflight.credentials.apiKey,
         apiSecret: preflight.credentials.apiSecret,
       });
       const serialized = serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(receipt);
@@ -5595,7 +5696,9 @@ if (isMainModule()) {
         : String(error?.message ?? error).startsWith("split-r2-")
           ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
           : "ROUTESTACK_PUBLIC_PAGINATION_AWARE_PREFLIGHT_BLOCKED";
-      const receipt = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(expectedHead, classification);
+      const receipt = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(
+        expectedHead, classification, expectedPhase
+      );
       const serialized = serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(receipt);
       process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_RESULT=${serialized.json}\n`);
       process.exitCode = 1;

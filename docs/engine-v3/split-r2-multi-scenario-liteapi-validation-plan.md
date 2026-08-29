@@ -1176,3 +1176,44 @@ constraint, tie-breaking and median semantics are unchanged. This phase is
 offline only and authorizes no provider call or replacement wave. A complete
 primary result would require a separately authorized future wave, so the next
 gate is `SPLIT-R2.9A_PAGINATION_AWARE_SINGLE_LIVE_REEXECUTION_AUTHORIZATION_GATE`.
+
+## 28. SPLIT-R2.9B — Exact R2.9A mode and abort-receipt contract repair
+
+R2.9A remains a pre-network `BLOCKED` result with classification
+`R2_9A_EXACT_LIVE_MODE_CONTRACT_NOT_IMPLEMENTED`. No credential was read and
+no HTTP request was issued, so its single-wave authorization remains
+unconsumed. The local defect was that the exact CLI and preflight accepted only
+the historical phase `SPLIT-R2.8A`; the authorized re-execution requires the
+case-sensitive phase `SPLIT-R2.9A`. The repaired parser accepts exactly those
+two complete values and rejects absent, partial, differently cased or unknown
+phase values before credentials. The phases remain separately visible in the
+receipt and capability registry; the historical R2.8A contract is preserved.
+
+The counter now closes D2 explicitly. `d2PhaseCompleted` is true after every
+eligible D2 request completes and is also true when D0 and D1 complete with an
+empty D2-eligible set. It remains false if execution aborts during D1 or D2.
+This completion state is distinct from `d2PhaseStarted` and from the
+breadth-first assertions.
+
+Receipt completeness is now the exact compatible set:
+
+- `COMPLETE_TECHNICAL_AND_ECONOMIC`;
+- `COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE`;
+- `PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS`;
+- `PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS`;
+- `PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS`;
+- `NOT_EMITTED`.
+
+The new no-evaluable category applies only when a wave aborts after normalized
+state remains available and automatic salvage runs but no breakpoint satisfies
+the complete economic gate. The historical non-reconstructable category still
+applies when the necessary normalized data were destroyed. No saving formula,
+material threshold, pagination depth, plan, evaluator, deduplication, currency
+policy, route allowlist or Production validator changed.
+
+R2.9B is exclusively offline: fake transports cover the exact R2.9A mode,
+full D2, empty eligible D2, D1 abort, D2 abort, exploratory salvage,
+no-evaluable salvage and historical non-reconstructability. It performs no
+provider call and does not consume the existing authorization. After all
+offline gates pass, the next phase is
+`SPLIT-R2.9A.1_AUTHORIZED_PAGINATION_AWARE_SINGLE_LIVE_REEXECUTION`.
