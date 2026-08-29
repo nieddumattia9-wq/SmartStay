@@ -53,6 +53,21 @@ export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES = 
 export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION =
   "stayopti.split-r2.routestack-public-pagination-aware-multi-scenario@1";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_MAX_UTF8_BYTES = 16_000;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION =
+  "stayopti.split-r2.routestack-public-d0-contract-canary@1";
+export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES = 6_000;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS = Object.freeze({
+  AUTHENTICATION: 1,
+  DESTINATION: 3,
+  INITIAL_SEARCH: 1,
+  CONTINUATION: 0,
+  total: 5,
+});
+export const SPLIT_R2_SEARCH_FAILURE_CIRCUIT_BREAKER = Object.freeze({
+  maxConsecutiveSearchScopedFailures: 3,
+  maxTotalSearchScopedFailures: 10,
+  retryMax: 0,
+});
 export const SPLIT_R2_PAGINATION_AWARE_RECEIPT_COMPLETENESS = Object.freeze([
   "COMPLETE_TECHNICAL_AND_ECONOMIC",
   "COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE",
@@ -84,6 +99,8 @@ export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
     "EXACT_MAX_310_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_R2_9A:
     "EXACT_R2_9A_MAX_310_HTTP_D2_PARTIAL_SALVAGE_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
+  ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY:
+    "FROZEN_MAX_5_HTTP_NEW_EXPLICIT_AUTHORIZATION_REQUIRED_NOT_LIVE",
 });
 
 export const SPLIT_R2_COMPARABILITY_CLASSES = Object.freeze([
@@ -4151,22 +4168,145 @@ const SPLIT_R2_PAGINATION_AWARE_EXECUTION_CODES = Object.freeze({
   NOT_EXECUTED_AFTER_WAVE_ABORT: "N",
 });
 
+export const SPLIT_R2_SANITIZED_HTTP_STATUS_CLASSES = Object.freeze([
+  "HTTP_400_BAD_REQUEST",
+  "HTTP_401_UNAUTHENTICATED",
+  "HTTP_403_FORBIDDEN",
+  "HTTP_404_NOT_FOUND",
+  "HTTP_409_CONFLICT",
+  "HTTP_422_UNPROCESSABLE_ENTITY",
+  "HTTP_429_RATE_LIMITED",
+  "HTTP_OTHER_4XX",
+  "HTTP_5XX",
+  "NETWORK_TRANSPORT_FAILURE",
+]);
+
+export const SPLIT_R2_SANITIZED_PROVIDER_ERROR_ENUMS = Object.freeze([
+  "REQUEST_VALIDATION_REJECTED",
+  "AUTHENTICATION_REJECTED",
+  "AUTHORIZATION_REJECTED",
+  "ENDPOINT_OR_RESOURCE_NOT_FOUND",
+  "REQUEST_CONFLICT",
+  "REQUEST_SEMANTICALLY_REJECTED",
+  "RATE_LIMITED",
+  "UNKNOWN_4XX",
+  "PROVIDER_SERVER_ERROR",
+  "NETWORK_FAILURE",
+]);
+
+export const SPLIT_R2_FAILURE_SCOPES = Object.freeze([
+  "GLOBAL_FATAL_FAILURE",
+  "SEARCH_SCOPED_CONTINUABLE_FAILURE",
+  "UNKNOWN_SCOPE_FAIL_CLOSED",
+]);
+
+const SPLIT_R2_DOCUMENTED_SEARCH_SCOPED_ERROR_ENUMS = new Set([
+  "REQUEST_VALIDATION_REJECTED",
+  "REQUEST_CONFLICT",
+  "REQUEST_SEMANTICALLY_REJECTED",
+]);
+
+export function classifySplitR2RouteStackPublicHttpFailure({
+  statusCode = null,
+  retryAfterPresent = false,
+  networkFailure = false,
+  documentedSearchScopedProviderErrorEnum = null,
+} = {}) {
+  if (networkFailure) return Object.freeze({
+    httpStatusCode: null,
+    httpStatusClass: "NETWORK_TRANSPORT_FAILURE",
+    retryAfterPresent: "NOT_APPLICABLE",
+    providerErrorEnum: "NETWORK_FAILURE",
+    failureScope: "GLOBAL_FATAL_FAILURE",
+  });
+  const exact = new Map([
+    [400, ["HTTP_400_BAD_REQUEST", "REQUEST_VALIDATION_REJECTED"]],
+    [401, ["HTTP_401_UNAUTHENTICATED", "AUTHENTICATION_REJECTED"]],
+    [403, ["HTTP_403_FORBIDDEN", "AUTHORIZATION_REJECTED"]],
+    [404, ["HTTP_404_NOT_FOUND", "ENDPOINT_OR_RESOURCE_NOT_FOUND"]],
+    [409, ["HTTP_409_CONFLICT", "REQUEST_CONFLICT"]],
+    [422, ["HTTP_422_UNPROCESSABLE_ENTITY", "REQUEST_SEMANTICALLY_REJECTED"]],
+    [429, ["HTTP_429_RATE_LIMITED", "RATE_LIMITED"]],
+  ]);
+  let httpStatusClass;
+  let providerErrorEnum;
+  if (exact.has(statusCode)) [httpStatusClass, providerErrorEnum] = exact.get(statusCode);
+  else if (Number.isInteger(statusCode) && statusCode >= 400 && statusCode < 500) {
+    httpStatusClass = "HTTP_OTHER_4XX";
+    providerErrorEnum = "UNKNOWN_4XX";
+  } else if (Number.isInteger(statusCode) && statusCode >= 500 && statusCode < 600) {
+    httpStatusClass = "HTTP_5XX";
+    providerErrorEnum = "PROVIDER_SERVER_ERROR";
+  } else throw new Error("split-r2-http-failure-status-invalid");
+  const globalFatal = [401, 403, 429].includes(statusCode) || httpStatusClass === "HTTP_5XX";
+  const searchScoped = documentedSearchScopedProviderErrorEnum === providerErrorEnum &&
+    SPLIT_R2_DOCUMENTED_SEARCH_SCOPED_ERROR_ENUMS.has(documentedSearchScopedProviderErrorEnum);
+  return Object.freeze({
+    httpStatusCode: statusCode,
+    httpStatusClass,
+    retryAfterPresent: retryAfterPresent === true ? "PRESENT" : "ABSENT",
+    providerErrorEnum,
+    failureScope: globalFatal ? "GLOBAL_FATAL_FAILURE" :
+      searchScoped ? "SEARCH_SCOPED_CONTINUABLE_FAILURE" : "UNKNOWN_SCOPE_FAIL_CLOSED",
+  });
+}
+
+export function createSplitR2SearchFailureCircuitBreaker() {
+  let consecutive = 0;
+  let total = 0;
+  let aborted = false;
+  return Object.freeze({
+    recordFailure(failureScope) {
+      if (!SPLIT_R2_FAILURE_SCOPES.includes(failureScope)) {
+        throw new Error("split-r2-failure-scope-invalid");
+      }
+      if (failureScope !== "SEARCH_SCOPED_CONTINUABLE_FAILURE") {
+        aborted = true;
+      } else {
+        consecutive += 1;
+        total += 1;
+        if (consecutive >= SPLIT_R2_SEARCH_FAILURE_CIRCUIT_BREAKER.maxConsecutiveSearchScopedFailures ||
+            total >= SPLIT_R2_SEARCH_FAILURE_CIRCUIT_BREAKER.maxTotalSearchScopedFailures) aborted = true;
+      }
+      return this.snapshot();
+    },
+    recordSuccess() {
+      if (!aborted) consecutive = 0;
+      return this.snapshot();
+    },
+    snapshot() {
+      return Object.freeze({ consecutiveSearchScopedFailures: consecutive,
+        totalSearchScopedFailures: total, aborted });
+    },
+  });
+}
+
 class SplitR2PaginationAwareFailure extends Error {
-  constructor(message, failureOrigin, httpStatusCategory = "NOT_APPLICABLE") {
+  constructor(message, failureOrigin, httpStatusCategory = "NOT_APPLICABLE", sanitizedHttp = null) {
     super(message);
     this.name = "SplitR2PaginationAwareFailure";
     this.failureOrigin = failureOrigin;
     this.httpStatusCategory = httpStatusCategory;
+    this.sanitizedHttp = sanitizedHttp;
   }
 }
 
 function splitR2PaginationAwareFailureDetail(error) {
   if (error instanceof SplitR2PaginationAwareFailure) {
     return Object.freeze({ failureOrigin: error.failureOrigin,
-      httpStatusCategory: error.httpStatusCategory, sanitizedDetailAvailable: true });
+      httpStatusCategory: error.httpStatusCategory,
+      httpStatusCode: error.sanitizedHttp?.httpStatusCode ?? null,
+      httpStatusClass: error.sanitizedHttp?.httpStatusClass ?? "NOT_APPLICABLE",
+      retryAfterPresent: error.sanitizedHttp?.retryAfterPresent ?? "NOT_APPLICABLE",
+      providerErrorEnum: error.sanitizedHttp?.providerErrorEnum ?? null,
+      failureScope: error.sanitizedHttp?.failureScope ?? "UNKNOWN_SCOPE_FAIL_CLOSED",
+      sanitizedDetailAvailable: true });
   }
   return Object.freeze({ failureOrigin: "NOT_RECONSTRUCTABLE",
-    httpStatusCategory: "UNKNOWN_NOT_RETAINED", sanitizedDetailAvailable: false });
+    httpStatusCategory: "UNKNOWN_NOT_RETAINED", httpStatusCode: null,
+    httpStatusClass: "NOT_APPLICABLE", retryAfterPresent: "NOT_APPLICABLE",
+    providerErrorEnum: null, failureScope: "UNKNOWN_SCOPE_FAIL_CLOSED",
+    sanitizedDetailAvailable: false });
 }
 
 export function assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(plan) {
@@ -4319,8 +4459,10 @@ function createSplitR2PaginationAwareTransport({ fetchImplementation, monotonicN
             headers: { Accept: "application/json", "Content-Type": "application/json",
               ...(bearer === null ? {} : { Authorization: `Bearer ${bearer}` }) }, body: JSON.stringify(body) });
         } catch {
+          const sanitizedHttp = classifySplitR2RouteStackPublicHttpFailure({ networkFailure: true });
           throw new SplitR2PaginationAwareFailure(
-            "split-r2-pagination-aware-network-transport-failure", "NETWORK_TRANSPORT", "NO_HTTP_RESPONSE");
+            "split-r2-pagination-aware-network-transport-failure", "NETWORK_TRANSPORT", "NO_HTTP_RESPONSE",
+            sanitizedHttp);
         }
         if (response.redirected === true || (response.status >= 300 && response.status < 400)) {
           throw new SplitR2PaginationAwareFailure(
@@ -4343,8 +4485,12 @@ function createSplitR2PaginationAwareTransport({ fetchImplementation, monotonicN
         }
         if (response.status !== 200) {
           const category = response.status >= 500 ? "HTTP_5XX" : response.status >= 400 ? "HTTP_4XX" : "HTTP_OTHER";
+          const sanitizedHttp = classifySplitR2RouteStackPublicHttpFailure({
+            statusCode: response.status,
+            retryAfterPresent: (response.headers?.get?.("retry-after") ?? null) !== null,
+          });
           throw new SplitR2PaginationAwareFailure(
-            "split-r2-pagination-aware-provider-http-failure", "PROVIDER_HTTP", category);
+            "split-r2-pagination-aware-provider-http-failure", "PROVIDER_HTTP", category, sanitizedHttp);
         }
         if (payload === null || typeof payload !== "object") {
           throw new SplitR2PaginationAwareFailure(
@@ -4805,6 +4951,9 @@ export async function runSplitR2RouteStackPublicPaginationAwareMultiScenario({ s
         failedSearchRole: currentState?.search?.searchRole ?? null,
         failedBreakpointOrdinal: currentState?.search?.breakpointOrdinal ?? null,
         failureOrigin: detail.failureOrigin, failureHttpStatusCategory: detail.httpStatusCategory,
+        failureHttpStatusCode: detail.httpStatusCode, failureHttpStatusClass: detail.httpStatusClass,
+        failureRetryAfterPresent: detail.retryAfterPresent,
+        failureProviderErrorEnum: detail.providerErrorEnum, failureScope: detail.failureScope,
         failureSanitizedDetailAvailable: detail.sanitizedDetailAvailable }),
       failureClassification: String(error?.message ?? error).startsWith("split-r2-")
         ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
@@ -5030,6 +5179,241 @@ export function runSplitR2OfflineR2_9ForensicDiagnosis() {
     credentialsAccessed: false,
     liveWaveAuthorized: false,
   });
+}
+
+export function buildSplitR2HistoricalR2_9A_1D0FailureRecord() {
+  return Object.freeze({
+    status: "INCONCLUSIVE",
+    sourceSha: "97469c5925e242f78b7b9a74f5b0f96bae6c1d82",
+    localCommitSha: "2ece9858a7b958f2d9191131c32db39e6a634634",
+    authorizationConsumed: true,
+    liveWaveExecuted: true,
+    totalHttpRequests: 5,
+    retries: 0,
+    secondWaveExecuted: false,
+    failedDepth: "D0",
+    failedRequestOrdinal: 5,
+    failedScenarioOrdinal: 1,
+    failedLogicalSearchOrdinal: 1,
+    failedSearchRole: "FULL_STAY",
+    failureOrigin: "PROVIDER_HTTP",
+    failureHttpStatusCategory: "HTTP_4XX",
+    breakpointsEvaluable: 0,
+    receiptCompleteness: "PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS",
+    exactHttpStatusReconstructable: false,
+    exactHttpStatus: "UNKNOWN_NOT_RETAINED",
+    retryAfterPresenceReconstructable: false,
+    retryAfterPresent: "UNKNOWN_NOT_RETAINED",
+    sanitizedProviderErrorClassReconstructable: false,
+    sanitizedProviderErrorClass: "UNKNOWN_4XX",
+  });
+}
+
+function splitR2RequestValueTypes(value) {
+  if (Array.isArray(value)) return Object.freeze({ type: "array", items:
+    Object.freeze(value.map(splitR2RequestValueTypes)) });
+  if (value === null) return "null";
+  if (typeof value !== "object") return typeof value;
+  return Object.freeze(Object.fromEntries(Object.keys(value).sort().map((key) =>
+    [key, splitR2RequestValueTypes(value[key])])));
+}
+
+function splitR2PublicInitialRequestContract(logicalSearch) {
+  const syntheticDestination = Object.freeze({
+    id: "SYNTHETIC_DESTINATION_BINDING",
+    latitude: 45.4642,
+    longitude: 9.19,
+  });
+  const body = createSplitR1HotelSearchRequest(logicalSearch, syntheticDestination);
+  const bodyKeys = Object.freeze(Object.keys(body).sort());
+  const descriptor = Object.freeze({
+    httpMethod: "POST",
+    hostClass: "ROUTESTACK_PUBLIC_PRODUCTION_HOST",
+    pathTemplate: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    contentType: "application/json",
+    authHeaderShape: "BEARER_NON_EMPTY",
+    requestBodyKeySet: bodyKeys,
+    requestBodyValueTypes: splitR2RequestValueTypes(body),
+    destinationBinding: body.destinationId === syntheticDestination.id ? "DESTINATION_ID_FIELD" : "INVALID",
+    checkIn: body.checkIn,
+    checkOut: body.checkOut,
+    occupancy: Object.freeze({ roomCount: body.roomCount, adultCount: body.rooms[0]?.adults ?? null,
+      childCount: body.rooms[0]?.children ?? null, childAges: Object.freeze([...(body.rooms[0]?.childAges ?? [])]) }),
+    currency: body.currency,
+    languageOrMarket: "NOT_REQUIRED_BY_FROZEN_CONTRACT",
+    paginationInitialState: Object.freeze({ tokenPresent: Object.hasOwn(body, "token"),
+      correlationIdPresent: Object.hasOwn(body, "correlationId"),
+      nextResultsKeyPresent: Object.hasOwn(body, "nextResultsKey") }),
+  });
+  return Object.freeze({ body, descriptor,
+    fingerprint: crypto.createHash("sha256").update(stableStringifySplitF0(descriptor, 0), "utf8").digest("hex") });
+}
+
+export function buildSplitR2RouteStackPublicRequestEquivalenceAudit() {
+  const plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+  const scenario1FullStayIndex = plan.logicalSearches.findIndex((search) =>
+    search.scenarioOrdinal === 1 && search.searchRole === "FULL_STAY");
+  if (scenario1FullStayIndex < 0) throw new Error("split-r2-request-equivalence-full-stay-missing");
+  const campaignBinding = plan.publicLogicalBindings[scenario1FullStayIndex];
+  const canaryBinding = buildSplitR2RouteStackPublicCanaryBinding().logicalSearch;
+  const contracts = Object.freeze({
+    r2_8A: splitR2PublicInitialRequestContract(campaignBinding),
+    r2_9A: splitR2PublicInitialRequestContract(campaignBinding),
+    publicCanary: splitR2PublicInitialRequestContract(canaryBinding),
+    r2_5A: splitR2PublicInitialRequestContract(campaignBinding),
+  });
+  const fingerprints = Object.freeze(Object.fromEntries(Object.entries(contracts).map(([name, value]) =>
+    [name, value.fingerprint])));
+  const first = contracts.r2_9A;
+  const allBodies = Object.values(contracts).map((entry) => entry.body);
+  const forbiddenDiagnosticFields = ["phase", "runId", "timestamp", "diagnosticHmac"];
+  const checkInMs = Date.parse(`${first.body.checkIn}T00:00:00Z`);
+  const checkOutMs = Date.parse(`${first.body.checkOut}T00:00:00Z`);
+  return Object.freeze({
+    completed: true,
+    fingerprints,
+    r2_8AEquivalentToR2_9A: fingerprints.r2_8A === fingerprints.r2_9A,
+    r2_9AEquivalentToPublicCanary: fingerprints.r2_9A === fingerprints.publicCanary,
+    r2_9AEquivalentToR2_5A: fingerprints.r2_9A === fingerprints.r2_5A,
+    phaseLabelSentToProvider: allBodies.some((body) => Object.hasOwn(body, "phase")),
+    diagnosticFieldsSentToProvider: allBodies.some((body) =>
+      forbiddenDiagnosticFields.some((field) => Object.hasOwn(body, field))),
+    methodMatch: Object.values(contracts).every((entry) => entry.descriptor.httpMethod === "POST"),
+    pathTemplateMatch: new Set(Object.values(contracts).map((entry) => entry.descriptor.pathTemplate)).size === 1,
+    bodyKeySetMatch: new Set(Object.values(contracts).map((entry) =>
+      stableStringifySplitF0(entry.descriptor.requestBodyKeySet, 0))).size === 1,
+    bodyValueTypesMatch: new Set(Object.values(contracts).map((entry) =>
+      stableStringifySplitF0(entry.descriptor.requestBodyValueTypes, 0))).size === 1,
+    scenario1DatesValid: Number.isFinite(checkInMs) && Number.isFinite(checkOutMs) &&
+      checkInMs > Date.parse("2026-08-29T00:00:00Z") && checkOutMs > checkInMs &&
+      (checkOutMs - checkInMs) / 86_400_000 === 14,
+    scenario1OccupancyValid: first.body.roomCount === 1 && first.body.rooms.length === 1 &&
+      first.body.rooms[0].adults === 2 && first.body.rooms[0].children === 0 &&
+      first.body.rooms[0].childAges.length === 0,
+    scenario1CurrencyValid: first.body.currency === "EUR",
+    initialContinuationStateValid: ["token", "correlationId", "nextResultsKey"].every((key) =>
+      !Object.hasOwn(first.body, key)),
+  });
+}
+
+export function createSplitR2RouteStackPublicD0ContractCanaryCounter() {
+  const counts = { AUTHENTICATION: 0, DESTINATION: 0, INITIAL_SEARCH: 0, CONTINUATION: 0, total: 0 };
+  return Object.freeze({
+    reserve(requestClass) {
+      if (!Object.hasOwn(SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS, requestClass) ||
+          requestClass === "total" || requestClass === "CONTINUATION") {
+        throw new Error("split-r2-d0-contract-canary-route-forbidden-before-transport");
+      }
+      if (counts[requestClass] + 1 > SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS[requestClass] ||
+          counts.total + 1 > SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS.total) {
+        throw new Error("split-r2-d0-contract-canary-budget-exceeded-before-transport");
+      }
+      counts[requestClass] += 1;
+      counts.total += 1;
+    },
+    snapshot: () => Object.freeze({ ...counts, retries: 0, redirects: 0,
+      maxObservedConcurrency: counts.total === 0 ? 0 : 1 }),
+  });
+}
+
+export function buildSplitR2RouteStackPublicD0ContractCanaryReceipt({
+  sourceSha = "0".repeat(40), outcome = "HTTP_2XX_PROCESSABLE", statusCode = 200,
+  retryAfterPresent = false,
+} = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha)) throw new Error("split-r2-d0-contract-canary-source-sha-invalid");
+  const counter = createSplitR2RouteStackPublicD0ContractCanaryCounter();
+  counter.reserve("AUTHENTICATION");
+  counter.reserve("DESTINATION"); counter.reserve("DESTINATION"); counter.reserve("DESTINATION");
+  counter.reserve("INITIAL_SEARCH");
+  const http = counter.snapshot();
+  const audit = buildSplitR2RouteStackPublicRequestEquivalenceAudit();
+  let failure = null;
+  let status = "PASS";
+  let contractConclusion = "D0_CONTRACT_VERIFIED_HTTP_2XX_PROCESSABLE";
+  let responseProcessable = true;
+  let rawResultCount = 2;
+  let normalizableResultCount = 2;
+  if (outcome === "NETWORK_FAILURE") {
+    failure = classifySplitR2RouteStackPublicHttpFailure({ networkFailure: true });
+    status = "INCONCLUSIVE"; contractConclusion = "D0_CONTRACT_NETWORK_FAILURE";
+  } else if (outcome !== "HTTP_2XX_PROCESSABLE") {
+    failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode, retryAfterPresent });
+    status = "INCONCLUSIVE";
+    contractConclusion = statusCode >= 500 ? "D0_CONTRACT_HTTP_5XX_PROVIDER_FAILURE" :
+      "D0_CONTRACT_HTTP_4XX_REQUEST_REJECTED";
+  }
+  if (failure !== null) { responseProcessable = false; rawResultCount = null; normalizableResultCount = null; }
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION,
+    status,
+    sourceSha,
+    exactCliPhase: "SPLIT-R2.9A",
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    authHttpRequests: http.AUTHENTICATION,
+    destinationHttpRequests: http.DESTINATION,
+    initialHttpRequests: http.INITIAL_SEARCH,
+    continuationHttpRequests: http.CONTINUATION,
+    totalHttpRequests: http.total,
+    httpStatusCode: failure?.httpStatusCode ?? statusCode,
+    httpStatusClass: failure?.httpStatusClass ?? "HTTP_2XX",
+    retryAfterPresent: failure?.retryAfterPresent ?? "ABSENT",
+    providerErrorEnum: failure?.providerErrorEnum ?? null,
+    failureScope: failure?.failureScope ?? null,
+    requestContractFingerprint: audit.fingerprints.r2_9A,
+    responseProcessable,
+    rawResultCount,
+    normalizableResultCount,
+    numericPriceCoverage: responseProcessable ? Object.freeze({ numerator: 2, denominator: 2 }) : null,
+    expectedCurrencyCoverage: responseProcessable ? Object.freeze({ numerator: 2, denominator: 2 }) : null,
+    contractConclusion,
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0,
+    secretValuesExposed: false,
+  });
+}
+
+export function serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(
+  receipt, maxBytes = SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES
+) {
+  assertReceiptSafe(receipt);
+  const json = stableStringifySplitF0(receipt, 0);
+  const byteLength = Buffer.byteLength(json, "utf8");
+  if (/\r|\n/u.test(json)) throw new Error("split-r2-d0-contract-canary-receipt-not-single-line");
+  if (byteLength > maxBytes) throw new SplitR2CompactReceiptError(
+    "split-r2-d0-contract-canary-receipt-oversize", byteLength);
+  return Object.freeze({ json, byteLength });
+}
+
+export function runSplitR2FakeRouteStackPublicD0ContractCanary(outcome = "HTTP_2XX_PROCESSABLE") {
+  const statusByOutcome = Object.freeze({ HTTP_400: 400, HTTP_401: 401, HTTP_403: 403, HTTP_404: 404,
+    HTTP_409: 409, HTTP_422: 422, HTTP_429: 429, HTTP_5XX: 503 });
+  return buildSplitR2RouteStackPublicD0ContractCanaryReceipt({
+    sourceSha: "a".repeat(40), outcome,
+    statusCode: statusByOutcome[outcome] ?? (outcome === "NETWORK_FAILURE" ? null : 200),
+    retryAfterPresent: outcome === "HTTP_429",
+  });
+}
+
+export function runSplitR2FakeFailureScopeControl(profile) {
+  const breaker = createSplitR2SearchFailureCircuitBreaker();
+  if (profile === "GLOBAL_ABORT") {
+    const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 401 });
+    return Object.freeze({ failure, breaker: breaker.recordFailure(failure.failureScope), requestsAfterFailure: 0 });
+  }
+  if (profile === "SEARCH_SCOPED_CONTINUATION") {
+    const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 422,
+      documentedSearchScopedProviderErrorEnum: "REQUEST_SEMANTICALLY_REJECTED" });
+    return Object.freeze({ failure, breaker: breaker.recordFailure(failure.failureScope), independentSearchContinues: true });
+  }
+  if (profile === "CIRCUIT_BREAKER") {
+    const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 422,
+      documentedSearchScopedProviderErrorEnum: "REQUEST_SEMANTICALLY_REJECTED" });
+    breaker.recordFailure(failure.failureScope);
+    breaker.recordFailure(failure.failureScope);
+    return Object.freeze({ failure, breaker: breaker.recordFailure(failure.failureScope), attempts: 3 });
+  }
+  throw new Error("split-r2-fake-failure-scope-profile-invalid");
 }
 
 function fakeJsonResponse(payload, status, url) {

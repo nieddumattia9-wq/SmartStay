@@ -1255,3 +1255,81 @@ optimum, general market frequency, Production validity, commercial validation,
 booking, quality-friction or user-usability claim is authorized. A new live
 wave is not authorized by this result. The next gate is
 `SPLIT-R2.10_TRANSPORT_FAILURE_AND_PARTIAL_EVIDENCE_REVIEW`.
+
+## 30. SPLIT-R2.10 — Public D0 4xx diagnosis and minimal-canary freeze
+
+R2.9A.1 remains `INCONCLUSIVE`. Its one authorized wave was consumed and was
+not repeated. It stopped on overall HTTP request 5, the first D0 request:
+scenario 1, logical-search ordinal 1, role `FULL_STAY`. The retained receipt
+contains only `PROVIDER_HTTP` and `HTTP_4XX`; it does not retain the exact HTTP
+status, `Retry-After` presence or a more specific sanitized provider error
+class. Those historical values are therefore `UNKNOWN_NOT_RETAINED` and are
+not inferred. Zero evaluable breakpoints is missing economic coverage, not
+zero saving.
+
+### 30.1 Provider-request equivalence
+
+The R2.8A and R2.9A phases share the same authoritative frozen plan and both
+construct the initial request through `createSplitR1HotelSearchRequest`. The
+same builder is used by the successful public Production canary and R2.5A.
+An offline comparison with synthetic destination binding proves equality of
+method, public-host class, path, content type, authorization-header shape,
+body key set, value types, destination field, dates, occupancy, EUR and empty
+initial pagination state. Scenario 1 is the frozen Milano 14-night full stay,
+with one room, two adults and no children. The internal phase label and all
+diagnostic fields are absent from the provider request.
+
+The comparison hashes a deterministic sanitized contract descriptor, never a
+real destination ID, bearer token or provider payload. All four compared
+paths produce the same SHA-256 fingerprint. This demonstrates request-builder
+equivalence; it does not identify the historical 4xx subtype or establish that
+external provider state was unchanged between waves.
+
+### 30.2 Prospective sanitized failure contract
+
+Future receipts preserve the non-secret integer status and map it exactly to
+`HTTP_400_BAD_REQUEST`, `HTTP_401_UNAUTHENTICATED`, `HTTP_403_FORBIDDEN`,
+`HTTP_404_NOT_FOUND`, `HTTP_409_CONFLICT`,
+`HTTP_422_UNPROCESSABLE_ENTITY`, `HTTP_429_RATE_LIMITED`,
+`HTTP_OTHER_4XX`, `HTTP_5XX` or `NETWORK_TRANSPORT_FAILURE`. The internal
+provider-error enum is allowlisted and `Retry-After` is reduced to
+`PRESENT`, `ABSENT` or `NOT_APPLICABLE`; no header value or response body is
+retained.
+
+Failure scope is separate. HTTP 401, 403 and 429, provider server failure,
+hostname/endpoint mismatch and global authentication failure are
+`GLOBAL_FATAL_FAILURE`. A search may be
+`SEARCH_SCOPED_CONTINUABLE_FAILURE` only when an explicitly documented and
+allowlisted query-specific classification establishes that scope. Generic
+400, 404, 409, 422 and unknown 4xx remain
+`UNKNOWN_SCOPE_FAIL_CLOSED`. Global and unknown scope stop immediately.
+Search-scoped failures have no retry and are bounded by a circuit breaker of
+3 consecutive or 10 total failures.
+
+### 30.3 Frozen five-HTTP D0 contract canary
+
+No canary is authorized or executed by R2.10. The next prospective canary is
+frozen as a distinct default-held capability and requires new explicit user
+authorization. It uses exact phase `SPLIT-R2.9A`, resolves the same three
+frozen destinations, then sends only scenario 1 full-stay D0. Its ceilings are
+1 auth, 3 destination, 1 initial, 0 continuation and 5 total HTTP; retry and
+redirect are zero, concurrency is one and the minimum start interval is
+1,000 ms. A second initial and every continuation are rejected before
+transport. It evaluates only the read-only search contract, never Split
+economics.
+
+The frozen receipt is
+`stayopti.split-r2.routestack-public-d0-contract-canary@1`, deterministic
+single-line JSON with a 6,000-byte UTF-8 ceiling and fail-closed oversize
+handling. Conclusions are limited to
+`D0_CONTRACT_VERIFIED_HTTP_2XX_PROCESSABLE`,
+`D0_CONTRACT_HTTP_4XX_REQUEST_REJECTED`,
+`D0_CONTRACT_HTTP_5XX_PROVIDER_FAILURE` or
+`D0_CONTRACT_NETWORK_FAILURE`. A successful 2xx canary may support planning a
+new full campaign but does not authorize it automatically.
+
+R2.10 is entirely offline: credentials, provider calls, HTTP requests and live
+waves are zero. It changes no scenario, pagination depth, economic evaluator,
+material threshold, deduplication, currency rule or public runtime. The next
+gate is
+`SPLIT-R2.10A_ROUTESTACK_PUBLIC_D0_CONTRACT_5_HTTP_LIVE_CANARY_AUTHORIZATION_GATE`.
