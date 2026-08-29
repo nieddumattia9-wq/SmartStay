@@ -26,6 +26,7 @@ import {
   SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES,
   SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION,
   SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS,
+  SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT,
   SPLIT_R2_SANITIZED_HTTP_STATUS_CLASSES,
   SPLIT_R2_SANITIZED_PROVIDER_ERROR_ENUMS,
   SPLIT_R2_FAILURE_SCOPES,
@@ -56,6 +57,8 @@ import {
   assertSplitR2RouteStackPublicPaginationSensitivityPreflight,
   assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan,
   assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight,
+  assertSplitR2RouteStackPublicD0ContractCanaryPlan,
+  assertSplitR2RouteStackPublicD0ContractCanaryPreflight,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
   buildSplitR2LiteApiCanaryReceipt,
@@ -72,6 +75,7 @@ import {
   buildSplitR2HistoricalR2_9A_1D0FailureRecord,
   buildSplitR2RouteStackPublicRequestEquivalenceAudit,
   buildSplitR2RouteStackPublicD0ContractCanaryReceipt,
+  buildSplitR2RouteStackPublicD0ContractCanaryPlan,
   classifySplitR2RouteStackPublicHttpFailure,
   classifySplitR2RouteStackPublicReproducibility,
   classifySplitR2PaginationBias,
@@ -102,6 +106,7 @@ import {
   parseSplitR2RouteStackPublicMultiScenarioArguments,
   parseSplitR2RouteStackPublicPaginationSensitivityArguments,
   parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments,
+  parseSplitR2RouteStackPublicD0ContractCanaryArguments,
   runSplitR2FakeLiteApiCanary,
   runSplitR2FakeLiteApiZeroResultDiagnosis,
   runSplitR2FakeRouteStackPublicCanary,
@@ -118,6 +123,7 @@ import {
   runSplitR2FakeRouteStackPublicPaginationAwareD2FailureBoundary,
   runSplitR2OfflineR2_9ForensicDiagnosis,
   runSplitR2FakeRouteStackPublicD0ContractCanary,
+  runSplitR2FakeRouteStackPublicD0ContractCanaryExact,
   runSplitR2FakeFailureScopeControl,
   runSplitR2LiteApiCanary,
   runSplitR2LiteApiZeroResultDiagnosis,
@@ -668,7 +674,7 @@ test("65 exact live capability registry includes the dedicated public multi-scen
     ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_R2_9A:
       "EXACT_R2_9A_MAX_310_HTTP_D2_PARTIAL_SALVAGE_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
     ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY:
-      "FROZEN_MAX_5_HTTP_NEW_EXPLICIT_AUTHORIZATION_REQUIRED_NOT_LIVE",
+      "EXACT_MAX_5_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   });
 });
 
@@ -2682,7 +2688,7 @@ test("221 R2.10 fake 2xx canary verifies only the D0 contract", () => {
   assert.equal(receipt.status, "PASS");
   assert.equal(receipt.contractConclusion, "D0_CONTRACT_VERIFIED_HTTP_2XX_PROCESSABLE");
   assert.equal(receipt.responseProcessable, true);
-  assert.equal(receipt.exactCliPhase, "SPLIT-R2.9A");
+  assert.equal(receipt.exactCliPhase, "SPLIT-R2.10A");
 });
 
 test("222 R2.10 fake 4xx canaries preserve exact status and sanitized conclusion", () => {
@@ -2715,8 +2721,210 @@ test("224 R2.10 D0 canary receipt is private single-line and below 6000 bytes", 
     assert.equal(serialized.json.includes(prohibited), false);
 });
 
-test("225 R2.10 is an offline freeze with no live-capability authorization", () => {
+test("225 R2.10B binds the D0 canary capability without executing live transport", () => {
   assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY,
-    "FROZEN_MAX_5_HTTP_NEW_EXPLICIT_AUTHORIZATION_REQUIRED_NOT_LIVE");
+    "EXACT_MAX_5_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED");
   assert.equal(runSplitR2OfflineR2_9ForensicDiagnosis().httpRequests, 0);
+});
+
+const R2_10A_EXACT_ARGS = Object.freeze([
+  "--r2-routestack-public-d0-contract-canary",
+  "--compact",
+  "--phase=SPLIT-R2.10A",
+  "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+  "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_5_HTTP",
+  "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+  "--acknowledgement-read-only=I_ACKNOWLEDGE_READ_ONLY",
+  "--acknowledgement-no-retry=I_ACKNOWLEDGE_NO_RETRY",
+  "--acknowledgement-no-continuation=I_ACKNOWLEDGE_NO_CONTINUATION",
+  "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+  `--expected-head=${"a".repeat(40)}`,
+  `--expected-dirty-fingerprint=${"b".repeat(64)}`,
+]);
+
+function r2_10APreflightOptions(overrides = {}) {
+  return {
+    mode: "ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY", phase: "SPLIT-R2.10A", compact: true,
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED", hostname: "mcp.routestack.ai",
+    protocol: "https:", acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_5_HTTP",
+    unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    readOnlyAcknowledgement: "I_ACKNOWLEDGE_READ_ONLY",
+    noRetryAcknowledgement: "I_ACKNOWLEDGE_NO_RETRY",
+    noContinuationAcknowledgement: "I_ACKNOWLEDGE_NO_CONTINUATION",
+    noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+    authMax: 1, destinationMax: 3, initialSearchMax: 1, continuationMax: 0, totalMax: 5,
+    retries: 0, redirects: 0, concurrency: 1, minimumIntervalMs: 1_000,
+    productionFallback: false, sandboxFallback: false, liteApiFallback: false,
+    otherLiveModesSelected: 0, repositoryGatePassed: true,
+    plan: buildSplitR2RouteStackPublicD0ContractCanaryPlan(),
+    credentialReader: () => ({ baseUrl: "https://mcp.routestack.ai",
+      apiKey: "synthetic-key", apiSecret: "synthetic-secret" }),
+    ...overrides,
+  };
+}
+
+test("226 R2.10B exact CLI phase is case-sensitive and aliases fail closed", () => {
+  const parsed = parseSplitR2RouteStackPublicD0ContractCanaryArguments([...R2_10A_EXACT_ARGS]);
+  assert.equal(parsed.phase, "SPLIT-R2.10A");
+  assert.throws(() => parseSplitR2RouteStackPublicD0ContractCanaryArguments(
+    R2_10A_EXACT_ARGS.map((entry) => entry === "--phase=SPLIT-R2.10A" ? "--phase=split-r2.10a" : entry)
+  ), /cli-contract-invalid/);
+  assert.throws(() => parseSplitR2RouteStackPublicD0ContractCanaryArguments(
+    R2_10A_EXACT_ARGS.map((entry) => entry === "--r2-routestack-public-d0-contract-canary"
+      ? "--r2-routestack-public-canary" : entry)
+  ), /cli-contract-invalid/);
+});
+
+test("227 R2.10B preflight requires every acknowledgement before credentials", () => {
+  let reads = 0;
+  const credentialReader = () => { reads += 1; return { baseUrl: "https://mcp.routestack.ai",
+    apiKey: "synthetic-key", apiSecret: "synthetic-secret" }; };
+  assert.throws(() => assertSplitR2RouteStackPublicD0ContractCanaryPreflight(
+    r2_10APreflightOptions({ mode: null, credentialReader })
+  ), /preflight-failed-before-credentials/);
+  assert.equal(reads, 0);
+  assert.throws(() => assertSplitR2RouteStackPublicD0ContractCanaryPreflight(
+    r2_10APreflightOptions({ acknowledgement: null, credentialReader })
+  ), /preflight-failed-before-credentials/);
+  assert.equal(reads, 0);
+  const result = assertSplitR2RouteStackPublicD0ContractCanaryPreflight(
+    r2_10APreflightOptions({ credentialReader })
+  );
+  assert.equal(result.credentialsAccessed, true);
+  assert.equal(reads, 1);
+});
+
+test("228 R2.10B live modes are mutually exclusive and sandbox fallback is impossible", () => {
+  let reads = 0;
+  const credentialReader = () => { reads += 1; return null; };
+  for (const override of [{ otherLiveModesSelected: 1 }, { sandboxFallback: true },
+    { productionFallback: true }, { liteApiFallback: true }]) {
+    assert.throws(() => assertSplitR2RouteStackPublicD0ContractCanaryPreflight(
+      r2_10APreflightOptions({ ...override, credentialReader })
+    ), /preflight-failed-before-credentials/);
+  }
+  assert.equal(reads, 0);
+});
+
+test("229 R2.10B authoritative plan binds three destinations and only scenario-one full stay", () => {
+  const plan = buildSplitR2RouteStackPublicD0ContractCanaryPlan();
+  assert.equal(assertSplitR2RouteStackPublicD0ContractCanaryPlan(plan), plan);
+  assert.deepEqual(plan.scenarioBindings.map((entry) => entry.scenarioOrdinal), [1, 3, 5]);
+  assert.deepEqual([plan.logicalSearch.scenarioOrdinal, plan.logicalSearch.logicalSearchOrdinal,
+    plan.logicalSearch.searchRole, plan.logicalSearch.breakpointOrdinal], [1, 1, "FULL_STAY", null]);
+  assert.equal(plan.logicalSearch.providerBinding.request.currency, "EUR");
+});
+
+test("230 R2.10B request contract remains semantically identical across historical public modes", () => {
+  const audit = buildSplitR2RouteStackPublicRequestEquivalenceAudit();
+  assert.deepEqual(new Set(Object.values(audit.fingerprints)), new Set([
+    SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT]));
+  assert.deepEqual([audit.phaseLabelSentToProvider, audit.diagnosticFieldsSentToProvider,
+    audit.initialContinuationStateValid], [false, false, true]);
+});
+
+test("231 R2.10B fake 2xx result dispatch reaches exactly five HTTP and binds success receipt", async () => {
+  const { receipt, transmittedRequests } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact();
+  assert.deepEqual([transmittedRequests, receipt.authHttpRequests, receipt.destinationHttpRequests,
+    receipt.initialHttpRequests, receipt.continuationHttpRequests, receipt.totalHttpRequests],
+  [5, 1, 3, 1, 0, 5]);
+  assert.deepEqual([receipt.status, receipt.responseProcessable, receipt.inventoryAvailable,
+    receipt.d0ContractVerified, receipt.authorizationConsumed], ["PASS", true, true, true, false]);
+  assert.equal(receipt.canaryConclusion,
+    "ROUTESTACK_PUBLIC_INITIAL_D0_READ_ONLY_CONTRACT_CURRENTLY_VERIFIED");
+  assert.equal(receipt.minObservedRequestIntervalMs >= 1_000, true);
+});
+
+test("232 R2.10B fake 2xx empty verifies structure without economic evidence", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_2XX_EMPTY");
+  assert.deepEqual([receipt.status, receipt.responseProcessable, receipt.inventoryAvailable,
+    receipt.rawResultCount, receipt.economicBreakpointsEvaluated, receipt.splitSavingEvaluated],
+  ["PASS", true, false, 0, 0, false]);
+});
+
+test("233 R2.10B fake 2xx unprocessable remains inconclusive and stops", async () => {
+  const { receipt, transmittedRequests } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact(
+    "HTTP_2XX_UNPROCESSABLE");
+  assert.deepEqual([transmittedRequests, receipt.status, receipt.responseProcessable,
+    receipt.d0ContractVerified, receipt.secondSearchExecuted], [5, "INCONCLUSIVE", false, false, false]);
+});
+
+test("234 R2.10B granular initial HTTP classes and Retry-After are bound", async () => {
+  const profiles = [["HTTP_400", 400, "HTTP_400_BAD_REQUEST"],
+    ["HTTP_401", 401, "HTTP_401_UNAUTHENTICATED"], ["HTTP_403", 403, "HTTP_403_FORBIDDEN"],
+    ["HTTP_404", 404, "HTTP_404_NOT_FOUND"], ["HTTP_409", 409, "HTTP_409_CONFLICT"],
+    ["HTTP_422", 422, "HTTP_422_UNPROCESSABLE_ENTITY"],
+    ["HTTP_429", 429, "HTTP_429_RATE_LIMITED"],
+    ["HTTP_OTHER_4XX", 418, "HTTP_OTHER_4XX"], ["HTTP_5XX", 503, "HTTP_5XX"]];
+  for (const [profile, code, category] of profiles) {
+    const { receipt, transmittedRequests } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact(profile);
+    assert.deepEqual([transmittedRequests, receipt.status, receipt.httpStatusCode,
+      receipt.httpStatusClass, receipt.continuationExecuted, receipt.secondSearchExecuted],
+    [5, "INCONCLUSIVE", code, category, false, false]);
+    assert.equal(receipt.retryAfterPresent, profile === "HTTP_429" ? "PRESENT" : "ABSENT");
+  }
+});
+
+test("235 R2.10B network failure is sanitized and never retried", async () => {
+  const { receipt, transmittedRequests } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact(
+    "NETWORK_FAILURE");
+  assert.deepEqual([transmittedRequests, receipt.httpStatusCode, receipt.httpStatusClass,
+    receipt.failureScope, receipt.retries, receipt.totalHttpRequests],
+  [5, null, "NETWORK_TRANSPORT_FAILURE", "GLOBAL_FATAL_FAILURE", 0, 5]);
+});
+
+test("236 R2.10B auth and each destination failure stop immediately below the ceiling", async () => {
+  for (const [profile, expected] of [["AUTH_401", 1], ["DESTINATION_1_404", 2],
+    ["DESTINATION_2_404", 3], ["DESTINATION_3_404", 4]]) {
+    const { receipt, transmittedRequests } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact(profile);
+    assert.equal(transmittedRequests, expected);
+    assert.equal(receipt.totalHttpRequests, expected);
+    assert.equal(receipt.initialHttpRequests, 0);
+    assert.equal(receipt.status, "INCONCLUSIVE");
+  }
+});
+
+test("237 R2.10B counter blocks second auth fourth destination second search continuation and sixth total", () => {
+  const counter = createSplitR2RouteStackPublicD0ContractCanaryCounter();
+  counter.reserve("AUTHENTICATION");
+  assert.throws(() => counter.reserve("AUTHENTICATION"), /budget-exceeded-before-transport/);
+  counter.reserve("DESTINATION"); counter.reserve("DESTINATION"); counter.reserve("DESTINATION");
+  assert.throws(() => counter.reserve("DESTINATION"), /budget-exceeded-before-transport/);
+  counter.reserve("INITIAL_SEARCH");
+  assert.throws(() => counter.reserve("INITIAL_SEARCH"), /budget-exceeded-before-transport/);
+  assert.throws(() => counter.reserve("CONTINUATION"), /route-forbidden-before-transport/);
+  assert.deepEqual([counter.snapshot().total, counter.snapshot().retries,
+    counter.snapshot().redirects], [5, 0, 0]);
+});
+
+test("238 R2.10B success and failure receipts are deterministic private and below 6000 bytes", async () => {
+  const success = (await runSplitR2FakeRouteStackPublicD0ContractCanaryExact()).receipt;
+  const failure = (await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_429")).receipt;
+  for (const receipt of [success, failure]) {
+    const first = serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(receipt);
+    const second = serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(receipt);
+    assert.deepEqual(first, second);
+    assert.equal(first.byteLength < SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES, true);
+    assert.equal(first.json.includes("\n"), false);
+    for (const prohibited of ["Authorization", "nextResultsKey", "correlationId",
+      "synthetic-property", "synthetic-destination", "synthetic-secret", "synthetic-key"])
+      assert.equal(first.json.includes(prohibited), false);
+    assert.deepEqual([receipt.rawIdsPersisted, receipt.rawContinuationIdsPersisted,
+      receipt.rawMetadataValuesPersisted, receipt.payloadsOrRawResponsesPersisted,
+      receipt.secretValuesExposed, receipt.crossRunLinkability], [0, 0, 0, 0, false, false]);
+  }
+});
+
+test("239 R2.10B capability registry remains exact deterministic and duplicate-free", () => {
+  const keys = Object.keys(SPLIT_R2_LIVE_CAPABILITIES);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.deepEqual(keys, Object.keys(SPLIT_R2_LIVE_CAPABILITIES));
+  assert.equal(SPLIT_R2_LIVE_CAPABILITIES.ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY,
+    "EXACT_MAX_5_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED");
+});
+
+test("240 R2.10B keeps public runtime unchanged and fake authorization unconsumed", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact();
+  assert.deepEqual([receipt.publicRuntimeChanged, receipt.productionBookingAuthorized,
+    receipt.authorizationConsumed, receipt.secondLiveWaveExecuted], [false, false, false, false]);
 });

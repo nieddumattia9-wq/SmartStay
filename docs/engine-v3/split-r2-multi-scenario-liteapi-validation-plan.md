@@ -1333,3 +1333,56 @@ waves are zero. It changes no scenario, pagination depth, economic evaluator,
 material threshold, deduplication, currency rule or public runtime. The next
 gate is
 `SPLIT-R2.10A_ROUTESTACK_PUBLIC_D0_CONTRACT_5_HTTP_LIVE_CANARY_AUTHORIZATION_GATE`.
+
+## 31. SPLIT-R2.10B — Exact R2.10A live-mode and receipt binding repair
+
+R2.10A is preserved as `BLOCKED` with
+`R2_10A_EXACT_LIVE_MODE_CONTRACT_NOT_IMPLEMENTED`. It accessed no credentials,
+sent zero HTTP requests and did not consume the previously granted single-wave
+authorization. The offline root cause was exact: R2.10 had frozen the request
+contract, granular HTTP taxonomy, fake receipt and five-request counter, but
+the capability remained explicitly `NOT_LIVE`; there was no case-sensitive
+`--phase=SPLIT-R2.10A` parser, dedicated preflight, public-Production dispatcher
+or live success/failure receipt binding.
+
+R2.10B repairs only those bindings. The exact mode is
+`ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY` with phase `SPLIT-R2.10A`. It is disabled
+unless the invocation supplies the exact phase, compact output, the public
+Production environment, acknowledgements for the five-HTTP ceiling, unknown
+cost, read-only behavior, zero retry, zero continuation and no booking or
+mutation. All checks precede credential access, credentials alone cannot arm
+the mode, aliases and case variants fail closed, and simultaneous live modes
+are rejected.
+
+The authoritative plan reuses the frozen RouteStack public matrix to resolve
+scenario destinations 1, 3 and 5, then dispatches only scenario 1 logical
+search 1 (`FULL_STAY`, no breakpoint). The request continues to use the
+canonical generator and the frozen contract fingerprint
+`f626b05e4492ee8757e5b67ece5ad1d61e6945eb3103dd56b2483d57eeb2779e`,
+which remains identical to R2.8A, R2.9A, the earlier public canary and R2.5A.
+No phase, diagnostic, receipt, pseudonym or HMAC field enters the provider
+request.
+
+The live ceilings are 1 authentication, 3 destination resolutions, 1 initial
+D0, 0 continuation and 5 total HTTP. Five is a ceiling rather than a required
+count. Retry and redirect remain zero, concurrency is one, the minimum request
+start interval is 1,000 ms, and second search, D1/D2/D3, second wave, Sandbox
+fallback and every mutative route are blocked before transport. Authorization
+consumption begins only when a real provider fetch is dispatched; all offline
+fake transports leave it unconsumed.
+
+Every live exit is bound to
+`stayopti.split-r2.routestack-public-d0-contract-canary@1`. Both 2xx and
+sanitized failures produce deterministic single-line JSON below the 6,000-byte
+UTF-8 ceiling. A 2xx structurally processable empty result verifies the D0
+shape while separately reporting no inventory. Granular HTTP status,
+`Retry-After` presence, allowlisted provider error class and failure scope are
+retained; raw bodies, requests, headers, provider identifiers, continuation
+metadata and secrets are never retained.
+
+R2.10B is entirely offline: credentials accessed, provider calls, HTTP
+requests, live waves, booking and mutations are all zero. It creates no Split
+economic evidence and does not alter the public StayOpti runtime. Because the
+R2.10A authorization was not consumed, the next permitted step is one exact
+live execution under the unchanged five-HTTP ceiling:
+`SPLIT-R2.10A.1_AUTHORIZED_ROUTE_STACK_PUBLIC_D0_5_HTTP_SINGLE_LIVE_CANARY`.

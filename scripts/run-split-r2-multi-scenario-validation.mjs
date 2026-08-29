@@ -56,6 +56,8 @@ export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_MAX_UTF8
 export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION =
   "stayopti.split-r2.routestack-public-d0-contract-canary@1";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES = 6_000;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT =
+  "f626b05e4492ee8757e5b67ece5ad1d61e6945eb3103dd56b2483d57eeb2779e";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS = Object.freeze({
   AUTHENTICATION: 1,
   DESTINATION: 3,
@@ -100,7 +102,7 @@ export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
   ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_R2_9A:
     "EXACT_R2_9A_MAX_310_HTTP_D2_PARTIAL_SALVAGE_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY:
-    "FROZEN_MAX_5_HTTP_NEW_EXPLICIT_AUTHORIZATION_REQUIRED_NOT_LIVE",
+    "EXACT_MAX_5_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
 });
 
 export const SPLIT_R2_COMPARABILITY_CLASSES = Object.freeze([
@@ -5296,8 +5298,102 @@ export function buildSplitR2RouteStackPublicRequestEquivalenceAudit() {
   });
 }
 
+export function assertSplitR2RouteStackPublicD0ContractCanaryPlan(plan) {
+  const scenarioOrdinals = plan?.scenarioBindings?.map((entry) => entry.scenarioOrdinal) ?? [];
+  const search = plan?.logicalSearch;
+  const exact = plan?.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    stableStringifySplitF0(scenarioOrdinals, 0) === "[1,3,5]" &&
+    plan.scenarioBindings.length === 3 &&
+    search?.scenarioOrdinal === 1 && search?.logicalSearchOrdinal === 1 &&
+    search?.searchRole === "FULL_STAY" && search?.breakpointOrdinal === null &&
+    search?.providerBinding?.request?.currency === "EUR" &&
+    search?.providerBinding?.request?.checkIn === "2026-11-30" &&
+    search?.providerBinding?.request?.checkOut === "2026-12-14" &&
+    search?.providerBinding?.request?.occupancy?.rooms === 1 &&
+    search?.providerBinding?.request?.occupancy?.adults === 2 &&
+    search?.providerBinding?.request?.occupancy?.childAges?.length === 0;
+  if (!exact) throw new Error("split-r2-d0-contract-canary-plan-divergence");
+  const audit = buildSplitR2RouteStackPublicRequestEquivalenceAudit();
+  if (audit.fingerprints.r2_9A !== SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT ||
+      !audit.r2_8AEquivalentToR2_9A || !audit.r2_9AEquivalentToPublicCanary ||
+      !audit.r2_9AEquivalentToR2_5A || audit.phaseLabelSentToProvider ||
+      audit.diagnosticFieldsSentToProvider || !audit.initialContinuationStateValid) {
+    throw new Error("split-r2-d0-contract-canary-request-contract-divergence");
+  }
+  return plan;
+}
+
+export function buildSplitR2RouteStackPublicD0ContractCanaryPlan() {
+  const campaign = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+  const scenarioBindings = Object.freeze(campaign.publicScenarioBindings.map((binding, index) =>
+    Object.freeze({ scenarioOrdinal: campaign.scenarioPlans[index].scenario.ordinal, providerBinding: binding })));
+  const searchIndex = campaign.logicalSearches.findIndex((search) =>
+    search.scenarioOrdinal === 1 && search.searchRole === "FULL_STAY");
+  if (searchIndex < 0) throw new Error("split-r2-d0-contract-canary-full-stay-missing");
+  const logical = campaign.logicalSearches[searchIndex];
+  return assertSplitR2RouteStackPublicD0ContractCanaryPlan(Object.freeze({
+    environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    scenarioBindings,
+    logicalSearch: Object.freeze({
+      scenarioOrdinal: logical.scenarioOrdinal,
+      logicalSearchOrdinal: 1,
+      searchRole: logical.searchRole,
+      breakpointOrdinal: logical.breakpointOrdinal,
+      providerBinding: campaign.publicLogicalBindings[searchIndex],
+    }),
+  }));
+}
+
+export function assertSplitR2RouteStackPublicD0ContractCanaryPreflight(options = {}) {
+  const credentialReader = options.credentialReader ?? (() => null);
+  const evidence = options.contractEvidence ?? inspectSplitR2RouteStackPublicContractEvidence();
+  const plan = assertSplitR2RouteStackPublicD0ContractCanaryPlan(options.plan);
+  const exact = options.mode === "ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY" &&
+    options.phase === "SPLIT-R2.10A" && options.compact === true &&
+    options.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    options.hostname === "mcp.routestack.ai" && options.protocol === "https:" &&
+    options.acknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_5_HTTP" &&
+    options.unknownCostAcknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN" &&
+    options.readOnlyAcknowledgement === "I_ACKNOWLEDGE_READ_ONLY" &&
+    options.noRetryAcknowledgement === "I_ACKNOWLEDGE_NO_RETRY" &&
+    options.noContinuationAcknowledgement === "I_ACKNOWLEDGE_NO_CONTINUATION" &&
+    options.noMutationAcknowledgement === "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION" &&
+    options.authMax === 1 && options.destinationMax === 3 && options.initialSearchMax === 1 &&
+    options.continuationMax === 0 && options.totalMax === 5 && options.retries === 0 &&
+    options.redirects === 0 && options.concurrency === 1 && options.minimumIntervalMs >= 1_000 &&
+    options.productionFallback === false && options.sandboxFallback === false &&
+    options.liteApiFallback === false && options.otherLiveModesSelected === 0 &&
+    options.repositoryGatePassed === true &&
+    evidence.environmentClassification === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    evidence.hostnameDeterminable === true && evidence.contractDeterminable === true &&
+    evidence.mutativeEndpointsSelected === false && evidence.sandboxFallback === false;
+  if (!exact) throw new Error("split-r2-d0-contract-canary-preflight-failed-before-credentials");
+  const credentials = credentialReader();
+  if (credentials?.baseUrl !== SPLIT_R1_OFFICIAL_BASE_URL ||
+      typeof credentials?.apiKey !== "string" || credentials.apiKey.length === 0 ||
+      typeof credentials?.apiSecret !== "string" || credentials.apiSecret.length === 0) {
+    throw new Error("split-r2-d0-contract-canary-credentials-missing-or-misbound");
+  }
+  return Object.freeze({ plan, credentials, evidence, credentialsAccessed: true,
+    authorizationAcknowledged: true });
+}
+
+class SplitR2D0ContractCanaryFailure extends Error {
+  constructor(message, { sanitizedHttp = null, requestClass = null, requestOrdinal = null,
+    failureOrigin = "LOCAL_TRANSPORT_GUARD" } = {}) {
+    super(message);
+    this.name = "SplitR2D0ContractCanaryFailure";
+    this.sanitizedHttp = sanitizedHttp;
+    this.requestClass = requestClass;
+    this.requestOrdinal = requestOrdinal;
+    this.failureOrigin = failureOrigin;
+  }
+}
+
 export function createSplitR2RouteStackPublicD0ContractCanaryCounter() {
   const counts = { AUTHENTICATION: 0, DESTINATION: 0, INITIAL_SEARCH: 0, CONTINUATION: 0, total: 0 };
+  let active = 0;
+  let maxObservedConcurrency = 0;
   return Object.freeze({
     reserve(requestClass) {
       if (!Object.hasOwn(SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS, requestClass) ||
@@ -5311,8 +5407,17 @@ export function createSplitR2RouteStackPublicD0ContractCanaryCounter() {
       counts[requestClass] += 1;
       counts.total += 1;
     },
+    enterTransport() {
+      active += 1;
+      maxObservedConcurrency = Math.max(maxObservedConcurrency, active);
+      if (active > 1) throw new Error("split-r2-d0-contract-canary-concurrency-exceeded");
+    },
+    leaveTransport() {
+      active -= 1;
+      if (active < 0) throw new Error("split-r2-d0-contract-canary-concurrency-ledger-invalid");
+    },
     snapshot: () => Object.freeze({ ...counts, retries: 0, redirects: 0,
-      maxObservedConcurrency: counts.total === 0 ? 0 : 1 }),
+      maxObservedConcurrency }),
   });
 }
 
@@ -5347,7 +5452,7 @@ export function buildSplitR2RouteStackPublicD0ContractCanaryReceipt({
     receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION,
     status,
     sourceSha,
-    exactCliPhase: "SPLIT-R2.9A",
+    exactCliPhase: "SPLIT-R2.10A",
     environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
     authHttpRequests: http.AUTHENTICATION,
     destinationHttpRequests: http.DESTINATION,
@@ -5393,6 +5498,324 @@ export function runSplitR2FakeRouteStackPublicD0ContractCanary(outcome = "HTTP_2
     statusCode: statusByOutcome[outcome] ?? (outcome === "NETWORK_FAILURE" ? null : 200),
     retryAfterPresent: outcome === "HTTP_429",
   });
+}
+
+function splitR2D0ContractCanaryDiagnostics(payload, logicalSearch, ephemeralKey) {
+  const structurallyProcessable = isPlainRecord(payload?.result) && Array.isArray(payload.result.result);
+  if (!structurallyProcessable) return Object.freeze({ responseProcessable: false,
+    rawResultCount: null, normalizableResultCount: null, numericPriceCoverageNumerator: null,
+    numericPriceCoverageDenominator: null, expectedCurrencyCoverageNumerator: null,
+    expectedCurrencyCoverageDenominator: null, inventoryAvailable: null });
+  const items = payload.result.result;
+  let normalizableResultCount = 0;
+  try {
+    normalizableResultCount = normalizeSplitR1SearchPage(payload,
+      { logicalSearch, ephemeralRunKey: ephemeralKey }).offers.length;
+  } catch {
+    normalizableResultCount = 0;
+  }
+  const numericPriceCoverageNumerator = items.filter((item) => {
+    const value = typeof item?.ourprice === "number" ? item.ourprice : Number(item?.ourprice);
+    return Number.isFinite(value) && value > 0;
+  }).length;
+  const expectedCurrencyCoverageNumerator = payload.result.currency === "EUR" ? items.length : 0;
+  return Object.freeze({ responseProcessable: true, rawResultCount: items.length,
+    normalizableResultCount, numericPriceCoverageNumerator,
+    numericPriceCoverageDenominator: items.length, expectedCurrencyCoverageNumerator,
+    expectedCurrencyCoverageDenominator: items.length, inventoryAvailable: items.length > 0 });
+}
+
+function splitR2D0ContractCanaryFailureDetail(error) {
+  if (error instanceof SplitR2D0ContractCanaryFailure) return Object.freeze({
+    sanitizedHttp: error.sanitizedHttp,
+    requestClass: error.requestClass,
+    requestOrdinal: error.requestOrdinal,
+    failureOrigin: error.failureOrigin,
+    sanitizedDetailAvailable: true,
+  });
+  return Object.freeze({ sanitizedHttp: null, requestClass: null, requestOrdinal: null,
+    failureOrigin: "LOCAL_RECEIPT_OR_ACCOUNTING", sanitizedDetailAvailable: false });
+}
+
+function createSplitR2RouteStackPublicD0ContractCanaryTransport({ fetchImplementation,
+  monotonicNow, sleeper, realProviderTransport = false } = {}) {
+  if (typeof fetchImplementation !== "function") {
+    throw new Error("split-r2-d0-contract-canary-fetch-unavailable");
+  }
+  const counter = createSplitR2RouteStackPublicD0ContractCanaryCounter();
+  const limiter = createSplitR2MonotonicLimiter({ monotonicNow, sleeper });
+  const endpoints = new Map([["AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT],
+    ["DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT], ["INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT]]);
+  let authorizationConsumed = false;
+  let liveWaveStarted = false;
+  return Object.freeze({
+    async post(requestClass, endpointPath, body, bearer = null) {
+      if (endpoints.get(requestClass) !== endpointPath || requestClass === "CONTINUATION" ||
+          endpointPath.includes("continue")) {
+        throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-route-forbidden-before-transport",
+          { requestClass, failureOrigin: "LOCAL_TRANSPORT_GUARD" });
+      }
+      const url = new URL(endpointPath, SPLIT_R1_OFFICIAL_BASE_URL);
+      if (url.protocol !== "https:" || url.hostname !== "mcp.routestack.ai") {
+        throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-host-forbidden-before-transport",
+          { requestClass, failureOrigin: "LOCAL_TRANSPORT_GUARD" });
+      }
+      await limiter.ready();
+      counter.reserve(requestClass);
+      counter.enterTransport();
+      limiter.markStarted();
+      const requestOrdinal = counter.snapshot().total;
+      if (realProviderTransport) {
+        authorizationConsumed = true;
+        liveWaveStarted = true;
+      }
+      try {
+        let response;
+        try {
+          response = await fetchImplementation(url, { method: "POST", redirect: "error", cache: "no-store",
+            headers: { Accept: "application/json", "Content-Type": "application/json",
+              ...(bearer === null ? {} : { Authorization: `Bearer ${bearer}` }) },
+            body: JSON.stringify(body) });
+        } catch {
+          throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-network-transport-failure",
+            { sanitizedHttp: classifySplitR2RouteStackPublicHttpFailure({ networkFailure: true }),
+              requestClass, requestOrdinal, failureOrigin: "NETWORK_TRANSPORT" });
+        }
+        if (response.redirected === true || (response.status >= 300 && response.status < 400)) {
+          throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-redirect-prohibited",
+            { requestClass, requestOrdinal, failureOrigin: "LOCAL_TRANSPORT_GUARD" });
+        }
+        if (typeof response.url === "string" && response.url.length > 0) {
+          const responseUrl = new URL(response.url);
+          if (responseUrl.protocol !== "https:" || responseUrl.hostname !== "mcp.routestack.ai") {
+            throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-response-host-prohibited",
+              { requestClass, requestOrdinal, failureOrigin: "LOCAL_TRANSPORT_GUARD" });
+          }
+        }
+        if (!Number.isInteger(response.status) || response.status < 200 || response.status >= 300) {
+          const sanitizedHttp = classifySplitR2RouteStackPublicHttpFailure({ statusCode: response.status,
+            retryAfterPresent: (response.headers?.get?.("retry-after") ?? null) !== null });
+          throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-provider-http-failure",
+            { sanitizedHttp, requestClass, requestOrdinal, failureOrigin: "PROVIDER_HTTP" });
+        }
+        const contentType = response.headers?.get?.("content-type") ?? "";
+        if (!/(?:application|text)\/(?:[^;]+\+)?json\b/iu.test(contentType)) {
+          return Object.freeze({ payload: null, status: response.status, structurallyDecoded: false });
+        }
+        try {
+          return Object.freeze({ payload: JSON.parse(await response.text()), status: response.status,
+            structurallyDecoded: true });
+        } catch {
+          return Object.freeze({ payload: null, status: response.status, structurallyDecoded: false });
+        }
+      } finally { counter.leaveTransport(); }
+    },
+    postContinuation() {
+      throw new Error("split-r2-d0-contract-canary-continuation-prohibited-before-transport");
+    },
+    snapshot: () => Object.freeze({ http: counter.snapshot(), limiter: limiter.snapshot(),
+      authorizationConsumed, liveWaveStarted }),
+  });
+}
+
+export function buildSplitR2RouteStackPublicD0ContractCanaryLiveReceipt({
+  sourceSha = "0".repeat(40), contractEvidence = inspectSplitR2RouteStackPublicContractEvidence(),
+  http = {}, limiter = {}, authorizationAcknowledged = false, authorizationConsumed = false,
+  liveWaveStarted = false, d0Status = null, diagnostics = null, failure = null,
+  failureClassification = null, statusOverride = null,
+} = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha)) throw new Error("split-r2-d0-contract-canary-source-sha-invalid");
+  const audit = buildSplitR2RouteStackPublicRequestEquivalenceAudit();
+  const d0Executed = (http.INITIAL_SEARCH ?? 0) === 1;
+  const processable = diagnostics?.responseProcessable ?? null;
+  const status = statusOverride ?? (d0Executed && processable === true ? "PASS" :
+    (http.total ?? 0) > 0 ? "INCONCLUSIVE" : "BLOCKED");
+  const contractConclusion = status === "PASS"
+    ? "ROUTESTACK_PUBLIC_INITIAL_D0_READ_ONLY_CONTRACT_CURRENTLY_VERIFIED"
+    : d0Executed && Number.isInteger(d0Status) && d0Status >= 200 && d0Status < 300
+      ? "D0_CONTRACT_HTTP_2XX_RESPONSE_UNPROCESSABLE"
+      : failure?.sanitizedHttp?.httpStatusClass === "NETWORK_TRANSPORT_FAILURE"
+        ? "D0_CONTRACT_NETWORK_FAILURE"
+        : failure?.sanitizedHttp?.httpStatusClass === "HTTP_5XX"
+          ? "D0_CONTRACT_HTTP_5XX_PROVIDER_FAILURE"
+          : failure?.sanitizedHttp?.httpStatusClass?.startsWith("HTTP_")
+            ? "D0_CONTRACT_HTTP_4XX_REQUEST_REJECTED"
+            : status === "BLOCKED" ? "D0_CONTRACT_CANARY_BLOCKED_BEFORE_TRANSPORT" :
+              "D0_CONTRACT_CANARY_TERMINATED_BEFORE_PROCESSABLE_D0";
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION,
+    status, sourceSha, exactCliPhase: "SPLIT-R2.10A",
+    userApprovalAcknowledged: authorizationAcknowledged,
+    authorizationConsumed, liveWaveStarted, secondLiveWaveExecuted: false,
+    environmentClassification: contractEvidence.environmentClassification,
+    requestContractFingerprint: audit.fingerprints.r2_9A,
+    requestContractFingerprintMatch: audit.fingerprints.r2_9A ===
+      SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT,
+    scenarioOrdinal: 1, logicalSearchOrdinal: 1, searchRole: "FULL_STAY",
+    authHttpRequests: http.AUTHENTICATION ?? 0,
+    destinationHttpRequests: http.DESTINATION ?? 0,
+    initialHttpRequests: http.INITIAL_SEARCH ?? 0,
+    continuationHttpRequests: http.CONTINUATION ?? 0,
+    totalHttpRequests: http.total ?? 0, totalHttpBudget: 5,
+    totalHttpBudgetRemaining: 5 - (http.total ?? 0), retries: 0, redirects: 0,
+    maxObservedConcurrency: http.maxObservedConcurrency ?? 0,
+    minObservedRequestIntervalMs: limiter.minimumObservedRequestIntervalMs ?? null,
+    d0HttpRequestExecuted: d0Executed,
+    httpStatusCode: failure?.sanitizedHttp?.httpStatusCode ?? (d0Executed ? d0Status : null),
+    httpStatusClass: failure?.sanitizedHttp?.httpStatusClass ??
+      (d0Executed && Number.isInteger(d0Status) ? "HTTP_2XX" : "NOT_OBSERVED"),
+    retryAfterPresent: failure?.sanitizedHttp?.retryAfterPresent ?? "NOT_APPLICABLE",
+    providerErrorEnum: failure?.sanitizedHttp?.providerErrorEnum ?? null,
+    failureScope: failure?.sanitizedHttp?.failureScope ?? null,
+    failureRequestOrdinal: failure?.requestOrdinal ?? null,
+    failureRequestClass: failure?.requestClass ?? null,
+    failureOrigin: failure?.failureOrigin ?? null,
+    failureSanitizedDetailAvailable: failure?.sanitizedDetailAvailable ?? null,
+    responseProcessable: processable,
+    rawResultCount: diagnostics?.rawResultCount ?? null,
+    normalizableResultCount: diagnostics?.normalizableResultCount ?? null,
+    numericPriceCoverage: diagnostics === null ? null : Object.freeze({
+      numerator: diagnostics.numericPriceCoverageNumerator,
+      denominator: diagnostics.numericPriceCoverageDenominator }),
+    expectedCurrency: "EUR",
+    expectedCurrencyCoverage: diagnostics === null ? null : Object.freeze({
+      numerator: diagnostics.expectedCurrencyCoverageNumerator,
+      denominator: diagnostics.expectedCurrencyCoverageDenominator }),
+    inventoryAvailable: diagnostics?.inventoryAvailable ?? null,
+    d0ContractVerified: status === "PASS",
+    canaryConclusion: contractConclusion,
+    economicBreakpointsEvaluated: 0, splitSavingEvaluated: false,
+    secondSearchExecuted: false, continuationExecuted: false,
+    completenessClaimAllowed: false, globalOptimumClaimAllowed: false,
+    generalMarketFrequencyClaimAllowed: false, productionValidityClaimAllowed: false,
+    commercialValidationClaimAllowed: false, productionBookingAuthorized: false,
+    publicRuntimeChanged: false, rawIdsPersisted: 0, rawContinuationIdsPersisted: 0,
+    rawMetadataValuesPersisted: 0, payloadsOrRawResponsesPersisted: 0,
+    crossRunLinkability: false, secretValuesExposed: false,
+    failureClassification: failureClassification ?? (status === "PASS" ? "NONE" :
+      status === "BLOCKED" ? "R2_10A_PREFLIGHT_BLOCKED" : "R2_10A_LIVE_CANARY_INCONCLUSIVE"),
+  });
+}
+
+export async function runSplitR2RouteStackPublicD0ContractCanary({ sourceSha, plan,
+  apiKey, apiSecret, authorizationAcknowledged = false, realProviderTransport = false,
+  fetchImplementation = globalThis.fetch, monotonicNow, sleeper, now, randomUUID } = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha ?? "") || typeof apiKey !== "string" || apiKey.length === 0 ||
+      typeof apiSecret !== "string" || apiSecret.length === 0 || authorizationAcknowledged !== true) {
+    throw new Error("split-r2-d0-contract-canary-runtime-input-invalid");
+  }
+  const authoritativePlan = assertSplitR2RouteStackPublicD0ContractCanaryPlan(plan);
+  const contractEvidence = inspectSplitR2RouteStackPublicContractEvidence();
+  const transport = createSplitR2RouteStackPublicD0ContractCanaryTransport({ fetchImplementation,
+    monotonicNow, sleeper, realProviderTransport });
+  const ephemeralKey = crypto.randomBytes(32);
+  let bearer = null;
+  let currentRequestClass = null;
+  let d0Status = null;
+  try {
+    currentRequestClass = "AUTHENTICATION";
+    const auth = await transport.post("AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT,
+      createSplitR1PartnerTokenRequest({ apiKey, apiSecret, now, randomUUID }));
+    bearer = auth.payload?.token;
+    if (typeof bearer !== "string" || bearer.length === 0) {
+      throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-bearer-missing",
+        { sanitizedHttp: { httpStatusCode: auth.status, httpStatusClass: "HTTP_2XX",
+          retryAfterPresent: "NOT_APPLICABLE", providerErrorEnum: null,
+          failureScope: "UNKNOWN_SCOPE_FAIL_CLOSED" }, requestClass: currentRequestClass,
+          requestOrdinal: transport.snapshot().http.total, failureOrigin: "RESPONSE_SCHEMA" });
+    }
+    const destinations = new Map();
+    for (const entry of authoritativePlan.scenarioBindings) {
+      currentRequestClass = "DESTINATION";
+      const response = await transport.post("DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT,
+        createSplitR1DestinationRequest(entry.providerBinding), bearer);
+      try {
+        destinations.set(entry.scenarioOrdinal,
+          selectSplitR1DestinationCandidate(response.payload, entry.providerBinding));
+      } catch {
+        throw new SplitR2D0ContractCanaryFailure("split-r2-d0-contract-canary-destination-unusable",
+          { sanitizedHttp: { httpStatusCode: response.status, httpStatusClass: "HTTP_2XX",
+            retryAfterPresent: "NOT_APPLICABLE", providerErrorEnum: null,
+            failureScope: "UNKNOWN_SCOPE_FAIL_CLOSED" }, requestClass: currentRequestClass,
+            requestOrdinal: transport.snapshot().http.total, failureOrigin: "RESPONSE_SCHEMA" });
+      }
+    }
+    currentRequestClass = "INITIAL_SEARCH";
+    const search = authoritativePlan.logicalSearch;
+    const d0 = await transport.post("INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+      createSplitR1HotelSearchRequest(search.providerBinding, destinations.get(1)), bearer);
+    d0Status = d0.status;
+    const diagnostics = splitR2D0ContractCanaryDiagnostics(d0.payload, search.providerBinding, ephemeralKey);
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicD0ContractCanaryLiveReceipt({ sourceSha, contractEvidence,
+      http: snapshot.http, limiter: snapshot.limiter, authorizationAcknowledged,
+      authorizationConsumed: snapshot.authorizationConsumed, liveWaveStarted: snapshot.liveWaveStarted,
+      d0Status, diagnostics });
+  } catch (error) {
+    const snapshot = transport.snapshot();
+    const detail = splitR2D0ContractCanaryFailureDetail(error);
+    return buildSplitR2RouteStackPublicD0ContractCanaryLiveReceipt({ sourceSha, contractEvidence,
+      http: snapshot.http, limiter: snapshot.limiter, authorizationAcknowledged,
+      authorizationConsumed: snapshot.authorizationConsumed, liveWaveStarted: snapshot.liveWaveStarted,
+      d0Status, failure: detail,
+      failureClassification: String(error?.message ?? error).startsWith("split-r2-")
+        ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+        : "R2_10A_LIVE_CANARY_TECHNICAL_FAILURE" });
+  } finally {
+    bearer = null;
+    ephemeralKey.fill(0);
+  }
+}
+
+function splitR2D0ContractFakeResponse(payload, status, url, retryAfterPresent = false) {
+  return Object.freeze({ status, redirected: false, url,
+    headers: { get: (name) => name.toLowerCase() === "content-type" ? "application/json" :
+      name.toLowerCase() === "retry-after" && retryAfterPresent ? "60" : null },
+    text: async () => JSON.stringify(payload) });
+}
+
+export async function runSplitR2FakeRouteStackPublicD0ContractCanaryExact(profile = "HTTP_2XX_RESULTS") {
+  const plan = buildSplitR2RouteStackPublicD0ContractCanaryPlan();
+  const initialStatuses = Object.freeze({ HTTP_400: 400, HTTP_401: 401, HTTP_403: 403,
+    HTTP_404: 404, HTTP_409: 409, HTTP_422: 422, HTTP_429: 429,
+    HTTP_OTHER_4XX: 418, HTTP_5XX: 503 });
+  let monotonic = 0;
+  let ordinal = 0;
+  const receipt = await runSplitR2RouteStackPublicD0ContractCanary({ sourceSha: "b".repeat(40), plan,
+    apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret",
+    authorizationAcknowledged: true, realProviderTransport: false,
+    monotonicNow: () => monotonic, sleeper: async (delay) => { monotonic += delay; },
+    now: () => 1_800_000_000_000, randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url) => {
+      ordinal += 1;
+      if (profile === "NETWORK_FAILURE" && ordinal === 5) throw new Error("synthetic-network-failure");
+      if (profile === "AUTH_401" && ordinal === 1) return splitR2D0ContractFakeResponse({}, 401, String(url));
+      const destinationFailure = /^DESTINATION_([123])_404$/u.exec(profile);
+      if (destinationFailure && ordinal === Number(destinationFailure[1]) + 1) {
+        return splitR2D0ContractFakeResponse({}, 404, String(url));
+      }
+      if (ordinal === 1) return splitR2D0ContractFakeResponse(
+        { token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (ordinal <= 4) {
+        const entry = plan.scenarioBindings[ordinal - 2];
+        return splitR2D0ContractFakeResponse({ result: [{ id: `synthetic-destination-${ordinal - 1}`,
+          city: entry.providerBinding.destination.label,
+          country: entry.providerBinding.destination.countryCode,
+          type: "City", fullName: `${entry.providerBinding.destination.label}, synthetic`,
+          coordinates: { lat: entry.providerBinding.destination.latitude,
+            long: entry.providerBinding.destination.longitude } }] }, 200, String(url));
+      }
+      if (profile === "HTTP_2XX_EMPTY") return splitR2D0ContractFakeResponse(
+        { result: { currency: "EUR", result: [] } }, 200, String(url));
+      if (profile === "HTTP_2XX_UNPROCESSABLE") return splitR2D0ContractFakeResponse(
+        { result: { currency: "EUR", result: "invalid" } }, 200, String(url));
+      if (Object.hasOwn(initialStatuses, profile)) return splitR2D0ContractFakeResponse({},
+        initialStatuses[profile], String(url), profile === "HTTP_429");
+      return splitR2D0ContractFakeResponse({ result: { currency: "EUR", result: [
+        { id: "synthetic-property-1", ourprice: 700.5 },
+        { id: "synthetic-property-2", ourprice: 730.25 }] } }, 200, String(url));
+    } });
+  return Object.freeze({ receipt, transmittedRequests: ordinal });
 }
 
 export function runSplitR2FakeFailureScopeControl(profile) {
@@ -5825,6 +6248,38 @@ export function parseSplitR2RouteStackPublicCanaryArguments(argv) {
   });
 }
 
+export function parseSplitR2RouteStackPublicD0ContractCanaryArguments(argv) {
+  const requiredLiteral = new Set([
+    "--r2-routestack-public-d0-contract-canary",
+    "--compact",
+    "--phase=SPLIT-R2.10A",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_5_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-read-only=I_ACKNOWLEDGE_READ_ONLY",
+    "--acknowledgement-no-retry=I_ACKNOWLEDGE_NO_RETRY",
+    "--acknowledgement-no-continuation=I_ACKNOWLEDGE_NO_CONTINUATION",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+  ]);
+  const expectedHeadArguments = argv.filter((entry) => entry.startsWith("--expected-head="));
+  const fingerprintArguments = argv.filter((entry) => entry.startsWith("--expected-dirty-fingerprint="));
+  if (argv.length !== 12 || [...requiredLiteral].some((entry) => !argv.includes(entry)) ||
+      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1) {
+    throw new Error("split-r2-d0-contract-canary-cli-contract-invalid");
+  }
+  return Object.freeze({
+    expectedHead: expectedHeadArguments[0].slice("--expected-head=".length),
+    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length),
+    phase: "SPLIT-R2.10A",
+    acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_5_HTTP",
+    unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    readOnlyAcknowledgement: "I_ACKNOWLEDGE_READ_ONLY",
+    noRetryAcknowledgement: "I_ACKNOWLEDGE_NO_RETRY",
+    noContinuationAcknowledgement: "I_ACKNOWLEDGE_NO_CONTINUATION",
+    noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+  });
+}
+
 export function parseSplitR2RouteStackPublicMultiScenarioArguments(argv) {
   const requiredLiteral = new Set([
     "--r2-routestack-public-multi-scenario",
@@ -5948,6 +6403,17 @@ function buildSplitR2RouteStackPublicCanaryBlockedReceipt(sourceSha, failureClas
   });
 }
 
+function buildSplitR2RouteStackPublicD0ContractCanaryBlockedReceipt(sourceSha, failureClassification) {
+  return buildSplitR2RouteStackPublicD0ContractCanaryLiveReceipt({
+    sourceSha: /^[0-9a-f]{40}$/u.test(sourceSha ?? "") ? sourceSha : "0".repeat(40),
+    authorizationAcknowledged: false,
+    authorizationConsumed: false,
+    liveWaveStarted: false,
+    statusOverride: "BLOCKED",
+    failureClassification,
+  });
+}
+
 function buildSplitR2RouteStackPublicMultiScenarioBlockedReceipt(sourceSha, failureClassification) {
   return Object.freeze({
     receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_RECEIPT_VERSION,
@@ -6041,7 +6507,52 @@ function isMainModule() {
 
 if (isMainModule()) {
   const argv = process.argv.slice(2);
-  if (argv.includes("--r2-routestack-public-pagination-aware-multi-scenario")) {
+  if (argv.includes("--r2-routestack-public-d0-contract-canary")) {
+    let expectedHead = null;
+    try {
+      const parsed = parseSplitR2RouteStackPublicD0ContractCanaryArguments(argv);
+      expectedHead = parsed.expectedHead;
+      const repository = verifySplitR2PaginationAwareRepositoryGate(
+        parsed.expectedHead, parsed.expectedDirtyFingerprint
+      );
+      const evidence = inspectSplitR2RouteStackPublicContractEvidence();
+      const plan = buildSplitR2RouteStackPublicD0ContractCanaryPlan();
+      const preflight = assertSplitR2RouteStackPublicD0ContractCanaryPreflight({
+        mode: "ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY", phase: parsed.phase, compact: true,
+        environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED", hostname: "mcp.routestack.ai",
+        protocol: "https:", acknowledgement: parsed.acknowledgement,
+        unknownCostAcknowledgement: parsed.unknownCostAcknowledgement,
+        readOnlyAcknowledgement: parsed.readOnlyAcknowledgement,
+        noRetryAcknowledgement: parsed.noRetryAcknowledgement,
+        noContinuationAcknowledgement: parsed.noContinuationAcknowledgement,
+        noMutationAcknowledgement: parsed.noMutationAcknowledgement,
+        authMax: 1, destinationMax: 3, initialSearchMax: 1, continuationMax: 0, totalMax: 5,
+        retries: 0, redirects: 0, concurrency: 1, minimumIntervalMs: 1_000,
+        productionFallback: false, sandboxFallback: false, liteApiFallback: false,
+        otherLiveModesSelected: 0, repositoryGatePassed: repository.passed,
+        contractEvidence: evidence, plan, credentialReader: readRouteStackPublicCredentials,
+      });
+      const receipt = await runSplitR2RouteStackPublicD0ContractCanary({
+        sourceSha: parsed.expectedHead, plan: preflight.plan,
+        apiKey: preflight.credentials.apiKey, apiSecret: preflight.credentials.apiSecret,
+        authorizationAcknowledged: preflight.authorizationAcknowledged,
+        realProviderTransport: true,
+      });
+      const serialized = serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RESULT=${serialized.json}\n`);
+      if (receipt.status !== "PASS") process.exitCode = 1;
+    } catch (error) {
+      const classification = error instanceof SplitR2CompactReceiptError
+        ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
+        : String(error?.message ?? error).startsWith("split-r2-")
+          ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+          : "R2_10A_D0_CONTRACT_CANARY_PREFLIGHT_BLOCKED";
+      const receipt = buildSplitR2RouteStackPublicD0ContractCanaryBlockedReceipt(expectedHead, classification);
+      const serialized = serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RESULT=${serialized.json}\n`);
+      process.exitCode = 1;
+    }
+  } else if (argv.includes("--r2-routestack-public-pagination-aware-multi-scenario")) {
     let expectedHead = null;
     let expectedPhase = null;
     try {
