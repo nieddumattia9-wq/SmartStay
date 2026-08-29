@@ -1028,3 +1028,151 @@ as absence of another exposed contractual continuation, while D2 with a
 complete binding is explicitly capped. Therefore the next authorized design
 step is
 `SPLIT-R2.8A_PAGINATION_AWARE_THREE_SCENARIO_IMPLEMENTATION_VALIDATION_AND_SINGLE_LIVE_REEXECUTION`.
+
+## 26. SPLIT-R2.8A — Pagination-aware three-scenario implementation
+
+R2.8A implements the R2.8 contract as an isolated, default-disabled RouteStack
+Public Production capability. Credentials alone do not enable it. The exact
+phase acknowledgement, unknown-cost acknowledgement, no-mutation
+acknowledgement, compact-output requirement, source commit, preserved dirty
+fingerprint and the `1/3/102/102/102/310` budget are checked before credentials
+are read. All historical live modes retain their previous continuation rules.
+
+The authoritative plan is the existing frozen scenario plan for ordinals
+`1,3,5`: `41,20,41` logical searches and `13,6,13` breakpoints. Preflight,
+dispatcher and receipt share that plan. Execution is breadth-first: all 102 D0
+requests precede every eligible D1, and all eligible D1 requests precede every
+eligible D2. D3 and every non-search or mutative route are rejected before
+transport. The request budget is a ceiling; terminal and ineligible searches
+consume no later-depth request.
+
+The final cumulative state reuses the existing RouteStack normalization,
+run-local HMAC identity, lowest-price-per-property deduplication and unchanged
+R1/R2 evaluator. Only searches in `PROVIDER_EXHAUSTED_AFTER_INITIAL`,
+`PROVIDER_EXHAUSTED_AFTER_D1` or `PROVIDER_EXHAUSTED_AFTER_D2`, with complete
+numeric and EUR coverage, enter primary economics. Capped, ambiguous,
+unprocessable, zero-raw and failed searches remain explicit diagnostics.
+
+The compact receipt version is
+`stayopti.split-r2.routestack-public-pagination-aware-multi-scenario@1`.
+Its deterministic per-search tuples cover all 102 canonical searches. The
+canonical plan also contains `NIGHTLY` diagnostics, encoded as role `N`; they
+remain outside breakpoint economics, whose required roles are full-stay,
+prefix and suffix. No provider-derived string is emitted. The receipt is
+single-line JSON, limited to 16,000 UTF-8 bytes and fails closed without
+truncation.
+
+Offline validation freezes exact full-depth 310-request, early-terminal and
+mixed economic-coverage transports. It also verifies the eight mutually
+exclusive completion states, cumulative union, inter-page deduplication,
+provider-exhausted coverage gate, dual denominators, deterministic compact
+serialization and unchanged material thresholds. R2.5A remains historical and
+`NOT_ROBUST_TO_PAGINATION`; R2.8A is a corrected observation of the same three
+scenarios, not three additional independent scenarios.
+
+## 27. SPLIT-R2.9 — R2.8A abort forensics and partial-wave salvage repair
+
+R2.8A remains a historical `FAIL`. Its one authorized wave was consumed and
+was not repeated. It stopped during D1 after 1 authentication, 3 destination
+resolutions, 102 initial searches and 53 D1 requests: 159 HTTP in total, with
+zero D2, retry or redirect. The 310-request limit was a safety ceiling, not a
+minimum, so using 159 requests is not itself a defect. The primary campaign
+inference remains `NOT_EVALUABLE_WAVE_ABORTED` and its primary reproducibility
+classification remains `PROVIDER_OR_CONTRACT_FAILURE`.
+
+The retained technical aggregates are authoritative: D0 returned 31,118 raw
+results, the completed D1 pages returned 49,784, the cumulative raw count was
+80,902, the final cumulative distinct-offer count was 72,273 and 8,629
+inter-page duplicates were removed. This proves substantial observed
+pagination expansion, but cannot by itself prove a saving direction or
+economic recurrence.
+
+### 27.1 Historical reconstructability boundary
+
+The sanitised R2.8A output retained aggregate counts and compact execution
+tuples, but not the normalized offer prices and complete full/prefix/suffix
+views required to replay the evaluator. Those data existed only in process
+memory and were destroyed at exit. Therefore historical partial economics are
+`NOT_RECONSTRUCTABLE_DATA_NOT_RETAINED`; no missing saving, materiality,
+scenario or breakpoint value is imputed. The failure is known to have occurred
+on D1 request ordinal 53, but the original compact output did not retain enough
+non-contradictory detail to assign an authoritative scenario, logical-search
+ordinal, role, breakpoint, HTTP status or provider/local origin. Those fields
+remain null or `NOT_RECONSTRUCTABLE`, rather than inferred from provider data.
+
+Partial evidence and primary inference are separate contracts. A future abort
+may produce `PARTIAL_WAVE_EXPLORATORY_ECONOMIC_EVIDENCE` for every breakpoint
+whose full-stay, prefix and suffix searches were all dispatched, received,
+processable, provider-exhausted within the observed depth, price/currency
+complete and capable of a distinct-property pair. Such results may report
+saving, sign and materiality for the completed breakpoint only. They cannot
+estimate frequency across the frozen 32 breakpoints, classify primary
+reproducibility, create another independent scenario sample, generalize to the
+market or support a commercial claim.
+
+### 27.2 Exact abort accounting
+
+Execution state is now independent of provider/collector completion state.
+The execution states are exactly `EXECUTED_TO_TERMINAL_STATE`,
+`FAILED_DURING_EXECUTION` and `NOT_EXECUTED_AFTER_WAVE_ABORT`. The latter is
+not provider exhaustion, depth cap, unprocessable response, zero inventory or
+provider failure.
+
+The historical sanitized counters reconcile as follows: 52 searches reached
+`PROVIDER_EXHAUSTED_AFTER_D1`, 14 reached `UNPROCESSABLE_RESPONSE`, one failed
+during execution and 35 were not executed after the abort. Thus 66 terminal +
+1 failed + 35 not executed = 102 with no overlap. This reconciliation repairs
+the old completion-state sum of 67 without pretending that the remaining 35
+had a provider terminal state.
+
+The wave completed D0, did not complete D1 and never started D2. Consequently
+`ALL_D0_BEFORE_ANY_D1=YES`, `ALL_D1_BEFORE_ANY_D2=YES` and
+`BREADTH_FIRST_ORDER_VIOLATION=NO`; the second assertion means no D2 started
+before D1 completion, not that D1 itself completed.
+
+Unprocessable responses are recorded once at the depth where the sanitized
+shape failure occurred, using only `HTTP_BODY_NOT_JSON`,
+`EXPECTED_RESULTS_ARRAY_MISSING`, `INVALID_RESULTS_TYPE`,
+`INVALID_CONTINUATION_SHAPE`, `ECONOMIC_NORMALIZATION_CONTRACT_FAILURE` or
+`OTHER_SANITIZED_SCHEMA_FAILURE`. Scenario and role counts are aggregate; no
+unknown provider key or raw value is emitted.
+
+### 27.3 Future fail-closed receipt behavior
+
+At the first future live failure the runner stops dispatch, does not enter a
+later depth, marks the failed search and every residual search exactly once,
+evaluates every already complete breakpoint before clearing memory, and emits
+one sanitized partial receipt. Primary inference remains aborted regardless of
+the exploratory results. Continuation metadata, bearer material and the
+run-local HMAC are then destroyed. There is no retry, replay or second wave.
+
+The receipt explicitly distinguishes generation support, actual emission,
+single-line validity, positive integer UTF-8 byte count and completeness. Its
+completion category is one of `COMPLETE_TECHNICAL_AND_ECONOMIC`,
+`COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE`,
+`PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS`,
+`PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS` or `NOT_EMITTED`.
+The 16,000-byte limit remains fail-closed and never triggers truncation or a
+second wave.
+
+### 27.4 Dirty-fingerprint root cause and repair
+
+The R2.8A pre/post fingerprints used non-canonical manifest inputs: the prior
+algorithm included Git category/status and the recorded before value was
+computed from a different manifest representation than the final repository
+gate. That makes the two hashes non-comparable; it is not evidence that one of
+the seven unrelated paths changed.
+
+The repaired fingerprint includes only unrelated dirty paths, sorted by
+normalized relative path, plus object type and a SHA-256 derived from file
+bytes (or the symlink target / deterministic directory manifest). It excludes
+the three authorized phase paths, timestamps, Git staging/category state and
+all file contents from output. It rejects paths outside the repository and
+changes whenever an unrelated path's bytes or type change.
+
+R2.5A remains `NOT_ROBUST_TO_PAGINATION`; R2.6 and R2.7A remain unchanged.
+All economic formulas, thresholds, deduplication, EUR policy, distinct-property
+constraint, tie-breaking and median semantics are unchanged. This phase is
+offline only and authorizes no provider call or replacement wave. A complete
+primary result would require a separately authorized future wave, so the next
+gate is `SPLIT-R2.9A_PAGINATION_AWARE_SINGLE_LIVE_REEXECUTION_AUTHORIZATION_GATE`.

@@ -50,6 +50,9 @@ export const SPLIT_R2_ROUTESTACK_PUBLIC_MULTI_SCENARIO_MAX_UTF8_BYTES = 16_000;
 export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_RECEIPT_VERSION =
   "stayopti.split-r2.routestack-public-pagination-sensitivity@1";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY_MAX_UTF8_BYTES = 12_000;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION =
+  "stayopti.split-r2.routestack-public-pagination-aware-multi-scenario@1";
+export const SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_MAX_UTF8_BYTES = 16_000;
 export const SPLIT_R2_LITEAPI_SANDBOX_BASE_URL = "https://api.liteapi.travel/v3.0";
 export const SPLIT_R2_LITEAPI_RATES_PATH = "/hotels/rates";
 export const SPLIT_R2_LITEAPI_STATIC_HOTELS_PATH = "/data/hotels";
@@ -69,6 +72,8 @@ export const SPLIT_R2_LIVE_CAPABILITIES = Object.freeze({
   ROUTESTACK_PUBLIC_MULTI_SCENARIO: "EXACT_106_HTTP_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
   ROUTESTACK_PUBLIC_PAGINATION_SENSITIVITY:
     "EXACT_45_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
+  ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO:
+    "EXACT_MAX_310_HTTP_D2_EXPLICIT_FLAG_ACKNOWLEDGEMENTS_AND_COMPACT_REQUIRED",
 });
 
 export const SPLIT_R2_COMPARABILITY_CLASSES = Object.freeze([
@@ -4078,6 +4083,864 @@ export function runSplitR2FakeRouteStackPublicPaginationEarlyTerminal() {
   return runSplitR2FakePaginationCampaign(true);
 }
 
+const SPLIT_R2_PAGINATION_AWARE_LIMITS = Object.freeze({
+  AUTHENTICATION: 1,
+  DESTINATION: 3,
+  INITIAL_SEARCH: 102,
+  CONTINUATION_D1: 102,
+  CONTINUATION_D2: 102,
+  CONTINUATION_TOTAL: 204,
+  total: 310,
+});
+
+export const SPLIT_R2_PAGINATION_AWARE_COMPLETION_STATES = Object.freeze([
+  "PROVIDER_EXHAUSTED_AFTER_INITIAL",
+  "PROVIDER_EXHAUSTED_AFTER_D1",
+  "PROVIDER_EXHAUSTED_AFTER_D2",
+  "DEPTH_CAPPED_WITH_MORE_AVAILABLE",
+  "ZERO_RAW_PROVIDER_EXHAUSTED",
+  "UNPROCESSABLE_RESPONSE",
+  "AMBIGUOUS_CONTINUATION_METADATA",
+  "TRANSPORT_OR_CONTRACT_FAILURE",
+]);
+
+export const SPLIT_R2_PAGINATION_AWARE_EXECUTION_STATES = Object.freeze([
+  "EXECUTED_TO_TERMINAL_STATE",
+  "FAILED_DURING_EXECUTION",
+  "NOT_EXECUTED_AFTER_WAVE_ABORT",
+]);
+
+export const SPLIT_R2_PAGINATION_AWARE_UNPROCESSABLE_REASONS = Object.freeze([
+  "HTTP_BODY_NOT_JSON",
+  "EXPECTED_RESULTS_ARRAY_MISSING",
+  "INVALID_RESULTS_TYPE",
+  "INVALID_CONTINUATION_SHAPE",
+  "ECONOMIC_NORMALIZATION_CONTRACT_FAILURE",
+  "OTHER_SANITIZED_SCHEMA_FAILURE",
+]);
+
+const SPLIT_R2_PAGINATION_AWARE_PRIMARY_STATES = new Set(
+  SPLIT_R2_PAGINATION_AWARE_COMPLETION_STATES.slice(0, 3)
+);
+const SPLIT_R2_PAGINATION_AWARE_STATE_CODES = Object.freeze({
+  PROVIDER_EXHAUSTED_AFTER_INITIAL: "E0",
+  PROVIDER_EXHAUSTED_AFTER_D1: "E1",
+  PROVIDER_EXHAUSTED_AFTER_D2: "E2",
+  DEPTH_CAPPED_WITH_MORE_AVAILABLE: "C",
+  ZERO_RAW_PROVIDER_EXHAUSTED: "Z",
+  UNPROCESSABLE_RESPONSE: "U",
+  AMBIGUOUS_CONTINUATION_METADATA: "A",
+  TRANSPORT_OR_CONTRACT_FAILURE: "T",
+});
+const SPLIT_R2_PAGINATION_AWARE_ROLE_CODES = Object.freeze({
+  FULL_STAY: "F", NIGHTLY: "N", PREFIX: "P", SUFFIX: "S",
+});
+const SPLIT_R2_PAGINATION_AWARE_EXECUTION_CODES = Object.freeze({
+  EXECUTED_TO_TERMINAL_STATE: "E",
+  FAILED_DURING_EXECUTION: "F",
+  NOT_EXECUTED_AFTER_WAVE_ABORT: "N",
+});
+
+class SplitR2PaginationAwareFailure extends Error {
+  constructor(message, failureOrigin, httpStatusCategory = "NOT_APPLICABLE") {
+    super(message);
+    this.name = "SplitR2PaginationAwareFailure";
+    this.failureOrigin = failureOrigin;
+    this.httpStatusCategory = httpStatusCategory;
+  }
+}
+
+function splitR2PaginationAwareFailureDetail(error) {
+  if (error instanceof SplitR2PaginationAwareFailure) {
+    return Object.freeze({ failureOrigin: error.failureOrigin,
+      httpStatusCategory: error.httpStatusCategory, sanitizedDetailAvailable: true });
+  }
+  return Object.freeze({ failureOrigin: "NOT_RECONSTRUCTABLE",
+    httpStatusCategory: "UNKNOWN_NOT_RETAINED", sanitizedDetailAvailable: false });
+}
+
+export function assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(plan) {
+  assertSplitR2RouteStackPublicMultiScenarioPlan(plan);
+  if (plan.scenarioPlans.length !== 3 || plan.logicalSearches.length !== 102 ||
+      sum(plan.scenarioPlans.map((entry) => entry.breakpoints)) !== 32 ||
+      stableStringifySplitF0(plan.scenarioPlans.map((entry) => entry.logicalSearches.length), 0) !== "[41,20,41]" ||
+      stableStringifySplitF0(plan.scenarioPlans.map((entry) => entry.breakpoints), 0) !== "[13,6,13]") {
+    throw new Error("split-r2-pagination-aware-plan-divergence");
+  }
+  return plan;
+}
+
+export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan() {
+  return assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(
+    buildSplitR2RouteStackPublicMultiScenarioPlan()
+  );
+}
+
+export function assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight(options = {}) {
+  const credentialReader = options.credentialReader ?? (() => null);
+  const evidence = options.contractEvidence ?? inspectSplitR2RouteStackPublicContractEvidence();
+  const plan = assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(options.plan);
+  const exact = options.mode === "ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO" &&
+    options.phase === "SPLIT-R2.8A" && options.compact === true &&
+    options.environment === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    options.hostname === "mcp.routestack.ai" && options.protocol === "https:" &&
+    options.acknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP" &&
+    options.unknownCostAcknowledgement === "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN" &&
+    options.noMutationAcknowledgement === "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION" &&
+    options.authMax === 1 && options.destinationMax === 3 && options.initialSearchMax === 102 &&
+    options.continuationD1Max === 102 && options.continuationD2Max === 102 &&
+    options.continuationMax === 204 && options.totalMax === 310 && options.maxContinuationDepth === 2 &&
+    options.retries === 0 && options.redirects === 0 && options.concurrency === 1 &&
+    options.minimumIntervalMs >= 1_000 && options.productionFallback === false &&
+    options.sandboxFallback === false && options.liteApiFallback === false &&
+    options.otherLiveModesSelected === 0 && options.repositoryGatePassed === true &&
+    evidence.environmentClassification === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
+    evidence.hostnameDeterminable === true && evidence.contractDeterminable === true &&
+    evidence.mutativeEndpointsSelected === false && evidence.sandboxFallback === false;
+  if (!exact) throw new Error("split-r2-pagination-aware-preflight-failed-before-credentials");
+  const credentials = credentialReader();
+  if (credentials?.baseUrl !== SPLIT_R1_OFFICIAL_BASE_URL ||
+      typeof credentials?.apiKey !== "string" || credentials.apiKey.length === 0 ||
+      typeof credentials?.apiSecret !== "string" || credentials.apiSecret.length === 0) {
+    throw new Error("split-r2-pagination-aware-credentials-missing-or-misbound");
+  }
+  return Object.freeze({ plan, credentials, evidence, credentialsAccessed: true });
+}
+
+export function createSplitR2RouteStackPublicPaginationAwareMultiScenarioCounter() {
+  const counts = { AUTHENTICATION: 0, DESTINATION: 0, INITIAL_SEARCH: 0,
+    CONTINUATION_D1: 0, CONTINUATION_D2: 0, CONTINUATION_TOTAL: 0, total: 0 };
+  const d0 = new Set();
+  const d1 = new Set();
+  const d2 = new Set();
+  let d0Closed = false;
+  let d1Closed = false;
+  let active = 0;
+  let maxObservedConcurrency = 0;
+  return Object.freeze({
+    reserve(requestClass, logicalSearchId = null) {
+      if (!["AUTHENTICATION", "DESTINATION", "INITIAL_SEARCH", "CONTINUATION_D1", "CONTINUATION_D2"]
+        .includes(requestClass)) throw new Error("split-r2-pagination-aware-route-forbidden");
+      if (requestClass === "INITIAL_SEARCH" && (d0Closed || typeof logicalSearchId !== "string" || d0.has(logicalSearchId))) {
+        throw new Error("split-r2-pagination-aware-d0-order-or-cardinality-invalid");
+      }
+      if (requestClass === "CONTINUATION_D1" &&
+          (!d0Closed || d1Closed || !d0.has(logicalSearchId) || d1.has(logicalSearchId))) {
+        throw new Error("split-r2-pagination-aware-d1-order-or-cardinality-invalid");
+      }
+      if (requestClass === "CONTINUATION_D2" &&
+          (!d0Closed || !d1Closed || !d1.has(logicalSearchId) || d2.has(logicalSearchId))) {
+        throw new Error("split-r2-pagination-aware-d2-order-or-binding-invalid");
+      }
+      if (counts[requestClass] + 1 > SPLIT_R2_PAGINATION_AWARE_LIMITS[requestClass] ||
+          counts.total + 1 > SPLIT_R2_PAGINATION_AWARE_LIMITS.total ||
+          (requestClass.startsWith("CONTINUATION") &&
+            counts.CONTINUATION_TOTAL + 1 > SPLIT_R2_PAGINATION_AWARE_LIMITS.CONTINUATION_TOTAL)) {
+        throw new Error("split-r2-pagination-aware-http-budget-exceeded-before-transport");
+      }
+      counts[requestClass] += 1;
+      counts.total += 1;
+      if (requestClass === "INITIAL_SEARCH") d0.add(logicalSearchId);
+      if (requestClass === "CONTINUATION_D1") { counts.CONTINUATION_TOTAL += 1; d1.add(logicalSearchId); }
+      if (requestClass === "CONTINUATION_D2") { counts.CONTINUATION_TOTAL += 1; d2.add(logicalSearchId); }
+    },
+    closeDepth(depth) {
+      if (depth === "D0") {
+        if (counts.INITIAL_SEARCH !== 102) throw new Error("split-r2-pagination-aware-d0-incomplete");
+        d0Closed = true;
+      } else if (depth === "D1") {
+        if (!d0Closed) throw new Error("split-r2-pagination-aware-d1-before-d0");
+        d1Closed = true;
+      } else throw new Error("split-r2-pagination-aware-depth-invalid");
+    },
+    enterTransport() {
+      active += 1;
+      maxObservedConcurrency = Math.max(maxObservedConcurrency, active);
+      if (active > 1) throw new Error("split-r2-pagination-aware-concurrency-exceeded");
+    },
+    leaveTransport() {
+      active -= 1;
+      if (active < 0) throw new Error("split-r2-pagination-aware-concurrency-ledger-invalid");
+    },
+    snapshot() {
+      return Object.freeze({ ...counts, retries: 0, redirects: 0, maxObservedConcurrency,
+        allD0BeforeAnyD1: d1.size === 0 || d0Closed,
+        allD1BeforeAnyD2: d2.size === 0 || d1Closed,
+        d0PhaseCompleted: d0Closed,
+        d1PhaseCompleted: d1Closed,
+        d2PhaseStarted: d2.size > 0,
+        breadthFirstOrderViolation: false });
+    },
+  });
+}
+
+function createSplitR2PaginationAwareTransport({ fetchImplementation, monotonicNow, sleeper } = {}) {
+  if (typeof fetchImplementation !== "function") throw new Error("split-r2-pagination-aware-fetch-unavailable");
+  const counter = createSplitR2RouteStackPublicPaginationAwareMultiScenarioCounter();
+  const limiter = createSplitR2MonotonicLimiter({ monotonicNow, sleeper });
+  const expectedEndpoint = new Map([
+    ["AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT], ["DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT],
+    ["INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT], ["CONTINUATION_D1", SPLIT_R1_HOTEL_SEARCH_ENDPOINT],
+    ["CONTINUATION_D2", SPLIT_R1_HOTEL_SEARCH_ENDPOINT],
+  ]);
+  return Object.freeze({
+    async post(requestClass, endpointPath, body, bearer = null, logicalSearchId = null) {
+      if (expectedEndpoint.get(requestClass) !== endpointPath) {
+        throw new SplitR2PaginationAwareFailure("split-r2-pagination-aware-route-forbidden", "LOCAL_TRANSPORT_GUARD");
+      }
+      const url = new URL(endpointPath, SPLIT_R1_OFFICIAL_BASE_URL);
+      if (url.protocol !== "https:" || url.hostname !== "mcp.routestack.ai") {
+        throw new SplitR2PaginationAwareFailure("split-r2-pagination-aware-host-forbidden", "LOCAL_TRANSPORT_GUARD");
+      }
+      await limiter.ready();
+      counter.reserve(requestClass, logicalSearchId);
+      counter.enterTransport();
+      limiter.markStarted();
+      try {
+        let response;
+        try {
+          response = await fetchImplementation(url, { method: "POST", redirect: "error", cache: "no-store",
+            headers: { Accept: "application/json", "Content-Type": "application/json",
+              ...(bearer === null ? {} : { Authorization: `Bearer ${bearer}` }) }, body: JSON.stringify(body) });
+        } catch {
+          throw new SplitR2PaginationAwareFailure(
+            "split-r2-pagination-aware-network-transport-failure", "NETWORK_TRANSPORT", "NO_HTTP_RESPONSE");
+        }
+        if (response.redirected === true || (response.status >= 300 && response.status < 400)) {
+          throw new SplitR2PaginationAwareFailure(
+            "split-r2-pagination-aware-redirect-prohibited", "LOCAL_TRANSPORT_GUARD", "HTTP_REDIRECT");
+        }
+        if (typeof response.url === "string" && response.url.length > 0) {
+          const responseUrl = new URL(response.url);
+          if (responseUrl.protocol !== "https:" || responseUrl.hostname !== "mcp.routestack.ai") {
+            throw new SplitR2PaginationAwareFailure(
+              "split-r2-pagination-aware-response-host-forbidden", "LOCAL_TRANSPORT_GUARD");
+          }
+        }
+        const contentType = response.headers?.get?.("content-type") ?? "";
+        let payload = null;
+        try {
+          if (/(?:application|text)\/(?:[^;]+\+)?json\b/iu.test(contentType)) payload = JSON.parse(await response.text());
+        } catch {
+          throw new SplitR2PaginationAwareFailure(
+            "split-r2-pagination-aware-response-parsing-failure", "RESPONSE_PARSING", "HTTP_200_INVALID_JSON");
+        }
+        if (response.status !== 200) {
+          const category = response.status >= 500 ? "HTTP_5XX" : response.status >= 400 ? "HTTP_4XX" : "HTTP_OTHER";
+          throw new SplitR2PaginationAwareFailure(
+            "split-r2-pagination-aware-provider-http-failure", "PROVIDER_HTTP", category);
+        }
+        if (payload === null || typeof payload !== "object") {
+          throw new SplitR2PaginationAwareFailure(
+            "split-r2-pagination-aware-response-schema-failure", "RESPONSE_SCHEMA", "HTTP_200_JSON_SHAPE_INVALID");
+        }
+        return Object.freeze({ payload });
+      } finally { counter.leaveTransport(); }
+    },
+    closeDepth: (depth) => counter.closeDepth(depth),
+    snapshot: () => Object.freeze({ http: counter.snapshot(), limiter: limiter.snapshot() }),
+  });
+}
+
+export function classifySplitR2PaginationAwareContinuation(payload) {
+  const diagnostic = diagnoseSplitR1ContinuationMetadataShapeV1(payload);
+  if (diagnostic.completeCandidateContainerCount > 1 ||
+      (diagnostic.completeCandidateContainerCount === 1 &&
+        (diagnostic.continuationAuthorizable !== true || diagnostic.selectedContractualContainer !== "result"))) {
+    return Object.freeze({ classification: "AMBIGUOUS", payload: null });
+  }
+  if (diagnostic.continuationAuthorizable === true && diagnostic.completeCandidateContainerCount === 1 &&
+      diagnostic.selectedContractualContainer === "result") {
+    return Object.freeze({ classification: "ELIGIBLE", payload });
+  }
+  return Object.freeze({ classification: "NONE", payload: null });
+}
+
+function splitR2PaginationAwareUnprocessableReason(payload) {
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return "HTTP_BODY_NOT_JSON";
+  if (!("result" in payload) || payload.result === null || typeof payload.result !== "object" ||
+      Array.isArray(payload.result) || !("result" in payload.result)) return "EXPECTED_RESULTS_ARRAY_MISSING";
+  if (!Array.isArray(payload.result.result)) return "INVALID_RESULTS_TYPE";
+  return null;
+}
+
+function splitR2PaginationAwareAddPage(state, depth, payload, ephemeralKey) {
+  const structuralReason = splitR2PaginationAwareUnprocessableReason(payload);
+  if (structuralReason !== null) {
+    throw new SplitR2PaginationAwareFailure(
+      "split-r2-pagination-aware-response-unprocessable", "RESPONSE_SCHEMA", structuralReason);
+  }
+  let page;
+  let funnel;
+  try {
+    page = normalizeSplitR1SearchPage(payload, { logicalSearch: state.binding, ephemeralRunKey: ephemeralKey });
+    funnel = buildSplitR1EconomicEligibilityFunnelSearchReceiptV1({ payload,
+      logicalSearch: { ...state.search, request: state.binding.request },
+      logicalSearchOrdinal: state.ordinal, breakpointOrdinal: state.search.breakpointOrdinal,
+      normalizedPage: page, snapshotProcessable: true });
+  } catch {
+    throw new SplitR2PaginationAwareFailure(
+      "split-r2-pagination-aware-economic-normalization-failure", "RESPONSE_SCHEMA",
+      "ECONOMIC_NORMALIZATION_CONTRACT_FAILURE");
+  }
+  const offers = page.offers.filter((offer) => offer.currency === state.search.expectedCurrency);
+  state.pages.push(Object.freeze({ depth, raw: page.rawResultCount, normalizable: funnel.normalizableResultCount,
+    identity: funnel.identityEligibleCount, numeric: funnel.numericPriceEligibleCount,
+    currency: funnel.expectedCurrencyMatchCount, missingCurrency: funnel.missingCurrencyCount,
+    nonExpectedCurrency: funnel.nonExpectedCurrencyCount, invalidCurrency: funnel.invalidCurrencyTypeCount,
+    preDedup: funnel.preDedupEconomicOfferCount, offers }));
+  state.latestResponse = payload;
+  state.depthReached = depth;
+}
+
+function splitR2PaginationAwareMarkUnprocessable(state, depth, error) {
+  state.completionState = "UNPROCESSABLE_RESPONSE";
+  state.executionState = "EXECUTED_TO_TERMINAL_STATE";
+  state.unprocessableDepth = depth;
+  state.unprocessableReason = SPLIT_R2_PAGINATION_AWARE_UNPROCESSABLE_REASONS.includes(error?.httpStatusCategory)
+    ? error.httpStatusCategory : "OTHER_SANITIZED_SCHEMA_FAILURE";
+}
+
+function splitR2PaginationAwareMarkTerminal(state) {
+  if (state.completionState !== null) state.executionState = "EXECUTED_TO_TERMINAL_STATE";
+}
+
+function splitR2PaginationAwareCumulative(state) {
+  const offers = state.pages.flatMap((page) => page.offers);
+  const distinct = splitR2PaginationDeduplicate(offers);
+  return Object.freeze({
+    raw: sum(state.pages.map((page) => page.raw)), normalizable: sum(state.pages.map((page) => page.normalizable)),
+    identity: sum(state.pages.map((page) => page.identity)), numeric: sum(state.pages.map((page) => page.numeric)),
+    currency: sum(state.pages.map((page) => page.currency)), missingCurrency: sum(state.pages.map((page) => page.missingCurrency)),
+    nonExpectedCurrency: sum(state.pages.map((page) => page.nonExpectedCurrency)),
+    invalidCurrency: sum(state.pages.map((page) => page.invalidCurrency)),
+    preDedup: sum(state.pages.map((page) => page.preDedup)), distinct, duplicates: offers.length - distinct.length,
+  });
+}
+
+function splitR2PaginationAwareFinalize(state, depth) {
+  const continuation = classifySplitR2PaginationAwareContinuation(state.latestResponse);
+  if (continuation.classification === "AMBIGUOUS") {
+    state.completionState = "AMBIGUOUS_CONTINUATION_METADATA";
+    return null;
+  }
+  if (continuation.classification === "ELIGIBLE") {
+    if (depth === 2) state.completionState = "DEPTH_CAPPED_WITH_MORE_AVAILABLE";
+    return continuation.payload;
+  }
+  const cumulative = splitR2PaginationAwareCumulative(state);
+  state.completionState = cumulative.raw === 0 ? "ZERO_RAW_PROVIDER_EXHAUSTED" :
+    depth === 0 ? "PROVIDER_EXHAUSTED_AFTER_INITIAL" :
+      depth === 1 ? "PROVIDER_EXHAUSTED_AFTER_D1" : "PROVIDER_EXHAUSTED_AFTER_D2";
+  return null;
+}
+
+function splitR2PaginationAwarePrimaryEligible(state) {
+  if (!SPLIT_R2_PAGINATION_AWARE_PRIMARY_STATES.has(state.completionState)) return false;
+  const c = splitR2PaginationAwareCumulative(state);
+  return c.raw > 0 && c.normalizable === c.raw && c.identity === c.raw && c.numeric === c.raw &&
+    c.currency === c.raw && c.missingCurrency === 0 && c.nonExpectedCurrency === 0 &&
+    c.invalidCurrency === 0 && c.distinct.length > 0;
+}
+
+function splitR2PaginationAwareSnapshot(state) {
+  const c = splitR2PaginationAwareCumulative(state);
+  const eligible = splitR2PaginationAwarePrimaryEligible(state);
+  return assertProviderNeutralSnapshot({
+    contractVersion: SPLIT_R2_PROVIDER_NEUTRAL_CONTRACT_VERSION,
+    logicalSearchId: state.search.logicalSearchId, scenarioOrdinal: state.search.scenarioOrdinal,
+    searchRole: state.search.searchRole, checkin: state.search.checkin, checkout: state.search.checkout,
+    durationNights: state.search.durationNights, expectedCurrency: state.search.expectedCurrency,
+    boundedSnapshotUsable: eligible,
+    collectionClassification: eligible ? "PROVIDER_NO_CONTINUATION_EXPOSED" : "INITIAL_SNAPSHOT_UNPROCESSABLE",
+    publicCollectionCategory: state.completionState,
+    comparabilityClassification: eligible ? "COMPARABLE_COMPLETE_TOTAL" : "INCOMPARABLE_COLLECTION",
+    economicEligibilityFunnel: { rawResultCount: c.raw, identityEligibleCount: c.identity,
+      numericPriceEligibleCount: c.numeric, expectedCurrencyMatchCount: c.currency,
+      missingCurrencyCount: c.missingCurrency, nonExpectedCurrencyCount: c.nonExpectedCurrency,
+      invalidCurrencyTypeCount: c.invalidCurrency, unknownMandatoryComponentCount: 0,
+      mandatoryComponentComparableCount: c.preDedup, finalEconomicOfferCount: c.distinct.length },
+    normalizableResultCount: c.normalizable,
+    offers: eligible ? c.distinct.map((offer) => ({ propertyFingerprint: offer.propertyFingerprint,
+      totalPriceMinorUnits: offer.totalMinorUnits, totalMinorUnits: offer.totalMinorUnits, currency: offer.currency,
+      totalPriceSemantics: "SEARCH_WINDOW_TOTAL_EMPIRICALLY_SUPPORTED", mandatoryTaxState: "UNPROVEN_R1_PRESERVED",
+      mandatoryTaxMinorUnits: null, payAtPropertyMandatoryMinorUnits: null, cancellationCategory: "UNAVAILABLE",
+      evidenceAvailabilityCategories: ["R2_PUBLIC_PROVIDER_EXHAUSTED_WITHIN_D2"] })) : [],
+    continuationAvailable: state.completionState === "DEPTH_CAPPED_WITH_MORE_AVAILABLE",
+    continuationEligible: state.completionState === "DEPTH_CAPPED_WITH_MORE_AVAILABLE",
+    continuationExecuted: state.depthReached > 0,
+    providerDeclaredTerminal: false,
+  });
+}
+
+function splitR2PaginationAwareScenarioAggregate(result, scenarioPlan, states) {
+  const scenarioStates = states.filter((state) => state.search.scenarioOrdinal === result.scenarioOrdinal);
+  const eligibleCount = scenarioStates.filter(splitR2PaginationAwarePrimaryEligible).length;
+  const roleCompletionCounts = Object.fromEntries(["FULL_STAY", "NIGHTLY", "PREFIX", "SUFFIX"].map((role) =>
+    [role, Object.fromEntries(SPLIT_R2_PAGINATION_AWARE_COMPLETION_STATES.map((completion) =>
+      [SPLIT_R2_PAGINATION_AWARE_STATE_CODES[completion], scenarioStates.filter((state) =>
+        state.search.searchRole === role && state.completionState === completion).length]))]));
+  return Object.freeze({
+    scenarioOrdinal: result.scenarioOrdinal, frozenBreakpoints: result.plannedBreakpoints,
+    evaluableBreakpoints: result.evaluatedBreakpoints,
+    notEvaluableBreakpoints: result.plannedBreakpoints - result.evaluatedBreakpoints,
+    positiveBreakpoints: result.positiveBreakpoints, breakEvenBreakpoints: result.breakEvenBreakpoints,
+    negativeBreakpoints: result.negativeBreakpoints, materialSignal: result.scenarioHasMaterialSignal,
+    bestSavingMinorUnits: result.bestSavingMinorUnits, bestSavingBasisPoints: result.bestSavingBasisPoints,
+    medianSavingMinorUnits: result.medianSavingMinorUnits, medianSavingBasisPoints: result.medianSavingBasisPoints,
+    minimumSavingMinorUnits: result.minSavingMinorUnits, fullStayBaselineAvailable: result.baselineAvailable,
+    notEvaluableReasonCounts: result.notEvaluableReasonCounts,
+    roleCompletionCounts,
+    primaryEconomicCoverage: eligibleCount === scenarioPlan.logicalSearches.length ? "COMPLETE" :
+      eligibleCount === 0 ? "NONE" : "PARTIAL",
+  });
+}
+
+function splitR2PaginationAwarePartialAnalysis(partialScenarioResults, plan, states, aborted) {
+  if (!aborted) return null;
+  const perScenario = partialScenarioResults.map((result, index) =>
+    splitR2PaginationAwareScenarioAggregate(result, plan.scenarioPlans[index], states));
+  const evaluable = partialScenarioResults.filter((result) => result.evaluatedBreakpoints > 0);
+  return Object.freeze({
+    evidenceClassification: "PARTIAL_WAVE_EXPLORATORY_ECONOMIC_EVIDENCE",
+    economicDataRetained: "SANITIZED_NORMALIZED_IN_MEMORY_UNTIL_ABORT_RECEIPT",
+    economicReconstructability: "FULLY_RECONSTRUCTABLE_FROM_SANITIZED_DATA",
+    reconstructabilityReason: "AUTOMATIC_PRE_DESTRUCTION_SALVAGE_FROM_NORMALIZED_IN_MEMORY_STATE",
+    economicResultsComputed: true,
+    completelyObservedBreakpoints: sum(partialScenarioResults.map((result) => result.evaluatedBreakpoints)),
+    economicallyEvaluableBreakpoints: sum(partialScenarioResults.map((result) => result.evaluatedBreakpoints)),
+    notEvaluableBreakpoints: 32 - sum(partialScenarioResults.map((result) => result.evaluatedBreakpoints)),
+    positiveBreakpoints: sum(partialScenarioResults.map((result) => result.positiveBreakpoints)),
+    breakEvenBreakpoints: sum(partialScenarioResults.map((result) => result.breakEvenBreakpoints)),
+    negativeBreakpoints: sum(partialScenarioResults.map((result) => result.negativeBreakpoints)),
+    materialBreakpoints: sum(partialScenarioResults.map((result) => result.materialSignalBreakpoints)),
+    bestSavingMinorUnits: evaluable.length > 0
+      ? Math.max(...evaluable.map((result) => result.bestSavingMinorUnits)) : null,
+    bestSavingBasisPoints: evaluable.length > 0
+      ? Math.max(...evaluable.map((result) => result.bestSavingBasisPoints)) : null,
+    medianSavingMinorUnits: splitR1CompactMedianInteger(
+      evaluable.map((result) => result.medianSavingMinorUnits)),
+    medianSavingBasisPoints: splitR1CompactMedianInteger(
+      evaluable.map((result) => result.medianSavingBasisPoints)),
+    minSavingMinorUnits: evaluable.length > 0
+      ? Math.min(...evaluable.map((result) => result.minSavingMinorUnits)) : null,
+    scenariosWithEvaluableBreakpoints: evaluable.length,
+    scenariosWithRawPositive: evaluable.filter((result) => result.scenarioHasRawPositive).length,
+    scenariosWithMaterialSignal: evaluable.filter((result) => result.scenarioHasMaterialSignal).length,
+    destinationsWithMaterialSignal: new Set(evaluable.filter((result) => result.scenarioHasMaterialSignal)
+      .map((result) => result.destination)).size,
+    perScenario,
+    generalizationAllowed: false,
+    frequencyEstimationAllowed: false,
+    reproducibilityClassificationAllowed: false,
+    commercialClaimAllowed: false,
+    rawBreakpointSavingsPersisted: 0,
+  });
+}
+
+export function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({
+  sourceSha, plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(), states = [],
+  scenarioResults = [], partialScenarioResults = [], http = {}, limiter = {}, failureClassification = null,
+  failureBoundary = null,
+} = {}) {
+  const stateCounts = Object.fromEntries(SPLIT_R2_PAGINATION_AWARE_COMPLETION_STATES.map((name) =>
+    [name, states.filter((state) => state.completionState === name).length]));
+  const cumulatives = states.map(splitR2PaginationAwareCumulative);
+  const primaryEligible = states.filter(splitR2PaginationAwarePrimaryEligible).length;
+  const perScenarioAggregates = scenarioResults.map((result, index) =>
+    splitR2PaginationAwareScenarioAggregate(result, plan.scenarioPlans[index], states));
+  const evaluable = scenarioResults.filter((result) => result.evaluatedBreakpoints > 0);
+  const rawPositive = evaluable.filter((result) => result.scenarioHasRawPositive);
+  const material = evaluable.filter((result) => result.scenarioHasMaterialSignal);
+  const destinationsWithMaterialSignal = new Set(material.map((result) => result.destination)).size;
+  const contractFailure = failureClassification !== null || stateCounts.TRANSPORT_OR_CONTRACT_FAILURE > 0;
+  const breakpointsEvaluable = sum(scenarioResults.map((result) => result.evaluatedBreakpoints));
+  const status = failureClassification !== null ? "FAIL" : states.length === 102 ? "PASS" : "INCONCLUSIVE";
+  const pageRaw = (depth) => sum(states.flatMap((state) => state.pages)
+    .filter((page) => page.depth === depth).map((page) => page.raw));
+  const diagnostics = states.map((state) => {
+    const c = splitR2PaginationAwareCumulative(state);
+    const raw = [0, 1, 2].map((depth) => state.pages.find((page) => page.depth === depth)?.raw ?? 0);
+    return [state.search.scenarioOrdinal, state.ordinal, SPLIT_R2_PAGINATION_AWARE_ROLE_CODES[state.search.searchRole],
+      state.search.breakpointOrdinal, state.depthReached >= 0 ? 1 : 0, state.depthReached >= 1 ? 1 : 0,
+      state.depthReached >= 2 ? 1 : 0, state.completionState === null ? null :
+        SPLIT_R2_PAGINATION_AWARE_STATE_CODES[state.completionState],
+      raw, c.distinct.length, c.duplicates, c.normalizable, c.numeric, c.currency,
+      splitR2PaginationAwarePrimaryEligible(state) ? 1 : 0,
+      SPLIT_R2_PAGINATION_AWARE_EXECUTION_CODES[state.executionState] ?? null,
+      state.unprocessableDepth ?? null,
+      state.unprocessableReason ?? null];
+  });
+  const executionStateCounts = Object.fromEntries(SPLIT_R2_PAGINATION_AWARE_EXECUTION_STATES.map((name) =>
+    [name, states.filter((state) => state.executionState === name).length]));
+  const accountingSum = sum(Object.values(executionStateCounts));
+  const aborted = failureClassification !== null;
+  const partialWaveAnalysis = splitR2PaginationAwarePartialAnalysis(partialScenarioResults, plan, states, aborted);
+  const unprocessableStates = states.filter((state) => state.completionState === "UNPROCESSABLE_RESPONSE");
+  const unprocessableReasonCounts = Object.fromEntries(SPLIT_R2_PAGINATION_AWARE_UNPROCESSABLE_REASONS
+    .map((reason) => [reason, unprocessableStates.filter((state) => state.unprocessableReason === reason).length])
+    .filter(([, count]) => count > 0));
+  const unprocessableScenarioCounts = Object.fromEntries([1, 3, 5].map((ordinal) =>
+    [ordinal, unprocessableStates.filter((state) => state.search.scenarioOrdinal === ordinal).length]));
+  const unprocessableRoleCounts = Object.fromEntries(["FULL_STAY", "NIGHTLY", "PREFIX", "SUFFIX"].map((role) =>
+    [role, unprocessableStates.filter((state) => state.search.searchRole === role).length]));
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION,
+    status, sourceSha, environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    userApprovalAcknowledged: true, unknownCostAcknowledged: true, singleWaveEnforced: true,
+    frozenScenarioOrdinals: [1, 3, 5], scenarioCount: 3, logicalSearchesPlanned: 102,
+    logicalSearchesExecuted: http.INITIAL_SEARCH ?? 0, breakpointsPlanned: 32,
+    breakpointsEvaluable, breakpointsNotEvaluable: 32 - breakpointsEvaluable,
+    authHttpRequests: http.AUTHENTICATION ?? 0, destinationHttpRequests: http.DESTINATION ?? 0,
+    initialHttpRequests: http.INITIAL_SEARCH ?? 0, continuationD1HttpRequests: http.CONTINUATION_D1 ?? 0,
+    continuationD2HttpRequests: http.CONTINUATION_D2 ?? 0,
+    continuationHttpRequests: http.CONTINUATION_TOTAL ?? 0, totalHttpRequests: http.total ?? 0,
+    totalHttpBudget: 310, totalHttpBudgetRemaining: 310 - (http.total ?? 0), retries: 0, redirects: 0,
+    maxObservedConcurrency: http.maxObservedConcurrency ?? 0,
+    minObservedRequestIntervalMs: limiter.minimumObservedRequestIntervalMs ?? null,
+    allD0BeforeAnyD1: http.allD0BeforeAnyD1 === true, allD1BeforeAnyD2: http.allD1BeforeAnyD2 === true,
+    d0PhaseCompleted: http.d0PhaseCompleted === true, d1PhaseCompleted: http.d1PhaseCompleted === true,
+    d2PhaseStarted: http.d2PhaseStarted === true,
+    breadthFirstOrderViolation: http.breadthFirstOrderViolation === true,
+    d3HttpRequests: 0, d0RawResults: pageRaw(0), d1PageRawResults: pageRaw(1), d2PageRawResults: pageRaw(2),
+    finalCumulativeRawResults: sum(cumulatives.map((entry) => entry.raw)),
+    finalCumulativeDistinctOffers: sum(cumulatives.map((entry) => entry.distinct.length)),
+    interPageDuplicatesRemoved: sum(cumulatives.map((entry) => entry.duplicates)),
+    totalNormalizableResults: sum(cumulatives.map((entry) => entry.normalizable)),
+    numericPriceCoverageNumerator: sum(cumulatives.map((entry) => entry.numeric)),
+    numericPriceCoverageDenominator: sum(cumulatives.map((entry) => entry.raw)),
+    expectedCurrencyCoverageNumerator: sum(cumulatives.map((entry) => entry.currency)),
+    expectedCurrencyCoverageDenominator: sum(cumulatives.map((entry) => entry.raw)),
+    completionStateCounts: stateCounts, executionStateCounts, accountingSum,
+    accountingMatchesTotal: accountingSum === 102, accountingOverlapDetected: false,
+    primaryEconomicEligibleSearches: primaryEligible,
+    primaryEconomicExcludedSearches: states.length - primaryEligible,
+    enumDictionary: { roles: SPLIT_R2_PAGINATION_AWARE_ROLE_CODES,
+      completion: SPLIT_R2_PAGINATION_AWARE_STATE_CODES,
+      execution: SPLIT_R2_PAGINATION_AWARE_EXECUTION_CODES },
+    searchDiagnostics: diagnostics, perScenarioAggregates,
+    scenariosEvaluable: evaluable.length, scenariosWithRawPositive: rawPositive.length,
+    scenariosWithMaterialSignal: material.length, destinationsWithMaterialSignal,
+    medianOfScenarioMediansMinorUnits: splitR1CompactMedianInteger(evaluable.map((entry) => entry.medianSavingMinorUnits)),
+    medianOfScenarioMediansBasisPoints: splitR1CompactMedianInteger(evaluable.map((entry) => entry.medianSavingBasisPoints)),
+    reproducibilityClassification: classifySplitR2RouteStackPublicReproducibility({ contractFailure,
+      scenariosEvaluable: evaluable.length, scenariosWithRawPositive: rawPositive.length,
+      scenariosWithMaterialSignal: material.length, destinationsWithMaterialSignal }),
+    primaryCampaignInferenceStatus: aborted ? "NOT_EVALUABLE_WAVE_ABORTED" : "COMPLETE",
+    primaryReproducibilityClassification: aborted ? "PROVIDER_OR_CONTRACT_FAILURE" :
+      classifySplitR2RouteStackPublicReproducibility({ contractFailure,
+        scenariosEvaluable: evaluable.length, scenariosWithRawPositive: rawPositive.length,
+        scenariosWithMaterialSignal: material.length, destinationsWithMaterialSignal }),
+    partialWaveAnalysis,
+    failureBoundary,
+    unprocessableAtD0: unprocessableStates.filter((state) => state.unprocessableDepth === 0).length,
+    unprocessableAtD1: unprocessableStates.filter((state) => state.unprocessableDepth === 1).length,
+    unprocessableAtD2: unprocessableStates.filter((state) => state.unprocessableDepth === 2).length,
+    unprocessableOverlapDetected: false,
+    unprocessableScenarioCounts, unprocessableRoleCounts, unprocessableReasonCounts,
+    compactReceiptGenerationSupported: true, compactReceiptEmitted: true,
+    compactSingleLineJson: true, compactReceiptUtf8Bytes: 0,
+    receiptCompleteness: aborted
+      ? (partialWaveAnalysis?.economicallyEvaluableBreakpoints > 0
+        ? "PARTIAL_WAVE_ABORTED_WITH_EXPLORATORY_ECONOMICS"
+        : "PARTIAL_WAVE_ABORTED_WITHOUT_RECONSTRUCTABLE_ECONOMICS")
+      : breakpointsEvaluable > 0 ? "COMPLETE_TECHNICAL_AND_ECONOMIC" :
+        "COMPLETE_TECHNICAL_INSUFFICIENT_ECONOMIC_COVERAGE",
+    r2_5aResultPreserved: true, r2_5aEconomicInferenceValidity: "NOT_ROBUST_TO_PAGINATION",
+    r2_5aFrequencyEvidenceUsable: false, r2_5aMaterialRecurrenceConclusionUsable: false,
+    qualityFrictionImplemented: false, userUsableSplitEvaluated: false,
+    bestResultScope: "PROVIDER_EXHAUSTED_WITHIN_D2_RETURNED_SNAPSHOT",
+    completenessClaimAllowed: false, globalOptimumClaimAllowed: false,
+    generalMarketFrequencyClaimAllowed: false, productionValidityClaimAllowed: false,
+    commercialValidationClaimAllowed: false, productionBookingAuthorized: false, publicRuntimeChanged: false,
+    repositoryModificationsAfterCommit: 0, rawIdsPersisted: 0, rawContinuationIdsPersisted: 0,
+    rawMetadataValuesPersisted: 0, payloadsOrRawResponsesPersisted: 0,
+    ephemeralHmacSecretPersisted: false, crossRunLinkability: false, secretValuesExposed: false,
+    failureClassification: failureClassification ?? (status === "PASS" ? "NONE" : "CAMPAIGN_INCOMPLETE"),
+  });
+}
+
+export function serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(
+  receipt, maxBytes = SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_MAX_UTF8_BYTES
+) {
+  assertReceiptSafe(receipt);
+  let candidate = { ...receipt, compactReceiptUtf8Bytes: 0 };
+  let json = stableStringifySplitF0(candidate, 0);
+  let byteLength = Buffer.byteLength(json, "utf8");
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    candidate = { ...candidate, compactReceiptUtf8Bytes: byteLength };
+    json = stableStringifySplitF0(candidate, 0);
+    const measured = Buffer.byteLength(json, "utf8");
+    if (measured === byteLength) break;
+    byteLength = measured;
+  }
+  byteLength = Buffer.byteLength(json, "utf8");
+  if (/\r|\n/u.test(json)) throw new Error("split-r2-pagination-aware-receipt-not-single-line");
+  if (byteLength > maxBytes) throw new SplitR2CompactReceiptError("split-r2-pagination-aware-receipt-oversize", byteLength);
+  return Object.freeze({ json, byteLength });
+}
+
+export async function runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha, plan, apiKey, apiSecret,
+  fetchImplementation = globalThis.fetch, monotonicNow, sleeper, now, randomUUID } = {}) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceSha ?? "") || typeof apiKey !== "string" || apiKey.length === 0 ||
+      typeof apiSecret !== "string" || apiSecret.length === 0) throw new Error("split-r2-pagination-aware-runtime-input-invalid");
+  const authoritativePlan = assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(plan);
+  const transport = createSplitR2PaginationAwareTransport({ fetchImplementation, monotonicNow, sleeper });
+  const ephemeralKey = crypto.randomBytes(32);
+  const states = authoritativePlan.logicalSearches.map((search, index) => ({ search,
+    binding: authoritativePlan.publicLogicalBindings[index], ordinal: index + 1, originalRequest: null,
+    latestResponse: null, depthReached: -1, pages: [], completionState: null, executionState: null,
+    unprocessableDepth: null, unprocessableReason: null }));
+  let currentState = null;
+  let currentDepth = null;
+  let d1RequestOrdinal = 0;
+  let d2RequestOrdinal = 0;
+  try {
+    const auth = await transport.post("AUTHENTICATION", SPLIT_R1_AUTH_ENDPOINT,
+      createSplitR1PartnerTokenRequest({ apiKey, apiSecret, now, randomUUID }));
+    let bearer = auth.payload?.token;
+    if (typeof bearer !== "string" || bearer.length === 0) throw new Error("split-r2-pagination-aware-bearer-missing");
+    const destinations = new Map();
+    for (const scenario of authoritativePlan.publicScenarioBindings) {
+      const response = await transport.post("DESTINATION", SPLIT_R1_DESTINATION_ENDPOINT,
+        createSplitR1DestinationRequest(scenario), bearer);
+      destinations.set(scenario.scenarioId, selectSplitR1DestinationCandidate(response.payload, scenario));
+    }
+    for (const state of states) {
+      currentState = state;
+      currentDepth = 0;
+      state.originalRequest = createSplitR1HotelSearchRequest(state.binding, destinations.get(state.binding.scenarioId));
+      const response = await transport.post("INITIAL_SEARCH", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        state.originalRequest, bearer, state.search.logicalSearchId);
+      try { splitR2PaginationAwareAddPage(state, 0, response.payload, ephemeralKey); }
+      catch (error) { splitR2PaginationAwareMarkUnprocessable(state, 0, error); continue; }
+      splitR2PaginationAwareFinalize(state, 0);
+      splitR2PaginationAwareMarkTerminal(state);
+    }
+    currentState = null;
+    transport.closeDepth("D0");
+    for (const state of states) {
+      if (state.completionState !== null) continue;
+      currentState = state;
+      currentDepth = 1;
+      d1RequestOrdinal += 1;
+      const request = createSplitR1ContinuationRequest(state.originalRequest, state.latestResponse, 1);
+      const response = await transport.post("CONTINUATION_D1", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        request, bearer, state.search.logicalSearchId);
+      try { splitR2PaginationAwareAddPage(state, 1, response.payload, ephemeralKey); }
+      catch (error) { splitR2PaginationAwareMarkUnprocessable(state, 1, error); continue; }
+      splitR2PaginationAwareFinalize(state, 1);
+      splitR2PaginationAwareMarkTerminal(state);
+    }
+    currentState = null;
+    transport.closeDepth("D1");
+    for (const state of states) {
+      if (state.completionState !== null || state.depthReached !== 1) continue;
+      currentState = state;
+      currentDepth = 2;
+      d2RequestOrdinal += 1;
+      const request = createSplitR1ContinuationRequest(state.originalRequest, state.latestResponse, 2);
+      const response = await transport.post("CONTINUATION_D2", SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+        request, bearer, state.search.logicalSearchId);
+      try { splitR2PaginationAwareAddPage(state, 2, response.payload, ephemeralKey); }
+      catch (error) { splitR2PaginationAwareMarkUnprocessable(state, 2, error); continue; }
+      splitR2PaginationAwareFinalize(state, 2);
+      splitR2PaginationAwareMarkTerminal(state);
+    }
+    currentState = null;
+    bearer = null;
+    const scenarioSnapshots = authoritativePlan.scenarioPlans.map((scenario) => scenario.logicalSearches.map((search) =>
+      splitR2PaginationAwareSnapshot(states.find((state) => state.search.logicalSearchId === search.logicalSearchId))));
+    const scenarioResults = authoritativePlan.scenarioPlans.map((scenario, index) =>
+      evaluateSplitR2Scenario("ROUTESTACK_PUBLIC_PRODUCTION", scenario, scenarioSnapshots[index]));
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({ sourceSha, plan: authoritativePlan,
+      states, scenarioResults, http: snapshot.http, limiter: snapshot.limiter });
+  } catch (error) {
+    const detail = splitR2PaginationAwareFailureDetail(error);
+    if (currentState && currentState.executionState === null) {
+      currentState.completionState = "TRANSPORT_OR_CONTRACT_FAILURE";
+      currentState.executionState = "FAILED_DURING_EXECUTION";
+    }
+    for (const state of states) {
+      if (state.executionState === null) state.executionState = "NOT_EXECUTED_AFTER_WAVE_ABORT";
+    }
+    const scenarioSnapshots = authoritativePlan.scenarioPlans.map((scenario) => scenario.logicalSearches.map((search) =>
+      splitR2PaginationAwareSnapshot(states.find((state) => state.search.logicalSearchId === search.logicalSearchId))));
+    const partialScenarioResults = authoritativePlan.scenarioPlans.map((scenario, index) =>
+      evaluateSplitR2Scenario("ROUTESTACK_PUBLIC_PRODUCTION", scenario, scenarioSnapshots[index]));
+    const snapshot = transport.snapshot();
+    return buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt({ sourceSha, plan: authoritativePlan,
+      states, scenarioResults: [], partialScenarioResults,
+      http: snapshot.http, limiter: snapshot.limiter,
+      failureBoundary: Object.freeze({ failedDepth: currentDepth === null ? null : `D${currentDepth}`,
+        failedD1RequestOrdinal: currentDepth === 1 ? d1RequestOrdinal : null,
+        failedD2RequestOrdinal: currentDepth === 2 ? d2RequestOrdinal : null,
+        failedScenarioOrdinal: currentState?.search?.scenarioOrdinal ?? null,
+        failedLogicalSearchOrdinal: currentState?.ordinal ?? null,
+        failedSearchRole: currentState?.search?.searchRole ?? null,
+        failedBreakpointOrdinal: currentState?.search?.breakpointOrdinal ?? null,
+        failureOrigin: detail.failureOrigin, failureHttpStatusCategory: detail.httpStatusCategory,
+        failureSanitizedDetailAvailable: detail.sanitizedDetailAvailable }),
+      failureClassification: String(error?.message ?? error).startsWith("split-r2-")
+        ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+        : "ROUTESTACK_PUBLIC_PAGINATION_AWARE_TECHNICAL_FAILURE" });
+  } finally {
+    for (const state of states) { state.latestResponse = null; state.originalRequest = null; }
+    ephemeralKey.fill(0);
+  }
+}
+
+function splitR2FakePaginationAwarePayload(search, depth, terminalDepth, variant = "full") {
+  if (variant === "unprocessable") return { result: { result: "invalid" } };
+  if (variant === "ambiguous") return { result: { currency: "EUR", correlationId: "a", token: "b",
+    nextResultsKey: "c", result: [] }, data: { correlationId: "d", token: "e", nextResultsKey: "f" } };
+  const hasMore = terminalDepth > depth;
+  const base = search.searchRole === "FULL_STAY" ? 1_000 :
+    search.searchRole === "PREFIX" || search.searchRole === "SUFFIX" ? 400 : 100;
+  return { result: { currency: "EUR", correlationId: `synthetic-c-${search.logicalSearchId}-${depth}`,
+    token: `synthetic-t-${search.logicalSearchId}-${depth}`,
+    nextResultsKey: hasMore ? `synthetic-n-${search.logicalSearchId}-${depth + 1}` : null,
+    result: variant === "zero" ? [] : [{ id: `synthetic-p-${search.logicalSearchId}-${depth}`,
+      ourprice: base + depth * 10 }] } };
+}
+
+async function runSplitR2FakePaginationAwareCampaign(profile = "full") {
+  const plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+  let monotonic = 0;
+  let requestOrdinal = 0;
+  return runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha: "d".repeat(40), plan,
+    apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret", monotonicNow: () => monotonic,
+    sleeper: async (delay) => { monotonic += delay; }, now: () => 1_800_000_000_000,
+    randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      requestOrdinal += 1;
+      if (requestOrdinal === 1) return fakeJsonResponse({ token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (requestOrdinal <= 4) {
+        const scenario = plan.publicScenarioBindings[requestOrdinal - 2];
+        return fakeJsonResponse({ result: [{ id: `synthetic-destination-${requestOrdinal - 1}`,
+          city: scenario.destination.label, country: scenario.destination.countryCode, type: "City",
+          fullName: `${scenario.destination.label}, Italy`,
+          coordinates: { lat: scenario.destination.latitude, long: scenario.destination.longitude } }] }, 200, String(url));
+      }
+      const body = JSON.parse(options.body);
+      const depth = typeof body.nextResultsKey !== "string" ? 0 : body.nextResultsKey.endsWith("-1") ? 1 : 2;
+      const searchIndex = depth === 0 ? requestOrdinal - 5 :
+        plan.logicalSearches.findIndex((search) => body.nextResultsKey.includes(search.logicalSearchId));
+      const search = plan.logicalSearches[searchIndex];
+      let terminalDepth = 2;
+      let variant = "full";
+      if (profile !== "full") {
+        const selector = searchIndex % 7;
+        if (selector === 0) terminalDepth = 0;
+        if (selector === 1) terminalDepth = 1;
+        if (selector === 2) terminalDepth = 2;
+        if (selector === 3) { terminalDepth = 0; variant = "zero"; }
+        if (selector === 4) terminalDepth = 3;
+        if (selector === 5 && depth === 0) variant = "ambiguous";
+        if (selector === 6) { terminalDepth = 0; variant = "unprocessable"; }
+      }
+      return fakeJsonResponse(splitR2FakePaginationAwarePayload(search, depth, terminalDepth, variant), 200, String(url));
+    },
+  });
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareFullDepth() {
+  return runSplitR2FakePaginationAwareCampaign("full");
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareEarlyTerminal() {
+  return runSplitR2FakePaginationAwareCampaign("mixed");
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareEconomicCoverage() {
+  return runSplitR2FakePaginationAwareCampaign("mixed");
+}
+
+export function runSplitR2FakeRouteStackPublicPaginationAwareFailureBoundary() {
+  const plan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+  let monotonic = 0;
+  let requestOrdinal = 0;
+  let d1Ordinal = 0;
+  const d0Unprocessable = new Set(plan.logicalSearches.filter((search) =>
+    search.scenarioOrdinal === 1 && search.searchRole === "NIGHTLY").map((search) => search.logicalSearchId));
+  return runSplitR2RouteStackPublicPaginationAwareMultiScenario({ sourceSha: "9".repeat(40), plan,
+    apiKey: "synthetic-public-key", apiSecret: "synthetic-public-secret", monotonicNow: () => monotonic,
+    sleeper: async (delay) => { monotonic += delay; }, now: () => 1_800_000_000_000,
+    randomUUID: () => "synthetic-nonce-memory-only",
+    fetchImplementation: async (url, options) => {
+      requestOrdinal += 1;
+      if (requestOrdinal === 1) return fakeJsonResponse({ token: "synthetic-bearer-memory-only" }, 200, String(url));
+      if (requestOrdinal <= 4) {
+        const scenario = plan.publicScenarioBindings[requestOrdinal - 2];
+        return fakeJsonResponse({ result: [{ id: `synthetic-destination-${requestOrdinal - 1}`,
+          city: scenario.destination.label, country: scenario.destination.countryCode, type: "City",
+          fullName: `${scenario.destination.label}, Italy`,
+          coordinates: { lat: scenario.destination.latitude, long: scenario.destination.longitude } }] }, 200, String(url));
+      }
+      const body = JSON.parse(options.body);
+      const isD0 = typeof body.nextResultsKey !== "string";
+      const searchIndex = isD0 ? requestOrdinal - 5 :
+        plan.logicalSearches.findIndex((search) => body.nextResultsKey.includes(search.logicalSearchId));
+      const search = plan.logicalSearches[searchIndex];
+      if (isD0 && d0Unprocessable.has(search.logicalSearchId)) {
+        return fakeJsonResponse({ result: { result: "invalid" } }, 200, String(url));
+      }
+      if (!isD0) {
+        d1Ordinal += 1;
+        if (d1Ordinal === 53) throw new Error("synthetic-network-boundary-without-sensitive-detail");
+      }
+      return fakeJsonResponse(splitR2FakePaginationAwarePayload(search, isD0 ? 0 : 1, 1), 200, String(url));
+    },
+  });
+}
+
+export function buildSplitR2HistoricalR2_8AForensicRecord() {
+  return Object.freeze({
+    status: "FAIL", sourceSha: "100f2776ea6af018a798feb19fca7c742e257fea",
+    totalHttpRequests: 159, totalHttpBudget: 310, totalHttpBudgetRemaining: 151,
+    authHttpRequests: 1, destinationHttpRequests: 3, initialHttpRequests: 102,
+    continuationD1HttpRequests: 53, continuationD2HttpRequests: 0, retries: 0, redirects: 0,
+    d0RawResults: 31_118, d1PageRawResults: 49_784, finalCumulativeRawResults: 80_902,
+    finalCumulativeDistinctOffers: 72_273, interPageDuplicatesRemoved: 8_629,
+    failedDepth: "D1", failedD1RequestOrdinal: 53,
+    failedScenarioOrdinal: null, failedLogicalSearchOrdinal: null, failedSearchRole: null,
+    failedBreakpointOrdinal: null, failureOrigin: "NOT_RECONSTRUCTABLE",
+    failureHttpStatusCategory: "UNKNOWN_NOT_RETAINED",
+    failureReconstructability: "INSUFFICIENT_SANITIZED_FAILURE_DETAIL",
+    failureSanitizedDetailAvailable: false,
+    d0PhaseCompleted: true, d1PhaseCompleted: false, d2PhaseStarted: false,
+    breadthFirstOrderViolation: false, allD0BeforeAnyD1: true, allD1BeforeAnyD2: true,
+    executionStateCounts: { EXECUTED_TO_TERMINAL_STATE: 66, FAILED_DURING_EXECUTION: 1,
+      NOT_EXECUTED_AFTER_WAVE_ABORT: 35 },
+    completionStateCounts: { PROVIDER_EXHAUSTED_AFTER_INITIAL: 0, PROVIDER_EXHAUSTED_AFTER_D1: 52,
+      PROVIDER_EXHAUSTED_AFTER_D2: 0, DEPTH_CAPPED_WITH_MORE_AVAILABLE: 0,
+      ZERO_RAW_PROVIDER_EXHAUSTED: 0, UNPROCESSABLE_RESPONSE: 14,
+      AMBIGUOUS_CONTINUATION_METADATA: 0, TRANSPORT_OR_CONTRACT_FAILURE: 1 },
+    accountingSum: 102, accountingMatchesTotal: true, accountingOverlapDetected: false,
+    primaryCampaignInferenceStatus: "NOT_EVALUABLE_WAVE_ABORTED",
+    primaryReproducibilityClassification: "PROVIDER_OR_CONTRACT_FAILURE",
+    partialWaveEconomicDataRetained: "SANITIZED_COUNTS_AND_EXECUTION_TUPLES_ONLY",
+    partialWaveEconomicReconstructability: "NOT_RECONSTRUCTABLE_DATA_NOT_RETAINED",
+    partialWaveReconstructabilityReason:
+      "NORMALIZED_OFFER_PRICES_AND_COMPLETE_BREAKPOINT_INPUTS_WERE_DESTROYED_WITH_PROCESS_MEMORY",
+    partialWaveEconomicResultsComputed: false,
+    partialWaveEvidenceClassification: "PARTIAL_WAVE_EXPLORATORY_ECONOMIC_EVIDENCE",
+  });
+}
+
+export function runSplitR2OfflineR2_9ForensicDiagnosis() {
+  return Object.freeze({
+    phase: "SPLIT-R2.9",
+    mode: "OFFLINE_FORENSIC_DIAGNOSIS",
+    historicalRecord: buildSplitR2HistoricalR2_8AForensicRecord(),
+    providerCalls: 0,
+    httpRequests: 0,
+    credentialsAccessed: false,
+    liveWaveAuthorized: false,
+  });
+}
+
 function fakeJsonResponse(payload, status, url) {
   return {
     status, redirected: false, url,
@@ -4171,6 +5034,87 @@ export function verifySplitR2LiteApiCanaryRepositoryGate(expectedHead, expectedD
   void ignored;
   if (!fs.existsSync("server/.env")) throw new Error("split-r2-liteapi-canary-env-file-absent");
   return { passed: true, dirtyFingerprint: dirty.fingerprint };
+}
+
+function splitR2FingerprintPathDescriptor(absolutePath) {
+  if (!fs.existsSync(absolutePath)) return Object.freeze({ type: "absent", digest: "ABSENT" });
+  const stat = fs.lstatSync(absolutePath);
+  if (stat.isSymbolicLink()) {
+    const target = fs.readlinkSync(absolutePath, "utf8");
+    return Object.freeze({ type: "symlink",
+      digest: crypto.createHash("sha256").update(target, "utf8").digest("hex") });
+  }
+  if (stat.isFile()) return Object.freeze({ type: "file",
+    digest: crypto.createHash("sha256").update(fs.readFileSync(absolutePath)).digest("hex") });
+  if (stat.isDirectory()) {
+    const children = fs.readdirSync(absolutePath, { withFileTypes: true })
+      .map((entry) => entry.name).sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    const manifest = children.map((name) => {
+      const descriptor = splitR2FingerprintPathDescriptor(path.join(absolutePath, name));
+      return `${descriptor.type}|${name.replaceAll("\\", "/")}|${descriptor.digest}`;
+    }).join("\n");
+    return Object.freeze({ type: "directory",
+      digest: crypto.createHash("sha256").update(manifest, "utf8").digest("hex") });
+  }
+  return Object.freeze({ type: "other",
+    digest: crypto.createHash("sha256").update("OTHER", "utf8").digest("hex") });
+}
+
+export function computeSplitR2UnrelatedDirtyFingerprint(entries, root = process.cwd()) {
+  const allowedPhase = new Set(SPLIT_R2_SCOPE_PATHS);
+  const normalized = [...new Set(entries.map((entry) =>
+    String(entry.relativePath ?? entry).replaceAll("\\", "/")))]
+    .filter((relativePath) => !allowedPhase.has(relativePath))
+    .sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  const lines = normalized.map((relativePath) => {
+    const absolute = path.resolve(root, relativePath);
+    const rootAbsolute = path.resolve(root);
+    if (absolute !== rootAbsolute && !absolute.startsWith(`${rootAbsolute}${path.sep}`)) {
+      throw new Error("split-r2-pagination-aware-dirty-path-outside-repository");
+    }
+    const descriptor = splitR2FingerprintPathDescriptor(absolute);
+    return `${descriptor.type}|${relativePath}|${descriptor.digest}`;
+  });
+  return Object.freeze({ count: normalized.length, paths: Object.freeze(normalized),
+    fingerprint: crypto.createHash("sha256").update(lines.join("\n"), "utf8").digest("hex") });
+}
+
+export function verifySplitR2PaginationAwareRepositoryGate(expectedHead, expectedDirtyFingerprint) {
+  if (!/^[0-9a-f]{40}$/u.test(expectedHead) || !/^[0-9a-f]{64}$/u.test(expectedDirtyFingerprint)) {
+    throw new Error("split-r2-pagination-aware-repository-ack-invalid");
+  }
+  if (gitText(["branch", "--show-current"]) !== "main" || gitText(["rev-parse", "HEAD"]) !== expectedHead) {
+    throw new Error("split-r2-pagination-aware-head-mismatch");
+  }
+  const dirty = repositoryDirtySnapshot();
+  const allowedPhase = new Set(SPLIT_R2_SCOPE_PATHS);
+  if (dirty.staged.length !== 0 || dirty.entries.some((entry) => {
+    const relative = entry.relativePath.replaceAll("\\", "/");
+    return !allowedPhase.has(relative) &&
+      !["src/engine-v3/index.ts",
+        ".codex-remote-attachments/01a0101e-d030-75f3-8d0a-f3c56dff8ce8/787761a2-8b1d-46ff-b461-9cd5f5310cee/1-Photo-1.jpg",
+        ".codex-remote-attachments/01a0101e-d030-75f3-8d0a-f3c56dff8ce8/787761a2-8b1d-46ff-b461-9cd5f5310cee/2-Photo-2.jpg",
+        ".codex-remote-attachments/01a0101e-d030-75f3-8d0a-f3c56dff8ce8/787761a2-8b1d-46ff-b461-9cd5f5310cee/3-Photo-3.jpg",
+        "src/engine-v3/evaluation/realMeasurementCapturePilotV3.ts",
+        "tests/engine-v3/fixtures/v3-17-real-measurement-capture-pilot-001-source-v1.json",
+        "tests/engine-v3/v3RealMeasurementCapturePilot.test.ts"].includes(relative);
+  })) throw new Error("split-r2-pagination-aware-dirty-scope-mismatch");
+  const originalEntries = dirty.entries.filter((entry) => !allowedPhase.has(entry.relativePath.replaceAll("\\", "/")));
+  const fingerprintResult = computeSplitR2UnrelatedDirtyFingerprint(originalEntries);
+  if (fingerprintResult.count !== 7) throw new Error("split-r2-pagination-aware-dirty-cardinality-mismatch");
+  if (fingerprintResult.fingerprint !== expectedDirtyFingerprint) {
+    throw new Error("split-r2-pagination-aware-dirty-state-mismatch");
+  }
+  if (crypto.createHash("sha256").update(fs.readFileSync("package.json")).digest("hex") !==
+      "be8465d3ab65240ee82173109a99c7269b70047ec1119bd2c5d59eae2c64c8bf" ||
+      crypto.createHash("sha256").update(fs.readFileSync("package-lock.json")).digest("hex") !==
+      "992da4b3d00c590bd48c4c1d955953938b053c73bf1b7243f189ebb1b3df6613") {
+    throw new Error("split-r2-pagination-aware-package-drift");
+  }
+  execFileSync("git", ["check-ignore", "-q", "--", "server/.env"], { cwd: process.cwd(), stdio: "ignore" });
+  if (!fs.existsSync("server/.env")) throw new Error("split-r2-pagination-aware-env-file-absent");
+  return Object.freeze({ passed: true, dirtyFingerprint: fingerprintResult.fingerprint,
+    unrelatedDirtyPathCount: fingerprintResult.count });
 }
 
 function readLiteApiSandboxCredential() {
@@ -4450,6 +5394,26 @@ export function parseSplitR2RouteStackPublicPaginationSensitivityArguments(argv)
   });
 }
 
+export function parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments(argv) {
+  const requiredLiteral = new Set([
+    "--r2-routestack-public-pagination-aware-multi-scenario",
+    "--compact",
+    "--phase=SPLIT-R2.8A",
+    "--environment=ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    "--acknowledgement=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP",
+    "--acknowledgement-unknown-cost=I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+    "--acknowledgement-no-mutation=I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+  ]);
+  const expectedHeadArguments = argv.filter((entry) => entry.startsWith("--expected-head="));
+  const fingerprintArguments = argv.filter((entry) => entry.startsWith("--expected-dirty-fingerprint="));
+  if (argv.length !== 9 || [...requiredLiteral].some((entry) => !argv.includes(entry)) ||
+      expectedHeadArguments.length !== 1 || fingerprintArguments.length !== 1) {
+    throw new Error("split-r2-pagination-aware-cli-contract-invalid");
+  }
+  return Object.freeze({ expectedHead: expectedHeadArguments[0].slice("--expected-head=".length),
+    expectedDirtyFingerprint: fingerprintArguments[0].slice("--expected-dirty-fingerprint=".length) });
+}
+
 function buildSplitR2LiteApiDiagnosisBlockedReceipt(sourceSha, failureClassification) {
   return {
     receiptVersion: SPLIT_R2_LITEAPI_ZERO_RESULT_DIAGNOSIS_RECEIPT_VERSION,
@@ -4571,13 +5535,72 @@ function buildSplitR2RouteStackPublicPaginationSensitivityBlockedReceipt(sourceS
   });
 }
 
+function buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(sourceSha, failureClassification) {
+  return Object.freeze({
+    receiptVersion: SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO_RECEIPT_VERSION,
+    status: "BLOCKED", sourceSha: /^[0-9a-f]{40}$/u.test(sourceSha ?? "") ? sourceSha : "UNVERIFIED",
+    environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    userApprovalAcknowledged: false, unknownCostAcknowledged: false, singleWaveEnforced: true,
+    frozenScenarioOrdinals: [1, 3, 5], scenarioCount: 3, logicalSearchesPlanned: 102,
+    logicalSearchesExecuted: 0, breakpointsPlanned: 32, breakpointsEvaluable: 0, breakpointsNotEvaluable: 32,
+    authHttpRequests: 0, destinationHttpRequests: 0, initialHttpRequests: 0,
+    continuationD1HttpRequests: 0, continuationD2HttpRequests: 0, continuationHttpRequests: 0,
+    totalHttpRequests: 0, totalHttpBudget: 310, totalHttpBudgetRemaining: 310,
+    retries: 0, redirects: 0, d3HttpRequests: 0, repositoryModificationsAfterCommit: 0,
+    rawIdsPersisted: 0, rawContinuationIdsPersisted: 0, rawMetadataValuesPersisted: 0,
+    payloadsOrRawResponsesPersisted: 0, ephemeralHmacSecretPersisted: false,
+    crossRunLinkability: false, secretValuesExposed: false, failureClassification,
+  });
+}
+
 function isMainModule() {
   return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 }
 
 if (isMainModule()) {
   const argv = process.argv.slice(2);
-  if (argv.includes("--r2-routestack-public-pagination-sensitivity")) {
+  if (argv.includes("--r2-routestack-public-pagination-aware-multi-scenario")) {
+    let expectedHead = null;
+    try {
+      const parsed = parseSplitR2RouteStackPublicPaginationAwareMultiScenarioArguments(argv);
+      expectedHead = parsed.expectedHead;
+      const repository = verifySplitR2PaginationAwareRepositoryGate(
+        parsed.expectedHead, parsed.expectedDirtyFingerprint
+      );
+      const evidence = inspectSplitR2RouteStackPublicContractEvidence();
+      const authoritativePlan = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan();
+      const preflight = assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight({
+        mode: "ROUTESTACK_PUBLIC_PAGINATION_AWARE_MULTI_SCENARIO", phase: "SPLIT-R2.8A", compact: true,
+        environment: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED", hostname: "mcp.routestack.ai", protocol: "https:",
+        acknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_MAX_310_HTTP",
+        unknownCostAcknowledgement: "I_ACKNOWLEDGE_ROUTESTACK_PUBLIC_COST_UNKNOWN",
+        noMutationAcknowledgement: "I_ACKNOWLEDGE_NO_BOOKING_OR_MUTATION",
+        authMax: 1, destinationMax: 3, initialSearchMax: 102, continuationD1Max: 102,
+        continuationD2Max: 102, continuationMax: 204, totalMax: 310, maxContinuationDepth: 2,
+        retries: 0, redirects: 0, concurrency: 1, minimumIntervalMs: 1_000,
+        productionFallback: false, sandboxFallback: false, liteApiFallback: false,
+        otherLiveModesSelected: 0, repositoryGatePassed: repository.passed,
+        contractEvidence: evidence, plan: authoritativePlan, credentialReader: readRouteStackPublicCredentials,
+      });
+      const receipt = await runSplitR2RouteStackPublicPaginationAwareMultiScenario({
+        sourceSha: parsed.expectedHead, plan: preflight.plan, apiKey: preflight.credentials.apiKey,
+        apiSecret: preflight.credentials.apiSecret,
+      });
+      const serialized = serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_RESULT=${serialized.json}\n`);
+      if (receipt.status === "FAIL" || receipt.status === "BLOCKED") process.exitCode = 1;
+    } catch (error) {
+      const classification = error instanceof SplitR2CompactReceiptError
+        ? "COMPACT_RECEIPT_EXCEEDED_UTF8_LIMIT"
+        : String(error?.message ?? error).startsWith("split-r2-")
+          ? String(error.message).replace(/^split-r2-/u, "").replaceAll("-", "_").toUpperCase()
+          : "ROUTESTACK_PUBLIC_PAGINATION_AWARE_PREFLIGHT_BLOCKED";
+      const receipt = buildSplitR2RouteStackPublicPaginationAwareMultiScenarioBlockedReceipt(expectedHead, classification);
+      const serialized = serializeSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt(receipt);
+      process.stdout.write(`SPLIT_R2_ROUTESTACK_PUBLIC_PAGINATION_AWARE_RESULT=${serialized.json}\n`);
+      process.exitCode = 1;
+    }
+  } else if (argv.includes("--r2-routestack-public-pagination-sensitivity")) {
     let expectedHead = null;
     try {
       const parsed = parseSplitR2RouteStackPublicPaginationSensitivityArguments(argv);
