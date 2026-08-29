@@ -1217,3 +1217,41 @@ no-evaluable salvage and historical non-reconstructability. It performs no
 provider call and does not consume the existing authorization. After all
 offline gates pass, the next phase is
 `SPLIT-R2.9A.1_AUTHORIZED_PAGINATION_AWARE_SINGLE_LIVE_REEXECUTION`.
+
+## 29. SPLIT-R2.9A.1 — Authorized single live re-execution
+
+The previously unconsumed R2.9A authorization was used once with exact phase
+`SPLIT-R2.9A` against the verified RouteStack Public Production environment.
+All offline gates passed before credentials. The single wave then stopped
+fail-closed on the first D0 `FULL_STAY` search for scenario 1 after a sanitized
+provider `HTTP_4XX` result. The request accounting was 1 auth, 3 destination
+resolutions, 1 initial search, 0 D1, 0 D2 and 5 total HTTP requests, leaving 305
+of the 310-request ceiling unused. Fewer than 310 requests is not itself a
+failure. No retry, redirect, D3, mutation or second wave occurred.
+
+The compact receipt
+`stayopti.split-r2.routestack-public-pagination-aware-multi-scenario@1` was
+emitted as one deterministic sanitized JSON line of 14,376 UTF-8 bytes. It
+records D0 incomplete, D1 incomplete, D2 not started and not completed, while
+preserving both breadth-first assertions because no later depth started early.
+Execution accounting is exact and non-overlapping: 0 searches reached a
+terminal collection state, 1 failed during execution and 101 were not executed
+after abort, totalling the frozen 102 searches.
+
+Automatic partial salvage ran before sensitive in-memory state destruction.
+It retained reconstructable sanitized state but found 0 completely observed or
+economically evaluable breakpoints, so receipt completeness is
+`PARTIAL_WAVE_ABORTED_WITHOUT_EVALUABLE_BREAKPOINTS`. All 32 frozen breakpoints
+remain non-evaluable; primary campaign inference is
+`NOT_EVALUABLE_WAVE_ABORTED` and primary reproducibility remains
+`PROVIDER_OR_CONTRACT_FAILURE`. Null economic measures are not converted to
+zero. The phase outcome is therefore `INCONCLUSIVE`, distinct from a completed
+negative economic result.
+
+The receipt persisted 0 raw IDs, continuation IDs, raw metadata values,
+payloads or raw responses; the HMAC secret was not persisted, cross-run
+linkability is false and no secret value was exposed. No completeness, global
+optimum, general market frequency, Production validity, commercial validation,
+booking, quality-friction or user-usability claim is authorized. A new live
+wave is not authorized by this result. The next gate is
+`SPLIT-R2.10_TRANSPORT_FAILURE_AND_PARTIAL_EVIDENCE_REVIEW`.
