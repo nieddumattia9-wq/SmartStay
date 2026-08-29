@@ -1386,3 +1386,41 @@ economic evidence and does not alter the public StayOpti runtime. Because the
 R2.10A authorization was not consumed, the next permitted step is one exact
 live execution under the unchanged five-HTTP ceiling:
 `SPLIT-R2.10A.1_AUTHORIZED_ROUTE_STACK_PUBLIC_D0_5_HTTP_SINGLE_LIVE_CANARY`.
+
+## 32. SPLIT-R2.10A.1 — Authorized RouteStack Public D0 live canary
+
+The still-valid R2.10A authorization was consumed by exactly one read-only
+RouteStack Public Production wave. All offline exact-mode, fake-transport,
+request-equivalence and TypeScript gates passed before credential access. The
+wave used exact phase `SPLIT-R2.10A` and the unchanged provider-request
+fingerprint
+`f626b05e4492ee8757e5b67ece5ad1d61e6945eb3103dd56b2483d57eeb2779e`.
+
+The wave issued 1 authentication request, 3 deterministic destination
+resolutions and 1 scenario-1 `FULL_STAY` D0 request: 5 total HTTP requests,
+the complete authorized ceiling. The minimum observed interval between
+request starts was 1,004.5949 ms and maximum observed concurrency was one.
+Retry, redirect, continuation, second search, second wave, Sandbox fallback,
+booking, payment and every mutative call remained zero.
+
+The D0 request returned sanitized HTTP status 402. It is classified as
+`HTTP_OTHER_4XX`, with provider error enum `UNKNOWN_4XX`, absent
+`Retry-After`, failure origin `PROVIDER_HTTP` and failure scope
+`UNKNOWN_SCOPE_FAIL_CLOSED`. The runner stopped immediately. No raw response,
+request, header, URL, provider identifier, destination identifier or secret
+was retained. Because no processable D0 response was observed, inventory,
+result counts, price coverage and EUR coverage remain null rather than zero.
+
+The phase result is `INCONCLUSIVE`; the D0 read-only contract is not verified
+by this wave. The compact receipt
+`stayopti.split-r2.routestack-public-d0-contract-canary@1` was emitted as one
+valid deterministic line of 2,072 UTF-8 bytes, below the 6,000-byte ceiling.
+It persisted zero raw IDs, continuation IDs, raw metadata values, payloads or
+raw responses and exposed no secret. No Split breakpoint or saving was
+evaluated, and this result provides no economic, pagination, completeness,
+global-optimum, market-frequency, Production-validity, commercial-validation
+or booking evidence.
+
+The authorization is consumed and no further live wave is implied. The next
+offline gate is
+`SPLIT-R2.10C_STATUS_SPECIFIC_REQUEST_OR_PROVIDER_CONTRACT_DIAGNOSIS`.
