@@ -27,6 +27,10 @@ import {
   SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION,
   SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS,
   SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT,
+  SPLIT_R2_ROUTESTACK_PUBLIC_HTTP_402_SUPPORT_PACKET_VERSION,
+  SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD,
+  SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD_REASON,
+  SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH,
   SPLIT_R2_SANITIZED_HTTP_STATUS_CLASSES,
   SPLIT_R2_SANITIZED_PROVIDER_ERROR_ENUMS,
   SPLIT_R2_FAILURE_SCOPES,
@@ -59,6 +63,7 @@ import {
   assertSplitR2RouteStackPublicPaginationAwareMultiScenarioPreflight,
   assertSplitR2RouteStackPublicD0ContractCanaryPlan,
   assertSplitR2RouteStackPublicD0ContractCanaryPreflight,
+  assertSplitR2RouteStackPublicSearchLiveHold,
   buildSplitR2CampaignPlan,
   buildSplitR2CompactReceipt,
   buildSplitR2LiteApiCanaryReceipt,
@@ -73,6 +78,8 @@ import {
   buildSplitR2RouteStackPublicPaginationAwareMultiScenarioReceipt,
   buildSplitR2HistoricalR2_8AForensicRecord,
   buildSplitR2HistoricalR2_9A_1D0FailureRecord,
+  buildSplitR2HistoricalR2_10A_1D0FailureRecord,
+  buildSplitR2RouteStackPublicHttp402SupportPacket,
   buildSplitR2RouteStackPublicRequestEquivalenceAudit,
   buildSplitR2RouteStackPublicD0ContractCanaryReceipt,
   buildSplitR2RouteStackPublicD0ContractCanaryPlan,
@@ -96,6 +103,11 @@ import {
   createSplitR2RouteStackPublicD0ContractCanaryCounter,
   createSplitR2SearchFailureCircuitBreaker,
   computeSplitR2UnrelatedDirtyFingerprint,
+  resolveSplitR2RepositoryRoot,
+  resolveSplitR2CanonicalEnvPath,
+  captureSplitR2CanonicalEnvIntegrity,
+  assertSplitR2CanonicalEnvIntegrityUnchanged,
+  buildSplitR2CanonicalEnvGateEvidence,
   decideSplitR2Campaign,
   evaluateSplitR2Scenario,
   normalizeSplitR2LiteApiCanaryResponse,
@@ -2082,7 +2094,7 @@ function paginationAwarePreflight(overrides = {}) {
     continuationD2Max: 102, continuationMax: 204, totalMax: 310, maxContinuationDepth: 2,
     retries: 0, redirects: 0, concurrency: 1, minimumIntervalMs: 1_000,
     productionFallback: false, sandboxFallback: false, liteApiFallback: false,
-    otherLiveModesSelected: 0, repositoryGatePassed: true,
+    otherLiveModesSelected: 0, searchLiveHold: false, repositoryGatePassed: true,
     plan: buildSplitR2RouteStackPublicPaginationAwareMultiScenarioPlan(),
     contractEvidence: { environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
       hostnameDeterminable: true, contractDeterminable: true, mutativeEndpointsSelected: false,
@@ -2755,7 +2767,7 @@ function r2_10APreflightOptions(overrides = {}) {
     authMax: 1, destinationMax: 3, initialSearchMax: 1, continuationMax: 0, totalMax: 5,
     retries: 0, redirects: 0, concurrency: 1, minimumIntervalMs: 1_000,
     productionFallback: false, sandboxFallback: false, liteApiFallback: false,
-    otherLiveModesSelected: 0, repositoryGatePassed: true,
+    otherLiveModesSelected: 0, repositoryGatePassed: true, searchLiveHold: false,
     plan: buildSplitR2RouteStackPublicD0ContractCanaryPlan(),
     credentialReader: () => ({ baseUrl: "https://mcp.routestack.ai",
       apiKey: "synthetic-key", apiSecret: "synthetic-secret" }),
@@ -2927,4 +2939,270 @@ test("240 R2.10B keeps public runtime unchanged and fake authorization unconsume
   const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact();
   assert.deepEqual([receipt.publicRuntimeChanged, receipt.productionBookingAuthorized,
     receipt.authorizationConsumed, receipt.secondLiveWaveExecuted], [false, false, false, false]);
+});
+
+test("241 R2.10C preserves the exact sanitized R2.10A.1 HTTP 402 history", () => {
+  const record = buildSplitR2HistoricalR2_10A_1D0FailureRecord();
+  assert.deepEqual([record.status, record.authorizationConsumed, record.secondWaveExecuted,
+    record.totalHttpRequests, record.httpStatusCode], ["INCONCLUSIVE", true, false, 5, 402]);
+  assert.deepEqual([record.economicBreakpointsEvaluated, record.splitSavingEvaluated], [0, false]);
+});
+
+test("242 R2.10C HTTP 402 has an exact payment-required status class", () => {
+  const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 402 });
+  assert.equal(failure.httpStatusClass, "HTTP_402_PAYMENT_REQUIRED");
+  assert.equal(SPLIT_R2_SANITIZED_HTTP_STATUS_CLASSES.includes(failure.httpStatusClass), true);
+});
+
+test("243 R2.10C HTTP 402 uses only the sanitized billing quota or entitlement class", () => {
+  const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 402 });
+  assert.equal(failure.providerErrorEnum, "PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED");
+  assert.equal(SPLIT_R2_SANITIZED_PROVIDER_ERROR_ENUMS.includes(failure.providerErrorEnum), true);
+});
+
+test("244 R2.10C HTTP 402 is a global fatal failure", () => {
+  const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 402 });
+  const breaker = createSplitR2SearchFailureCircuitBreaker().recordFailure(failure.failureScope);
+  assert.deepEqual([failure.failureScope, breaker.aborted], ["GLOBAL_FATAL_FAILURE", true]);
+});
+
+test("245 R2.10C fake HTTP 402 aborts immediately after the first D0", async () => {
+  const { receipt, transmittedRequests } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_402");
+  assert.deepEqual([transmittedRequests, receipt.totalHttpRequests, receipt.initialHttpRequests], [5, 5, 1]);
+  assert.equal(receipt.status, "INCONCLUSIVE");
+});
+
+test("246 R2.10C fake HTTP 402 never retries", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_402");
+  assert.deepEqual([receipt.retries, receipt.retryAfterPresent], [0, "ABSENT"]);
+});
+
+test("247 R2.10C fake HTTP 402 executes no continuation", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_402");
+  assert.deepEqual([receipt.continuationHttpRequests, receipt.continuationExecuted], [0, false]);
+});
+
+test("248 R2.10C fake HTTP 402 executes no second search", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_402");
+  assert.equal(receipt.secondSearchExecuted, false);
+});
+
+test("249 R2.10C HTTP 402 support contract has no Sandbox fallback", () => {
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.equal(packet.environmentClassification, "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED");
+  assert.equal(packet.liveHold.routeStackPublicSearchLiveHold, true);
+});
+
+test("250 R2.10C fake HTTP 402 receipt stays single-line and below 6000 bytes", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_402");
+  const serialized = serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(receipt);
+  assert.equal(serialized.json.includes("\n"), false);
+  assert.equal(serialized.byteLength < SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES, true);
+});
+
+test("251 R2.10C support packet excludes raw body and response", () => {
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.deepEqual([packet.rawPayloadsPersisted, packet.rawResponsesPersisted], [0, 0]);
+  const serialized = JSON.stringify(packet);
+  assert.equal(serialized.includes("rawBody"), false);
+  assert.equal(serialized.includes("responseBody"), false);
+});
+
+test("252 R2.10C support packet excludes raw provider messages", () => {
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.equal(packet.rawProviderMessagesPersisted, 0);
+  assert.equal(Object.hasOwn(packet, "providerMessage"), false);
+});
+
+test("253 R2.10C support packet excludes identifiers credentials and secrets", () => {
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.deepEqual([packet.rawIdsPersisted, packet.rawContinuationIdsPersisted,
+    packet.secretValuesPersisted, packet.credentialsAccessed], [0, 0, 0, false]);
+  const serialized = JSON.stringify(packet);
+  for (const prohibited of ["destinationId", "propertyId", "correlationId", "nextResultsKey",
+    "Authorization", "apiSecret"]) assert.equal(serialized.includes(`"${prohibited}":`), false);
+});
+
+test("254 R2.10C request equivalence and contract fingerprint remain exact", () => {
+  const audit = buildSplitR2RouteStackPublicRequestEquivalenceAudit();
+  assert.deepEqual(new Set(Object.values(audit.fingerprints)), new Set([
+    SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT]));
+  assert.deepEqual([audit.methodMatch, audit.pathTemplateMatch, audit.bodyKeySetMatch,
+    audit.bodyValueTypesMatch, audit.scenario1DatesValid, audit.scenario1OccupancyValid,
+    audit.scenario1CurrencyValid, audit.initialContinuationStateValid],
+  [true, true, true, true, true, true, true, true]);
+});
+
+test("255 R2.10C all non-402 HTTP classifications remain exact", () => {
+  const profiles = [[400, "HTTP_400_BAD_REQUEST"], [401, "HTTP_401_UNAUTHENTICATED"],
+    [403, "HTTP_403_FORBIDDEN"], [404, "HTTP_404_NOT_FOUND"], [409, "HTTP_409_CONFLICT"],
+    [422, "HTTP_422_UNPROCESSABLE_ENTITY"], [429, "HTTP_429_RATE_LIMITED"],
+    [418, "HTTP_OTHER_4XX"], [503, "HTTP_5XX"]];
+  assert.deepEqual(profiles.map(([status]) =>
+    classifySplitR2RouteStackPublicHttpFailure({ statusCode: status }).httpStatusClass),
+  profiles.map(([, expected]) => expected));
+});
+
+test("256 R2.10C HTTP 402 is not rate limiting", () => {
+  const payment = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 402 });
+  const rateLimit = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 429,
+    retryAfterPresent: true });
+  assert.notEqual(payment.httpStatusClass, rateLimit.httpStatusClass);
+  assert.deepEqual([payment.retryAfterPresent, rateLimit.retryAfterPresent], ["ABSENT", "PRESENT"]);
+});
+
+test("257 R2.10C HTTP 402 is not authentication rejection", () => {
+  const payment = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 402 });
+  const authentication = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 401 });
+  assert.notEqual(payment.providerErrorEnum, authentication.providerErrorEnum);
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.equal(packet.authenticationSucceeded, true);
+});
+
+test("258 R2.10C public runtime and Split evaluator remain untouched", async () => {
+  const { receipt } = await runSplitR2FakeRouteStackPublicD0ContractCanaryExact("HTTP_402");
+  assert.deepEqual([receipt.publicRuntimeChanged, receipt.productionBookingAuthorized,
+    receipt.economicBreakpointsEvaluated, receipt.splitSavingEvaluated], [false, false, 0, false]);
+});
+
+test("259 R2.10C public search live hold blocks before credentials and documents removal gates", () => {
+  assert.equal(SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD, true);
+  assert.throws(() => assertSplitR2RouteStackPublicSearchLiveHold(), /external-resolution-required/);
+  let reads = 0;
+  assert.throws(() => assertSplitR2RouteStackPublicD0ContractCanaryPreflight(
+    r2_10APreflightOptions({ searchLiveHold: true, credentialReader: () => { reads += 1; return null; } })
+  ), /preflight-failed-before-credentials/);
+  assert.equal(reads, 0);
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.equal(packet.packetVersion, SPLIT_R2_ROUTESTACK_PUBLIC_HTTP_402_SUPPORT_PACKET_VERSION);
+  assert.equal(packet.supportQuestions.length, 10);
+  assert.deepEqual([packet.liveHold.removalRequiresExternalResolution,
+    packet.liveHold.newUserApprovalRequiredAfterResolution,
+    packet.liveHold.currentLiveAuthorizationAvailable], [true, true, false]);
+});
+
+async function withR2_10C_1CanonicalEnvFixture(callback, { createServerEnv = true,
+  createRootEnv = false } = {}) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "stayopti-r2-10c1-env-"));
+  try {
+    await fs.mkdir(path.join(root, "server"), { recursive: true });
+    if (createServerEnv) await fs.writeFile(path.join(root, "server", ".env"),
+      Buffer.from([0x53, 0x32, 0x43, 0x31]));
+    if (createRootEnv) await fs.writeFile(path.join(root, ".env"), Buffer.from([0x52, 0x4f, 0x4f, 0x54]));
+    return await callback(root);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+}
+
+test("260 R2.10C.1 canonical gate accepts server env while root env is absent", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    await assert.rejects(fs.access(path.join(root, ".env")));
+    const snapshot = captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    assert.equal(snapshot.canonicalEnvPath, path.join(path.resolve(root), "server", ".env"));
+  });
+});
+
+test("261 R2.10C.1 repository root resolution is independent of caller directory", () => {
+  const expected = resolveSplitR2RepositoryRoot(process.cwd());
+  const starts = [expected, path.join(expected, "server"), path.join(expected, "docs", "engine-v3")];
+  assert.deepEqual(starts.map((start) => resolveSplitR2RepositoryRoot(start)),
+    [expected, expected, expected]);
+});
+
+test("262 R2.10C.1 canonical env path is derived only from absolute repository root", () => {
+  const repositoryRoot = resolveSplitR2RepositoryRoot(process.cwd());
+  assert.equal(resolveSplitR2CanonicalEnvPath(repositoryRoot),
+    path.join(repositoryRoot, "server", ".env"));
+  assert.equal(SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH, "server/.env");
+  assert.throws(() => resolveSplitR2CanonicalEnvPath("."), /repository-root-invalid/);
+});
+
+test("263 R2.10C.1 absent canonical env stops even when root env exists", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    assert.throws(() => captureSplitR2CanonicalEnvIntegrity(path.resolve(root)), /env-file-absent/);
+  }, { createServerEnv: false, createRootEnv: true });
+});
+
+test("264 R2.10C.1 root env never substitutes the canonical server env", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    const rootEnv = path.join(root, ".env");
+    assert.equal(resolveSplitR2CanonicalEnvPath(path.resolve(root)) === rootEnv, false);
+    assert.throws(() => captureSplitR2CanonicalEnvIntegrity(path.resolve(root)), /env-file-absent/);
+  }, { createServerEnv: false, createRootEnv: true });
+});
+
+test("265 R2.10C.1 before and after integrity bind the same absolute file", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    const before = captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    const after = captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    assert.deepEqual(assertSplitR2CanonicalEnvIntegrityUnchanged(before, after),
+      { sameAbsoluteTarget: true, unchanged: true });
+  });
+});
+
+test("266 R2.10C.1 canonical integrity fails closed on missing or changed target", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    const before = captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    await fs.writeFile(path.join(root, "server", ".env"), Buffer.from([0x43, 0x48, 0x47]));
+    const changed = captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    assert.throws(() => assertSplitR2CanonicalEnvIntegrityUnchanged(before, changed),
+      /integrity-changed/);
+    await fs.rm(path.join(root, "server", ".env"));
+    assert.throws(() => captureSplitR2CanonicalEnvIntegrity(path.resolve(root)), /env-file-absent/);
+  });
+});
+
+test("267 R2.10C.1 sanitized gate evidence excludes path hash content and variables", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    const before = captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    const evidence = buildSplitR2CanonicalEnvGateEvidence(before, before);
+    const serialized = JSON.stringify(evidence);
+    assert.deepEqual([evidence.envHashPrinted, evidence.envContentParsed,
+      evidence.envVariableNamesRead, evidence.envSecretValuesRead,
+      evidence.envLoadedIntoProcess, evidence.rootEnvRequired], [false, false, false, false, false, false]);
+    assert.equal(serialized.includes(before.digest), false);
+    assert.equal(serialized.includes(before.canonicalEnvPath), false);
+  });
+});
+
+test("268 R2.10C.1 integrity hashing does not load environment variables", async () => {
+  await withR2_10C_1CanonicalEnvFixture(async (root) => {
+    const sentinel = process.env.SPLIT_R2_CANONICAL_ENV_TEST_SENTINEL;
+    captureSplitR2CanonicalEnvIntegrity(path.resolve(root));
+    assert.equal(process.env.SPLIT_R2_CANONICAL_ENV_TEST_SENTINEL, sentinel);
+  });
+});
+
+test("269 R2.10C.1 quota exhaustion is user-confirmed without provider-written confirmation", () => {
+  const diagnosis = buildSplitR2RouteStackPublicHttp402SupportPacket().operationalDiagnosis;
+  assert.deepEqual([diagnosis.routeStackPublicFreeCallQuotaExhausted,
+    diagnosis.quotaExhaustionSource, diagnosis.providerWrittenConfirmationAvailable,
+    diagnosis.providerSearchContractRejectedDueToAvailableCallQuota],
+  [true, "USER_CONFIRMED_PROVIDER_ACCOUNT_STATE", false, true]);
+  assert.deepEqual([diagnosis.requestShapeDefectSupported, diagnosis.invalidCredentialsSupported,
+    diagnosis.rateLimitSupported, diagnosis.splitEvaluatorReached], [false, false, false, false]);
+});
+
+test("270 R2.10C.1 RouteStack public hold is bound to exhausted free-call quota", () => {
+  const packet = buildSplitR2RouteStackPublicHttp402SupportPacket();
+  assert.deepEqual([SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD,
+    SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD_REASON, packet.liveHold.reason,
+    packet.liveHold.currentLiveAuthorizationAvailable],
+  [true, "PUBLIC_FREE_CALL_QUOTA_EXHAUSTED", "PUBLIC_FREE_CALL_QUOTA_EXHAUSTED", false]);
+  assert.deepEqual(packet.liveHold.acceptedResolutionEvidence, [
+    "PUBLIC_FREE_CALL_QUOTA_RENEWED", "PUBLIC_CALL_QUOTA_PURCHASED_OR_INCREASED",
+    "COMPATIBLE_PLAN_ACTIVATED", "PROVIDER_ACCOUNT_CONFIRMATION_RECEIVED"]);
+});
+
+test("271 R2.10C.1 preserves history HTTP semantics and Split economics", () => {
+  const historical = buildSplitR2HistoricalR2_10A_1D0FailureRecord();
+  const failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode: 402 });
+  assert.deepEqual([historical.status, historical.authorizationConsumed,
+    historical.secondWaveExecuted, historical.economicBreakpointsEvaluated],
+  ["INCONCLUSIVE", true, false, 0]);
+  assert.deepEqual([failure.httpStatusClass, failure.failureScope],
+    ["HTTP_402_PAYMENT_REQUIRED", "GLOBAL_FATAL_FAILURE"]);
+  assert.deepEqual([classifySplitR2Saving(1, 10_000).breakpointClass,
+    classifySplitR2Saving(10_000, 100_000).materialPriceSignal], ["RAW_POSITIVE_SPLIT", true]);
 });

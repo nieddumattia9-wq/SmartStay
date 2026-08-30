@@ -1424,3 +1424,157 @@ or booking evidence.
 The authorization is consumed and no further live wave is implied. The next
 offline gate is
 `SPLIT-R2.10C_STATUS_SPECIFIC_REQUEST_OR_PROVIDER_CONTRACT_DIAGNOSIS`.
+
+## 33. SPLIT-R2.10C — RouteStack Public HTTP 402 account, billing, quota or entitlement diagnosis
+
+R2.10A.1 remains `INCONCLUSIVE`: its authorization was consumed by one wave
+of 5 HTTP requests, its first initial D0 returned HTTP 402, and no second wave
+was executed. This offline phase neither reuses that authorization nor accesses
+credentials, a provider, a dashboard or the network. It creates no new Split
+economic evidence.
+
+The observed chronology is preserved. R2.4.1 completed 3 public Production
+requests and normalized 142 results; R2.5A completed 106 requests and
+normalized 26,655 results across three scenarios; and R2.7A completed 31
+requests and observed 13,949 cumulative distinct offers. R2.8A later completed
+102 initial searches and 53 D1 continuations before aborting after 159 total
+requests, without retaining the exact failure status. R2.9A.1 then completed
+authentication and three destination resolutions but its first D0 was rejected
+under the historical generic `HTTP_4XX` category. R2.10A.1 repeated that
+boundary while retaining the exact status: authentication and all three
+destination resolutions succeeded, the first D0 returned HTTP 402, and no
+`Retry-After` header was present.
+
+### 33.1 Causal boundary and calibrated hypotheses
+
+The offline request-equivalence audit reconfirms the same `POST` method,
+`/mcp/hotel/search-hotels` path template, body key set, value types, valid
+scenario dates, valid one-room/two-adult/zero-child occupancy, EUR currency and
+empty initial continuation state. Phase labels and diagnostic metadata are not
+sent to the provider. The non-reversible sanitized contract fingerprint remains
+`f626b05e4492ee8757e5b67ece5ad1d61e6945eb3103dd56b2483d57eeb2779e`
+for R2.4.1, R2.5A, R2.8A, R2.9A and R2.10A.1. No secret or real provider ID is
+compared.
+
+HTTP 402 is now classified exactly as `HTTP_402_PAYMENT_REQUIRED`, with the
+sanitized provider class
+`PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED` and failure scope
+`GLOBAL_FATAL_FAILURE`. It aborts immediately with zero retry, continuation,
+subsequent search, Sandbox fallback or second wave; it no longer falls through
+to `HTTP_OTHER_4XX`.
+
+The account/billing/credit/quota hypothesis is
+`STRONGLY_SUPPORTED_BY_HTTP_402_AND_SUCCESSFUL_AUTH`. A search entitlement or
+product-scope gate is a
+`SUPPORTED_POSSIBILITY_REQUIRES_PROVIDER_CONFIRMATION`. A local request-shape
+defect is `NOT_SUPPORTED_BY_CURRENT_OFFLINE_EVIDENCE`; invalid credentials are
+`NOT_SUPPORTED_BY_SUCCESSFUL_AUTHENTICATION`; a temporary rate limit is
+`NOT_SUPPORTED_BY_HTTP_STATUS_AND_NO_RETRY_AFTER`; and a Split evaluator defect
+is `NOT_APPLICABLE_SPLIT_EVALUATOR_NOT_REACHED`. These classifications are not
+proof of a particular commercial cause. The exact distinction between balance,
+plan, quota, entitlement, account restriction or another RouteStack policy
+requires dashboard evidence or confirmation from RouteStack.
+
+### 33.2 Sanitized support packet
+
+The support packet version is
+`stayopti.split-r2.routestack-public-http-402-support-packet@1`. It identifies
+only the Public Production environment, hotel/accommodation-search endpoint
+class, sanitized `POST` method and path template, HTTP 402, successful
+authentication, three successful destination resolutions, failure of the first
+initial search, absent `Retry-After`, zero retries, the previously successful
+contract fingerprint, EUR, 14 nights and the sanitized occupancy. It records
+that no booking or payment was attempted. The precise timestamp was not
+retained. It contains zero raw IDs, credentials, payloads, responses, provider
+messages or secret values.
+
+The provider support request must ask:
+
+1. Does the account have sufficient credit or balance for Production searches?
+2. Is a commercial plan enabling the search endpoint active?
+3. Has a search-request quota been exhausted?
+4. Does HTTP 402 indicate a billing gate, entitlement gate or another policy?
+5. Does the account require a top-up, commercial contract or manual enablement?
+6. Are there daily, monthly or cumulative limits?
+7. Could the previous request volume have consumed credit or quota?
+8. After resolution, is one D0 search sufficient to verify recovery?
+9. Is representative non-billed Sandbox inventory available?
+10. What charges apply to initial-search and continuation requests?
+
+No account ID, request ID, correlation ID, balance, quota, price per call or
+provider answer may be invented or added without external evidence.
+
+### 33.3 Public-search live hold
+
+`ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD=YES` is enforced before credential access
+for every RouteStack Public CLI path. Credentials alone cannot remove it. The
+hold may be removed only after one of these is documented: the dashboard
+confirms valid credit, plan or entitlement; RouteStack explains and resolves
+the 402; or search-endpoint reactivation is confirmed. Resolution would still
+require a new, explicit user authorization for one D0 canary capped at 5 HTTP
+requests. No current live authorization is available.
+
+The technical boundary diagnosis is complete, while the precise commercial
+cause remains externally unresolved. Split evaluation was never reached, so
+there is no new saving, pagination, market-frequency, Production-validity,
+commercial-validation or booking evidence. The next step is the non-live gate
+`SPLIT-R2.10D_ROUTESTACK_ACCOUNT_BILLING_QUOTA_OR_SEARCH_ENTITLEMENT_EXTERNAL_RESOLUTION_GATE`.
+
+## 34. SPLIT-R2.10C.1 — Canonical environment gate and quota diagnosis seal
+
+R2.10C remains historically recorded as `FAIL`, solely because its final
+preservation check tested the relative path `.env` from a different current
+working directory than the preflight. No environment file was deleted, moved
+or recreated. The canonical credential-file location has always been
+`server/.env`, resolved from the absolute Git repository root. The previous
+failure is therefore reclassified prospectively as
+`RELATIVE_ENV_PATH_AND_CURRENT_WORKING_DIRECTORY_MISMATCH`; it is not evidence
+of user, runner or test deletion.
+
+R2.10C.1 uses one canonical resolver. It obtains the repository root through
+`git rev-parse --show-toplevel`, rejects an absent or ambiguous root, and joins
+only `server/.env`. Repository gates, preflight and final integrity checks use
+that same absolute target whether invoked from the repository root, `server`,
+or another repository subdirectory. A root-level `.env` is neither required
+nor accepted as fallback. The gate fails closed when the canonical file is
+absent or not a regular non-symlink file.
+
+Integrity comparison hashes the canonical file bytes locally before and after
+the phase. The hash and absolute path remain internal and are never emitted.
+The file is not parsed, its variable names and secret values are not inspected,
+and it is not loaded into the process. R2.10C.1 does not copy, rename, rewrite
+or otherwise mutate the file.
+
+### 34.1 Corrected RouteStack 402 operational evidence
+
+R2.10A.1 remains `INCONCLUSIVE`, with its single authorization consumed by one
+five-request wave: one authentication, three destination resolutions, one D0
+search, zero retry, zero continuation and no second wave. Its D0 returned HTTP
+402 before the Split evaluator was reached, so no economic evidence exists.
+The exact technical classification remains `HTTP_402_PAYMENT_REQUIRED` with
+`GLOBAL_FATAL_FAILURE`, immediate abort, no retry, no continuation and no
+Sandbox fallback.
+
+The user has since confirmed the relevant provider-account state: the free
+RouteStack Public call quota was exhausted. The operational record is therefore
+`ROUTESTACK_PUBLIC_FREE_CALL_QUOTA_EXHAUSTED=YES` with source
+`USER_CONFIRMED_PROVIDER_ACCOUNT_STATE`. This is distinct from written provider
+support confirmation, which is unavailable. Current offline evidence does not
+support a request-shape defect, invalid credentials, rate limiting or a Split
+evaluator failure. The search contract was rejected because no free Public
+calls remained available, not because Split arithmetic produced an outcome.
+
+### 34.2 RouteStack Public live hold
+
+`ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD=YES` remains enforced before credential
+access, with reason `PUBLIC_FREE_CALL_QUOTA_EXHAUSTED`. It may be reconsidered
+only after free-quota renewal, quota purchase or increase, activation of a
+compatible plan, or provider account confirmation. Resolution does not itself
+authorize network access: a new explicit user authorization is still required.
+There is no current live authorization, and R2.10C.1 performs zero credential
+loads, provider calls, HTTP requests, bookings, payments or mutations.
+
+This seal changes no Split evaluator, saving formula, material threshold,
+deduplication, currency policy, historical result or public runtime. Its next
+step is
+`SPLIT-R2.11_SPLIT_EVIDENCE_SEAL_AND_PROVIDER_DIVERSIFICATION_HOLD`.

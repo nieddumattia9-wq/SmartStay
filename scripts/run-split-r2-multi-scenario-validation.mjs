@@ -58,6 +58,12 @@ export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_RECEIPT_VERSION =
 export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_MAX_UTF8_BYTES = 6_000;
 export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT =
   "f626b05e4492ee8757e5b67ece5ad1d61e6945eb3103dd56b2483d57eeb2779e";
+export const SPLIT_R2_ROUTESTACK_PUBLIC_HTTP_402_SUPPORT_PACKET_VERSION =
+  "stayopti.split-r2.routestack-public-http-402-support-packet@1";
+export const SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD = true;
+export const SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD_REASON =
+  "PUBLIC_FREE_CALL_QUOTA_EXHAUSTED";
+export const SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH = "server/.env";
 export const SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_CANARY_LIMITS = Object.freeze({
   AUTHENTICATION: 1,
   DESTINATION: 3,
@@ -4173,6 +4179,7 @@ const SPLIT_R2_PAGINATION_AWARE_EXECUTION_CODES = Object.freeze({
 export const SPLIT_R2_SANITIZED_HTTP_STATUS_CLASSES = Object.freeze([
   "HTTP_400_BAD_REQUEST",
   "HTTP_401_UNAUTHENTICATED",
+  "HTTP_402_PAYMENT_REQUIRED",
   "HTTP_403_FORBIDDEN",
   "HTTP_404_NOT_FOUND",
   "HTTP_409_CONFLICT",
@@ -4186,6 +4193,7 @@ export const SPLIT_R2_SANITIZED_HTTP_STATUS_CLASSES = Object.freeze([
 export const SPLIT_R2_SANITIZED_PROVIDER_ERROR_ENUMS = Object.freeze([
   "REQUEST_VALIDATION_REJECTED",
   "AUTHENTICATION_REJECTED",
+  "PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED",
   "AUTHORIZATION_REJECTED",
   "ENDPOINT_OR_RESOURCE_NOT_FOUND",
   "REQUEST_CONFLICT",
@@ -4224,6 +4232,7 @@ export function classifySplitR2RouteStackPublicHttpFailure({
   const exact = new Map([
     [400, ["HTTP_400_BAD_REQUEST", "REQUEST_VALIDATION_REJECTED"]],
     [401, ["HTTP_401_UNAUTHENTICATED", "AUTHENTICATION_REJECTED"]],
+    [402, ["HTTP_402_PAYMENT_REQUIRED", "PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED"]],
     [403, ["HTTP_403_FORBIDDEN", "AUTHORIZATION_REJECTED"]],
     [404, ["HTTP_404_NOT_FOUND", "ENDPOINT_OR_RESOURCE_NOT_FOUND"]],
     [409, ["HTTP_409_CONFLICT", "REQUEST_CONFLICT"]],
@@ -4240,7 +4249,7 @@ export function classifySplitR2RouteStackPublicHttpFailure({
     httpStatusClass = "HTTP_5XX";
     providerErrorEnum = "PROVIDER_SERVER_ERROR";
   } else throw new Error("split-r2-http-failure-status-invalid");
-  const globalFatal = [401, 403, 429].includes(statusCode) || httpStatusClass === "HTTP_5XX";
+  const globalFatal = [401, 402, 403, 429].includes(statusCode) || httpStatusClass === "HTTP_5XX";
   const searchScoped = documentedSearchScopedProviderErrorEnum === providerErrorEnum &&
     SPLIT_R2_DOCUMENTED_SEARCH_SCOPED_ERROR_ENUMS.has(documentedSearchScopedProviderErrorEnum);
   return Object.freeze({
@@ -5211,6 +5220,129 @@ export function buildSplitR2HistoricalR2_9A_1D0FailureRecord() {
   });
 }
 
+export function buildSplitR2HistoricalR2_10A_1D0FailureRecord() {
+  return Object.freeze({
+    status: "INCONCLUSIVE",
+    sourceSha: "948cb151a8e29ef10733abf3583d85cd8d0a44f5",
+    localCommitSha: "a721bf7f09e5299589ac4f3292224e0c0fff436f",
+    authorizationConsumed: true,
+    liveWaveExecuted: true,
+    secondWaveExecuted: false,
+    authHttpRequests: 1,
+    destinationHttpRequests: 3,
+    initialHttpRequests: 1,
+    continuationHttpRequests: 0,
+    totalHttpRequests: 5,
+    retries: 0,
+    redirects: 0,
+    failedDepth: "D0",
+    failedRequestOrdinal: 5,
+    failedScenarioOrdinal: 1,
+    failedLogicalSearchOrdinal: 1,
+    failedSearchRole: "FULL_STAY",
+    failureOrigin: "PROVIDER_HTTP",
+    httpStatusCode: 402,
+    httpStatusClass: "HTTP_402_PAYMENT_REQUIRED",
+    retryAfterPresent: "ABSENT",
+    providerErrorEnum: "PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED",
+    failureScope: "GLOBAL_FATAL_FAILURE",
+    requestContractFingerprint: SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT,
+    economicBreakpointsEvaluated: 0,
+    splitSavingEvaluated: false,
+  });
+}
+
+export function buildSplitR2RouteStackPublicHttp402SupportPacket() {
+  const audit = buildSplitR2RouteStackPublicRequestEquivalenceAudit();
+  if (new Set(Object.values(audit.fingerprints)).size !== 1 ||
+      audit.fingerprints.r2_9A !== SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT ||
+      !audit.methodMatch || !audit.pathTemplateMatch || !audit.bodyKeySetMatch ||
+      !audit.bodyValueTypesMatch || !audit.scenario1DatesValid || !audit.scenario1OccupancyValid ||
+      !audit.scenario1CurrencyValid || !audit.initialContinuationStateValid ||
+      audit.phaseLabelSentToProvider || audit.diagnosticFieldsSentToProvider) {
+    throw new Error("split-r2-http-402-support-packet-request-equivalence-failed");
+  }
+  return Object.freeze({
+    packetVersion: SPLIT_R2_ROUTESTACK_PUBLIC_HTTP_402_SUPPORT_PACKET_VERSION,
+    environmentClassification: "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED",
+    endpointClass: "HOTEL_ACCOMMODATION_SEARCH",
+    httpMethod: "POST",
+    pathTemplate: SPLIT_R1_HOTEL_SEARCH_ENDPOINT,
+    observedTimeWindow: "NOT_RETAINED",
+    httpStatusCode: 402,
+    httpStatusClass: "HTTP_402_PAYMENT_REQUIRED",
+    sanitizedProviderErrorClass: "PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED",
+    failureScope: "GLOBAL_FATAL_FAILURE",
+    authenticationSucceeded: true,
+    destinationResolutionSucceededCount: 3,
+    failedRequestClass: "INITIAL_SEARCH",
+    failedRequestOrdinal: 5,
+    retryAfterPresent: false,
+    retries: 0,
+    continuationRequests: 0,
+    requestContractPreviouslySucceeded: true,
+    requestContractFingerprint: SPLIT_R2_ROUTESTACK_PUBLIC_D0_CONTRACT_FINGERPRINT,
+    expectedCurrency: "EUR",
+    occupancy: Object.freeze({ rooms: 1, adults: 2, children: 0 }),
+    durationNights: 14,
+    bookingOrPaymentAttempted: false,
+    hypotheses: Object.freeze({
+      accountBillingCreditOrQuota: "STRONGLY_SUPPORTED_BY_HTTP_402_AND_SUCCESSFUL_AUTH",
+      searchEntitlement: "SUPPORTED_POSSIBILITY_REQUIRES_PROVIDER_CONFIRMATION",
+      requestShapeDefect: "NOT_SUPPORTED_BY_CURRENT_OFFLINE_EVIDENCE",
+      invalidCredentials: "NOT_SUPPORTED_BY_SUCCESSFUL_AUTHENTICATION",
+      rateLimit: "NOT_SUPPORTED_BY_HTTP_STATUS_AND_NO_RETRY_AFTER",
+      splitEvaluatorFailure: "NOT_APPLICABLE_SPLIT_EVALUATOR_NOT_REACHED",
+      preciseProviderCauseConfirmed: false,
+      externalProviderConfirmationRequired: true,
+    }),
+    operationalDiagnosis: Object.freeze({
+      routeStackPublicFreeCallQuotaExhausted: true,
+      quotaExhaustionSource: "USER_CONFIRMED_PROVIDER_ACCOUNT_STATE",
+      providerWrittenConfirmationAvailable: false,
+      requestShapeDefectSupported: false,
+      invalidCredentialsSupported: false,
+      rateLimitSupported: false,
+      splitEvaluatorReached: false,
+      providerSearchContractRejectedDueToAvailableCallQuota: true,
+    }),
+    liveHold: Object.freeze({
+      routeStackPublicSearchLiveHold: true,
+      reason: SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD_REASON,
+      removalRequiresExternalResolution: true,
+      acceptedResolutionEvidence: Object.freeze([
+        "PUBLIC_FREE_CALL_QUOTA_RENEWED",
+        "PUBLIC_CALL_QUOTA_PURCHASED_OR_INCREASED",
+        "COMPATIBLE_PLAN_ACTIVATED",
+        "PROVIDER_ACCOUNT_CONFIRMATION_RECEIVED",
+      ]),
+      newUserApprovalRequiredAfterResolution: true,
+      currentLiveAuthorizationAvailable: false,
+    }),
+    supportQuestions: Object.freeze([
+      "Does the account have sufficient credit or balance for Production searches?",
+      "Is a commercial plan enabling the search endpoint active?",
+      "Has a search-request quota been exhausted?",
+      "Does HTTP 402 indicate a billing gate, entitlement gate, or another policy?",
+      "Does the account require a top-up, commercial contract, or manual enablement?",
+      "Are there daily, monthly, or cumulative limits?",
+      "Could the previous request volume have consumed credit or quota?",
+      "After resolution, is one D0 search sufficient to verify recovery?",
+      "Is a representative non-billed Sandbox inventory available?",
+      "What charges apply to initial search and continuation requests?",
+    ]),
+    rawIdsPersisted: 0,
+    rawContinuationIdsPersisted: 0,
+    rawPayloadsPersisted: 0,
+    rawResponsesPersisted: 0,
+    rawProviderMessagesPersisted: 0,
+    secretValuesPersisted: 0,
+    credentialsAccessed: false,
+    providerCalls: 0,
+    httpRequests: 0,
+  });
+}
+
 function splitR2RequestValueTypes(value) {
   if (Array.isArray(value)) return Object.freeze({ type: "array", items:
     Object.freeze(value.map(splitR2RequestValueTypes)) });
@@ -5363,6 +5495,7 @@ export function assertSplitR2RouteStackPublicD0ContractCanaryPreflight(options =
     options.redirects === 0 && options.concurrency === 1 && options.minimumIntervalMs >= 1_000 &&
     options.productionFallback === false && options.sandboxFallback === false &&
     options.liteApiFallback === false && options.otherLiveModesSelected === 0 &&
+    options.searchLiveHold === false &&
     options.repositoryGatePassed === true &&
     evidence.environmentClassification === "ROUTESTACK_PUBLIC_PRODUCTION_VERIFIED" &&
     evidence.hostnameDeterminable === true && evidence.contractDeterminable === true &&
@@ -5444,8 +5577,10 @@ export function buildSplitR2RouteStackPublicD0ContractCanaryReceipt({
   } else if (outcome !== "HTTP_2XX_PROCESSABLE") {
     failure = classifySplitR2RouteStackPublicHttpFailure({ statusCode, retryAfterPresent });
     status = "INCONCLUSIVE";
-    contractConclusion = statusCode >= 500 ? "D0_CONTRACT_HTTP_5XX_PROVIDER_FAILURE" :
-      "D0_CONTRACT_HTTP_4XX_REQUEST_REJECTED";
+    contractConclusion = statusCode === 402
+      ? "D0_CONTRACT_HTTP_402_PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED"
+      : statusCode >= 500 ? "D0_CONTRACT_HTTP_5XX_PROVIDER_FAILURE" :
+        "D0_CONTRACT_HTTP_4XX_REQUEST_REJECTED";
   }
   if (failure !== null) { responseProcessable = false; rawResultCount = null; normalizableResultCount = null; }
   return Object.freeze({
@@ -5491,7 +5626,8 @@ export function serializeSplitR2RouteStackPublicD0ContractCanaryReceipt(
 }
 
 export function runSplitR2FakeRouteStackPublicD0ContractCanary(outcome = "HTTP_2XX_PROCESSABLE") {
-  const statusByOutcome = Object.freeze({ HTTP_400: 400, HTTP_401: 401, HTTP_403: 403, HTTP_404: 404,
+  const statusByOutcome = Object.freeze({ HTTP_400: 400, HTTP_401: 401, HTTP_402: 402,
+    HTTP_403: 403, HTTP_404: 404,
     HTTP_409: 409, HTTP_422: 422, HTTP_429: 429, HTTP_5XX: 503 });
   return buildSplitR2RouteStackPublicD0ContractCanaryReceipt({
     sourceSha: "a".repeat(40), outcome,
@@ -5634,7 +5770,9 @@ export function buildSplitR2RouteStackPublicD0ContractCanaryLiveReceipt({
     ? "ROUTESTACK_PUBLIC_INITIAL_D0_READ_ONLY_CONTRACT_CURRENTLY_VERIFIED"
     : d0Executed && Number.isInteger(d0Status) && d0Status >= 200 && d0Status < 300
       ? "D0_CONTRACT_HTTP_2XX_RESPONSE_UNPROCESSABLE"
-      : failure?.sanitizedHttp?.httpStatusClass === "NETWORK_TRANSPORT_FAILURE"
+      : failure?.sanitizedHttp?.httpStatusClass === "HTTP_402_PAYMENT_REQUIRED"
+        ? "D0_CONTRACT_HTTP_402_PAYMENT_BILLING_QUOTA_OR_ENTITLEMENT_REQUIRED"
+        : failure?.sanitizedHttp?.httpStatusClass === "NETWORK_TRANSPORT_FAILURE"
         ? "D0_CONTRACT_NETWORK_FAILURE"
         : failure?.sanitizedHttp?.httpStatusClass === "HTTP_5XX"
           ? "D0_CONTRACT_HTTP_5XX_PROVIDER_FAILURE"
@@ -5776,7 +5914,7 @@ function splitR2D0ContractFakeResponse(payload, status, url, retryAfterPresent =
 
 export async function runSplitR2FakeRouteStackPublicD0ContractCanaryExact(profile = "HTTP_2XX_RESULTS") {
   const plan = buildSplitR2RouteStackPublicD0ContractCanaryPlan();
-  const initialStatuses = Object.freeze({ HTTP_400: 400, HTTP_401: 401, HTTP_403: 403,
+  const initialStatuses = Object.freeze({ HTTP_400: 400, HTTP_401: 401, HTTP_402: 402, HTTP_403: 403,
     HTTP_404: 404, HTTP_409: 409, HTTP_422: 422, HTTP_429: 429,
     HTTP_OTHER_4XX: 418, HTTP_5XX: 503 });
   let monotonic = 0;
@@ -5865,30 +6003,98 @@ export function assertSplitR2RouteStackOfflinePreflight() {
   };
 }
 
-function gitText(args) {
-  return execFileSync("git", args, { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+export function resolveSplitR2RepositoryRoot(startDirectory = process.cwd()) {
+  const start = path.resolve(startDirectory);
+  let resolved;
+  try {
+    resolved = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: start, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    throw new Error("split-r2-repository-root-not-resolvable");
+  }
+  if (resolved.length === 0 || resolved.includes("\n") || resolved.includes("\r")) {
+    throw new Error("split-r2-repository-root-ambiguous");
+  }
+  const repositoryRoot = path.resolve(resolved);
+  if (!path.isAbsolute(repositoryRoot) || !fs.existsSync(path.join(repositoryRoot, ".git"))) {
+    throw new Error("split-r2-repository-root-invalid");
+  }
+  return repositoryRoot;
+}
+
+export function resolveSplitR2CanonicalEnvPath(repositoryRoot) {
+  if (typeof repositoryRoot !== "string" || !path.isAbsolute(repositoryRoot)) {
+    throw new Error("split-r2-canonical-env-repository-root-invalid");
+  }
+  const canonicalRoot = path.resolve(repositoryRoot);
+  const canonicalEnvPath = path.resolve(canonicalRoot, ...SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH.split("/"));
+  if (canonicalEnvPath !== path.join(canonicalRoot, "server", ".env")) {
+    throw new Error("split-r2-canonical-env-path-resolution-invalid");
+  }
+  return canonicalEnvPath;
+}
+
+export function captureSplitR2CanonicalEnvIntegrity(repositoryRoot) {
+  const canonicalEnvPath = resolveSplitR2CanonicalEnvPath(repositoryRoot);
+  if (!fs.existsSync(canonicalEnvPath)) throw new Error("split-r2-canonical-env-file-absent");
+  const stat = fs.lstatSync(canonicalEnvPath);
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("split-r2-canonical-env-file-type-invalid");
+  const digest = crypto.createHash("sha256").update(fs.readFileSync(canonicalEnvPath)).digest("hex");
+  return Object.freeze({ canonicalEnvPath, byteLength: stat.size, digest });
+}
+
+export function assertSplitR2CanonicalEnvIntegrityUnchanged(before, after) {
+  const valid = before && after && before.canonicalEnvPath === after.canonicalEnvPath &&
+    before.byteLength === after.byteLength && before.digest === after.digest;
+  if (!valid) throw new Error("split-r2-canonical-env-integrity-changed");
+  return Object.freeze({ sameAbsoluteTarget: true, unchanged: true });
+}
+
+export function buildSplitR2CanonicalEnvGateEvidence(before, after) {
+  const integrity = assertSplitR2CanonicalEnvIntegrityUnchanged(before, after);
+  return Object.freeze({
+    canonicalEnvRelativePath: SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH,
+    canonicalEnvResolvedFromRepositoryRoot: true,
+    envPresentAtPreflight: true,
+    envPresentAtFinal: true,
+    envSameAbsoluteTargetBeforeAfter: integrity.sameAbsoluteTarget,
+    envUnchanged: integrity.unchanged,
+    envFileHashedForLocalIntegrity: true,
+    envHashPrinted: false,
+    envContentParsed: false,
+    envVariableNamesRead: false,
+    envSecretValuesRead: false,
+    envLoadedIntoProcess: false,
+    rootEnvRequired: false,
+  });
+}
+
+function gitText(args, repositoryRoot = resolveSplitR2RepositoryRoot()) {
+  return execFileSync("git", args, { cwd: repositoryRoot,
+    encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
 function splitNul(value) {
   return value.split("\0").filter(Boolean);
 }
 
-function repositoryDirtySnapshot() {
+function repositoryDirtySnapshot(repositoryRoot = resolveSplitR2RepositoryRoot()) {
   const staged = splitNul(execFileSync("git", ["diff", "--cached", "--name-only", "-z"], {
-    cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    cwd: repositoryRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
   }));
   const unstaged = splitNul(execFileSync("git", ["diff", "--name-only", "-z"], {
-    cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    cwd: repositoryRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
   }));
   const untracked = splitNul(execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], {
-    cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    cwd: repositoryRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
   }));
   const entries = [
     ...unstaged.map((relativePath) => ({ category: "TRACKED_UNSTAGED", relativePath })),
     ...untracked.map((relativePath) => ({ category: "UNTRACKED", relativePath })),
   ].sort((left, right) => `${left.category}|${left.relativePath}`.localeCompare(`${right.category}|${right.relativePath}`));
   const lines = entries.map(({ category, relativePath }) => {
-    const absolute = path.resolve(relativePath);
+    const absolute = path.resolve(repositoryRoot, relativePath);
     const stat = fs.lstatSync(absolute);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("split-r2-dirty-path-type-prohibited");
     const digest = crypto.createHash("sha256").update(fs.readFileSync(absolute)).digest("hex");
@@ -5907,10 +6113,12 @@ export function verifySplitR2LiteApiCanaryRepositoryGate(expectedHead, expectedD
   if (!/^[0-9a-f]{40}$/u.test(expectedHead) || !/^[0-9a-f]{64}$/u.test(expectedDirtyFingerprint)) {
     throw new Error("split-r2-liteapi-canary-repository-ack-invalid");
   }
-  if (gitText(["branch", "--show-current"]) !== "main" || gitText(["rev-parse", "HEAD"]) !== expectedHead) {
+  const repositoryRoot = resolveSplitR2RepositoryRoot();
+  if (gitText(["branch", "--show-current"], repositoryRoot) !== "main" ||
+      gitText(["rev-parse", "HEAD"], repositoryRoot) !== expectedHead) {
     throw new Error("split-r2-liteapi-canary-head-mismatch");
   }
-  const dirty = repositoryDirtySnapshot();
+  const dirty = repositoryDirtySnapshot(repositoryRoot);
   if (dirty.staged.length !== 0 || dirty.unstaged.length !== 1 || dirty.untracked.length !== 6 ||
       dirty.entries.length !== 7 || dirty.fingerprint !== expectedDirtyFingerprint) {
     throw new Error("split-r2-liteapi-canary-dirty-state-mismatch");
@@ -5919,19 +6127,20 @@ export function verifySplitR2LiteApiCanaryRepositoryGate(expectedHead, expectedD
   if (dirty.entries.some((entry) => prohibited.has(entry.relativePath.replaceAll("\\", "/")))) {
     throw new Error("split-r2-liteapi-canary-dirty-scope-overlap");
   }
-  if (gitText(["rev-parse", "refs/remotes/origin/main"]) !== "38a7937a2c1a9dc74914ea97c679ab475feaa959") {
+  if (gitText(["rev-parse", "refs/remotes/origin/main"], repositoryRoot) !== "38a7937a2c1a9dc74914ea97c679ab475feaa959") {
     throw new Error("split-r2-liteapi-canary-origin-reference-drift");
   }
-  if (crypto.createHash("sha256").update(fs.readFileSync("package.json")).digest("hex") !==
+  if (crypto.createHash("sha256").update(fs.readFileSync(path.join(repositoryRoot, "package.json"))).digest("hex") !==
       "be8465d3ab65240ee82173109a99c7269b70047ec1119bd2c5d59eae2c64c8bf" ||
-      crypto.createHash("sha256").update(fs.readFileSync("package-lock.json")).digest("hex") !==
+      crypto.createHash("sha256").update(fs.readFileSync(path.join(repositoryRoot, "package-lock.json"))).digest("hex") !==
       "992da4b3d00c590bd48c4c1d955953938b053c73bf1b7243f189ebb1b3df6613") {
     throw new Error("split-r2-liteapi-canary-package-drift");
   }
-  const ignored = execFileSync("git", ["check-ignore", "-q", "--", "server/.env"], { cwd: process.cwd(), stdio: "ignore" });
+  const ignored = execFileSync("git", ["check-ignore", "-q", "--", SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH],
+    { cwd: repositoryRoot, stdio: "ignore" });
   void ignored;
-  if (!fs.existsSync("server/.env")) throw new Error("split-r2-liteapi-canary-env-file-absent");
-  return { passed: true, dirtyFingerprint: dirty.fingerprint };
+  const canonicalEnvIntegrity = captureSplitR2CanonicalEnvIntegrity(repositoryRoot);
+  return { passed: true, dirtyFingerprint: dirty.fingerprint, canonicalEnvIntegrity };
 }
 
 function splitR2FingerprintPathDescriptor(absolutePath) {
@@ -5981,10 +6190,12 @@ export function verifySplitR2PaginationAwareRepositoryGate(expectedHead, expecte
   if (!/^[0-9a-f]{40}$/u.test(expectedHead) || !/^[0-9a-f]{64}$/u.test(expectedDirtyFingerprint)) {
     throw new Error("split-r2-pagination-aware-repository-ack-invalid");
   }
-  if (gitText(["branch", "--show-current"]) !== "main" || gitText(["rev-parse", "HEAD"]) !== expectedHead) {
+  const repositoryRoot = resolveSplitR2RepositoryRoot();
+  if (gitText(["branch", "--show-current"], repositoryRoot) !== "main" ||
+      gitText(["rev-parse", "HEAD"], repositoryRoot) !== expectedHead) {
     throw new Error("split-r2-pagination-aware-head-mismatch");
   }
-  const dirty = repositoryDirtySnapshot();
+  const dirty = repositoryDirtySnapshot(repositoryRoot);
   const allowedPhase = new Set(SPLIT_R2_SCOPE_PATHS);
   if (dirty.staged.length !== 0 || dirty.entries.some((entry) => {
     const relative = entry.relativePath.replaceAll("\\", "/");
@@ -5998,26 +6209,28 @@ export function verifySplitR2PaginationAwareRepositoryGate(expectedHead, expecte
         "tests/engine-v3/v3RealMeasurementCapturePilot.test.ts"].includes(relative);
   })) throw new Error("split-r2-pagination-aware-dirty-scope-mismatch");
   const originalEntries = dirty.entries.filter((entry) => !allowedPhase.has(entry.relativePath.replaceAll("\\", "/")));
-  const fingerprintResult = computeSplitR2UnrelatedDirtyFingerprint(originalEntries);
+  const fingerprintResult = computeSplitR2UnrelatedDirtyFingerprint(originalEntries, repositoryRoot);
   if (fingerprintResult.count !== 7) throw new Error("split-r2-pagination-aware-dirty-cardinality-mismatch");
   if (fingerprintResult.fingerprint !== expectedDirtyFingerprint) {
     throw new Error("split-r2-pagination-aware-dirty-state-mismatch");
   }
-  if (crypto.createHash("sha256").update(fs.readFileSync("package.json")).digest("hex") !==
+  if (crypto.createHash("sha256").update(fs.readFileSync(path.join(repositoryRoot, "package.json"))).digest("hex") !==
       "be8465d3ab65240ee82173109a99c7269b70047ec1119bd2c5d59eae2c64c8bf" ||
-      crypto.createHash("sha256").update(fs.readFileSync("package-lock.json")).digest("hex") !==
+      crypto.createHash("sha256").update(fs.readFileSync(path.join(repositoryRoot, "package-lock.json"))).digest("hex") !==
       "992da4b3d00c590bd48c4c1d955953938b053c73bf1b7243f189ebb1b3df6613") {
     throw new Error("split-r2-pagination-aware-package-drift");
   }
-  execFileSync("git", ["check-ignore", "-q", "--", "server/.env"], { cwd: process.cwd(), stdio: "ignore" });
-  if (!fs.existsSync("server/.env")) throw new Error("split-r2-pagination-aware-env-file-absent");
+  execFileSync("git", ["check-ignore", "-q", "--", SPLIT_R2_CANONICAL_ENV_RELATIVE_PATH],
+    { cwd: repositoryRoot, stdio: "ignore" });
+  const canonicalEnvIntegrity = captureSplitR2CanonicalEnvIntegrity(repositoryRoot);
   return Object.freeze({ passed: true, dirtyFingerprint: fingerprintResult.fingerprint,
-    unrelatedDirtyPathCount: fingerprintResult.count });
+    unrelatedDirtyPathCount: fingerprintResult.count, canonicalEnvIntegrity });
 }
 
 function readLiteApiSandboxCredential() {
   const parsed = new Map();
-  const text = fs.readFileSync("server/.env", "utf8");
+  const repositoryRoot = resolveSplitR2RepositoryRoot();
+  const text = fs.readFileSync(resolveSplitR2CanonicalEnvPath(repositoryRoot), "utf8");
   for (const line of text.split(/\r?\n/u)) {
     const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/u);
     if (!match || match[1].startsWith("#")) continue;
@@ -6035,9 +6248,18 @@ function readLiteApiSandboxCredential() {
   return distinct[0];
 }
 
+export function assertSplitR2RouteStackPublicSearchLiveHold() {
+  if (SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD) {
+    throw new Error("split-r2-routestack-public-search-live-hold-external-resolution-required");
+  }
+  return Object.freeze({ liveHold: false });
+}
+
 function readRouteStackPublicCredentials() {
+  assertSplitR2RouteStackPublicSearchLiveHold();
   const parsed = new Map();
-  const text = fs.readFileSync("server/.env", "utf8");
+  const repositoryRoot = resolveSplitR2RepositoryRoot();
+  const text = fs.readFileSync(resolveSplitR2CanonicalEnvPath(repositoryRoot), "utf8");
   for (const line of text.split(/\r?\n/u)) {
     const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/u);
     if (!match || match[1].startsWith("#")) continue;
@@ -6529,7 +6751,8 @@ if (isMainModule()) {
         authMax: 1, destinationMax: 3, initialSearchMax: 1, continuationMax: 0, totalMax: 5,
         retries: 0, redirects: 0, concurrency: 1, minimumIntervalMs: 1_000,
         productionFallback: false, sandboxFallback: false, liteApiFallback: false,
-        otherLiveModesSelected: 0, repositoryGatePassed: repository.passed,
+        otherLiveModesSelected: 0, searchLiveHold: SPLIT_R2_ROUTESTACK_PUBLIC_SEARCH_LIVE_HOLD,
+        repositoryGatePassed: repository.passed,
         contractEvidence: evidence, plan, credentialReader: readRouteStackPublicCredentials,
       });
       const receipt = await runSplitR2RouteStackPublicD0ContractCanary({
