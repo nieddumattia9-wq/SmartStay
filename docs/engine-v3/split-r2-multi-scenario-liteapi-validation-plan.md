@@ -1578,3 +1578,27 @@ This seal changes no Split evaluator, saving formula, material threshold,
 deduplication, currency policy, historical result or public runtime. Its next
 step is
 `SPLIT-R2.11_SPLIT_EVIDENCE_SEAL_AND_PROVIDER_DIVERSIFICATION_HOLD`.
+
+## 35. SPLIT-R2.11 — Evidence seal, provider diversification hold and roadmap return
+
+R2.11 closes the current R2 sequence without a new live wave. The complete,
+claim-bounded chronology and the prospective provider-qualification gate are
+sealed in
+[`split-r2-evidence-seal-and-provider-diversification-hold.md`](./split-r2-evidence-seal-and-provider-diversification-hold.md).
+The sealed conclusion is neither validation nor disproof of Split:
+`CURRENT_SPLIT_EVIDENCE_STATUS=INSUFFICIENT_FOR_PRODUCTION_OR_MARKET_CLAIMS`.
+
+The R1 Sandbox result remains strong but single-scenario and
+non-generalizable. R2.5A contains one non-material Production raw-positive,
+while R2.7A proves that initial-only economic inference is not robust to
+pagination. R2.8A and the later D0 canaries did not produce a complete
+pagination-aware economic result. R2.10C.1 remains authoritative for the
+canonical `server/.env` gate and the user-confirmed RouteStack Public free-call
+quota exhaustion.
+
+RouteStack Public therefore remains `LIVE_HOLD`, LiteAPI has no established
+Split qualification, and RateHawk remains an unimplemented candidate pending
+written clarification. No provider call, credential load, public-runtime
+change, Split promotion, quality-friction implementation, booking authority or
+automatic R2 successor is created by this seal. Product work returns to the
+primary single-stay Engine V3 roadmap with public Split `OFF`.
