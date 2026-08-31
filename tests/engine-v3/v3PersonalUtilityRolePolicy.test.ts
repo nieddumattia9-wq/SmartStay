@@ -136,6 +136,51 @@ test("V3-15 creates a valid offline, versioned and fingerprinted policy candidat
   assert.doesNotThrow(() => assertPersonalUtilityRolePolicyV3(result));
 });
 
+test("provider-derived solution IDs cannot manufacture a Best Choice winner", () => {
+  const dimensions: StayOptiRolePolicySolutionInputV3["dimensions"] = {
+    quality: { score: 80, evidenceIds: ["quality"] },
+    comfort: { score: 80, evidenceIds: ["comfort"] },
+    location: { score: 80, evidenceIds: ["location"] },
+    room: { score: 80, evidenceIds: ["room"] },
+    flexibility: { score: 80, evidenceIds: ["flexibility"] },
+    "long-stays": { score: 80, evidenceIds: ["long-stays"] },
+  };
+  const run = (ids: string[]) => runPersonalUtilityRolePolicyV3({
+    caseId: "provider-id-neutral-tie",
+    profile: "balanced",
+    totalBudget: 1000,
+    currency: "EUR",
+    nights: 3,
+    solutions: ids.map((solutionId) => ({
+      solutionId,
+      solutionType: "single-stay" as const,
+      totalCost: 400,
+      currency: "EUR",
+      hardConstraintsSatisfied: true,
+      offerIntegrity: "verified" as const,
+      dimensions: structuredClone(dimensions),
+      evidenceIds: ["canonical-evidence"],
+    })),
+  });
+
+  for (const ids of [
+    ["solution:provider-z:999", "solution:provider-a:001"],
+    ["solution:provider-a:001", "solution:provider-z:999"],
+    ["solution:123", "solution:7"],
+  ]) {
+    const result = run(ids);
+    assert.equal(result.status, "decisionally-equivalent");
+    assert.equal(result.portfolio.bestChoice.status, "decisionally-equivalent");
+    assert.equal(result.portfolio.bestChoice.solutionId, null);
+    assert.equal(
+      result.portfolio.bestChoice.decisionTieClassification,
+      "DECISIONALLY_EQUIVALENT"
+    );
+    assert.equal(result.portfolio.bestChoice.equivalentSolutionIds.length, 2);
+    assert.equal(validatePersonalUtilityRolePolicyV3(result).valid, true);
+  }
+});
+
 test("the same solution set produces profile-coherent Best Choices", () => {
   const fixture = loadFixture();
   const selected = new Set<string>();

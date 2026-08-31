@@ -214,7 +214,9 @@ function createEvaluation(
       };
     }),
     decisionGeometry: geometry,
-    anchorHotelId: options.anchorHotelId ?? specs[0]?.id ?? null,
+    anchorHotelId: Object.prototype.hasOwnProperty.call(options, "anchorHotelId")
+      ? options.anchorHotelId ?? null
+      : specs[0]?.id ?? null,
     constraintRelaxations: options.relaxations ?? [],
   });
 }
@@ -234,6 +236,27 @@ test("a strong low-risk choice remains recommended across deterministic sensitiv
     evaluation.scenarios.filter((scenario) => scenario.status === "evaluated").length,
     9
   );
+});
+
+test("identical robustness evidence remains decisionally equivalent across IDs and order", () => {
+  const run = (ids: string[]) => createEvaluation(
+    ids.map((id) => ({ id, cost: 450, benefitBase: 85 })),
+    { anchorHotelId: null }
+  );
+  const first = run(["provider-z:999", "provider-a:001"]);
+  const second = run(["provider-a:001", "provider-z:999"]);
+
+  for (const evaluation of [first, second]) {
+    assert.equal(evaluation.decisionTieClassification, "DECISIONALLY_EQUIVALENT");
+    assert.equal(evaluation.robustChoiceHotelId, null);
+    assert.equal(evaluation.policyPreferredHotelId, null);
+    assert.equal(evaluation.recommendationPolicy, "abstain");
+    assert.equal(evaluation.abstentionCode, "indistinguishable-options");
+    assert.equal(evaluation.decisionallyEquivalentHotelIds?.length, 2);
+    assert.equal(validateDecisionRobustnessV3(evaluation).valid, true);
+  }
+  assert.equal(first.robustChoiceScore, second.robustChoiceScore);
+  assert.equal(first.expectedRegret, second.expectedRegret);
 });
 
 test("canonical non-refundable risk is kept separate and can change the robust choice", () => {

@@ -91,6 +91,26 @@ test(
   }
 );
 
+test("equal full scores expand the boundary instead of using hotel ID as a winner", () => {
+  const candidates = [
+    candidate("provider-z:999", 80),
+    candidate("provider-a:001", 80),
+  ];
+  const first = evaluateSearchWideScaleCoverageV3({
+    candidates,
+    options: { outputCandidateLimit: 1 },
+  });
+  const second = evaluateSearchWideScaleCoverageV3({
+    candidates: [...candidates].reverse(),
+    options: { outputCandidateLimit: 1 },
+  });
+
+  assert.equal(first.equivalence.decisionTieClassification, "DECISIONALLY_EQUIVALENT");
+  assert.equal(first.equivalence.outputLimitExpandedForDecisionTie, true);
+  assert.equal(first.equivalence.fullTopHotelIds.length, 2);
+  assert.deepEqual(first.equivalence, second.equivalence);
+});
+
 test(
   "adding thousands of safely dominated options cannot displace the strong finalists",
   () => {

@@ -12,6 +12,9 @@ import type {
   StayOptiPreferenceIdV3,
   StayOptiTripTypeV3,
 } from "../utility/personalUtilityV3";
+import {
+  resolveDecisionTieV3,
+} from "../decision/decisionTieProjectionV3";
 
 export type StayOptiContextualEvidenceSourceV3 =
   | "provider-structured"
@@ -598,16 +601,41 @@ function evaluateRoomUpgrade(
         maximumPremiumRatio,
         worthwhile,
       };
-    })
-    .sort((first, second) =>
+    });
+  const alternativeResolution = resolveDecisionTieV3(
+    alternatives,
+    (first, second) =>
       Number(second.worthwhile) - Number(first.worthwhile) ||
       second.tierGain - first.tierGain ||
       second.attributeGain - first.attributeGain ||
-      first.premiumRatio - second.premiumRatio ||
-      first.room.offerId.localeCompare(second.room.offerId)
-    );
-
-  const best = alternatives[0];
+      first.premiumRatio - second.premiumRatio,
+    ({ worthwhile, tierGain, attributeGain, premiumAmount, premiumRatio,
+      maximumPremiumRatio, room }) => ({
+      worthwhile,
+      tierGain,
+      attributeGain,
+      premiumAmount,
+      premiumRatio,
+      maximumPremiumRatio,
+      room: {
+        totalCost: room.totalCost,
+        currency: room.currency,
+        tierRank: room.tierRank,
+        tierSource: room.tierSource,
+        attributes: room.attributes.map(({ code, state, source, confidence }) => ({
+          code,
+          state,
+          source,
+          confidence,
+        })),
+        bookable: room.bookable,
+      },
+    })
+  );
+  const best = alternativeResolution.presentationRepresentative ??
+    (alternativeResolution.classification === "DECISIONALLY_DISTINCT"
+      ? alternativeResolution.leaders[0]
+      : undefined);
   if (best === undefined) {
     return {
       status: "unavailable",

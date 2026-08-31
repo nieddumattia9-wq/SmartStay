@@ -340,6 +340,36 @@ function createDecision(
   });
 }
 
+function createIdentityVariantHotel(
+  id: string,
+  provider: string,
+  offerId: string
+): Hotel {
+  const hotel = createHotel({
+    id,
+    provider,
+    totalCost: 400,
+    stars: 4,
+    reviewScore: 8.8,
+    reviewCount: 500,
+    distance: 1,
+    offerIndex: 1,
+  });
+  return {
+    ...hotel,
+    name: "Canonical equivalent stay",
+    image: "https://images.example/canonical-equivalent.jpg",
+    address: "Canonical district",
+    latitude: 43.77,
+    longitude: 11.25,
+    offers: hotel.offers.map((offer) => ({
+      ...offer,
+      id: offerId,
+      provider,
+    })),
+  };
+}
+
 function createValidSplitSolution(): StaySolutionV3 {
   return {
     solutionId:
@@ -1012,6 +1042,127 @@ test(
     );
   }
 );
+
+test("provider name and opaque IDs cannot create V3 superiority for equivalent stays", () => {
+  const variants: Hotel[][] = [
+    [
+      createIdentityVariantHotel("provider-z:999", "Provider Z", "offer-z:999"),
+      createIdentityVariantHotel("provider-a:001", "Provider A", "offer-a:001"),
+    ],
+    [
+      createIdentityVariantHotel("provider-a:001", "Different Provider", "offer-a:001"),
+      createIdentityVariantHotel("provider-z:999", "Another Provider", "offer-z:999"),
+    ],
+    [
+      createIdentityVariantHotel("provider-x:7", "Provider X", "offer-x:7"),
+      createIdentityVariantHotel("provider-y:123", "Provider Y", "offer-y:123"),
+    ],
+    ...Array.from({ length: 16 }, (_, index) => {
+      const first = createIdentityVariantHotel(
+        `provider-random:${(index * 7919 + 17).toString(36)}`,
+        `Provider Random ${index}`,
+        `offer-random:${(index * 3571 + 29).toString(36)}`
+      );
+      const second = createIdentityVariantHotel(
+        `provider-random:${(index * 1543 + 97).toString(36)}`,
+        `Provider Alternate ${index}`,
+        `offer-random:${(index * 2017 + 43).toString(36)}`
+      );
+      return index % 2 === 0 ? [first, second] : [second, first];
+    }),
+  ];
+
+  const semanticOutcomes: unknown[] = [];
+  const semanticClaim = ({
+    slot,
+    status,
+    claimCode,
+    messageKey,
+    numericFacts,
+    reasonCodes,
+  }: StayOptiDecisionV3["thesis"]["recommendation"]) => ({
+    slot,
+    status,
+    claimCode,
+    messageKey,
+    numericFacts,
+    reasonCodes,
+  });
+
+  for (const hotels of variants) {
+    const decision = createDecision(hotels);
+    assert.equal(decision.status, "abstained");
+    assert.equal(decision.recommendedSolutionId, null);
+    assert.equal(
+      decision.robustness.decisionTieClassification,
+      "DECISIONALLY_EQUIVALENT",
+      JSON.stringify({
+        candidates: decision.robustness.candidates.map((candidate) => ({
+          status: candidate.status,
+          utilityScore: candidate.utilityScore,
+          choiceRiskScore: candidate.choiceRiskScore,
+          riskAdjustedUtility: candidate.riskAdjustedUtility,
+          evidenceStrength: candidate.evidenceStrength,
+        })),
+        candidateRegret: decision.robustness.candidateRegret.map((candidate) => ({
+          scenarioCount: candidate.scenarioCount,
+          winRate: candidate.winRate,
+          expectedRegret: candidate.expectedRegret,
+          maximumRegret: candidate.maximumRegret,
+          robustChoiceScore: candidate.robustChoiceScore,
+        })),
+      })
+    );
+    assert.equal(decision.robustness.robustChoiceHotelId, null);
+    assert.equal(decision.robustness.policyPreferredHotelId, null);
+    assert.equal(decision.robustness.abstentionCode, "no-feasible-solution");
+    assert.equal(decision.thesis.status, "abstained");
+    assert.ok(decision.solutions.every((solution) => solution.solutionId.length > 0));
+    assert.equal(validateStayOptiDecisionV3(decision).valid, true);
+    semanticOutcomes.push({
+      status: decision.status,
+      recommended: decision.recommendedSolutionId,
+      bestAlternative: decision.bestAlternativeSolutionId,
+      robustness: {
+        decisionTieClassification: decision.robustness.decisionTieClassification,
+        robustChoiceScore: decision.robustness.robustChoiceScore,
+        expectedRegret: decision.robustness.expectedRegret,
+        maximumRegret: decision.robustness.maximumRegret,
+        recommendationPolicy: decision.robustness.recommendationPolicy,
+        abstentionCode: decision.robustness.abstentionCode,
+        candidateMetrics: decision.robustness.candidates
+          .map((candidate) => ({
+            status: candidate.status,
+            utilityScore: candidate.utilityScore,
+            choiceRiskScore: candidate.choiceRiskScore,
+            riskAdjustedUtility: candidate.riskAdjustedUtility,
+            evidenceStrength: candidate.evidenceStrength,
+          }))
+          .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+      },
+      roles: decision.internalTrace.roleAssignments
+        .map(({ role, sourceReasonCodes }) => ({ role, sourceReasonCodes }))
+        .sort((left, right) => left.role.localeCompare(right.role)),
+      thesis: {
+        status: decision.thesis.status,
+        titleKey: decision.thesis.titleKey,
+        strengthLabel: decision.thesis.strengthLabel,
+        recommendation: semanticClaim(decision.thesis.recommendation),
+        primaryReason: semanticClaim(decision.thesis.primaryReason),
+        mainTradeOff: semanticClaim(decision.thesis.mainTradeOff),
+        bestAlternative: semanticClaim(decision.thesis.bestAlternative),
+        switchCondition: semanticClaim(decision.thesis.switchCondition),
+        uncertainty: semanticClaim(decision.thesis.uncertainty),
+        exactSwitchThresholdAvailable: decision.thesis.exactSwitchThresholdAvailable,
+        reasonCodes: decision.thesis.reasonCodes,
+      },
+    });
+  }
+
+  for (const outcome of semanticOutcomes.slice(1)) {
+    assert.deepEqual(outcome, semanticOutcomes[0]);
+  }
+});
 
 test(
   "commercial firewall rejects monetization fields at any depth",

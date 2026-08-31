@@ -1379,7 +1379,7 @@ function createMarginalValueSegments(
       )
       .sort((first, second) =>
         (first.totalCost as number) - (second.totalCost as number) ||
-        first.hotelId.localeCompare(second.hotelId)
+        (second.utilityScore as number) - (first.utilityScore as number)
       );
     let previousSlope: number | null = null;
 

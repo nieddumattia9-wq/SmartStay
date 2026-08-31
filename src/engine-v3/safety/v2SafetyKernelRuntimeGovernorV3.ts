@@ -130,6 +130,7 @@ export type StayOptiV2SafetyHardVetoCodeV3 =
 
 export type StayOptiV2SafetyRoleStatusV3 =
   | "selected"
+  | "decisionally-equivalent"
   | "abstained"
   | "not-applicable"
   | "disabled";

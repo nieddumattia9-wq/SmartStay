@@ -6,6 +6,11 @@ import {
 import {
   createStableHashV3,
 } from "../contract/stableHashV3";
+import {
+  compareDecisionTieProjectionV3,
+  resolveDecisionTieV3,
+  type StayOptiDecisionTieClassificationV3,
+} from "../decision/decisionTieProjectionV3";
 
 import type {
   StayOfferIntegritySnapshotV3,
@@ -186,6 +191,9 @@ export interface StayOptiDecisionRobustnessV3 {
   scenarios: StayOptiRobustnessScenarioV3[];
   candidateRegret: StayOptiCandidateRegretV3[];
   robustChoiceHotelId: string | null;
+  decisionTieClassification?: StayOptiDecisionTieClassificationV3;
+  decisionallyEquivalentHotelIds?: string[];
+  presentationRepresentativeHotelId?: string | null;
   robustChoiceScore: number | null;
   expectedRegret: number | null;
   maximumRegret: number | null;
@@ -624,14 +632,39 @@ function createComparisonCohort(
 ) {
   const usable = candidates.filter((candidate) => candidate.status === "usable");
   const requestedAnchor = usable.find((candidate) => candidate.hotelId === requestedAnchorHotelId);
-  const anchor = requestedAnchor ?? usable.slice().sort(
+  const anchorResolution = resolveDecisionTieV3(
+    usable,
     (first, second) =>
-      (second.riskAdjustedUtility as number) - (first.riskAdjustedUtility as number) ||
-      first.hotelId.localeCompare(second.hotelId)
-  )[0] ?? null;
+      (second.riskAdjustedUtility as number) -
+      (first.riskAdjustedUtility as number),
+    (candidate) => ({
+      status: candidate.status,
+      utilityScore: candidate.utilityScore,
+      sourceRiskScore: candidate.sourceRiskScore,
+      canonicalRiskFloor: candidate.canonicalRiskFloor,
+      choiceRiskScore: candidate.choiceRiskScore,
+      choiceRiskLevel: candidate.choiceRiskLevel,
+      riskPenalty: candidate.riskPenalty,
+      evidenceStrength: candidate.evidenceStrength,
+      uncertaintyWidth: candidate.uncertaintyWidth,
+      riskAdjustedUtility: candidate.riskAdjustedUtility,
+      downsideUtility: candidate.downsideUtility,
+      riskSignals: candidate.riskSignals.map(({ code, severity }) => ({ code, severity })),
+    })
+  );
+  const anchor = requestedAnchor ??
+    anchorResolution.presentationRepresentative ??
+    (anchorResolution.classification === "DECISIONALLY_DISTINCT"
+      ? anchorResolution.leaders[0] ?? null
+      : null);
 
   if (anchor === null) {
-    return { anchorHotelId: null, hotelIds: [] as string[] };
+    return anchorResolution.leaders.length === 0
+      ? { anchorHotelId: null, hotelIds: [] as string[] }
+      : {
+          anchorHotelId: null,
+          hotelIds: usable.map((candidate) => candidate.hotelId).sort(),
+        };
   }
 
   const peers = usable.filter((candidate) =>
@@ -664,8 +697,7 @@ function createScenarios(
         return score === null ? [] : [{ hotelId, riskAdjustedUtility: score }];
       }).sort(
         (first, second) =>
-          second.riskAdjustedUtility - first.riskAdjustedUtility ||
-          first.hotelId.localeCompare(second.hotelId)
+          second.riskAdjustedUtility - first.riskAdjustedUtility
       );
 
       if (scores.length === 0) {
@@ -734,8 +766,7 @@ function createCandidateRegret(
   }).sort(
     (first, second) =>
       second.robustChoiceScore - first.robustChoiceScore ||
-      first.expectedRegret - second.expectedRegret ||
-      first.hotelId.localeCompare(second.hotelId)
+      first.expectedRegret - second.expectedRegret
   );
 }
 
@@ -956,14 +987,89 @@ export function evaluateDecisionRobustnessV3(input: {
     scenarios,
     candidateByHotelId
   );
-  const robustChoice = candidateRegret[0] ?? null;
+  const robustChoiceResolution = resolveDecisionTieV3(
+    candidateRegret,
+    (first, second) =>
+      second.robustChoiceScore - first.robustChoiceScore ||
+      first.expectedRegret - second.expectedRegret,
+    (candidate) => ({
+      scenarioCount: candidate.scenarioCount,
+      winRate: candidate.winRate,
+      expectedRegret: candidate.expectedRegret,
+      maximumRegret: candidate.maximumRegret,
+      robustChoiceScore: candidate.robustChoiceScore,
+    })
+  );
+  const unavailableTieResolution = resolveDecisionTieV3(
+    candidates,
+    (first, second) =>
+      compareDecisionTieProjectionV3(
+        {
+          status: first.status,
+          utilityScore: first.utilityScore,
+          sourceRiskScore: first.sourceRiskScore,
+          canonicalRiskFloor: first.canonicalRiskFloor,
+          choiceRiskScore: first.choiceRiskScore,
+          choiceRiskLevel: first.choiceRiskLevel,
+          riskPenalty: first.riskPenalty,
+          evidenceStrength: first.evidenceStrength,
+          uncertaintyWidth: first.uncertaintyWidth,
+          riskAdjustedUtility: first.riskAdjustedUtility,
+          downsideUtility: first.downsideUtility,
+          riskSignals: first.riskSignals.map(({ code, severity }) => ({ code, severity })),
+        },
+        {
+          status: second.status,
+          utilityScore: second.utilityScore,
+          sourceRiskScore: second.sourceRiskScore,
+          canonicalRiskFloor: second.canonicalRiskFloor,
+          choiceRiskScore: second.choiceRiskScore,
+          choiceRiskLevel: second.choiceRiskLevel,
+          riskPenalty: second.riskPenalty,
+          evidenceStrength: second.evidenceStrength,
+          uncertaintyWidth: second.uncertaintyWidth,
+          riskAdjustedUtility: second.riskAdjustedUtility,
+          downsideUtility: second.downsideUtility,
+          riskSignals: second.riskSignals.map(({ code, severity }) => ({ code, severity })),
+        }
+      ),
+    (candidate) => ({
+      status: candidate.status,
+      utilityScore: candidate.utilityScore,
+      sourceRiskScore: candidate.sourceRiskScore,
+      canonicalRiskFloor: candidate.canonicalRiskFloor,
+      choiceRiskScore: candidate.choiceRiskScore,
+      choiceRiskLevel: candidate.choiceRiskLevel,
+      riskPenalty: candidate.riskPenalty,
+      evidenceStrength: candidate.evidenceStrength,
+      uncertaintyWidth: candidate.uncertaintyWidth,
+      riskAdjustedUtility: candidate.riskAdjustedUtility,
+      downsideUtility: candidate.downsideUtility,
+      riskSignals: candidate.riskSignals.map(({ code, severity }) => ({ code, severity })),
+    })
+  );
+  const effectiveTieClassification =
+    candidateRegret.length > 0
+      ? robustChoiceResolution.classification
+      : unavailableTieResolution.classification;
+  const effectiveTieHotelIds =
+    candidateRegret.length > 0
+      ? robustChoiceResolution.leaders.map((candidate) => candidate.hotelId)
+      : unavailableTieResolution.leaders.map((candidate) => candidate.hotelId);
+  const effectivePresentationRepresentativeHotelId =
+    candidateRegret.length > 0
+      ? robustChoiceResolution.presentationRepresentative?.hotelId ?? null
+      : unavailableTieResolution.presentationRepresentative?.hotelId ?? null;
+  const robustChoice = robustChoiceResolution.presentationRepresentative ??
+    robustChoiceResolution.leaders[0] ??
+    null;
   const robustChoiceEvaluation = robustChoice === null
     ? null
     : candidateByHotelId.get(robustChoice.hotelId) ?? null;
   const baseline = scenarios.find((scenario) => scenario.scenarioId === "baseline");
   const nearTie = detectNearTie(baseline, candidateRegret, options);
   const noGoodOption = detectNoGoodOption(robustChoiceEvaluation, options);
-  const abstentionCode = resolveAbstention(
+  const resolvedAbstentionCode = resolveAbstention(
     cohort.anchorHotelId,
     robustChoice,
     candidateRegret,
@@ -972,6 +1078,11 @@ export function evaluateDecisionRobustnessV3(input: {
     noGoodOption,
     options
   );
+  const abstentionCode =
+    candidateRegret.length > 0 &&
+    effectiveTieClassification === "DECISIONALLY_EQUIVALENT"
+      ? "indistinguishable-options"
+      : resolvedAbstentionCode;
   const recommendationPolicy = abstentionCode === null ? "recommend" : "abstain";
   const constraintRelaxation = evaluateConstraintRelaxation(
     abstentionCode,
@@ -992,6 +1103,9 @@ export function evaluateDecisionRobustnessV3(input: {
     "robustness:shadow-only",
     ...(usableCount > 0 ? ["risk:evaluated" as const, "robustness:evaluated" as const, "regret:evaluated" as const] : []),
     ...(nearTie.status === "detected" ? ["robustness:near-tie" as const] : []),
+    ...(effectiveTieClassification === "DECISIONALLY_EQUIVALENT"
+      ? ["robustness:decisionally-equivalent" as const]
+      : []),
     ...(noGoodOption.status === "detected" ? ["robustness:no-good-option" as const] : []),
     ...(robustChoice !== null && robustChoice.winRate >= 0.7
       ? ["robustness:scenario-stable" as const]
@@ -1034,14 +1148,27 @@ export function evaluateDecisionRobustnessV3(input: {
     candidates,
     scenarios,
     candidateRegret,
-    robustChoiceHotelId: robustChoice?.hotelId ?? null,
+    robustChoiceHotelId:
+      effectiveTieClassification === "DECISIONALLY_EQUIVALENT"
+        ? null
+        : robustChoice?.hotelId ?? null,
+    decisionTieClassification: effectiveTieClassification,
+    decisionallyEquivalentHotelIds:
+      effectiveTieClassification === "DECISIONALLY_EQUIVALENT"
+        ? uniqueSorted(effectiveTieHotelIds)
+        : [],
+    presentationRepresentativeHotelId:
+      effectivePresentationRepresentativeHotelId,
     robustChoiceScore: robustChoice?.robustChoiceScore ?? null,
     expectedRegret: robustChoice?.expectedRegret ?? null,
     maximumRegret: robustChoice?.maximumRegret ?? null,
     nearTie,
     noGoodOption,
     recommendationPolicy,
-    policyPreferredHotelId: recommendationPolicy === "recommend"
+    policyPreferredHotelId:
+      effectiveTieClassification === "DECISIONALLY_EQUIVALENT"
+        ? null
+        : recommendationPolicy === "recommend"
       ? robustChoice?.hotelId ?? null
       : null,
     abstentionCode,
@@ -1059,6 +1186,10 @@ export function validateDecisionRobustnessV3(
   evaluation: StayOptiDecisionRobustnessV3
 ) {
   const { fingerprint: ignoredFingerprint, ...withoutFingerprint } = evaluation;
+  const decisionTieClassification =
+    evaluation.decisionTieClassification ?? "DECISIONALLY_DISTINCT";
+  const decisionallyEquivalentHotelIds =
+    evaluation.decisionallyEquivalentHotelIds ?? [];
   const candidateIds = evaluation.candidates.map((candidate) => candidate.hotelId);
   const uniqueCandidateIds = new Set(candidateIds).size === candidateIds.length;
   const cohortValid = evaluation.comparisonCohortHotelIds.every(
@@ -1085,12 +1216,27 @@ export function validateDecisionRobustnessV3(
       scenario.candidateScores.some((score) => score.hotelId === hotelId)
     )
   );
-  const robustChoiceValid = evaluation.robustChoiceHotelId === null
-    ? evaluation.robustChoiceScore === null && evaluation.expectedRegret === null
-    : candidateIds.includes(evaluation.robustChoiceHotelId) &&
-      evaluation.robustChoiceScore !== null &&
-      evaluation.robustChoiceScore >= 0 && evaluation.robustChoiceScore <= 100 &&
-      evaluation.expectedRegret !== null && evaluation.expectedRegret >= 0;
+  const robustChoiceValid =
+    decisionTieClassification === "DECISIONALLY_EQUIVALENT"
+      ? evaluation.robustChoiceHotelId === null &&
+        (evaluation.status === "unavailable"
+          ? evaluation.robustChoiceScore === null && evaluation.expectedRegret === null
+          : evaluation.robustChoiceScore !== null && evaluation.expectedRegret !== null) &&
+        decisionallyEquivalentHotelIds.length >= 2 &&
+        decisionallyEquivalentHotelIds.every((hotelId) =>
+          candidateIds.includes(hotelId)
+        ) &&
+        (evaluation.presentationRepresentativeHotelId == null ||
+          candidateIds.includes(evaluation.presentationRepresentativeHotelId))
+      : decisionallyEquivalentHotelIds.length === 0 &&
+        (evaluation.robustChoiceHotelId === null
+          ? evaluation.robustChoiceScore === null && evaluation.expectedRegret === null
+          : candidateIds.includes(evaluation.robustChoiceHotelId) &&
+            evaluation.robustChoiceScore !== null &&
+            evaluation.robustChoiceScore >= 0 &&
+            evaluation.robustChoiceScore <= 100 &&
+            evaluation.expectedRegret !== null &&
+            evaluation.expectedRegret >= 0);
   const policyValid = evaluation.recommendationPolicy === "recommend"
     ? evaluation.abstentionCode === null &&
       evaluation.policyPreferredHotelId === evaluation.robustChoiceHotelId &&

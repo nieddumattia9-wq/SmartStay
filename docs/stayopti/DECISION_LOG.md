@@ -11,6 +11,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0005 | 2026-08-31 | Accept the user's corrected LiteAPI Sandbox identity/cost attestations, verify the common base plus sandbox key class locally without retention, and execute the one authorized five-Rates diagnostic wave while excluding every result from real Golden counts. | Accepted; prospectively supersedes D-0004 hold-removal criteria | `decisions/0005-v3-17r2-liteapi-sandbox-bounded-pilot.md` |
 | D-0006 | 2026-08-31 | Keep external observational hotel-choice behavior in a separate fail-closed corpus; treat click/booking only as confounded labels, require primary provenance and admitted license, and prohibit automatic Golden admission or V3 weight changes. | Accepted | `decisions/0006-v3-17s-external-observational-choice-data.md` |
 | D-0007 | 2026-08-31 | Correct external source roles so Expedia RecTour is the primary booking-choice target, Trivago is a secondary click/session benchmark and external access never blocks independently governed real-Golden collection. | Accepted; prospectively supersedes only D-0006 source-role ordering | `decisions/0007-v3-17s1-external-source-role-correction.md` |
+| D-0008 | 2026-09-01 | Keep provider identity as opaque lookup/provenance only; resolve V3 decision ties exclusively from canonical evidence and preserve exact semantic ties as `DECISIONALLY_EQUIVALENT`. | Accepted | `decisions/0008-provider-id-neutral-decision-ties.md` |
 
 ## Required fields for a new decision
 

@@ -136,4 +136,18 @@ Source checkpoint: `48ee75d72c4d15718ccc782922536c8712fb0cf5`; the implementatio
 
 Next recommendation: `V3-17T_LITEAPI_BOUNDED_PRODUCTION_REAL_GOLDEN_PILOT_AUTHORIZATION_GATE`. It is an authorization gate only; no production call is permitted without a new explicit user authorization.
 
+## V3-17T0A provider-ID-neutral decision boundary — completed
+
+Source checkpoint: `3639761f5eca8a2990981e706ccde616cff21b67`; the implementation checkpoint is the local commit containing this entry and is reported in the V3-17T0A final receipt.
+
+- The V3-17T0 root cause is confirmed: provider-derived `solutionId`/`hotelId` values were used to break otherwise exact ties in Personal Utility Role Policy, Search-wide Scale Coverage and Decision Robustness.
+- A shared provider-neutral tie projection now excludes opaque identity, provider, raw payload and commercial fields. Exact semantic ties are `DECISIONALLY_EQUIVALENT`; no arbitrary winner or superiority claim is created.
+- Opaque IDs remain available only for lookup, correlation, provenance, trace and source-output mapping. The LiteAPI provider runtime and public V2 remain unchanged.
+- Dedicated regressions vary provider name, hotel ID, offer ID, solution ID and input order while preserving the identity-elided decision. Real semantic differences still produce a winner.
+- The re-audit finds no provider-runtime import in the V3 core and no forbidden core dependency. LiteAPI-specific code remains confined to the private adapter/pilot boundary.
+- Validation on 2026-09-01: targeted V3-17T0A `57/57 PASS`; V3-17Q `16/16`, V3-17R gate `23/23`, V3-17R execution `9/9`, V3-17S `19/19`, V3-17S.1 `10/10`; Engine V3 `1003/1003 PASS`; Engine V2 `196/196 PASS`; TypeScript, B1 capsule, B1 blind pipeline, B2 corpus, legacy quarantine and F0B/F0C/F0D PASS. Final integrity scans and Git checks are recorded in the phase receipt.
+- No credential, provider call, HTTP request, deploy, push or fetch occurred. V3 remains non-public and the seven pre-existing unrelated dirty paths remain outside this checkpoint.
+
+Next recommendation: `V3-17T_PROVIDER_AGNOSTIC_REAL_MARKET_SOURCE_QUALIFICATION_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

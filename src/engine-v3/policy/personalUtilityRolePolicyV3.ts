@@ -2,6 +2,11 @@ import {
   createStableHashV3,
   isStableHashV3,
 } from "../contract/stableHashV3";
+import {
+  compareDecisionTieProjectionV3,
+  resolveDecisionTieV3,
+  type StayOptiDecisionTieClassificationV3,
+} from "../decision/decisionTieProjectionV3";
 
 export const STAYOPTI_PERSONAL_UTILITY_ROLE_POLICY_VERSION_V3 =
   "3.0.0-personal-utility-role-policy.1" as const;
@@ -40,6 +45,7 @@ export type StayOptiRolePolicyRoleV3 =
 
 export type StayOptiRolePolicySelectionStatusV3 =
   | "selected"
+  | "decisionally-equivalent"
   | "not-applicable"
   | "abstained"
   | "disabled";
@@ -149,6 +155,9 @@ export interface StayOptiRolePolicySelectionV3 {
   role: StayOptiRolePolicyRoleV3;
   status: StayOptiRolePolicySelectionStatusV3;
   solutionId: string | null;
+  decisionTieClassification: StayOptiDecisionTieClassificationV3;
+  equivalentSolutionIds: string[];
+  presentationRepresentativeSolutionId: string | null;
   metrics: StayOptiRolePolicyMetricsV3;
   explanation: StayOptiRolePolicyExplanationV3;
   reasonCodes: string[];
@@ -160,7 +169,7 @@ export interface StayOptiPersonalUtilityRolePolicyResultV3 {
   caseId: string;
   profile: StayOptiRolePolicyProfileV3;
   application: "offline-policy-candidate-only";
-  status: "usable" | "abstained";
+  status: "usable" | "decisionally-equivalent" | "abstained";
   inputFingerprint: string;
   policyConfigurationFingerprint: string;
   profileSettings: StayOptiRolePolicyProfileSettingsV3;
@@ -379,7 +388,36 @@ function canonicalInput(
         ) as StayOptiRolePolicySolutionInputV3["dimensions"],
         evidenceIds: uniqueSorted(solution.evidenceIds),
       }))
-      .sort((left, right) => left.solutionId.localeCompare(right.solutionId)),
+      .sort((left, right) =>
+        compareDecisionTieProjectionV3(
+          {
+            solutionType: left.solutionType,
+            totalCost: left.totalCost,
+            currency: left.currency,
+            hardConstraintsSatisfied: left.hardConstraintsSatisfied,
+            offerIntegrity: left.offerIntegrity,
+            dimensions: Object.fromEntries(
+              STAYOPTI_ROLE_POLICY_EXPERIENCE_DIMENSIONS_V3.map((dimension) => [
+                dimension,
+                left.dimensions[dimension].score,
+              ])
+            ),
+          },
+          {
+            solutionType: right.solutionType,
+            totalCost: right.totalCost,
+            currency: right.currency,
+            hardConstraintsSatisfied: right.hardConstraintsSatisfied,
+            offerIntegrity: right.offerIntegrity,
+            dimensions: Object.fromEntries(
+              STAYOPTI_ROLE_POLICY_EXPERIENCE_DIMENSIONS_V3.map((dimension) => [
+                dimension,
+                right.dimensions[dimension].score,
+              ])
+            ),
+          }
+        )
+      ),
   };
 }
 
@@ -669,24 +707,73 @@ function compareNumberAscending(left: number | null, right: number | null): numb
   return (left ?? Number.POSITIVE_INFINITY) - (right ?? Number.POSITIVE_INFINITY);
 }
 
+function candidatePresentationProjection(
+  candidate: StayOptiRolePolicyCandidateEvaluationV3
+) {
+  return {
+    solutionType: candidate.solutionType,
+    status: candidate.status,
+    totalCost: candidate.totalCost,
+    currency: candidate.currency,
+    budgetStatus: candidate.budgetStatus,
+    qualityScore: candidate.qualityScore,
+    minimumQualityMet: candidate.minimumQualityMet,
+    experienceScore: candidate.experienceScore,
+    opportunityCostPoints: candidate.opportunityCostPoints,
+    personalUtilityScore: candidate.personalUtilityScore,
+    evidenceCoverage: candidate.evidenceCoverage,
+    availableDimensions: candidate.availableDimensions,
+    missingDimensions: candidate.missingDimensions,
+    contributions: candidate.contributions.map((contribution) => ({
+      dimension: contribution.dimension,
+      availability: contribution.availability,
+      sourceScore: contribution.sourceScore,
+      configuredWeight: contribution.configuredWeight,
+      normalizedAvailableWeight: contribution.normalizedAvailableWeight,
+      weightedValue: contribution.weightedValue,
+      transform: contribution.transform,
+    })),
+  };
+}
+
 function chooseBestChoice(
   candidates: StayOptiRolePolicyCandidateEvaluationV3[],
   profile: StayOptiRolePolicyProfileV3,
   settings: StayOptiRolePolicyProfileSettingsV3
-): StayOptiRolePolicyCandidateEvaluationV3 | null {
+) {
   const eligible = candidates.filter(
     ({ status, dominatedBySolutionIds }) =>
       status === "comparable" && dominatedBySolutionIds.length === 0
   );
   if (eligible.length === 0) return null;
 
-  if (profile === "maximum-comfort") {
-    return [...eligible].sort(
-      (left, right) =>
+  const compare = (
+    left: StayOptiRolePolicyCandidateEvaluationV3,
+    right: StayOptiRolePolicyCandidateEvaluationV3
+  ) => {
+    if (profile === "maximum-comfort") {
+      return compareNumberDescending(left.experienceScore, right.experienceScore) ||
+        compareNumberAscending(left.totalCost, right.totalCost);
+    }
+
+    if (profile === "comfort") {
+      return compareNumberDescending(left.personalUtilityScore, right.personalUtilityScore) ||
         compareNumberDescending(left.experienceScore, right.experienceScore) ||
-        compareNumberAscending(left.totalCost, right.totalCost) ||
-        left.solutionId.localeCompare(right.solutionId)
-    )[0];
+        compareNumberAscending(left.totalCost, right.totalCost);
+    }
+
+    if (profile === "maximum-savings") {
+      return compareNumberAscending(left.totalCost, right.totalCost) ||
+        compareNumberDescending(left.experienceScore, right.experienceScore);
+    }
+
+    return compareNumberDescending(left.personalUtilityScore, right.personalUtilityScore) ||
+      compareNumberDescending(left.experienceScore, right.experienceScore) ||
+      compareNumberAscending(left.totalCost, right.totalCost);
+  };
+
+  if (profile === "maximum-comfort") {
+    return resolveDecisionTieV3(eligible, compare, candidatePresentationProjection);
   }
 
   if (profile === "comfort") {
@@ -698,31 +785,18 @@ function chooseBestChoice(
         experienceScore !== null &&
         maximumExperience - experienceScore <= settings.choiceExperienceLossTolerance
     );
-    return [...experienceBand].sort(
-      (left, right) =>
-        compareNumberDescending(left.personalUtilityScore, right.personalUtilityScore) ||
-        compareNumberDescending(left.experienceScore, right.experienceScore) ||
-        compareNumberAscending(left.totalCost, right.totalCost) ||
-        left.solutionId.localeCompare(right.solutionId)
-    )[0];
+    return resolveDecisionTieV3(
+      experienceBand,
+      compare,
+      candidatePresentationProjection
+    );
   }
 
   if (profile === "maximum-savings") {
-    return [...eligible].sort(
-      (left, right) =>
-        compareNumberAscending(left.totalCost, right.totalCost) ||
-        compareNumberDescending(left.experienceScore, right.experienceScore) ||
-        left.solutionId.localeCompare(right.solutionId)
-    )[0];
+    return resolveDecisionTieV3(eligible, compare, candidatePresentationProjection);
   }
 
-  return [...eligible].sort(
-    (left, right) =>
-      compareNumberDescending(left.personalUtilityScore, right.personalUtilityScore) ||
-      compareNumberDescending(left.experienceScore, right.experienceScore) ||
-      compareNumberAscending(left.totalCost, right.totalCost) ||
-      left.solutionId.localeCompare(right.solutionId)
-  )[0];
+  return resolveDecisionTieV3(eligible, compare, candidatePresentationProjection);
 }
 
 function emptyMetrics(): StayOptiRolePolicyMetricsV3 {
@@ -790,6 +864,9 @@ function unavailableRole(
     role,
     status,
     solutionId: null,
+    decisionTieClassification: "DECISIONALLY_DISTINCT",
+    equivalentSolutionIds: [],
+    presentationRepresentativeSolutionId: null,
     metrics: emptyMetrics(),
     explanation: {
       headlineKey: `${role}:${status}`,
@@ -804,18 +881,50 @@ function unavailableRole(
 }
 
 function choiceRole(
-  choice: StayOptiRolePolicyCandidateEvaluationV3,
+  choiceResolution: NonNullable<ReturnType<typeof chooseBestChoice>>,
   alternatives: StayOptiRolePolicyCandidateEvaluationV3[],
   input: RunStayOptiPersonalUtilityRolePolicyInputV3,
   settings: StayOptiRolePolicyProfileSettingsV3
 ): StayOptiRolePolicySelectionV3 {
-  const comparison = alternatives
-    .filter(({ solutionId, status }) => solutionId !== choice.solutionId && status === "comparable")
-    .sort(
-      (left, right) =>
-        compareNumberDescending(left.personalUtilityScore, right.personalUtilityScore) ||
-        left.solutionId.localeCompare(right.solutionId)
-    )[0] ?? null;
+  const choice = choiceResolution.presentationRepresentative ?? choiceResolution.leaders[0];
+  if (choiceResolution.classification === "DECISIONALLY_EQUIVALENT") {
+    return {
+      role: "best-choice",
+      status: "decisionally-equivalent",
+      solutionId: null,
+      decisionTieClassification: "DECISIONALLY_EQUIVALENT",
+      equivalentSolutionIds: uniqueSorted(
+        choiceResolution.leaders.map((candidate) => candidate.solutionId)
+      ),
+      presentationRepresentativeSolutionId:
+        choiceResolution.presentationRepresentative?.solutionId ?? null,
+      metrics: emptyMetrics(),
+      explanation: {
+        headlineKey: `best-choice:${input.profile}:decisionally-equivalent`,
+        mainSacrifice: "none-material",
+        decisiveVariable: "decisionally-equivalent",
+        choiceChangingCounterfactual:
+          "counterfactual:material-decision-evidence-breaks-equivalence",
+        evidenceIds: [],
+        uncertaintyCodes: ["decision:decisionally-equivalent"],
+      },
+      reasonCodes: ["decision:decisionally-equivalent"],
+    };
+  }
+
+  const comparisonResolution = resolveDecisionTieV3(
+    alternatives.filter(
+      ({ solutionId, status }) =>
+        solutionId !== choice.solutionId && status === "comparable"
+    ),
+    (left, right) =>
+      compareNumberDescending(left.personalUtilityScore, right.personalUtilityScore),
+    candidatePresentationProjection
+  );
+  const comparison = comparisonResolution.presentationRepresentative ??
+    (comparisonResolution.classification === "DECISIONALLY_DISTINCT"
+      ? comparisonResolution.leaders[0] ?? null
+      : null);
   const decisive = decisiveDimension(choice, comparison);
   const cheapest = alternatives
     .filter(({ status, totalCost }) => status === "comparable" && totalCost !== null)
@@ -832,6 +941,9 @@ function choiceRole(
     role: "best-choice",
     status: "selected",
     solutionId: choice.solutionId,
+    decisionTieClassification: "DECISIONALLY_DISTINCT",
+    equivalentSolutionIds: [choice.solutionId],
+    presentationRepresentativeSolutionId: choice.solutionId,
     metrics: {
       ...emptyMetrics(),
       totalCost: choice.totalCost,
@@ -895,15 +1007,21 @@ function savingRole(
       ({ qualityLoss, experienceLoss }) =>
         qualityLoss <= settings.savingQualityLossTolerance &&
         experienceLoss <= settings.savingExperienceLossTolerance
-    )
-    .sort(
-      (left, right) =>
-        right.savingAmount - left.savingAmount ||
-        left.experienceLoss - right.experienceLoss ||
-        left.candidate.solutionId.localeCompare(right.candidate.solutionId)
     );
 
-  const selected = eligible[0];
+  const resolution = resolveDecisionTieV3(
+    eligible,
+    (left, right) =>
+      right.savingAmount - left.savingAmount ||
+      left.experienceLoss - right.experienceLoss,
+    ({ candidate, savingAmount, qualityLoss, experienceLoss }) => ({
+      candidate: candidatePresentationProjection(candidate),
+      savingAmount,
+      qualityLoss,
+      experienceLoss,
+    })
+  );
+  const selected = resolution.presentationRepresentative ?? resolution.leaders[0];
   if (!selected) {
     return unavailableRole(
       "best-sensible-saving",
@@ -912,10 +1030,29 @@ function savingRole(
     );
   }
 
+  if (resolution.classification === "DECISIONALLY_EQUIVALENT") {
+    return {
+      ...unavailableRole(
+        "best-sensible-saving",
+        "not-applicable",
+        "saving:decisionally-equivalent"
+      ),
+      decisionTieClassification: "DECISIONALLY_EQUIVALENT",
+      equivalentSolutionIds: uniqueSorted(
+        resolution.leaders.map(({ candidate }) => candidate.solutionId)
+      ),
+      presentationRepresentativeSolutionId:
+        resolution.presentationRepresentative?.candidate.solutionId ?? null,
+    };
+  }
+
   return {
     role: "best-sensible-saving",
     status: "selected",
     solutionId: selected.candidate.solutionId,
+    decisionTieClassification: "DECISIONALLY_DISTINCT",
+    equivalentSolutionIds: [selected.candidate.solutionId],
+    presentationRepresentativeSolutionId: selected.candidate.solutionId,
     metrics: {
       ...emptyMetrics(),
       totalCost: selected.candidate.totalCost,
@@ -986,15 +1123,21 @@ function upgradeRole(
       ({ experienceGain, marginalValuePer100 }) =>
         experienceGain >= settings.upgradeMinimumExperienceGain &&
         marginalValuePer100 >= settings.upgradeMinimumMarginalValuePer100
-    )
-    .sort(
-      (left, right) =>
-        right.experienceGain - left.experienceGain ||
-        right.marginalValuePer100 - left.marginalValuePer100 ||
-        left.candidate.solutionId.localeCompare(right.candidate.solutionId)
     );
 
-  const selected = eligible[0];
+  const resolution = resolveDecisionTieV3(
+    eligible,
+    (left, right) =>
+      right.experienceGain - left.experienceGain ||
+      right.marginalValuePer100 - left.marginalValuePer100,
+    ({ candidate, upgradePremium, experienceGain, marginalValuePer100 }) => ({
+      candidate: candidatePresentationProjection(candidate),
+      upgradePremium,
+      experienceGain,
+      marginalValuePer100,
+    })
+  );
+  const selected = resolution.presentationRepresentative ?? resolution.leaders[0];
   if (!selected) {
     return unavailableRole(
       "worthwhile-comfort-upgrade",
@@ -1003,10 +1146,29 @@ function upgradeRole(
     );
   }
 
+  if (resolution.classification === "DECISIONALLY_EQUIVALENT") {
+    return {
+      ...unavailableRole(
+        "worthwhile-comfort-upgrade",
+        "not-applicable",
+        "upgrade:decisionally-equivalent"
+      ),
+      decisionTieClassification: "DECISIONALLY_EQUIVALENT",
+      equivalentSolutionIds: uniqueSorted(
+        resolution.leaders.map(({ candidate }) => candidate.solutionId)
+      ),
+      presentationRepresentativeSolutionId:
+        resolution.presentationRepresentative?.candidate.solutionId ?? null,
+    };
+  }
+
   return {
     role: "worthwhile-comfort-upgrade",
     status: "selected",
     solutionId: selected.candidate.solutionId,
+    decisionTieClassification: "DECISIONALLY_DISTINCT",
+    equivalentSolutionIds: [selected.candidate.solutionId],
+    presentationRepresentativeSolutionId: selected.candidate.solutionId,
     metrics: {
       ...emptyMetrics(),
       totalCost: selected.candidate.totalCost,
@@ -1051,14 +1213,15 @@ export function runPersonalUtilityRolePolicyV3(
     input.solutions.map((solution) => evaluateCandidate(solution, input, settings))
   );
   const choice = chooseBestChoice(candidates, input.profile, settings);
+  const choiceCandidate = choice?.presentationRepresentative ?? choice?.leaders[0] ?? null;
   const bestChoice = choice
     ? choiceRole(choice, candidates, input, settings)
     : unavailableRole("best-choice", "abstained", "choice:no-comparable-option");
-  const bestSensibleSaving = choice
-    ? savingRole(choice, candidates, input, settings)
+  const bestSensibleSaving = choiceCandidate && choice?.classification === "DECISIONALLY_DISTINCT"
+    ? savingRole(choiceCandidate, candidates, input, settings)
     : unavailableRole("best-sensible-saving", "abstained", "saving:no-best-choice");
-  const worthwhileComfortUpgrade = choice
-    ? upgradeRole(choice, candidates, input, settings)
+  const worthwhileComfortUpgrade = choiceCandidate && choice?.classification === "DECISIONALLY_DISTINCT"
+    ? upgradeRole(choiceCandidate, candidates, input, settings)
     : unavailableRole("worthwhile-comfort-upgrade", "abstained", "upgrade:no-best-choice");
   const split = unavailableRole("split", "disabled", "split:disabled-until-single-stay-maturity");
 
@@ -1068,7 +1231,11 @@ export function runPersonalUtilityRolePolicyV3(
     caseId: input.caseId,
     profile: input.profile,
     application: "offline-policy-candidate-only",
-    status: choice ? "usable" : "abstained",
+    status: choice?.classification === "DECISIONALLY_EQUIVALENT"
+      ? "decisionally-equivalent"
+      : choice
+        ? "usable"
+        : "abstained",
     inputFingerprint: createStableHashV3(input, "stayopti-v3-personal-utility-role-policy-input"),
     policyConfigurationFingerprint: POLICY_CONFIGURATION_FINGERPRINT,
     profileSettings: settings,
@@ -1180,6 +1347,19 @@ export function validatePersonalUtilityRolePolicyV3(
     }
     if ((choiceCandidate?.dominatedBySolutionIds.length ?? 0) > 0) {
       add("dominance-invalid", choice.solutionId ?? result.caseId, "A dominated solution cannot be Best Choice.");
+    }
+  } else if (result.status === "decisionally-equivalent") {
+    if (
+      choice.status !== "decisionally-equivalent" ||
+      choice.solutionId !== null ||
+      choice.decisionTieClassification !== "DECISIONALLY_EQUIVALENT" ||
+      choice.equivalentSolutionIds.length < 2
+    ) {
+      add(
+        "choice-invalid",
+        result.caseId,
+        "Decisionally equivalent policy must expose an equivalence class without a winner."
+      );
     }
   } else if (choice.status !== "abstained" || choice.solutionId !== null) {
     add("choice-invalid", result.caseId, "Abstained policy cannot expose a Best Choice.");

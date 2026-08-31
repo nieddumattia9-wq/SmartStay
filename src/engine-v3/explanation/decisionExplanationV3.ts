@@ -28,6 +28,9 @@ import type {
   StayOptiPersonalUtilityEvaluationV3,
   StayOptiUtilityDimensionV3,
 } from "../utility/personalUtilityV3";
+import {
+  resolveDecisionTieV3,
+} from "../decision/decisionTieProjectionV3";
 
 export const STAYOPTI_EXPLANATION_SLOT_IDS_V3 = [
   "recommendation",
@@ -536,13 +539,6 @@ function selectAlternativeHotelId(
           input.solutionMappings,
           candidate.hotelId
         ) !== null
-    )
-    .sort(
-      (first, second) =>
-        (second.riskAdjustedUtility ?? Number.NEGATIVE_INFINITY) -
-          (first.riskAdjustedUtility ?? Number.NEGATIVE_INFINITY) ||
-        first.choiceRiskScore - second.choiceRiskScore ||
-        first.hotelId.localeCompare(second.hotelId)
     );
 
   if (
@@ -554,7 +550,30 @@ function selectAlternativeHotelId(
     return input.preferredAlternativeHotelId;
   }
 
-  return usable[0]?.hotelId ?? null;
+  const resolution = resolveDecisionTieV3(
+    usable,
+    (first, second) =>
+      (second.riskAdjustedUtility ?? Number.NEGATIVE_INFINITY) -
+        (first.riskAdjustedUtility ?? Number.NEGATIVE_INFINITY) ||
+      first.choiceRiskScore - second.choiceRiskScore,
+    (candidate) => ({
+      status: candidate.status,
+      utilityScore: candidate.utilityScore,
+      sourceRiskScore: candidate.sourceRiskScore,
+      canonicalRiskFloor: candidate.canonicalRiskFloor,
+      choiceRiskScore: candidate.choiceRiskScore,
+      choiceRiskLevel: candidate.choiceRiskLevel,
+      riskPenalty: candidate.riskPenalty,
+      evidenceStrength: candidate.evidenceStrength,
+      uncertaintyWidth: candidate.uncertaintyWidth,
+      riskAdjustedUtility: candidate.riskAdjustedUtility,
+      downsideUtility: candidate.downsideUtility,
+    })
+  );
+  return resolution.presentationRepresentative?.hotelId ??
+    (resolution.classification === "DECISIONALLY_DISTINCT"
+      ? resolution.leaders[0]?.hotelId ?? null
+      : null);
 }
 
 function recommendationClaim(

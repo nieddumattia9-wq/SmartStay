@@ -32,6 +32,10 @@ import {
 import {
   createStableHashV3,
 } from "../contract/stableHashV3";
+import {
+  compareDecisionTieProjectionV3,
+  createDecisionTieProjectionV3,
+} from "../decision/decisionTieProjectionV3";
 
 import {
   assertStayOptiDecisionV3,
@@ -990,10 +994,24 @@ function comparePicks(
         )
       ] ||
     first.groupPosition -
-      second.groupPosition ||
-    first.hotelId.localeCompare(
-      second.hotelId
-    );
+      second.groupPosition;
+}
+
+function compatibilityDecisionTieProjection(
+  evaluation: SmartStayEvaluationV2,
+  selectedOffer: SmartStaySelectedOfferV2 | null
+) {
+  return createDecisionTieProjectionV3({
+    accommodation: evaluation.accommodation,
+    constraints: evaluation.constraints,
+    scores: evaluation.scores,
+    dataConfidence: evaluation.dataConfidence,
+    risk: evaluation.risk,
+    flexibilityContext: evaluation.flexibilityContext,
+    pareto: evaluation.pareto,
+    final: evaluation.final,
+    selectedOffer,
+  }) as Record<string, unknown>;
 }
 
 export function adaptV2SearchResultToDecisionV3(
@@ -1475,12 +1493,12 @@ export function adaptV2SearchResultToDecisionV3(
     ) ??
     null;
 
-  const recommendedSolutionId =
+  let recommendedSolutionId =
     bestChoiceCandidate
       ?.solutionId ??
     null;
 
-  const bestAlternativeSolutionId =
+  let bestAlternativeSolutionId =
     candidates.find(
       (candidate) =>
         candidate.solutionId !==
@@ -1512,7 +1530,29 @@ export function adaptV2SearchResultToDecisionV3(
         ) ??
         null;
 
-  const status =
+  const compatibilityEquivalentHotelIds =
+    recommendedEvaluation === null
+      ? []
+      : input.result.evaluations
+          .filter((evaluation) =>
+            evaluation.reliabilityGate.eligible &&
+            selectedOfferByHotelId.get(evaluation.hotel.id) !== undefined &&
+            compareDecisionTieProjectionV3(
+              compatibilityDecisionTieProjection(
+                recommendedEvaluation,
+                selectedOfferByHotelId.get(recommendedEvaluation.hotel.id) ?? null
+              ),
+              compatibilityDecisionTieProjection(
+                evaluation,
+                selectedOfferByHotelId.get(evaluation.hotel.id) ?? null
+              )
+            ) === 0
+          )
+          .map((evaluation) => evaluation.hotel.id);
+  const compatibilityDecisionallyEquivalent =
+    compatibilityEquivalentHotelIds.length > 1;
+
+  let status: StayOptiDecisionV3["status"] =
     recommendedSolutionId !==
       null
       ? "recommended"
@@ -1521,7 +1561,7 @@ export function adaptV2SearchResultToDecisionV3(
         ? "abstained"
         : "no-feasible-solution";
 
-  const statusReasonCode:
+  let statusReasonCode:
     SmartStayReasonCodeV3 =
       status ===
         "recommended"
@@ -2040,6 +2080,20 @@ export function adaptV2SearchResultToDecisionV3(
       constraintRelaxations:
         [],
     });
+
+  // V2 remains attached as the compatibility/presentation source, but an
+  // identity-only tie cannot be promoted to a V3 winner. The opaque solution
+  // references remain in candidates/solutions for lookup and handoff.
+  if (
+    decisionRobustness.decisionTieClassification ===
+      "DECISIONALLY_EQUIVALENT" ||
+    compatibilityDecisionallyEquivalent
+  ) {
+    recommendedSolutionId = null;
+    bestAlternativeSolutionId = null;
+    status = "abstained";
+    statusReasonCode = "decision:abstained";
+  }
 
   const contextualStayValue =
     evaluateContextualStayValueV3({
@@ -2781,6 +2835,10 @@ export function adaptV2SearchResultToDecisionV3(
         "temporal:not-evaluated",
         ...decisionRobustness
           .reasonCodes,
+        ...(decisionRobustness.decisionTieClassification ===
+        "DECISIONALLY_EQUIVALENT" || compatibilityDecisionallyEquivalent
+          ? ["decision:decisionally-equivalent" as const]
+          : []),
         ...contextualStayValue
           .reasonCodes,
         ...decisionExplanation

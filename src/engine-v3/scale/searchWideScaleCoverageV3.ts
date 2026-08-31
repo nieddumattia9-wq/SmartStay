@@ -7,6 +7,10 @@ import {
   createStableHashV3,
   stableSerializeV3,
 } from "../contract/stableHashV3";
+import {
+  takeDecisionTopWithBoundaryTiesV3,
+  type StayOptiDecisionTieClassificationV3,
+} from "../decision/decisionTieProjectionV3";
 
 export type StayOptiSourceSetCompletenessV3 =
   | "complete"
@@ -111,6 +115,8 @@ export interface StayOptiScaleEquivalenceAuditV3 {
   strongAlternativeHotelIds: string[];
   lostStrongAlternativeHotelIds: string[];
   boundViolationHotelIds: string[];
+  decisionTieClassification: StayOptiDecisionTieClassificationV3;
+  outputLimitExpandedForDecisionTie: boolean;
   reasonCodes: SmartStayReasonCodeV3[];
 }
 
@@ -490,8 +496,7 @@ function compareFullScore(
   second: StayOptiScaleCandidateEvaluationV3
 ) {
   return (second.fullDecisionScore ?? -1) -
-    (first.fullDecisionScore ?? -1) ||
-    first.hotelId.localeCompare(second.hotelId);
+    (first.fullDecisionScore ?? -1);
 }
 
 function createEquivalenceAudit(
@@ -510,8 +515,16 @@ function createEquivalenceAudit(
     .filter((candidate) => candidate.retainedForFineEvaluation)
     .sort(compareFullScore);
 
-  const fullTop = fullyScored.slice(0, policy.outputCandidateLimit);
-  const plannedTop = plannedScored.slice(0, policy.outputCandidateLimit);
+  const fullTop = takeDecisionTopWithBoundaryTiesV3(
+    fullyScored,
+    policy.outputCandidateLimit,
+    compareFullScore
+  );
+  const plannedTop = takeDecisionTopWithBoundaryTiesV3(
+    plannedScored,
+    policy.outputCandidateLimit,
+    compareFullScore
+  );
   const bestFullScore = fullTop[0]?.fullDecisionScore ?? null;
   const bestPlannedScore = plannedTop[0]?.fullDecisionScore ?? null;
 
@@ -590,6 +603,14 @@ function createEquivalenceAudit(
     strongAlternativeHotelIds,
     lostStrongAlternativeHotelIds,
     boundViolationHotelIds,
+    decisionTieClassification:
+      fullTop.length > 1 &&
+      fullTop[0]?.fullDecisionScore === fullTop[1]?.fullDecisionScore
+        ? "DECISIONALLY_EQUIVALENT"
+        : "DECISIONALLY_DISTINCT",
+    outputLimitExpandedForDecisionTie:
+      fullTop.length > policy.outputCandidateLimit ||
+      plannedTop.length > policy.outputCandidateLimit,
     reasonCodes: uniqueReasonCodesV3([
       status === "equivalent"
         ? "scale:full-equivalence-pass"
