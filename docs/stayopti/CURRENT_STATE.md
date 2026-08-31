@@ -103,4 +103,21 @@ Source checkpoint: `2b448470c2782834da62d89850d2f4f127998b0d`; the implementatio
 
 Next recommendation: `V3-17S_LITEAPI_REAL_GOLDEN_COLLECTION_CONTRACT_AND_AUTHORIZATION_GATE`. This is an offline authorization/contract gate, not implicit permission for another provider call.
 
+## V3-17S public real-world hotel-choice source qualification — source-access hold
+
+Source checkpoint: `3d1f3591f4b89ae484d19cb4d7fdfbaf5526180c`; the implementation checkpoint is the local commit containing this entry and is reported in the V3-17S final receipt.
+
+- Five primary candidate sources were audited. None currently combines ungated primary access with a dataset license verified for persistent StayOpti use: zero qualified, three conditional, two rejected for the decision-replay purpose.
+- Trivago RecSys Challenge 2019 is the primary conditional candidate because it retains impression choice sets, displayed prices and click-out labels. Its dataset requires account access and acceptance of terms; neither action was performed and commercial use remains unknown.
+- Expedia RecTour documents about 2.5M real lodging searches with impressions, clicks and bookings, but the active primary archive and exact dataset-license binding were not verifiable in this phase.
+- A private `ExternalHotelChoiceSessionV3` contract, evidence/bias classifier, license/provenance gate, leakage audit and provider-neutral replay adapter are implemented with synthetic official-schema fixtures only.
+- Clicks and bookings remain evaluation labels with confounders, never objective-best labels or pre-decision features. One search session is one replay unit; hotel rows do not inflate the denominator.
+- External observational data remains separate from live Golden, Decision Science, synthetic counterfactual, blind judgment and future StayOpti outcome corpora. No automatic migration is allowed.
+- The target of 100 independent provider-neutral replays is planned and stratified but remains uncollected. Real Golden cases and real judgments remain zero; V3-17 remains unmet and V3-18 remains blocked.
+- No provider call, credential load, training, calibration, V3 weight change, public runtime change, booking, deploy, push or fetch occurred.
+- Validation on 2026-08-31: V3-17S targeted `19/19 PASS`; combined V3-17Q/R/S targeted `67/67 PASS`; Engine V3 `984/984 PASS`; Engine V2 `196/196 PASS`; TypeScript, B1 capsule, B1 blind pipeline, B2 corpus, legacy quarantine, F0B/F0C/F0D, privacy/license scans and Git checks PASS.
+- Public research used 29 bounded documentation/search fetch operations and downloaded no dataset archive. Provider HTTP requests remained zero.
+
+Next recommendation: `V3-17S.1_TRIVAGO_DATASET_TERMS_LICENSE_AND_USER_ACCESS_DECISION_GATE`. The user must personally decide any terms acceptance; this recommendation is not authorization to ingest data or start V3-18.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
