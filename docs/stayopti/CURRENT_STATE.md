@@ -120,4 +120,20 @@ Source checkpoint: `3d1f3591f4b89ae484d19cb4d7fdfbaf5526180c`; the implementatio
 
 Next recommendation: `V3-17S.1_TRIVAGO_DATASET_TERMS_LICENSE_AND_USER_ACCESS_DECISION_GATE`. The user must personally decide any terms acceptance; this recommendation is not authorization to ingest data or start V3-18.
 
+## V3-17S.1 external source-role correction — source-access hold, real-Golden path open
+
+Source checkpoint: `48ee75d72c4d15718ccc782922536c8712fb0cf5`; the implementation checkpoint is the local commit containing this entry and is reported in the V3-17S.1 final receipt.
+
+- The V3-17S source-access hold remains historical and valid, but its source-role ordering is prospectively corrected: Expedia RecTour is the primary booking-choice target; Trivago RecSys 2019 is a secondary session-intent/click benchmark; Expedia Personalized Sort is a conditional click-and-booking ranking benchmark.
+- The official Trivago data portal reproduced `502 Bad Gateway`. Its surviving official materials describe click-out prediction, not completed-booking ground truth.
+- No current official RecTour data archive was found. The paper license, dataset-license statements and actual file license remain separate: the paper is CC BY 4.0, an official presentation describes dataset terms as CC BY-NC 4.0 plus additional terms, but the actual file and accompanying license were not retrievable.
+- Official Kaggle metadata says Expedia Personalized Sort is subject to Competition Rules and requires the user to sign in or register and accept those rules before viewing data. No terms were accepted and no file was downloaded.
+- A private provider-neutral source registry now freezes role, outcome, field coverage, access, provenance, license, commercial-use, ingestion and Golden-boundary status. Current admitted sources: zero.
+- Click and booking remain confounded labels; external replay is never real Golden and never changes V3 automatically.
+- External source access is a future accelerator, not a blocker for an independently authorized LiteAPI real-Golden pilot. Real Golden cases and judgments remain zero, V3-17 remains unmet and V3-18 remains blocked.
+- No provider call, credential load, dataset ingestion, public runtime change, booking, deploy, push or fetch occurred.
+- Validation on 2026-08-31: V3-17S.1 targeted `10/10 PASS`; combined V3-17S/S.1 `29/29 PASS`; Engine V3 `994/994 PASS`; Engine V2 `196/196 PASS`; TypeScript, source-license/provenance, privacy and Git checks PASS.
+
+Next recommendation: `V3-17T_LITEAPI_BOUNDED_PRODUCTION_REAL_GOLDEN_PILOT_AUTHORIZATION_GATE`. It is an authorization gate only; no production call is permitted without a new explicit user authorization.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
