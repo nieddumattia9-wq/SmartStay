@@ -178,3 +178,36 @@ After those artifacts exist, a new phase must re-run this gate and obtain fresh 
 V3-17R did not contact LiteAPI, RouteStack or RateHawk; did not access a dashboard; did not load credentials; did not perform Rates, Places, Price Index, Public Price, prebook, booking or redirect; did not change ranking or public runtime; and did not collect cases or judgments.
 
 It grants no real-Golden, market-frequency, global-optimum, production, commercial or V3-superiority claim. V3-18 remains blocked.
+
+## 12. V3-17R.1/R.2 authorized resumption and observed sandbox result
+
+The historical `SAFE_HOLD_PRE_NETWORK` above is preserved. It was superseded prospectively by the user's explicit attestations that the available LiteAPI credential belongs to Sandbox and that Sandbox Rates calls incur no cost or credit consumption. The user also corrected the environment-identification rule: LiteAPI uses the common `https://api.liteapi.travel/v3.0` base and distinguishes Sandbox credentials locally by the allowlisted `sand_` or `sandbox_` prefix. No credential value, length, hash, or fragment was retained or printed.
+
+At source checkpoint `2b448470c2782834da62d89850d2f4f127998b0d`, the non-mutating preflight observed the exact common base URL, the exact `/hotels/rates` path, and an allowlisted Sandbox key prefix. The already frozen plan remained byte-equivalent at SHA-256 `34e450c9cfafad2fec76898dc74c4b935dbe7f6ac3485f45e9068078ae557c9a`. The original V3-17R authorization had not been consumed and was reused exactly once.
+
+The single wave completed with:
+
+| Measure | Observed |
+| --- | ---: |
+| Rates HTTP requests | 5 |
+| all other endpoint requests | 0 |
+| retries / followed redirects | 0 / 0 |
+| maximum observed concurrency | 1 |
+| minimum observed start interval | 1092.7414 ms |
+| search families attempted / responses received | 5 / 5 |
+| true no-results | 0 |
+| raw / normalizable results by family | 45/45, 39/39, 56/56, 22/22, 23/23 |
+| provider-neutral snapshots | 5 |
+| sandbox diagnostic cases projected | 20 |
+
+All five family outcomes were `SUCCESS`. The field matrix yielded 80 family-field observations: 45 `AVAILABLE`, 25 `EXPLICIT_UNKNOWN`, and 10 `NOT_REQUIRED`. Each of the sixteen frozen fields had a deterministic state for every family. No missing value was invented or converted into a favorable score.
+
+The 20 projected items are intentionally `SANDBOX_DIAGNOSTIC_NOT_REAL_GOLDEN`. Their V3-17O disposition is `REJECTED_CONTRACT` because the bounded Sandbox response does not prove provider exhaustion and therefore cannot satisfy the real-source Golden admission rule. This is the expected evidence boundary, not a negative economic result. No split saving, market frequency, global optimum, real-Golden count, or V2/V3 superiority was evaluated.
+
+The sanitized Evidence receipt is outside the repository. Its SHA-256 is `6cab9c87014f69429083f0582f26d699d78e8ca14972adbc767c0765741a45fe`; it contains five unique provider-neutral snapshot fingerprints and twenty unique local diagnostic case fingerprints. Raw provider responses existed only transiently in process memory. Raw provider responses, identifiers, request headers, session values, and credentials were not committed.
+
+Post-wave validation passed: V3-17Q/V3-17R/V3-17R.2 targeted tests `48/48`, Engine V3 `965/965`, Engine V2 `196/196`, TypeScript, B1 capsule, B1 blind pipeline, B2 corpus, legacy quarantine, and F0B/F0C/F0D. The single authorization is consumed; no second wave is permitted.
+
+`V3_17R_2_STATUS=PASS`, `GOLDEN_CASES_REAL_COLLECTED=0`, `REAL_JUDGMENTS_COLLECTED=0`, `V3_17_GATE_MET=NO`, and `V3_18_ENTRY_ALLOWED=NO`.
+
+`NEXT_STEP_RECOMMENDATION=V3-17S_LITEAPI_REAL_GOLDEN_COLLECTION_CONTRACT_AND_AUTHORIZATION_GATE`

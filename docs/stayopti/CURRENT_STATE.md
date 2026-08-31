@@ -87,4 +87,20 @@ Source checkpoint: `69715d22fc16b75460a4517cf80dc56eb1f2e4f2`; the implementatio
 
 Next recommendation: `V3-17R.1_LITEAPI_SANDBOX_IDENTITY_AND_ACCOUNT_ZERO_COST_EVIDENCE_GATE`.
 
+## V3-17R.2 LiteAPI Sandbox bounded pilot — completed
+
+Source checkpoint: `2b448470c2782834da62d89850d2f4f127998b0d`; the implementation checkpoint is the local commit containing this entry and is reported in the V3-17R.2 final receipt.
+
+- The prior safe hold remains historical evidence. The user prospectively supplied the Sandbox identity and zero-cost attestations and clarified that LiteAPI uses the common `https://api.liteapi.travel/v3.0` base while the credential prefix distinguishes Sandbox.
+- A local, non-persisting check observed the exact base, exact Rates path, and an allowlisted Sandbox credential prefix. No credential value, length, hash, or fragment was printed or retained.
+- The previously authorized wave was executed exactly once and consumed: five sequential Rates requests, zero retry, zero redirect, zero other endpoints, maximum concurrency one, and minimum observed request-start interval 1092.7414 ms.
+- All five frozen families returned processable results. Raw/normalizable counts were 45/45, 39/39, 56/56, 22/22, and 23/23.
+- Five provider-neutral snapshots and twenty sandbox diagnostics were created outside the public runtime. They are `SANDBOX_DIAGNOSTIC_NOT_REAL_GOLDEN`; all remain excluded from real Golden counts because bounded Sandbox collection does not prove provider exhaustion.
+- Field coverage across five families was 45 available, 25 explicit unknown, and 10 not required observations over the sixteen-field contract. Missing evidence was not invented.
+- No raw response, provider identifier, header, session value, credential, booking, prebook, payment, production request, RouteStack request, RateHawk request, deploy, push, or fetch was persisted or performed beyond the five authorized Sandbox Rates calls.
+- Post-wave validation: targeted V3-17Q/R/R.2 `48/48 PASS`; Engine V3 `965/965 PASS`; Engine V2 `196/196 PASS`; TypeScript, B1 capsule, B1 blind pipeline, B2 corpus, legacy quarantine, F0B/F0C/F0D, integrity scans, and Git checks PASS.
+- Real Golden cases remain zero; real judgments remain zero; V3-17 remains unmet; V3-18 remains blocked; public V2 and Split `OFF` remain unchanged.
+
+Next recommendation: `V3-17S_LITEAPI_REAL_GOLDEN_COLLECTION_CONTRACT_AND_AUTHORIZATION_GATE`. This is an offline authorization/contract gate, not implicit permission for another provider call.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
