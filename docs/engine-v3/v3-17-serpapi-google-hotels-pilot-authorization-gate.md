@@ -210,3 +210,13 @@ Next recommendation:
 `V3-17T2_SERPAPI_GOOGLE_HOTELS_12_SESSION_BOUNDED_PILOT_EXECUTION`.
 It is not authorized until the exact literal above and retention consent are
 provided in a later user message.
+
+## T1A supersession notice
+
+The first T2 preflight executed zero HTTP requests and proved that this
+document's manifest-only literal was bound to an incomplete Evidence runner.
+That literal is now `REVOKED_AFTER_RUNNER_BUNDLE_CHANGE` and cannot authorize
+execution. The manifest, sessions, dates, budgets and limits remain unchanged.
+The replacement runner-bundle-bound literal and retention version are published
+only in `v3-17-serpapi-google-hotels-pilot-evidence-repair.md`; they remain
+unauthorized until a later exact user reauthorization.

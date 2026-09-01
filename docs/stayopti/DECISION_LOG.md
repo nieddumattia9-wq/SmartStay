@@ -14,6 +14,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0008 | 2026-09-01 | Keep provider identity as opaque lookup/provenance only; resolve V3 decision ties exclusively from canonical evidence and preserve exact semantic ties as `DECISIONALLY_EQUIVALENT`. | Accepted | `decisions/0008-provider-id-neutral-decision-ties.md` |
 | D-0009 | 2026-09-01 | Qualify SerpApi Google Hotels only as a conditional real-market evaluation source behind the external choice contract; prohibit runtime/core coupling, raw persistence and automatic Golden or policy promotion. | Accepted | `decisions/0009-serpapi-google-hotels-evaluation-source.md` |
 | D-0010 | 2026-09-01 | Freeze a fail-closed twelve-session SerpApi pilot gate with immutable inputs, exact post-manifest authorization, process-only secret handling and ephemeral raw retention. | Accepted; calls and retention remain unauthorized | `decisions/0010-v3-17t1-serpapi-pilot-authorization-gate.md` |
+| D-0011 | 2026-09-01 | Revoke the incomplete manifest-only SerpApi literal and bind any future pilot authorization to a replayable sanitized snapshot/Evidence bundle, retention version and runner hash. | Accepted; calls and retention remain unauthorized | `decisions/0011-v3-17t1a-serpapi-evidence-bundle-repair.md` |
 
 ## Required fields for a new decision
 

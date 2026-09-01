@@ -275,10 +275,20 @@ export function createSerpApiPilotManifestHashV3(
 export const STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3 =
   createSerpApiPilotManifestHashV3();
 
-export const STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3 =
+export const STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 =
   `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_MAX48` as const;
 
+export const STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3 =
+  /* RUNNER_BUNDLE_HASH_START */ "67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6" /* RUNNER_BUNDLE_HASH_END */ as const;
+
+export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3 =
+  "stayopti.v3.serpapi-google-hotels-retention@2" as const;
+
+export const STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3 =
+  `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_RETENTION_V2_MAX48` as const;
+
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3 = Object.freeze({
+  retentionPolicyVersion: STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
   rawPayloadRetention: "EPHEMERAL_UNTIL_VALIDATED" as const,
   rawPayloadStorage: "UNIQUE_TEMP_DIRECTORY_OUTSIDE_REPOSITORY" as const,
   rawHtmlRetention: "NONE" as const,
@@ -371,6 +381,7 @@ export interface StayOptiSerpApiPilotRawStoreV3 {
   writeEphemeral(name: string, value: string): void;
   removeEphemeral(name: string): void;
   removeAllEphemeral(): void;
+  existsEphemeral?(name: string): boolean;
 }
 
 export interface StayOptiSerpApiDetailCandidateV3 {
@@ -433,6 +444,7 @@ function dateIsValidFuture(date: string, nowIso: string) {
 export function redactSerpApiDiagnosticV3(value: string) {
   return value
     .replace(/([?&]api_key=)[^&\s]*/gi, "$1[REDACTED]")
+    .replace(/([?&]property_token=)[^&\s]*/gi, "$1[REDACTED]")
     .replace(/\b(?:api[_-]?key)\s*[:=]\s*[^\s&,]+/gi, "api_key=[REDACTED]");
 }
 

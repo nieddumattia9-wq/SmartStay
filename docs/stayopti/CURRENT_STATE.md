@@ -183,4 +183,41 @@ Source checkpoint: `640570740317cd36901fb605d73e6b7aeeadaff5`; the implementatio
 
 Next recommendation: `V3-17T2_SERPAPI_GOOGLE_HOTELS_12_SESSION_BOUNDED_PILOT_EXECUTION`. It requires a new user message containing the exact published authorization literal and retention approval; this T1 checkpoint is not permission to call.
 
+## V3-17T1A SerpApi pilot Evidence repair — ready for exact reauthorization
+
+Source checkpoint: `ecdeda1edc3dc88044c59ac39807a30e478f215e`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the V3-17T1A final receipt.
+
+- The T2 preflight root cause is preserved: the prior runner exported only
+  fingerprints, produced no Evidence ZIP and did not execute details. It sent
+  zero requests and consumed no authorization.
+- The old manifest-only literal is revoked. The unchanged manifest
+  `e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88`
+  is now bound to runner bundle
+  `67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6`,
+  retention policy version 2 and the unchanged 48-call ceiling.
+- The future evaluation collector exports and rereads the full sanitized
+  choice-set snapshot before verified raw deletion, executes at most three
+  semantic property details per session and keeps opaque identity out of
+  selection and decision inputs.
+- The PowerShell 5.1 launcher now creates, extracts and validates a sanitized
+  Evidence ZIP outside the repository. Complete and partial bundles bind
+  manifest, ledger, snapshots, deletion evidence, scans and checksums for T3.
+- The new exact literal is published in the T1A phase document but remains
+  unauthorized. Credentials, SerpApi calls, Google Hotels queries and HTTP
+  requests in T1A are zero.
+- Validation on 2026-09-01: V3-17T1A targeted `44/44 PASS`; selected
+  V3-17T/T1/T0A/Q/R/S/S.1 plus B1/B2/legacy/F0 regressions `220/220 PASS`;
+  Engine V3 `1110/1110 PASS`; Engine V2 `196/196 PASS`; TypeScript and the
+  requested offline integrity gates PASS.
+- Real sessions, Golden candidates, Golden cases and judgments remain zero;
+  V3-17 remains unmet and V3-18 remains blocked. Public runtime, providers,
+  weights, thresholds and booking remain unchanged.
+
+Next recommendation:
+`V3-17T2_SERPAPI_GOOGLE_HOTELS_12_SESSION_BOUNDED_PILOT_REAUTHORIZATION`.
+It requires a later user message containing the exact new literal and explicit
+retention-v2 approval.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

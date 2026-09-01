@@ -12,6 +12,8 @@ import {
   STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_V3,
   STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3,
+  STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
+  STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
   STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
   STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3,
@@ -157,7 +159,8 @@ test("V3-17T1 manifest covers required occupancy duration lead-time and preferen
 test("V3-17T1 manifest hash and authorization literal are deterministic and bound", () => {
   assert.match(STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, /^[0-9a-f]{64}$/);
   assert.equal(createSerpApiPilotManifestHashV3(), STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3);
-  assert.equal(STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3, `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_MAX48`);
+  assert.equal(STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3, `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_RETENTION_V2_MAX48`);
+  assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3, "stayopti.v3.serpapi-google-hotels-retention@2");
 });
 
 test("V3-17T1 budgets are frozen inputs and no-cache is planned", () => {
@@ -330,6 +333,8 @@ test("V3-17T1 core V3 does not import collector or SerpApi", () => {
   const evaluationFiles = new Set([
     "src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts",
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts",
+    "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts",
+    "src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts",
   ]);
   for (const file of filesUnder("src/engine-v3").filter((entry) => entry.endsWith(".ts") && !evaluationFiles.has(entry))) {
     assert.doesNotMatch(source(file), /serpApiGoogleHotelsPilotGateV3|serpApiGoogleHotelsExternalAdapterV3|SERPAPI_GOOGLE_HOTELS/, file);

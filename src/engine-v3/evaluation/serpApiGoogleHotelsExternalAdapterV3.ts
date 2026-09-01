@@ -169,6 +169,7 @@ export interface SerpApiGoogleHotelsResponseV3 {
   };
   ads?: SerpApiGoogleHotelsPropertyV3[];
   properties?: SerpApiGoogleHotelsPropertyV3[];
+  property?: SerpApiGoogleHotelsPropertyV3;
   serpapi_pagination?: { next_page_token?: string };
 }
 
