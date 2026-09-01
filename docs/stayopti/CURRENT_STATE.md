@@ -150,4 +150,20 @@ Source checkpoint: `3639761f5eca8a2990981e706ccde616cff21b67`; the implementatio
 
 Next recommendation: `V3-17T_PROVIDER_AGNOSTIC_REAL_MARKET_SOURCE_QUALIFICATION_GATE`.
 
+## V3-17T SerpApi Google Hotels source qualification — conditional user access
+
+Source checkpoint: `bcce90c8663cce92c8242ad5451a5619158f6331`; the implementation checkpoint is the local commit containing this entry and is reported in the V3-17T final receipt.
+
+- SerpApi Google Hotels is conditionally qualified as `REAL_PUBLIC_MARKET_CHOICE_SET_SOURCE`; its records are `REAL_PUBLIC_MARKET_SNAPSHOT_CANDIDATE`, never booking/click/outcome evidence, real Golden cases or a StayOpti runtime provider.
+- Official pricing at the 2026-09-01 evidence cutoff listed a free tier with 250 searches/month and throughput 50/hour. Account and terms acceptance are required. Public pages did not state individual eligibility, a VAT-number requirement or card requirement, so none is inferred.
+- Internal evaluation and sanitized persistence remain conditional on a later user/legal retention decision. Redistribution is prohibited absent express written permission. No account was created and no terms were accepted.
+- An evaluation-only adapter maps caller-supplied synthetic/schema-compatible responses into `ExternalHotelChoiceSessionV3`. It performs no fetch or credential access, persists no source token/seller value/raw payload and cannot be imported by V3 core or provider runtime.
+- Nightly, total, before-tax, lowest-observed, seller-specific, exact-bookability, freshness and cache semantics stay separate. Missing values remain unknown; sponsored/rank/pagination are bias evidence, not quality.
+- A twelve-session future pilot and theoretical 48-call ceiling are proposed but not authorized. Dates, credits, rights, `no_cache`, enrichment selection and hard transport limits must be frozen in a separate gate.
+- A pre-existing date-bound regression fixture reached its `2026-09-01` cancellation boundary during this phase. Three test-only fixtures were moved coherently to 2099; isolated probes confirmed the cause. No Engine V2/V3 runtime or policy changed.
+- Validation on 2026-09-01: V3-17T targeted `25/25 PASS`; V3-17T0A `57/57`; V3-17Q/R/S/S.1 `77/77`; Engine V3 `1028/1028 PASS`; Engine V2 `196/196 PASS`; TypeScript, B1 capsule, B1 blind pipeline, B2 corpus, legacy quarantine, F0B/F0C/F0D, source-license/provenance and integrity scans PASS.
+- Public research used 26 bounded official documentation/search operations. SerpApi API calls, Google Hotels queries, provider calls, credential loads, real sessions, Golden candidates, judgments, booking, deploy, push and fetch were zero.
+
+Next recommendation: `V3-17T1_SERPAPI_GOOGLE_HOTELS_12_SESSION_PILOT_AUTHORIZATION_GATE`. It is an authorization gate only; V3-17 remains unmet and V3-18 remains blocked.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

@@ -44,7 +44,7 @@ function createOffer(
     refundable:
       true,
     freeCancellationUntil:
-      "2026-09-01",
+      "2099-09-01",
     cancellationPenalty:
       0,
     cancellationPenaltyCurrency:

@@ -70,7 +70,7 @@ function createOffer(
     refundable:
       true,
     freeCancellationUntil:
-      "2026-09-01",
+      "2099-09-01",
     cancellationPenalty:
       0,
     cancellationPenaltyCurrency:
@@ -318,9 +318,9 @@ const SEARCH_INPUT = {
   rooms:
     1,
   checkIn:
-    "2026-10-10",
+    "2099-10-10",
   checkOut:
-    "2026-10-14",
+    "2099-10-14",
   currency:
     "EUR",
 };
