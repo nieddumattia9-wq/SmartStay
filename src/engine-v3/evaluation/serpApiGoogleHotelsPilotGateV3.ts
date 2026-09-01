@@ -283,7 +283,7 @@ export const STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 =
   `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_MAX48` as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3 =
-  /* RUNNER_BUNDLE_HASH_START */ "d3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683" /* RUNNER_BUNDLE_HASH_END */ as const;
+  /* RUNNER_BUNDLE_HASH_START */ "f4649a0229b60e18908a09f5cf580bbf8e0648cadf987e0b442c6ce225e52e13" /* RUNNER_BUNDLE_HASH_END */ as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3 =
   "stayopti.v3.serpapi-google-hotels-retention@2" as const;
@@ -293,6 +293,7 @@ export const STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3 =
 
 export const STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3 = Object.freeze([
   `AUTHORIZE_V3_17T2_CANARY_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01_RETENTION_V2_MAX4`,
+  `AUTHORIZE_V3_17T2_CANARY_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_d3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683_RETENTION_V2_MAX4`,
 ]);
 
 export const STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3 =
@@ -328,7 +329,8 @@ export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
   manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   executionModel: "STAGED_CANARY_THEN_REMAINING" as const,
   canaryQueryCount: 1 as const,
-  canaryMaximumApiCalls: 4 as const,
+  priorConsumedCanaryApiCalls: 2 as const,
+  canaryMaximumApiCalls: 2 as const,
   remainingQueryCount: 11 as const,
   remainingMaximumApiCalls: 44 as const,
   maximumApiCallsAcrossStages: STAYOPTI_SERPAPI_MAX_API_CALLS_V3,
@@ -402,7 +404,10 @@ export interface StayOptiSerpApiPilotRequestV3 {
 
 export interface StayOptiSerpApiPilotTransportResponseV3 {
   httpStatus: number;
-  body: SerpApiGoogleHotelsResponseV3;
+  body: unknown;
+  bodyParsed?: boolean;
+  contentType?: string | null;
+  responseByteLength?: number | null;
 }
 
 export interface StayOptiSerpApiPilotTransportV3 {
@@ -650,8 +655,10 @@ export async function executeSerpApiGoogleHotelsPilotV3(input: {
           sanitizedUrl: redactSerpApiDiagnosticV3(url),
         });
         if (!Number.isInteger(response.httpStatus) || response.httpStatus < 200 || response.httpStatus >= 300) throw new Error("SERPAPI_PILOT_HTTP_OR_TRANSPORT_FAILURE");
+        if (response.body === null || typeof response.body !== "object" || Array.isArray(response.body)) throw new Error("SERPAPI_PILOT_RESPONSE_NOT_PROCESSABLE");
+        const responseBody = response.body as SerpApiGoogleHotelsResponseV3;
         input.rawStore.writeEphemeral(rawName, JSON.stringify(response.body));
-        const projection = adaptSerpApiGoogleHotelsExternalSessionV3(response.body);
+        const projection = adaptSerpApiGoogleHotelsExternalSessionV3(responseBody);
         projections.push(projection);
         requestDiagnostics.push({
           requestOrdinal: reserved.ordinal,
@@ -659,8 +666,8 @@ export async function executeSerpApiGoogleHotelsPilotV3(input: {
           requestedAt,
           completedAt: clock(),
           noCacheRequested: true,
-          processingStatus: typeof response.body.search_metadata?.status === "string"
-            ? response.body.search_metadata.status
+          processingStatus: typeof responseBody.search_metadata?.status === "string"
+            ? responseBody.search_metadata.status
             : "UNKNOWN",
           cacheMetadata: "UNKNOWN_NOT_INFERRED",
           sourceFreshness: "REQUESTED_FRESH_RESULT_UNVERIFIED",

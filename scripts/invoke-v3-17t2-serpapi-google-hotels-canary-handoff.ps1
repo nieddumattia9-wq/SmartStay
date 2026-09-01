@@ -12,18 +12,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$SourceSha = '126b178f8d380e3b5b849906b6ffc34787035f58'
+$SourceSha = 'e4edc0cdbf61764a992cc94a882837208e11aa26'
 $ExpectedBranch = 'main'
 $ExpectedManifestHash = 'e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88'
 $ExpectedRunnerBundleHash =
   # HANDOFF_BUNDLE_HASH_START
-  'd3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683'
+  'f4649a0229b60e18908a09f5cf580bbf8e0648cadf987e0b442c6ce225e52e13'
   # HANDOFF_BUNDLE_HASH_END
 $ExpectedCanarySession = 'SERP_PILOT_01_FLORENCE_COUPLE_BALANCED'
 $ExpectedCanaryIndex = 0
-$ExpectedCanaryCap = 4
-$ExpectedOldCanaryLiteral = 'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01_RETENTION_V2_MAX4'
-$ExpectedNewCanaryLiteral = "AUTHORIZE_V3_17T2_CANARY_${ExpectedManifestHash}_RUNNER_${ExpectedRunnerBundleHash}_RETENTION_V2_MAX4"
+$ExpectedCanaryCap = 2
+$ExpectedRevokedCanaryLiterals = @(
+  'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01_RETENTION_V2_MAX4',
+  'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_d3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683_RETENTION_V2_MAX4'
+)
+$ExpectedNewCanaryLiteral = "AUTHORIZE_V3_17T2_CANARY_${ExpectedManifestHash}_RUNNER_${ExpectedRunnerBundleHash}_RETENTION_V2_MAX2"
 $ExpectedRevokedMax48Literal = 'AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6_RETENTION_V2_MAX48'
 $RepositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
 $NodeRunner = Join-Path $PSScriptRoot 'run-v3-17t2-serpapi-google-hotels-pilot.mjs'
@@ -41,6 +44,8 @@ $ResultCode = 1
 $ApiKeyPromptReached = $false
 $EvidenceZipFound = $false
 $ActualRequestsTransmitted = 0
+$CanaryResult = 'NOT_STARTED'
+$EvidenceResult = 'NOT_CREATED'
 $SecureKey = $null
 $UnmanagedSecret = [IntPtr]::Zero
 $PlainKey = $null
@@ -69,12 +74,21 @@ $DevelopmentPaths = @(
   'scripts/invoke-v3-17t2-serpapi-google-hotels-pilot.ps1',
   'scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs',
   'src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts',
+  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts',
+  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts',
+  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.ts',
+  'src/engine-v3/evaluation/externalHotelChoiceContractV3.ts',
+  'src/engine-v3/evaluation/externalHotelChoiceReplayV3.ts',
+  'src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsCanaryHandoff.test.ts',
-  'docs/engine-v3/v3-17-serpapi-google-hotels-canary-handoff-repair.md',
+  'tests/engine-v3/v3SerpApiGoogleHotelsPilotEvidence.test.ts',
+  'tests/engine-v3/v3SerpApiGoogleHotelsPilotGate.test.ts',
+  'tests/engine-v3/v3SerpApiGoogleHotelsStagedPilot.test.ts',
+  'tests/engine-v3/v3SerpApiGoogleHotelsCanaryEvidenceRepair.test.ts',
+  'docs/engine-v3/v3-17-serpapi-google-hotels-canary-evidence-repair.md',
   'docs/stayopti/CURRENT_STATE.md',
   'docs/stayopti/DECISION_LOG.md',
-  'docs/stayopti/decisions/0013-v3-17t1c-canary-handoff-failure-visibility.md',
-  'docs/engine-v3/v3-17-serpapi-google-hotels-staged-canary-gate.md'
+  'docs/stayopti/decisions/0014-v3-17t2ab-canary-abort-repair.md'
 )
 
 function Get-StayOptiSha256 {
@@ -149,6 +163,9 @@ function Write-StayOptiDiagnosticLog {
     "FAILURE_CLASSIFICATION=$FailureClassification",
     "EXCEPTION_TYPE=$SanitizedExceptionType",
     "RESULT_CODE=$ResultCode",
+    "HANDOFF_RESULT=$(if ($ResultCode -eq 0) { 'PASS' } else { 'FAIL' })",
+    "CANARY_RESULT=$CanaryResult",
+    "EVIDENCE_RESULT=$EvidenceResult",
     "EVIDENCE_ZIP_FOUND=$(if ($EvidenceZipFound) { 'YES' } else { 'NO' })",
     "ACTUAL_REQUESTS_TRANSMITTED=$ActualRequestsTransmitted",
     "API_KEY_PROMPT_REACHED=$(if ($ApiKeyPromptReached) { 'YES' } else { 'NO' })",
@@ -241,7 +258,10 @@ try {
   if ($contract.manifestHash -ne $ExpectedManifestHash) { throw 'STAYOPTI_T1C_MANIFEST_HASH_MISMATCH' }
   Invoke-StayOptiInjectedFailure 'MANIFEST' 'STAYOPTI_T1C_MANIFEST_HASH_MISMATCH'
   if ($contract.bundleHash -ne $ExpectedRunnerBundleHash -or $contract.literal -cne $ExpectedNewCanaryLiteral) { throw 'STAYOPTI_T1C_LITERAL_MISMATCH' }
-  if ($contract.revokedCanary -notcontains $ExpectedOldCanaryLiteral -or $contract.revokedMax48 -cne $ExpectedRevokedMax48Literal) { throw 'STAYOPTI_T1C_REVOCATION_MISMATCH' }
+  foreach ($revokedLiteral in $ExpectedRevokedCanaryLiterals) {
+    if ($contract.revokedCanary -notcontains $revokedLiteral) { throw 'STAYOPTI_T1C_REVOCATION_MISMATCH' }
+  }
+  if ($contract.revokedMax48 -cne $ExpectedRevokedMax48Literal) { throw 'STAYOPTI_T1C_REVOCATION_MISMATCH' }
   if ($contract.sessionId -ne $ExpectedCanarySession -or $contract.indexes.Count -ne 1 -or $contract.indexes[0] -ne $ExpectedCanaryIndex -or $contract.cap -ne $ExpectedCanaryCap) {
     throw 'STAYOPTI_T1C_CANARY_CONTRACT_MISMATCH'
   }
@@ -249,7 +269,7 @@ try {
   Complete-StayOptiStep
 
   Set-StayOptiStep 'NODE_RUNNER_PREFLIGHT'
-  $runnerOutput = @(& $node $NodeRunner '--stage=CANARY' "--authorization=$ExpectedNewCanaryLiteral" "--expected-head=$ObservedHead" "--compiled-root=$CompiledRoot" '--authorize-retention-policy' '--single-stage-max-4' '--preflight-only' 2>&1)
+  $runnerOutput = @(& $node $NodeRunner '--stage=CANARY' "--authorization=$ExpectedNewCanaryLiteral" "--expected-head=$ObservedHead" "--compiled-root=$CompiledRoot" '--authorize-retention-policy' '--single-stage-max-2' '--preflight-only' 2>&1)
   if ($LASTEXITCODE -ne 0 -or ($runnerOutput -join "`n") -notmatch '"status":"PREFLIGHT_VALID"') { throw 'STAYOPTI_T1C_NODE_RUNNER_PREFLIGHT_FAILED' }
   Invoke-StayOptiInjectedFailure 'RUNNER_PREFLIGHT' 'STAYOPTI_T1C_NODE_RUNNER_PREFLIGHT_FAILED'
   Complete-StayOptiStep
@@ -296,6 +316,19 @@ try {
         try { $summary = $reader.ReadToEnd() | ConvertFrom-Json }
         finally { $reader.Dispose() }
         $ActualRequestsTransmitted = [int]$summary.actualRequestsTransmitted
+        if ($summary.status -eq 'COMPLETED') {
+          $CanaryResult = 'PASS'
+          $FailureClassification = 'NONE'
+        }
+        elseif ($summary.status -eq 'ABORTED') {
+          $CanaryResult = 'ABORTED'
+          $FailureClassification = [string]$summary.failureClassification
+        }
+        else {
+          $CanaryResult = 'FAIL'
+          $FailureClassification = 'STAYOPTI_T2B_CANARY_RESULT_INVALID'
+        }
+        $EvidenceResult = 'PASS'
       }
       finally { $archive.Dispose() }
     }
@@ -322,6 +355,8 @@ finally {
   try { Write-StayOptiDiagnosticLog }
   catch { $DiagnosticLogPath = 'DIAGNOSTIC_LOG_WRITE_FAILED' }
   "HANDOFF_RESULT=$(if ($ResultCode -eq 0) { 'PASS' } else { 'FAIL' })"
+  "CANARY_RESULT=$CanaryResult"
+  "EVIDENCE_RESULT=$EvidenceResult"
   "RESULT_CODE=$ResultCode"
   "FAILURE_CLASSIFICATION=$FailureClassification"
   "LAST_COMPLETED_STEP=$LastCompletedStep"

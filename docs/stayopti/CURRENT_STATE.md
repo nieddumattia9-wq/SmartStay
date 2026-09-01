@@ -294,4 +294,40 @@ reported in the V3-17T1C final receipt.
 Next recommendation:
 `V3-17T2_SERPAPI_GOOGLE_HOTELS_ONE_SESSION_CANARY_REAUTHORIZATION_WITH_HANDOFF_V2`.
 
+## V3-17T2A/T2B SerpApi canary abort audit — repaired MAX2 gate ready, unauthorized
+
+Source checkpoint: `e4edc0cdbf61764a992cc94a882837208e11aa26`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the V3-17T2A/T2B final receipt.
+
+- The first authorized data canary consumed exactly two calls: one validated
+  main search and one failed property detail. Handoff and Evidence were PASS,
+  but the canary is preserved as `ABORTED`, never PASS.
+- External Evidence SHA-256
+  `c01d8ef81d93ebde18d6eb7249827af2b114d68e04904a664f452bda8bd6333e`
+  passed archive integrity and `17/17` internal checksums. It is not copied to
+  the repository and is ineligible for Stage REMAINING.
+- The sanitized snapshot contains 29 alternatives, including nine sponsored
+  entries and 20 with displayed price evidence. It remains
+  `IMPRESSION_ONLY`, partial diagnostic evidence and never auto-Golden.
+- Because the detail raw response was correctly deleted, the precise provider
+  cause is not reconstructable. Future Evidence adds only a fixed sanitized
+  response-shape envelope.
+- Credential postflight now follows process cleanup; handoff, canary and
+  Evidence outcomes are printed separately.
+- Displayed Google price evidence is preserved in provider-neutral replay as
+  `OBSERVED_AGGREGATED_DISPLAY_PRICE`, never exact, seller-specific or
+  checkout-verifiable.
+- The new bundle is
+  `f4649a0229b60e18908a09f5cf580bbf8e0648cadf987e0b442c6ce225e52e13`.
+  A future first-session canary is capped at two calls (one search plus at most
+  one detail), but its exact MAX2 literal remains unauthorized.
+- This repair performs zero credential loads, SerpApi calls and HTTP requests.
+  Stage REMAINING is unauthorized, V3-17 remains unmet and V3-18 remains
+  blocked. V2, core V3, providers, ranking, weights and public runtime remain
+  unchanged.
+
+Next recommendation:
+`V3-17T2C_SERPAPI_GOOGLE_HOTELS_REPAIRED_MAX2_CANARY_EXPLICIT_AUTHORIZATION_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

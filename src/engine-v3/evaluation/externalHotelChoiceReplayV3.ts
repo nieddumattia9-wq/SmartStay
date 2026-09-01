@@ -140,6 +140,9 @@ function canonicalAlternative(alternative: StayOptiExternalHotelAlternativeV3) {
     reviewCount: canonicalKnownValue(alternative.reviewCount),
     exactPriceMinorUnits: canonicalKnownValue(alternative.exactPriceMinorUnits),
     priceBucket: canonicalKnownValue(alternative.priceBucket),
+    ...(alternative.observedAggregatedDisplayPrice === undefined ? {} : {
+      observedAggregatedDisplayPrice: canonicalKnownValue(alternative.observedAggregatedDisplayPrice),
+    }),
     freeCancellation: canonicalKnownValue(alternative.freeCancellation),
     amenities: canonicalKnownValue(alternative.amenities),
     availabilityStatus: canonicalKnownValue(alternative.availabilityStatus),
@@ -148,6 +151,21 @@ function canonicalAlternative(alternative: StayOptiExternalHotelAlternativeV3) {
     missingness: sortedUnique(alternative.missingness),
     fieldProvenance: Object.fromEntries(Object.entries(alternative.fieldProvenance).sort(([left], [right]) => compareStrings(left, right))),
   };
+}
+
+function validObservedDisplayPrice(value: unknown) {
+  if (!validKnownValue(value)) return false;
+  const wrapper = value as { state: string; value: unknown };
+  if (wrapper.state === "UNKNOWN") return true;
+  if (!plainRecord(wrapper.value)) return false;
+  const price = wrapper.value;
+  const amountValid = (entry: unknown) => entry === null || (typeof entry === "number" && Number.isFinite(entry) && entry >= 0);
+  return price.semantics === "OBSERVED_AGGREGATED_DISPLAY_PRICE" &&
+    (price.currency === null || (typeof price.currency === "string" && /^[A-Z]{3}$/.test(price.currency))) &&
+    amountValid(price.nightlyAmount) && amountValid(price.totalStayAmount) && amountValid(price.beforeTaxesAndFeesAmount) &&
+    [price.nightlyAmount, price.totalStayAmount, price.beforeTaxesAndFeesAmount].some((entry) => entry !== null) &&
+    price.exactBookable === false && price.sellerSpecific === false &&
+    price.reliability === "DISPLAYED_AGGREGATED_NOT_CHECKOUT_VERIFIED";
 }
 
 function canonicalSession(session: ExternalHotelChoiceSessionV3) {
@@ -249,6 +267,9 @@ export function validateExternalHotelChoiceSessionV3(input: unknown): StayOptiEx
     for (const key of ["sponsored", "starRating", "reviewRating", "reviewCount", "exactPriceMinorUnits", "priceBucket", "freeCancellation", "amenities", "availabilityStatus"] as const) {
       if (!validKnownValue(alternative[key])) issue(issues, "EXTERNAL_FIELD_INVALID", `${path}.${key}`);
     }
+    if (alternative.observedAggregatedDisplayPrice !== undefined && !validObservedDisplayPrice(alternative.observedAggregatedDisplayPrice)) {
+      issue(issues, "EXTERNAL_FIELD_INVALID", `${path}.observedAggregatedDisplayPrice`);
+    }
     if (alternative.exactPriceMinorUnits.state !== "UNKNOWN" && alternative.priceBucket.state !== "UNKNOWN") issue(issues, "EXTERNAL_PRICE_REPRESENTATION_CONFLICT", `${path}.price`);
     if (alternative.exactPriceMinorUnits.state !== "UNKNOWN" && (!Number.isInteger(alternative.exactPriceMinorUnits.value) || Number(alternative.exactPriceMinorUnits.value) < 0)) issue(issues, "EXTERNAL_FIELD_INVALID", `${path}.exactPriceMinorUnits.value`);
     if (typeof alternative.clicked !== "boolean" || typeof alternative.booked !== "boolean") issue(issues, "EXTERNAL_FIELD_INVALID", `${path}.labels`);
@@ -329,6 +350,9 @@ function replayMaterial(session: ExternalHotelChoiceSessionV3): Omit<StayOptiExt
           reviewCount: entry.reviewCount,
           exactPriceMinorUnits: entry.exactPriceMinorUnits,
           priceBucket: entry.priceBucket,
+          ...(entry.observedAggregatedDisplayPrice === undefined ? {} : {
+            observedAggregatedDisplayPrice: entry.observedAggregatedDisplayPrice,
+          }),
           freeCancellation: entry.freeCancellation,
           amenities: entry.amenities,
           availabilityStatus: entry.availabilityStatus,

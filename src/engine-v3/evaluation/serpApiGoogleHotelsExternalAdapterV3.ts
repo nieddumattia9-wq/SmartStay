@@ -3,6 +3,7 @@ import { stableSerializeV3 } from "../contract/stableHashV3";
 import {
   STAYOPTI_EXTERNAL_HOTEL_CHOICE_SCHEMA_VERSION_V3,
   type ExternalHotelChoiceSessionV3,
+  type StayOptiObservedAggregatedDisplayPriceV3,
   type StayOptiExternalBiasFlagV3,
   type StayOptiExternalHotelAlternativeV3,
   type StayOptiExternalKnownValueV3,
@@ -315,6 +316,7 @@ function toAlternative(
   property: SerpApiGoogleHotelsPropertyV3,
   displayedRank: number,
   sponsored: boolean,
+  currency: string | undefined,
 ): {
   alternative: StayOptiExternalHotelAlternativeV3;
   priceSemantics: SerpApiGoogleHotelsPriceSemanticsV3;
@@ -335,6 +337,18 @@ function toAlternative(
   const freeCancellation = typeof property.free_cancellation === "boolean"
     ? property.free_cancellation
     : undefined;
+  const observedDisplayPrice = prices.nightly !== undefined || prices.total !== undefined || prices.beforeTax !== undefined
+    ? known<StayOptiObservedAggregatedDisplayPriceV3>({
+      semantics: "OBSERVED_AGGREGATED_DISPLAY_PRICE",
+      currency: typeof currency === "string" && /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : null,
+      nightlyAmount: prices.nightly ?? null,
+      totalStayAmount: prices.total ?? null,
+      beforeTaxesAndFeesAmount: prices.beforeTax ?? null,
+      exactBookable: false,
+      sellerSpecific: false,
+      reliability: "DISPLAYED_AGGREGATED_NOT_CHECKOUT_VERIFIED",
+    }, "SERPAPI_GOOGLE_HOTELS.rate_per_night,total_rate.DISPLAY_ONLY")
+    : unknown<StayOptiObservedAggregatedDisplayPriceV3>("SERPAPI_GOOGLE_HOTELS.display_price.MISSING");
 
   return {
     alternative: {
@@ -352,6 +366,7 @@ function toAlternative(
         : known(reviewCount, "SERPAPI_GOOGLE_HOTELS.reviews"),
       exactPriceMinorUnits: unknown("AGGREGATED_PRICE_NOT_EXACT_BOOKABLE_TOTAL"),
       priceBucket: unknown("NO_PRICE_BUCKET_DERIVATION_AUTHORIZED"),
+      observedAggregatedDisplayPrice: observedDisplayPrice,
       freeCancellation: freeCancellation === undefined
         ? unknown("SERPAPI_GOOGLE_HOTELS.free_cancellation.MISSING")
         : known(freeCancellation, "SERPAPI_GOOGLE_HOTELS.free_cancellation"),
@@ -422,9 +437,9 @@ export function adaptSerpApiGoogleHotelsExternalSessionV3(
   }
 
   const projected = [
-    ...(input.ads ?? []).map((property, index) => toAlternative(property, index + 1, true)),
+    ...(input.ads ?? []).map((property, index) => toAlternative(property, index + 1, true, parameters.currency)),
     ...(input.properties ?? []).map((property, index) =>
-      toAlternative(property, (input.ads?.length ?? 0) + index + 1, false)),
+      toAlternative(property, (input.ads?.length ?? 0) + index + 1, false, parameters.currency)),
   ];
   if (projected.length === 0) throw new Error("SERPAPI_GOOGLE_HOTELS_CHOICE_SET_EMPTY");
 
@@ -445,7 +460,9 @@ export function adaptSerpApiGoogleHotelsExternalSessionV3(
     "EXACT_PRICE_NOT_RECONSTRUCTABLE",
   ]);
   if ((input.ads?.length ?? 0) > 0) biasFlags.add("ADVERTISING_BIAS");
-  if (hasPagination) biasFlags.add("UNOBSERVED_ALTERNATIVES");
+  // Absence of a pagination token does not prove that the visible Google set is exhaustive.
+  // The adapter therefore never upgrades the source to a complete market choice set.
+  biasFlags.add("UNOBSERVED_ALTERNATIVES");
   if (projected.some((entry) => entry.alternative.missingness.length > 0)) biasFlags.add("MISSING_DATA_BIAS");
 
   const material: Omit<ExternalHotelChoiceSessionV3, "sessionFingerprint"> = {

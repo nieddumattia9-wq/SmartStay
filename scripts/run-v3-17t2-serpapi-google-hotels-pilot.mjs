@@ -178,18 +178,19 @@ function writeExecutionEvidence(evidenceRoot, gate, execution, observedHead, sta
     stage,
     manifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     runnerBundleHash: gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
-    maximumRequests: stage === "CANARY" ? 4 : 44,
+    maximumRequests: stage === "CANARY" ? 2 : 44,
     remainingStageNotStarted: stage === "CANARY",
   });
   writeJsonExclusive(join(evidenceRoot, "canary-session.json"), {
     sessionId: canarySession.sessionId,
     sessionIndex: 0,
-    excludedFromRemaining: stage === "REMAINING_11",
+    excludedFromRemaining: true,
   });
   writeJsonExclusive(join(evidenceRoot, "sanitized-request-ledger.json"), execution.sanitizedRequestLedger);
   writeJsonExclusive(join(evidenceRoot, "pilot-summary.json"), execution.receipt);
   writeJsonExclusive(join(evidenceRoot, "session-summary.json"), execution.sessionSummaries);
   writeJsonExclusive(join(evidenceRoot, "raw-deletion-receipts.json"), execution.rawDeletionReceipts);
+  writeJsonExclusive(join(evidenceRoot, "sanitized-response-diagnostics.json"), execution.responseDiagnostics);
   writeJsonExclusive(join(evidenceRoot, "credential-redaction-receipt.json"), {
     credentialSource: "PROCESS_ENVIRONMENT_ONLY",
     credentialPersisted: false,
@@ -253,7 +254,7 @@ export async function runV317T2(argv = process.argv.slice(2)) {
   const evidenceRootValue = valueFor(argv, "--evidence-root");
   if (!stagePolicy.STAYOPTI_SERPAPI_PILOT_STAGES_V3.includes(stage)) fail("SERPAPI_PILOT_STAGE_REQUIRED");
   if (!authorizationLiteral || !expectedHead) fail("SERPAPI_PILOT_REQUIRED_ARGUMENT_MISSING");
-  const stageAcknowledgement = stage === "CANARY" ? "--single-stage-max-4" : "--single-stage-max-44";
+  const stageAcknowledgement = stage === "CANARY" ? "--single-stage-max-2" : "--single-stage-max-44";
   if (!argv.includes("--authorize-retention-policy") || !argv.includes(stageAcknowledgement)) fail("SERPAPI_PILOT_EXACT_ACKNOWLEDGEMENT_MISSING");
   const observedHead = validateGitPreflight(repositoryRoot, expectedHead);
   if (computeV317T2RunnerBundleHash(repositoryRoot) !== gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3) fail("SERPAPI_PILOT_RUNNER_BUNDLE_HASH_MISMATCH");
@@ -315,9 +316,17 @@ export async function runV317T2(argv = process.argv.slice(2)) {
           if (request.requestKind === "PROPERTY_DETAIL" && !parsed.searchParams.has("property_token")) fail("SERPAPI_PILOT_PROPERTY_DETAIL_TOKEN_MISSING");
           const response = await fetch(request.url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(30_000) });
           if (response.status >= 300 && response.status < 400) fail("SERPAPI_PILOT_REDIRECT_PROHIBITED");
-          let body;
-          try { body = JSON.parse(await response.text()); } catch { fail("SERPAPI_PILOT_RESPONSE_NOT_PROCESSABLE"); }
-          return { httpStatus: response.status, body };
+          const responseText = await response.text();
+          let body = null;
+          let bodyParsed = false;
+          try { body = JSON.parse(responseText); bodyParsed = true; } catch { body = null; }
+          return {
+            httpStatus: response.status,
+            body,
+            bodyParsed,
+            contentType: response.headers.get("content-type"),
+            responseByteLength: Buffer.byteLength(responseText, "utf8"),
+          };
         },
       },
       rawStore,

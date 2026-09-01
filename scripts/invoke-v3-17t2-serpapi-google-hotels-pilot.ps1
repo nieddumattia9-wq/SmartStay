@@ -54,6 +54,16 @@ $node = (Get-Command node -ErrorAction Stop).Source
 $runner = Join-Path $PSScriptRoot 'run-v3-17t2-serpapi-google-hotels-pilot.mjs'
 $canaryZipHash = $null
 
+function Clear-StayOptiPilotCredential {
+  [Environment]::SetEnvironmentVariable('SERPAPI_API_KEY', $null, 'Process')
+  $script:plainKey = $null
+  if ($script:unmanaged -ne [IntPtr]::Zero) {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($script:unmanaged)
+    $script:unmanaged = [IntPtr]::Zero
+  }
+  if ($null -ne $script:secureKey) { $script:secureKey.Dispose(); $script:secureKey = $null }
+}
+
 try {
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   if ($Stage -eq 'REMAINING_11') {
@@ -87,7 +97,7 @@ try {
     throw 'SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED'
   }
 
-$stageCapArgument = if ($Stage -eq 'CANARY') { '--single-stage-max-4' } else { '--single-stage-max-44' }
+$stageCapArgument = if ($Stage -eq 'CANARY') { '--single-stage-max-2' } else { '--single-stage-max-44' }
 $preflightArguments = @(
   $runner,
   "--stage=$Stage",
@@ -140,6 +150,7 @@ if ($Stage -eq 'REMAINING_11') {
   }
   & $node $childArguments
   $childExit = $LASTEXITCODE
+  Clear-StayOptiPilotCredential
   if (-not (Test-Path -LiteralPath $evidenceRoot -PathType Container)) {
     throw 'SERPAPI_PILOT_EVIDENCE_STAGING_NOT_CREATED'
   }
@@ -186,12 +197,6 @@ if ($Stage -eq 'REMAINING_11') {
   if ($childExit -ne 0) { throw "SERPAPI_PILOT_CHILD_FAILED_$childExit" }
 }
 finally {
-  [Environment]::SetEnvironmentVariable('SERPAPI_API_KEY', $null, 'Process')
-  $plainKey = $null
-  if ($unmanaged -ne [IntPtr]::Zero) {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($unmanaged)
-    $unmanaged = [IntPtr]::Zero
-  }
-  if ($null -ne $secureKey) { $secureKey.Dispose(); $secureKey = $null }
+  Clear-StayOptiPilotCredential
   Remove-StayOptiPilotWorkRoot -LiteralPath $workRoot
 }

@@ -7,7 +7,8 @@ export const STAYOPTI_SERPAPI_PILOT_STAGES_V3 = ["CANARY", "REMAINING_11"] as co
 export type StayOptiSerpApiPilotStageV3 = typeof STAYOPTI_SERPAPI_PILOT_STAGES_V3[number];
 
 export const STAYOPTI_SERPAPI_CANARY_SESSION_INDEX_V3 = 0 as const;
-export const STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3 = 4 as const;
+export const STAYOPTI_SERPAPI_PRIOR_CONSUMED_CANARY_CALLS_V3 = 2 as const;
+export const STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3 = 2 as const;
 export const STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3 = 44 as const;
 export const STAYOPTI_SERPAPI_STAGED_MAX_TOTAL_CALLS_V3 = 48 as const;
 
@@ -56,7 +57,7 @@ export function createSerpApiCanaryAuthorizationLiteralV3(
   manifestHash: string,
   runnerBundleHash: string,
 ) {
-  return `AUTHORIZE_V3_17T2_CANARY_${manifestHash}_RUNNER_${runnerBundleHash}_RETENTION_V2_MAX4`;
+  return `AUTHORIZE_V3_17T2_CANARY_${manifestHash}_RUNNER_${runnerBundleHash}_RETENTION_V2_MAX2`;
 }
 
 export function createSerpApiRemainingAuthorizationLiteralV3(input: {

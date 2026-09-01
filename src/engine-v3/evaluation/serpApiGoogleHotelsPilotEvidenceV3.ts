@@ -453,13 +453,16 @@ const stagedEvidenceNames = new Set([
   "schema-validation.json",
   "zip-roundtrip-result.json",
 ]);
+const optionalEvidenceNames = new Set([
+  "sanitized-response-diagnostics.json",
+]);
 const snapshotName = /^snapshots\/session-(0[1-9]|1[0-2])\.json$/;
 
 export function isAllowedSerpApiEvidenceEntryNameV3(name: string) {
   if (name.startsWith("/") || name.startsWith("\\") || /^[A-Za-z]:/.test(name)) return false;
   if (name.includes("\\") || name.split("/").some((part) => part === "" || part === "." || part === "..")) return false;
   if (name.split("/").some((part) => part.startsWith("."))) return false;
-  return exactEvidenceNames.has(name) || stagedEvidenceNames.has(name) || snapshotName.test(name);
+  return exactEvidenceNames.has(name) || stagedEvidenceNames.has(name) || optionalEvidenceNames.has(name) || snapshotName.test(name);
 }
 
 function checksumMap(content: string) {
@@ -573,6 +576,7 @@ export function validateSerpApiCanaryEvidenceArchiveEntriesV3(input: {
   const authorization = parse("authorization-receipt.json");
   const summary = parse("pilot-summary.json");
   const postflight = parse("postflight.json");
+  const credential = parse("credential-redaction-receipt.json");
   const schema = parse("schema-validation.json");
   const roundtrip = parse("zip-roundtrip-result.json");
   const ledger = (() => {
@@ -583,20 +587,33 @@ export function validateSerpApiCanaryEvidenceArchiveEntriesV3(input: {
     try { return JSON.parse(map.get("raw-deletion-receipts.json") ?? "null") as unknown; }
     catch { return null; }
   })();
+  const sessionSummaries = (() => {
+    try { return JSON.parse(map.get("session-summary.json") ?? "null") as unknown; }
+    catch { return null; }
+  })();
+  const diagnostics = (() => {
+    try { return JSON.parse(map.get("sanitized-response-diagnostics.json") ?? "null") as unknown; }
+    catch { return null; }
+  })();
   if (stage?.stage !== "CANARY" || stage.pilotId !== input.expectedPilotId ||
       stage.manifestHash !== input.expectedManifestHash || stage.runnerBundleHash !== input.expectedRunnerBundleHash ||
-      stage.maximumRequests !== 4 || stage.remainingStageNotStarted !== true) issues.push("CANARY_STAGE_DECLARATION_INVALID");
-  if (canary?.sessionId !== input.expectedCanarySessionId || canary.sessionIndex !== 0) issues.push("CANARY_SESSION_DECLARATION_INVALID");
+      stage.maximumRequests !== 2 || stage.remainingStageNotStarted !== true) issues.push("CANARY_STAGE_DECLARATION_INVALID");
+  if (canary?.sessionId !== input.expectedCanarySessionId || canary.sessionIndex !== 0 || canary.excludedFromRemaining !== true) issues.push("CANARY_SESSION_DECLARATION_INVALID");
   if (authorization?.stage !== "CANARY" || authorization.authorizationLiteralMatched !== true ||
       authorization.manifestHash !== input.expectedManifestHash || authorization.runnerBundleHash !== input.expectedRunnerBundleHash) {
     issues.push("CANARY_AUTHORIZATION_RECEIPT_INVALID");
   }
   const actualRequests = summary?.actualRequestsTransmitted;
   if (summary?.status !== "COMPLETED" || summary.stage !== "CANARY" || summary.remainingStageNotStarted !== true ||
-      typeof actualRequests !== "number" || !Number.isInteger(actualRequests) || actualRequests < 1 || actualRequests > 4) {
+      summary.failureClassification !== null || typeof actualRequests !== "number" || !Number.isInteger(actualRequests) || actualRequests < 1 || actualRequests > 2) {
     issues.push("CANARY_SUMMARY_INVALID");
   }
-  if (postflight?.remainingStageNotStarted !== true || postflight.rawPayloadCommitted !== false) issues.push("CANARY_POSTFLIGHT_INVALID");
+  if (!Array.isArray(sessionSummaries) || sessionSummaries.length !== 1 || !plainRecord(sessionSummaries[0]) ||
+      sessionSummaries[0].status !== "COMPLETED" || sessionSummaries[0].failureClassification !== null) {
+    issues.push("CANARY_SESSION_SUMMARY_INVALID");
+  }
+  if (postflight?.remainingStageNotStarted !== true || postflight.rawPayloadCommitted !== false || postflight.credentialClearedFromProcess !== true) issues.push("CANARY_POSTFLIGHT_INVALID");
+  if (credential?.credentialPersisted !== false || credential.credentialPrinted !== false) issues.push("CANARY_CREDENTIAL_RECEIPT_INVALID");
   if (schema?.snapshotT3Compatible !== true || schema.snapshotCount !== 1) issues.push("CANARY_SCHEMA_VALIDATION_INVALID");
   if (roundtrip?.archiveRoundtripRequired !== true || roundtrip.validatorRequired !== true) issues.push("CANARY_ZIP_ROUNDTRIP_CONTRACT_INVALID");
   if (!Array.isArray(ledger) || ledger.length !== actualRequests || ledger.some((entry) =>
@@ -607,6 +624,10 @@ export function validateSerpApiCanaryEvidenceArchiveEntriesV3(input: {
       rawDeletionReceipts.some((entry) => !plainRecord(entry) || entry.rawDeleted !== true)) {
     issues.push("CANARY_RAW_DELETION_RECEIPTS_INVALID");
   }
+  if (!Array.isArray(diagnostics) || diagnostics.length !== actualRequests || diagnostics.some((entry) =>
+    !plainRecord(entry) || (entry.requestKind !== "MAIN_SEARCH" && entry.requestKind !== "PROPERTY_DETAIL") ||
+    typeof entry.errorPresent !== "boolean" || !Array.isArray(entry.topLevelFieldNames) || !Array.isArray(entry.schemaMismatchPaths)
+  )) issues.push("CANARY_RESPONSE_DIAGNOSTICS_INVALID");
   if (map.get("secret-scan.txt") !== "SECRET_SCAN=PASS\n") issues.push("CANARY_SECRET_SCAN_INVALID");
   if (map.get("raw-id-scan.txt") !== "RAW_ID_SCAN=PASS\n") issues.push("CANARY_RAW_ID_SCAN_INVALID");
   if (!/^[0-9a-f]{64}$/.test(input.canaryEvidenceZipSha256)) issues.push("CANARY_ZIP_HASH_INVALID");

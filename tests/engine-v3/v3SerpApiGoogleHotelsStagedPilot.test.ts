@@ -27,6 +27,7 @@ import {
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3";
 import {
   STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3,
+  STAYOPTI_SERPAPI_PRIOR_CONSUMED_CANARY_CALLS_V3,
   STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3,
   STAYOPTI_SERPAPI_STAGED_MAX_TOTAL_CALLS_V3,
   StayOptiSerpApiStagedRequestLedgerV3,
@@ -99,7 +100,7 @@ function validatedCanary(): StayOptiSerpApiValidatedCanaryEvidenceV3 {
     canaryEvidenceZipSha256: ZIP_HASH,
     canarySessionId: CANARY_SESSION.sessionId,
     canarySessionIndex: 0,
-    actualRequestsTransmitted: 4,
+    actualRequestsTransmitted: 2,
     remainingStageNotStarted: true,
     rawDeletionVerified: true,
     t3Compatible: true,
@@ -177,20 +178,21 @@ function entriesForCanary(execution: NonNullable<Awaited<ReturnType<typeof run>>
   const entries: StayOptiSerpApiEvidenceArchiveEntryV3[] = [
     { name: "frozen-manifest.json", content: JSON.stringify(STAYOPTI_SERPAPI_PILOT_MANIFEST_V3) },
     { name: "authorization-receipt.json", content: JSON.stringify({ stage: "CANARY", authorizationLiteralMatched: true, manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3 }) },
-    { name: "stage-declaration.json", content: JSON.stringify({ pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3, stage: "CANARY", manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, maximumRequests: 4, remainingStageNotStarted: true }) },
-    { name: "canary-session.json", content: JSON.stringify({ sessionId: CANARY_SESSION.sessionId, sessionIndex: 0 }) },
+    { name: "stage-declaration.json", content: JSON.stringify({ pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3, stage: "CANARY", manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, maximumRequests: 2, remainingStageNotStarted: true }) },
+    { name: "canary-session.json", content: JSON.stringify({ sessionId: CANARY_SESSION.sessionId, sessionIndex: 0, excludedFromRemaining: true }) },
     { name: "sanitized-request-ledger.json", content: JSON.stringify(execution.sanitizedRequestLedger) },
     { name: "pilot-summary.json", content: JSON.stringify(execution.receipt) },
     { name: "session-summary.json", content: JSON.stringify(execution.sessionSummaries) },
     { name: "raw-deletion-receipts.json", content: JSON.stringify(execution.rawDeletionReceipts) },
-    { name: "credential-redaction-receipt.json", content: JSON.stringify({ credentialPersisted: false }) },
+    { name: "credential-redaction-receipt.json", content: JSON.stringify({ credentialPersisted: false, credentialPrinted: false }) },
+    { name: "sanitized-response-diagnostics.json", content: JSON.stringify(execution.responseDiagnostics) },
     { name: "schema-validation.json", content: JSON.stringify({ snapshotT3Compatible: true, snapshotCount: 1 }) },
     { name: "zip-roundtrip-result.json", content: JSON.stringify({ archiveRoundtripRequired: true, validatorRequired: true }) },
     { name: "secret-scan.txt", content: "SECRET_SCAN=PASS\n" },
     { name: "raw-id-scan.txt", content: "RAW_ID_SCAN=PASS\n" },
     { name: "test-results.txt", content: "PASS\n" },
     { name: "preflight.json", content: JSON.stringify({ passed: true }) },
-    { name: "postflight.json", content: JSON.stringify({ remainingStageNotStarted: true, rawPayloadCommitted: false }) },
+    { name: "postflight.json", content: JSON.stringify({ remainingStageNotStarted: true, rawPayloadCommitted: false, credentialClearedFromProcess: true }) },
     { name: "snapshots/session-01.json", content: JSON.stringify(snapshot) },
   ];
   entries.push({ name: "checksums.sha256", content: entries.map((entry) => `${sha256SerpApiEvidenceV3(entry.content)}  ${entry.name}`).join("\n") + "\n" });
@@ -202,12 +204,12 @@ test("T1B 02 missing stage fails before transport", async () => { const result =
 test("T1B 03 revoked MAX48 literal is rejected with zero calls", async () => { const result = await run({ literal: STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3 }); assert.equal(result.calls, 0); assert.match(String(result.error), /LITERAL_MISMATCH/); });
 test("T1B 04 wrong canary literal is rejected", async () => { const result = await run({ literal: "WRONG" }); assert.equal(result.calls, 0); });
 test("T1B 05 canary can access only first session", () => { assert.deepEqual(stageSessionIndexesV3("CANARY", 12), [0]); });
-test("T1B 06 canary is capped at four", async () => { const result = await run(); assert.equal(result.calls, 4); assert.equal(result.result?.receipt.actualRequestsTransmitted, 4); });
+test("T2B 06 repaired canary is capped at two", async () => { const result = await run(); assert.equal(result.calls, 2); assert.equal(result.result?.receipt.actualRequestsTransmitted, 2); });
 test("T1B 07 search failure sends one and zero details", async () => { const result = await run({ failSearch: true }); assert.equal(result.calls, 1); assert.equal(result.detailCalls, 0); });
 test("T1B 08 search schema/normalization fault sends zero details", async () => { const result = await run({ fault: "DURING_NORMALIZATION" }); assert.equal(result.calls, 1); assert.equal(result.detailCalls, 0); });
 test("T1B 09 first detail failure prevents details two and three", async () => { const result = await run({ failDetailAt: 1 }); assert.equal(result.calls, 2); });
-test("T1B 10 second detail failure prevents detail three", async () => { const result = await run({ failDetailAt: 2 }); assert.equal(result.calls, 3); });
-test("T1B 11 three valid details cannot create request five", async () => { const result = await run(); assert.equal(result.calls, STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3); });
+test("T2B 10 a second detail is unreachable", async () => { const result = await run({ failDetailAt: 2 }); assert.equal(result.calls, 2); assert.equal(result.detailCalls, 1); });
+test("T2B 11 one valid detail cannot create request three", async () => { const result = await run(); assert.equal(result.calls, STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3); });
 test("T1B 12 canary completion is terminal", async () => { const result = await run(); assert.equal(result.result?.receipt.status, "COMPLETED"); assert.equal(result.result?.receipt.remainingStageNotStarted, true); assert.equal(new Set(result.sessions).size, 1); });
 test("T1B 13 remaining never starts automatically", async () => { const result = await run(); assert.equal(result.sessions.includes(STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[1]!.sessionId), false); });
 test("T1B 14 remaining without canary Evidence is blocked", async () => { const result = await run({ stage: "REMAINING_11", noCanary: true }); assert.equal(result.calls, 0); assert.match(String(result.error), /CANARY_EVIDENCE_REQUIRED/); });
@@ -218,11 +220,11 @@ test("T1B 18 Stage A literal cannot authorize Stage B", async () => { const resu
 test("T1B 19 canary session is excluded from remaining", async () => { const result = await run({ stage: "REMAINING_11" }); assert.equal(result.sessions.includes(CANARY_SESSION.sessionId), false); });
 test("T1B 20 remaining contains exactly eleven sessions", async () => { const result = await run({ stage: "REMAINING_11" }); assert.equal(new Set(result.sessions).size, 11); });
 test("T1B 21 remaining is capped at 44", async () => { const result = await run({ stage: "REMAINING_11" }); assert.equal(result.calls, STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3); });
-test("T1B 22 duplicate request is rejected", () => { const ledger = new StayOptiSerpApiStagedRequestLedgerV3({ pilotId: "P", manifestHash: "m", runnerBundleHash: "r", stage: "CANARY", allowedSessionIndexes: [0], maximumRequests: 4 }); const one = ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "MAIN_SEARCH" }); ledger.transmit(one, "T"); ledger.validate(one, "a".repeat(64), true, true); assert.throws(() => ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "MAIN_SEARCH" }), /DUPLICATE/); });
-test("T1B 22a concurrency above one is rejected", () => { const ledger = new StayOptiSerpApiStagedRequestLedgerV3({ pilotId: "P", manifestHash: "m", runnerBundleHash: "r", stage: "CANARY", allowedSessionIndexes: [0], maximumRequests: 4 }); ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "MAIN_SEARCH" }); assert.throws(() => ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "PROPERTY_DETAIL", alternativeRank: 1 }), /CONCURRENCY_LIMIT_EXCEEDED/); });
-test("T1B 22b request five is blocked before transmission", () => { const ledger = new StayOptiSerpApiStagedRequestLedgerV3({ pilotId: "P", manifestHash: "m", runnerBundleHash: "r", stage: "CANARY", allowedSessionIndexes: [0], maximumRequests: 4 }); for (let index = 0; index < 4; index += 1) { const ordinal = ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: index === 0 ? "MAIN_SEARCH" : "PROPERTY_DETAIL", alternativeRank: index === 0 ? null : index }); ledger.transmit(ordinal, "T"); ledger.validate(ordinal, "a".repeat(64), index === 0, true); } assert.throws(() => ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "PROPERTY_DETAIL", alternativeRank: 4 }), /CAP_REACHED/); });
+test("T1B 22 duplicate request is rejected", () => { const ledger = new StayOptiSerpApiStagedRequestLedgerV3({ pilotId: "P", manifestHash: "m", runnerBundleHash: "r", stage: "CANARY", allowedSessionIndexes: [0], maximumRequests: 2 }); const one = ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "MAIN_SEARCH" }); ledger.transmit(one, "T"); ledger.validate(one, "a".repeat(64), true, true); assert.throws(() => ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "MAIN_SEARCH" }), /DUPLICATE/); });
+test("T1B 22a concurrency above one is rejected", () => { const ledger = new StayOptiSerpApiStagedRequestLedgerV3({ pilotId: "P", manifestHash: "m", runnerBundleHash: "r", stage: "CANARY", allowedSessionIndexes: [0], maximumRequests: 2 }); ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "MAIN_SEARCH" }); assert.throws(() => ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "PROPERTY_DETAIL", alternativeRank: 1 }), /CONCURRENCY_LIMIT_EXCEEDED/); });
+test("T2B 22b request three is blocked before transmission", () => { const ledger = new StayOptiSerpApiStagedRequestLedgerV3({ pilotId: "P", manifestHash: "m", runnerBundleHash: "r", stage: "CANARY", allowedSessionIndexes: [0], maximumRequests: 2 }); for (let index = 0; index < 2; index += 1) { const ordinal = ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: index === 0 ? "MAIN_SEARCH" : "PROPERTY_DETAIL", alternativeRank: index === 0 ? null : index }); ledger.transmit(ordinal, "T"); ledger.validate(ordinal, "a".repeat(64), index === 0, true); } assert.throws(() => ledger.plan({ sessionId: "S", sessionIndex: 0, requestType: "PROPERTY_DETAIL", alternativeRank: 2 }), /CAP_REACHED/); });
 test("T1B 22c missing API key blocks the staged collector", async () => { const result = await run({ noKey: true }); assert.equal(result.calls, 0); assert.match(String(result.error), /API_KEY_MISSING/); });
-test("T1B 23 total theoretical cap is 48", () => { assert.equal(STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3 + STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3, STAYOPTI_SERPAPI_STAGED_MAX_TOTAL_CALLS_V3); });
+test("T2B 23 historical plus repaired stages retain total theoretical cap 48", () => { assert.equal(STAYOPTI_SERPAPI_PRIOR_CONSUMED_CANARY_CALLS_V3 + STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3 + STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3, STAYOPTI_SERPAPI_STAGED_MAX_TOTAL_CALLS_V3); });
 test("T1B 24 raw is deleted across collector fault points", async () => { for (const fault of ["AFTER_SEARCH_TRANSMITTED", "DURING_SEARCH_PARSING", "DURING_NORMALIZATION", "DURING_SNAPSHOT_EXPORT", "DURING_SNAPSHOT_REREAD", "BEFORE_DETAIL_1", "AFTER_DETAIL_1", "AFTER_DETAIL_2"] as const) { const result = await run({ fault }); assert.equal(result.raw.values.size, 0, fault); } });
 test("T1B 25 abort execution remains sanitizable", async () => { const result = await run({ failDetailAt: 1 }); assert.equal(result.result?.receipt.status, "ABORTED"); assert.doesNotMatch(JSON.stringify(result.result), /opaque-0-/); });
 test("T1B 26 key is absent from artifacts", async () => { const result = await run(); assert.doesNotMatch(JSON.stringify(result.result), new RegExp(KEY)); });

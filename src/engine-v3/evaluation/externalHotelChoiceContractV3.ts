@@ -55,6 +55,17 @@ export type StayOptiExternalKnownValueV3<T> =
   | { state: "BUCKETED"; value: T; provenance: string }
   | { state: "UNKNOWN"; value: null; provenance: string };
 
+export interface StayOptiObservedAggregatedDisplayPriceV3 {
+  semantics: "OBSERVED_AGGREGATED_DISPLAY_PRICE";
+  currency: string | null;
+  nightlyAmount: number | null;
+  totalStayAmount: number | null;
+  beforeTaxesAndFeesAmount: number | null;
+  exactBookable: false;
+  sellerSpecific: false;
+  reliability: "DISPLAYED_AGGREGATED_NOT_CHECKOUT_VERIFIED";
+}
+
 export type StayOptiExternalLicenseStatusV3 =
   | "VERIFIED_PERMISSIVE"
   | "VERIFIED_NON_COMMERCIAL"
@@ -112,6 +123,8 @@ export interface StayOptiExternalHotelAlternativeV3 {
   reviewCount: StayOptiExternalKnownValueV3<number>;
   exactPriceMinorUnits: StayOptiExternalKnownValueV3<number>;
   priceBucket: StayOptiExternalKnownValueV3<string>;
+  /** Optional only for backward compatibility with evidence-bundle@1 snapshots. */
+  observedAggregatedDisplayPrice?: StayOptiExternalKnownValueV3<StayOptiObservedAggregatedDisplayPriceV3>;
   freeCancellation: StayOptiExternalKnownValueV3<boolean>;
   amenities: StayOptiExternalKnownValueV3<string[]>;
   availabilityStatus: StayOptiExternalKnownValueV3<"AVAILABLE" | "UNAVAILABLE">;
@@ -223,6 +236,7 @@ export interface StayOptiExternalReplayAlternativeV3 {
   reviewCount: StayOptiExternalKnownValueV3<number>;
   exactPriceMinorUnits: StayOptiExternalKnownValueV3<number>;
   priceBucket: StayOptiExternalKnownValueV3<string>;
+  observedAggregatedDisplayPrice?: StayOptiExternalKnownValueV3<StayOptiObservedAggregatedDisplayPriceV3>;
   freeCancellation: StayOptiExternalKnownValueV3<boolean>;
   amenities: StayOptiExternalKnownValueV3<string[]>;
   availabilityStatus: StayOptiExternalKnownValueV3<"AVAILABLE" | "UNAVAILABLE">;

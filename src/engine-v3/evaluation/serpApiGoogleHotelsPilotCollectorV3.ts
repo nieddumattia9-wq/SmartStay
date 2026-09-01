@@ -99,6 +99,29 @@ export interface StayOptiSerpApiPilotEvidenceExecutionV3 {
   sanitizedRequestLedger: StayOptiSerpApiPilotSanitizedLedgerEntryV3[];
   rawDeletionReceipts: StayOptiSerpApiRawDeletionReceiptV3[];
   sessionSummaries: StayOptiSerpApiPilotSessionSummaryV3[];
+  responseDiagnostics: StayOptiSerpApiResponseDiagnosticV3[];
+}
+
+export type StayOptiSerpApiResponseErrorClassV3 =
+  | "NONE"
+  | "HTTP_STATUS_ERROR"
+  | "NON_JSON_OR_NON_OBJECT_RESPONSE"
+  | "PROVIDER_ERROR_FIELD_PRESENT"
+  | "SEARCH_METADATA_ERROR_STATUS"
+  | "DETAIL_SCHEMA_MISMATCH";
+
+export interface StayOptiSerpApiResponseDiagnosticV3 {
+  requestOrdinal: number;
+  requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL";
+  alternativeRank: number | null;
+  httpStatus: number | null;
+  contentType: string | null;
+  responseByteLength: number | null;
+  topLevelFieldNames: string[];
+  searchMetadataStatus: "SUCCESS" | "CACHED" | "PROCESSING" | "ERROR" | "UNKNOWN" | "NOT_OBSERVED";
+  errorPresent: boolean;
+  errorClass: StayOptiSerpApiResponseErrorClassV3;
+  schemaMismatchPaths: string[];
 }
 
 function dateIsValidFuture(date: string, nowIso: string) {
@@ -222,6 +245,81 @@ function sanitizedFailure(error: unknown) {
     : "SERPAPI_PILOT_SANITIZED_ABORT";
 }
 
+function plainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+}
+
+function sanitizedContentType(value: string | null | undefined) {
+  const mediaType = value?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(mediaType) ? mediaType : null;
+}
+
+function sanitizedTopLevelFieldNames(body: unknown) {
+  if (!plainRecord(body)) return [];
+  return Object.keys(body)
+    .filter((key) => /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key))
+    .filter((key) => !/(?:api.?key|property.?token|access.?token|secret|password|raw.?payload|raw.?response)/i.test(key))
+    .sort();
+}
+
+function sanitizedSearchMetadataStatus(body: unknown): StayOptiSerpApiResponseDiagnosticV3["searchMetadataStatus"] {
+  if (!plainRecord(body) || !plainRecord(body.search_metadata) || typeof body.search_metadata.status !== "string") return "NOT_OBSERVED";
+  const normalized = body.search_metadata.status.trim().toUpperCase();
+  if (normalized === "SUCCESS") return "SUCCESS";
+  if (normalized === "CACHED") return "CACHED";
+  if (["PROCESSING", "QUEUED", "PENDING"].includes(normalized)) return "PROCESSING";
+  if (["ERROR", "FAILED", "FAILURE"].includes(normalized)) return "ERROR";
+  return "UNKNOWN";
+}
+
+function detailShapeMismatchPaths(body: unknown) {
+  if (!plainRecord(body)) return ["response"];
+  const property = plainRecord(body.property) ? body.property : null;
+  const properties = Array.isArray(body.properties) && plainRecord(body.properties[0]) ? body.properties[0] : null;
+  const ads = Array.isArray(body.ads) && plainRecord(body.ads[0]) ? body.ads[0] : null;
+  return property !== null || properties !== null || ads !== null
+    ? []
+    : ["response.ads[0]", "response.properties[0]", "response.property"];
+}
+
+export function createSerpApiResponseDiagnosticV3(input: {
+  requestOrdinal: number;
+  requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL";
+  alternativeRank: number | null;
+  httpStatus: unknown;
+  contentType?: string | null;
+  responseByteLength?: number | null;
+  bodyParsed?: boolean;
+  body: unknown;
+}): StayOptiSerpApiResponseDiagnosticV3 {
+  const httpStatus = Number.isInteger(input.httpStatus) ? Number(input.httpStatus) : null;
+  const searchMetadataStatus = sanitizedSearchMetadataStatus(input.body);
+  const errorPresent = plainRecord(input.body) && Object.prototype.hasOwnProperty.call(input.body, "error");
+  const schemaMismatchPaths = input.requestKind === "PROPERTY_DETAIL" ? detailShapeMismatchPaths(input.body) : [];
+  const errorClass: StayOptiSerpApiResponseErrorClassV3 =
+    httpStatus === null || httpStatus < 200 || httpStatus >= 300 ? "HTTP_STATUS_ERROR"
+      : input.bodyParsed === false || !plainRecord(input.body) ? "NON_JSON_OR_NON_OBJECT_RESPONSE"
+        : errorPresent ? "PROVIDER_ERROR_FIELD_PRESENT"
+          : searchMetadataStatus === "ERROR" ? "SEARCH_METADATA_ERROR_STATUS"
+            : schemaMismatchPaths.length > 0 ? "DETAIL_SCHEMA_MISMATCH"
+              : "NONE";
+  return {
+    requestOrdinal: input.requestOrdinal,
+    requestKind: input.requestKind,
+    alternativeRank: input.alternativeRank,
+    httpStatus,
+    contentType: sanitizedContentType(input.contentType),
+    responseByteLength: Number.isInteger(input.responseByteLength) && Number(input.responseByteLength) >= 0
+      ? Number(input.responseByteLength)
+      : null,
+    topLevelFieldNames: sanitizedTopLevelFieldNames(input.body),
+    searchMetadataStatus,
+    errorPresent,
+    errorClass,
+    schemaMismatchPaths,
+  };
+}
+
 function createReceipt(
   status: "COMPLETED" | "ABORTED",
   stage: StayOptiSerpApiPilotStageV3,
@@ -289,6 +387,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   const sanitizedRequestLedger: StayOptiSerpApiPilotSanitizedLedgerEntryV3[] = [];
   const rawDeletionReceipts: StayOptiSerpApiRawDeletionReceiptV3[] = [];
   const sessionSummaries: StayOptiSerpApiPilotSessionSummaryV3[] = [];
+  const responseDiagnostics: StayOptiSerpApiResponseDiagnosticV3[] = [];
   const clock = input.clock ?? (() => input.nowIso);
   let failureClassification: string | null = null;
 
@@ -345,16 +444,30 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
           ledger.transmit(ordinal, clock());
           const transportResponse = await input.transport.send(request);
           if (requestKind === "MAIN_SEARCH") fault("AFTER_SEARCH_TRANSMITTED");
-          if (!Number.isInteger(transportResponse.httpStatus) || transportResponse.httpStatus < 200 || transportResponse.httpStatus >= 300) {
-            throw new Error("SERPAPI_PILOT_HTTP_OR_TRANSPORT_FAILURE");
-          }
-          if (requestKind === "MAIN_SEARCH") fault("DURING_SEARCH_PARSING");
-          const serializedRaw = JSON.stringify(transportResponse.body);
+          const serializedRaw = JSON.stringify(transportResponse.body ?? null);
           pending.rawName = `request-${String(ordinal).padStart(2, "0")}.json`;
           pending.rawHash = sha256SerpApiEvidenceV3(serializedRaw);
           input.rawStore.writeEphemeral(pending.rawName, serializedRaw);
           pending.rawCreated = true;
-          return { body: transportResponse.body, pending };
+          const diagnostic = createSerpApiResponseDiagnosticV3({
+            requestOrdinal: ordinal,
+            requestKind,
+            alternativeRank,
+            httpStatus: transportResponse.httpStatus,
+            contentType: transportResponse.contentType,
+            responseByteLength: transportResponse.responseByteLength,
+            bodyParsed: transportResponse.bodyParsed,
+            body: transportResponse.body,
+          });
+          responseDiagnostics.push(diagnostic);
+          if (diagnostic.errorClass === "HTTP_STATUS_ERROR") throw new Error("SERPAPI_PILOT_HTTP_OR_TRANSPORT_FAILURE");
+          if (diagnostic.errorClass === "NON_JSON_OR_NON_OBJECT_RESPONSE") throw new Error("SERPAPI_PILOT_RESPONSE_NOT_PROCESSABLE");
+          if (diagnostic.errorClass === "PROVIDER_ERROR_FIELD_PRESENT" || diagnostic.errorClass === "SEARCH_METADATA_ERROR_STATUS") {
+            throw new Error("SERPAPI_PILOT_PROVIDER_ERROR_RESPONSE");
+          }
+          if (diagnostic.errorClass === "DETAIL_SCHEMA_MISMATCH") throw new Error("SERPAPI_PILOT_DETAIL_RESPONSE_NOT_PROCESSABLE");
+          if (requestKind === "MAIN_SEARCH") fault("DURING_SEARCH_PARSING");
+          return { body: transportResponse.body as SerpApiGoogleHotelsResponseV3, pending };
         } catch (error) {
           if (pending.rawCreated && input.rawStore.existsEphemeral!(pending.rawName)) {
             deleteRaw(pending.rawName, {
@@ -423,8 +536,9 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
           throw error;
         }
 
+        const maximumDetails = stage === "CANARY" ? 1 : STAYOPTI_SERPAPI_MAX_DETAILS_PER_SESSION_V3;
         const selected = selectSerpApiPropertyDetailCandidatesV3(detailCandidates(responseBody))
-          .slice(0, STAYOPTI_SERPAPI_MAX_DETAILS_PER_SESSION_V3);
+          .slice(0, maximumDetails);
         for (let detailIndex = 0; detailIndex < selected.length; detailIndex += 1) {
           const candidate = selected[detailIndex]!;
           if (detailIndex === 0) fault("BEFORE_DETAIL_1");
@@ -516,6 +630,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
     sanitizedRequestLedger,
     rawDeletionReceipts,
     sessionSummaries,
+    responseDiagnostics,
   };
 }
 
