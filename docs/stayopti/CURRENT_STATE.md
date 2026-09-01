@@ -330,4 +330,42 @@ reported in the V3-17T2A/T2B final receipt.
 Next recommendation:
 `V3-17T2C_SERPAPI_GOOGLE_HOTELS_REPAIRED_MAX2_CANARY_EXPLICIT_AUTHORIZATION_GATE`.
 
+## V3-17T2A-R0 private provider-raw quarantine — offline repair complete
+
+Adopted source checkpoint:
+`0c052ad1efd579fc6d7ff5a16d7e0bfd8f1d3154`; it is the verified linear
+successor of `e4edc0cdbf61764a992cc94a882837208e11aa26`. The implementation
+checkpoint is the local commit containing this entry and is reported in the
+final T2A-R0 receipt.
+
+- The successor reconciliation passed: 19 evaluation/runner/test/doc paths,
+  no merge, secret, raw provider data, real dataset, package, environment or
+  public-runtime change.
+- The historical Evidence was re-audited offline: ZIP SHA-256 `c01d8ef...6333e`,
+  `17/17` checksums, two requests, main search usable, 29 alternatives and
+  property detail failure. Handoff remains PASS while canary is ABORTED and
+  collection PARTIAL. The deleted detail raw is irrecoverable.
+- Provider raw may now persist only in the private `%LOCALAPPDATA%` quarantine:
+  AES-256-GCM per payload, fresh data key, CurrentUser DPAPI key protection,
+  authenticated metadata, secret rejection and no plaintext at rest.
+- Retention is 14 days after successful processing, 90 days for unrecognized,
+  partial or error responses, with one controlled 90-day extension before
+  expiry. Permanent retention and redistribution remain prohibited.
+- Offline replay verifies envelope integrity, AES-GCM authenticity and original
+  SHA-256, decrypts in memory only and feeds the same SerpApi evaluation adapter.
+  It records parser/schema diagnostics without network, credentials or V3 core
+  coupling.
+- The future MAX2 runner bundle is
+  `e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde`.
+  No new literal is authorized, no canary runs, Stage REMAINING stays blocked,
+  V3-17 remains unmet and V3-18 remains blocked.
+- Recovery validation after the interrupted run: targeted and fault-injection
+  coverage `167/167 PASS`; Engine V3 `1233/1233 PASS`; Engine V2 `196/196
+  PASS`; TypeScript, PowerShell 5.1 parsing, bundle integrity, secret/raw-ID,
+  license/provenance and both Git diff gates PASS. The seven unrelated dirty
+  paths and the protected environment/package files remain byte-identical.
+
+Next recommendation:
+`V3-17T2B_SERPAPI_PROPERTY_DETAIL_MAX2_REAUTHORIZATION_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

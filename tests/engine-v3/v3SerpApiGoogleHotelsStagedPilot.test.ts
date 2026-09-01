@@ -8,6 +8,7 @@ import {
   executeSerpApiGoogleHotelsPilotEvidenceV3,
   type StayOptiSerpApiPilotEvidenceStoreV3,
   type StayOptiSerpApiPilotFaultPointV3,
+  type StayOptiSerpApiPrivateRawQuarantineV3,
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3";
 import {
   sha256SerpApiEvidenceV3,
@@ -89,6 +90,15 @@ class MemoryEvidenceStore implements StayOptiSerpApiPilotEvidenceStoreV3 {
   }
 }
 
+function memoryQuarantine(): StayOptiSerpApiPrivateRawQuarantineV3 {
+  let ordinal = 0;
+  return {
+    protectionReady: true,
+    capture() { ordinal += 1; return { entryId: `RAWQ_TEST_${ordinal}`, envelopeFingerprint: "b".repeat(64) }; },
+    markProcessedSuccess(handle) { return handle; },
+  };
+}
+
 function validatedCanary(): StayOptiSerpApiValidatedCanaryEvidenceV3 {
   return {
     evidenceVersion: "stayopti.v3.serpapi-google-hotels-canary-resume@1",
@@ -163,6 +173,7 @@ async function run(input: {
       clock: () => "2026-09-02T10:00:02Z",
       transport,
       rawStore: raw,
+      privateRawQuarantine: memoryQuarantine(),
       evidenceStore: evidence,
       validatedCanaryEvidence: stage === "REMAINING_11" && !input.noCanary ? validatedCanary() : undefined,
       faultInjector: input.fault ? (point) => { if (point === input.fault) throw new Error(`SERPAPI_PILOT_FAULT_${point}`); } : undefined,
@@ -200,7 +211,7 @@ function entriesForCanary(execution: NonNullable<Awaited<ReturnType<typeof run>>
 }
 
 test("T1B 01 dry-run contract has no implicit authorization", () => { const source = readFileSync(resolve(process.cwd(), "scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs"), "utf8"); assert.match(source, /--preflight-only/); assert.doesNotMatch(source, /defaultAuthorization|authorization\s*\?\?/); });
-test("T1B 02 missing stage fails before transport", async () => { const result = await executeSerpApiGoogleHotelsPilotEvidenceV3({ authorization: { ...authorization("CANARY"), stage: undefined } as never, apiKey: KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, nowIso: "2026-09-02T00:00:00Z", transport: { async send() { throw new Error("transport reached"); } }, rawStore: new MemoryRawStore(), evidenceStore: new MemoryEvidenceStore() }).catch((error) => error); assert.match(String(result), /STAGE_REQUIRED/); });
+test("T1B 02 missing stage fails before transport", async () => { const result = await executeSerpApiGoogleHotelsPilotEvidenceV3({ authorization: { ...authorization("CANARY"), stage: undefined } as never, apiKey: KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, nowIso: "2026-09-02T00:00:00Z", transport: { async send() { throw new Error("transport reached"); } }, rawStore: new MemoryRawStore(), evidenceStore: new MemoryEvidenceStore(), privateRawQuarantine: memoryQuarantine() }).catch((error) => error); assert.match(String(result), /STAGE_REQUIRED/); });
 test("T1B 03 revoked MAX48 literal is rejected with zero calls", async () => { const result = await run({ literal: STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3 }); assert.equal(result.calls, 0); assert.match(String(result.error), /LITERAL_MISMATCH/); });
 test("T1B 04 wrong canary literal is rejected", async () => { const result = await run({ literal: "WRONG" }); assert.equal(result.calls, 0); });
 test("T1B 05 canary can access only first session", () => { assert.deepEqual(stageSessionIndexesV3("CANARY", 12), [0]); });

@@ -6,11 +6,15 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createProviderRawQuarantineStoreV3 } from "./provider-raw-quarantine-store.mjs";
+
 const BASELINE_SOURCE_SHA = "640570740317cd36901fb605d73e6b7aeeadaff5";
 const BUNDLE_FILES = Object.freeze([
   "scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs",
   "scripts/invoke-v3-17t2-serpapi-google-hotels-pilot.ps1",
   "scripts/invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1",
+  "scripts/provider-raw-quarantine-store.mjs",
+  "scripts/protect-v3-provider-raw-key-dpapi.ps1",
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts",
   "src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts",
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts",
@@ -18,6 +22,8 @@ const BUNDLE_FILES = Object.freeze([
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.ts",
   "src/engine-v3/evaluation/externalHotelChoiceContractV3.ts",
   "src/engine-v3/evaluation/externalHotelChoiceReplayV3.ts",
+  "src/engine-v3/evaluation/providerRawQuarantineV3.ts",
+  "src/engine-v3/evaluation/serpApiGoogleHotelsPrivateReplayV3.ts",
   "src/engine-v3/contract/stableHashV3.ts",
 ]);
 
@@ -87,6 +93,7 @@ function compiledModules(compiledRoot) {
     collector: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.js")),
     evidence: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.js")),
     stagePolicy: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.js")),
+    quarantine: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/providerRawQuarantineV3.js")),
   };
 }
 function evidenceEntries(root) {
@@ -241,7 +248,7 @@ export async function runV317T2(argv = process.argv.slice(2)) {
   const repositoryRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
   const compiledRootValue = valueFor(argv, "--compiled-root");
   if (!compiledRootValue) fail("SERPAPI_PILOT_COMPILED_ROOT_REQUIRED");
-  const { gate, collector, evidence, stagePolicy } = compiledModules(resolve(compiledRootValue));
+  const { gate, collector, evidence, stagePolicy, quarantine } = compiledModules(resolve(compiledRootValue));
   evidenceSnapshotValidator = evidence.validateSerpApiSanitizedSnapshotV3;
   const finalizeRoot = valueFor(argv, "--finalize-evidence");
   const validateRoot = valueFor(argv, "--validate-evidence");
@@ -287,6 +294,13 @@ export async function runV317T2(argv = process.argv.slice(2)) {
   assertOutsideRepository(repositoryRoot, evidenceRoot);
   if (existsSync(evidenceRoot)) fail("SERPAPI_PILOT_EVIDENCE_ROOT_MUST_NOT_EXIST");
   mkdirSync(evidenceRoot);
+  const localAppData = process.env.LOCALAPPDATA ?? "";
+  if (localAppData.length === 0) fail("PROVIDER_RAW_QUARANTINE_LOCALAPPDATA_REQUIRED");
+  const privateRawQuarantine = createProviderRawQuarantineStoreV3({
+    repositoryRoot,
+    root: resolve(localAppData, "StayOpti", "private-evidence", "provider-raw-quarantine"),
+    quarantineModule: quarantine,
+  });
   let apiKey = process.env.SERPAPI_API_KEY ?? "";
   if (apiKey.length === 0) fail("SERPAPI_PILOT_API_KEY_MISSING");
   const rawDirectory = mkdtempSync(join(tmpdir(), "stayopti-v3-17t2-serpapi-raw-"));
@@ -317,19 +331,16 @@ export async function runV317T2(argv = process.argv.slice(2)) {
           const response = await fetch(request.url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(30_000) });
           if (response.status >= 300 && response.status < 400) fail("SERPAPI_PILOT_REDIRECT_PROHIBITED");
           const responseText = await response.text();
-          let body = null;
-          let bodyParsed = false;
-          try { body = JSON.parse(responseText); bodyParsed = true; } catch { body = null; }
           return {
             httpStatus: response.status,
-            body,
-            bodyParsed,
+            rawBodyText: responseText,
             contentType: response.headers.get("content-type"),
             responseByteLength: Buffer.byteLength(responseText, "utf8"),
           };
         },
       },
       rawStore,
+      privateRawQuarantine,
       evidenceStore: atomicSnapshotStore(evidenceRoot),
     });
     writeExecutionEvidence(evidenceRoot, gate, execution, observedHead, stage);

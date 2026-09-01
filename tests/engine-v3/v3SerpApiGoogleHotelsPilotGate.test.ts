@@ -169,10 +169,10 @@ test("V3-17T1 budgets are frozen inputs and no-cache is planned", () => {
   assert.ok(STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions.every((entry) => entry.noCache === true));
 });
 
-test("V3-17T1 gate stops at ready and grants neither calls nor retention", () => {
+test("V3-17T1/T2A gate stops at ready, grants no calls, and binds the authorized private retention", () => {
   assert.equal(STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3.authorizationState, "READY_FOR_EXPLICIT_AUTHORIZATION");
   assert.equal(STAYOPTI_SERPAPI_PILOT_GATE_AUDIT_V3.explicitCallAuthorizationGranted, false);
-  assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.authorizationGranted, false);
+  assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.authorizationGranted, true);
 });
 
 test("V3-17T1 without API key sends zero calls", async () => {
@@ -336,6 +336,8 @@ test("V3-17T1 core V3 does not import collector or SerpApi", () => {
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts",
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts",
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts",
+    "src/engine-v3/evaluation/serpApiGoogleHotelsPrivateReplayV3.ts",
+    "src/engine-v3/evaluation/providerRawQuarantineV3.ts",
   ]);
   for (const file of filesUnder("src/engine-v3").filter((entry) => entry.endsWith(".ts") && !evaluationFiles.has(entry))) {
     assert.doesNotMatch(source(file), /serpApiGoogleHotelsPilotGateV3|serpApiGoogleHotelsExternalAdapterV3|SERPAPI_GOOGLE_HOTELS/, file);
@@ -356,9 +358,9 @@ test("V3-17T1 collector does not implement booking clickout reviews photos or pa
   assert.equal(STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.automaticPaginationAllowed, false);
 });
 
-test("V3-17T1 raw payload policy is temp-only delete-always", () => {
-  assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.rawPayloadStorage, "UNIQUE_TEMP_DIRECTORY_OUTSIDE_REPOSITORY");
-  assert.equal(STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3.rawPayloadPolicy, "EPHEMERAL_TEMP_DELETE_ALWAYS");
+test("V3-17T1/T2A raw payload policy is encrypted private quarantine with plaintext delete-always", () => {
+  assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.rawPayloadStorage, "LOCALAPPDATA_PRIVATE_EVIDENCE_OUTSIDE_REPOSITORY");
+  assert.equal(STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3.rawPayloadPolicy, "ENCRYPT_BEFORE_STABLE_PERSISTENCE_THEN_DELETE_PLAINTEXT");
   assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.rawHtmlRetention, "NONE");
   assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.imageRetention, "NONE");
 });

@@ -142,6 +142,8 @@ test("V3-17T Engine V3 core does not import the SerpApi adapter", () => {
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts",
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts",
     "src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts",
+    "src/engine-v3/evaluation/serpApiGoogleHotelsPrivateReplayV3.ts",
+    "src/engine-v3/evaluation/providerRawQuarantineV3.ts",
   ]);
   for (const file of filesUnder("src/engine-v3").filter((entry) => entry.endsWith(".ts") && !evaluationBoundaries.has(entry))) {
     assert.doesNotMatch(source(file), forbidden, file);

@@ -18,6 +18,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0012 | 2026-09-01 | Revoke the direct MAX48 SerpApi path and require a four-call one-session canary followed by manual Evidence review and separately ZIP-hash-bound authorization for the remaining eleven sessions. | Accepted; calls and retention remain unauthorized | `decisions/0012-v3-17t1b-serpapi-staged-canary-gate.md` |
 | D-0013 | 2026-09-01 | Replace the failed pasted canary wrapper with a hash-bound, fail-visible, no-exit PowerShell handoff that preserves MAX4 and separate authorization. | Accepted; calls and retention remain unauthorized | `decisions/0013-v3-17t1c-canary-handoff-failure-visibility.md` |
 | D-0014 | 2026-09-01 | Preserve the first SerpApi data canary as aborted, reject its Evidence for resume, retain observed display prices without exact-price promotion and require a new two-call authorization. | Accepted; all new calls and Stage REMAINING remain unauthorized | `decisions/0014-v3-17t2ab-canary-abort-repair.md` |
+| D-0015 | 2026-09-01 | Retain paid provider raw only in a private, AES-GCM-encrypted, Windows-user-protected and expiring quarantine; keep replay offline and adapter-bound. | Accepted; raw retention authorized, provider calls remain unauthorized | `decisions/0015-provider-raw-private-quarantine.md` |
 
 ## Required fields for a new decision
 

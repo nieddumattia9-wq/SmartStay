@@ -9,6 +9,7 @@ import type { SerpApiGoogleHotelsResponseV3 } from "../../src/engine-v3/evaluati
 import {
   executeSerpApiGoogleHotelsPilotEvidenceV3,
   type StayOptiSerpApiPilotEvidenceStoreV3,
+  type StayOptiSerpApiPrivateRawQuarantineV3,
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3";
 import {
   STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
@@ -98,6 +99,15 @@ class MemoryEvidenceStore implements StayOptiSerpApiPilotEvidenceStoreV3 {
   }
 }
 
+function memoryQuarantine(): StayOptiSerpApiPrivateRawQuarantineV3 {
+  let ordinal = 0;
+  return {
+    protectionReady: true,
+    capture() { ordinal += 1; return { entryId: `RAWQ_TEST_${ordinal}`, envelopeFingerprint: "a".repeat(64) }; },
+    markProcessedSuccess(handle) { return handle; },
+  };
+}
+
 function authorization(literal: string = STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3) {
   return {
     authorizationState: "AUTHORIZED_NOT_STARTED" as const,
@@ -135,7 +145,7 @@ async function execute(options: { failDetailAt?: number; failExport?: boolean; l
       authorization: authorization(options.literal), apiKey: TEST_KEY,
       observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
       nowIso: "2026-09-02T00:00:00Z", clock: () => "2026-09-02T10:00:02Z",
-      transport, rawStore: raw, evidenceStore: evidence,
+      transport, rawStore: raw, evidenceStore: evidence, privateRawQuarantine: memoryQuarantine(),
     });
     return { result, raw, evidence, calls, detailCalls, trace };
   } catch (error) { return { error, raw, evidence, calls, detailCalls, trace }; }

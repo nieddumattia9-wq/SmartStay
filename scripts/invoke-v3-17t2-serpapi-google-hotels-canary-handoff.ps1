@@ -12,12 +12,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$SourceSha = 'e4edc0cdbf61764a992cc94a882837208e11aa26'
+$SourceSha = '0c052ad1efd579fc6d7ff5a16d7e0bfd8f1d3154'
 $ExpectedBranch = 'main'
 $ExpectedManifestHash = 'e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88'
 $ExpectedRunnerBundleHash =
   # HANDOFF_BUNDLE_HASH_START
-  'f4649a0229b60e18908a09f5cf580bbf8e0648cadf987e0b442c6ce225e52e13'
+  'e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde'
   # HANDOFF_BUNDLE_HASH_END
 $ExpectedCanarySession = 'SERP_PILOT_01_FLORENCE_COUPLE_BALANCED'
 $ExpectedCanaryIndex = 0
@@ -73,22 +73,30 @@ $DevelopmentPaths = @(
   'scripts/invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1',
   'scripts/invoke-v3-17t2-serpapi-google-hotels-pilot.ps1',
   'scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs',
+  'scripts/provider-raw-quarantine-store.mjs',
+  'scripts/protect-v3-provider-raw-key-dpapi.ps1',
   'src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts',
   'src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts',
   'src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts',
   'src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.ts',
+  'src/engine-v3/evaluation/providerRawQuarantineV3.ts',
+  'src/engine-v3/evaluation/serpApiGoogleHotelsPrivateReplayV3.ts',
   'src/engine-v3/evaluation/externalHotelChoiceContractV3.ts',
   'src/engine-v3/evaluation/externalHotelChoiceReplayV3.ts',
   'src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsCanaryHandoff.test.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsPilotEvidence.test.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsPilotGate.test.ts',
+  'tests/engine-v3/v3SerpApiGoogleHotelsQualification.test.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsStagedPilot.test.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsCanaryEvidenceRepair.test.ts',
+  'tests/engine-v3/v3ProviderRawQuarantineReplay.test.ts',
   'docs/engine-v3/v3-17-serpapi-google-hotels-canary-evidence-repair.md',
+  'docs/engine-v3/v3-17-serpapi-private-raw-quarantine-replay.md',
   'docs/stayopti/CURRENT_STATE.md',
   'docs/stayopti/DECISION_LOG.md',
-  'docs/stayopti/decisions/0014-v3-17t2ab-canary-abort-repair.md'
+  'docs/stayopti/decisions/0014-v3-17t2ab-canary-abort-repair.md',
+  'docs/stayopti/decisions/0015-provider-raw-private-quarantine.md'
 )
 
 function Get-StayOptiSha256 {

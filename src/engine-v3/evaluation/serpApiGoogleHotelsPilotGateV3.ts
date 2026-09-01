@@ -283,7 +283,7 @@ export const STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 =
   `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_MAX48` as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3 =
-  /* RUNNER_BUNDLE_HASH_START */ "f4649a0229b60e18908a09f5cf580bbf8e0648cadf987e0b442c6ce225e52e13" /* RUNNER_BUNDLE_HASH_END */ as const;
+  /* RUNNER_BUNDLE_HASH_START */ "e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde" /* RUNNER_BUNDLE_HASH_END */ as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3 =
   "stayopti.v3.serpapi-google-hotels-retention@2" as const;
@@ -308,8 +308,8 @@ export const STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3 =
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3 = Object.freeze({
   retentionPolicyVersion: STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
-  rawPayloadRetention: "EPHEMERAL_UNTIL_VALIDATED" as const,
-  rawPayloadStorage: "UNIQUE_TEMP_DIRECTORY_OUTSIDE_REPOSITORY" as const,
+  rawPayloadRetention: "ENCRYPTED_PRIVATE_QUARANTINE_14_OR_90_DAYS" as const,
+  rawPayloadStorage: "LOCALAPPDATA_PRIVATE_EVIDENCE_OUTSIDE_REPOSITORY" as const,
   rawHtmlRetention: "NONE" as const,
   imageRetention: "NONE" as const,
   urlTokenRetention: "NONE" as const,
@@ -318,7 +318,7 @@ export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3 = Object.freeze({
   publication: "PROHIBITED" as const,
   modelTraining: "PROHIBITED" as const,
   useScope: "INTERNAL_NON_REDISTRIBUTED_EVALUATION" as const,
-  authorizationGranted: false as const,
+  authorizationGranted: true as const,
 });
 
 export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
@@ -350,7 +350,7 @@ export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
   accountPlan: "FREE" as const,
   dataUseScope: "INTERNAL_NON_REDISTRIBUTED_EVALUATION" as const,
   retentionPolicy: STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3,
-  rawPayloadPolicy: "EPHEMERAL_TEMP_DELETE_ALWAYS" as const,
+  rawPayloadPolicy: "ENCRYPT_BEFORE_STABLE_PERSISTENCE_THEN_DELETE_PLAINTEXT" as const,
   sanitizedSnapshotPolicy: "PERSIST_PROVIDER_NEUTRAL_ONLY" as const,
   authorizationState: "READY_FOR_EXPLICIT_AUTHORIZATION" as const,
   requiredAuthorizationLiteral: STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
@@ -404,7 +404,8 @@ export interface StayOptiSerpApiPilotRequestV3 {
 
 export interface StayOptiSerpApiPilotTransportResponseV3 {
   httpStatus: number;
-  body: unknown;
+  body?: unknown;
+  rawBodyText?: string;
   bodyParsed?: boolean;
   contentType?: string | null;
   responseByteLength?: number | null;
@@ -701,7 +702,7 @@ export async function executeSerpApiGoogleHotelsPilotV3(input: {
 export const STAYOPTI_SERPAPI_PILOT_GATE_AUDIT_V3 = Object.freeze({
   authorizationState: "READY_FOR_EXPLICIT_AUTHORIZATION" as const,
   explicitCallAuthorizationGranted: false as const,
-  retentionAuthorizationGranted: false as const,
+  retentionAuthorizationGranted: true as const,
   collectorNetworkEnabledInT1: false as const,
   credentialSource: "PROCESS_ENVIRONMENT_ONLY" as const,
   apiKeyPersisted: false as const,

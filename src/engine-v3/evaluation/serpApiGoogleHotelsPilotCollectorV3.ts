@@ -49,6 +49,28 @@ export interface StayOptiSerpApiPilotEvidenceStoreV3 {
   readSnapshot(name: string): string;
 }
 
+export interface StayOptiSerpApiPrivateQuarantineHandleV3 {
+  entryId: string;
+  envelopeFingerprint: string;
+}
+
+export interface StayOptiSerpApiPrivateRawQuarantineV3 {
+  readonly protectionReady: true;
+  capture(input: {
+    plaintextUtf8: string;
+    metadata: {
+      providerKey: "SERPAPI_GOOGLE_HOTELS";
+      endpointClass: "GOOGLE_HOTELS_SEARCH";
+      sessionReference: string;
+      requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL";
+      requestOrdinal: number;
+      capturedAt: string;
+    };
+    disposition: "UNRECOGNIZED_PARTIAL_OR_ERROR";
+  }): StayOptiSerpApiPrivateQuarantineHandleV3;
+  markProcessedSuccess(handle: StayOptiSerpApiPrivateQuarantineHandleV3): StayOptiSerpApiPrivateQuarantineHandleV3;
+}
+
 export type StayOptiSerpApiPilotSanitizedLedgerEntryV3 = StayOptiSerpApiStagedLedgerEntryV3;
 
 export interface StayOptiSerpApiPilotSessionSummaryV3 {
@@ -83,6 +105,7 @@ export interface StayOptiSerpApiPilotEvidenceReceiptV3 {
   requestLedgerHash: string;
   sanitizedSnapshotFingerprints: string[];
   rawDeletionReceiptCount: number;
+  privateEncryptedQuarantineReceiptCount: number;
   rawPayloadsPersisted: 0;
   apiKeyPersisted: false;
   sensitiveUrlsPersisted: false;
@@ -326,6 +349,7 @@ function createReceipt(
   ledger: StayOptiSerpApiStagedRequestLedgerV3,
   snapshots: readonly StayOptiSerpApiSanitizedSnapshotV3[],
   deletions: readonly StayOptiSerpApiRawDeletionReceiptV3[],
+  privateQuarantineReceiptCount: number,
   failureClassification: string | null,
 ): StayOptiSerpApiPilotEvidenceReceiptV3 {
   const entries = ledger.snapshot();
@@ -349,6 +373,7 @@ function createReceipt(
     requestLedgerHash: ledger.hash(),
     sanitizedSnapshotFingerprints: snapshots.map((snapshot) => snapshot.normalizedSnapshotHash).sort(),
     rawDeletionReceiptCount: deletions.length,
+    privateEncryptedQuarantineReceiptCount: privateQuarantineReceiptCount,
     rawPayloadsPersisted: 0 as const,
     apiKeyPersisted: false as const,
     sensitiveUrlsPersisted: false as const,
@@ -367,12 +392,14 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   nowIso: string;
   transport: StayOptiSerpApiPilotTransportV3;
   rawStore: StayOptiSerpApiPilotRawStoreV3;
+  privateRawQuarantine: StayOptiSerpApiPrivateRawQuarantineV3;
   evidenceStore: StayOptiSerpApiPilotEvidenceStoreV3;
   validatedCanaryEvidence?: StayOptiSerpApiValidatedCanaryEvidenceV3;
   clock?: () => string;
   faultInjector?: (point: StayOptiSerpApiPilotFaultPointV3) => void;
 }): Promise<StayOptiSerpApiPilotEvidenceExecutionV3> {
   const sessionIndexes = validateAuthorization(input);
+  if (input.privateRawQuarantine?.protectionReady !== true) throw new Error("SERPAPI_PILOT_PRIVATE_RAW_QUARANTINE_REQUIRED");
   const stage = input.authorization!.stage;
   if (typeof input.rawStore.existsEphemeral !== "function") throw new Error("SERPAPI_PILOT_RAW_DELETE_VERIFICATION_REQUIRED");
   const ledger = new StayOptiSerpApiStagedRequestLedgerV3({
@@ -388,6 +415,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   const rawDeletionReceipts: StayOptiSerpApiRawDeletionReceiptV3[] = [];
   const sessionSummaries: StayOptiSerpApiPilotSessionSummaryV3[] = [];
   const responseDiagnostics: StayOptiSerpApiResponseDiagnosticV3[] = [];
+  let privateQuarantineReceiptCount = 0;
   const clock = input.clock ?? (() => input.nowIso);
   let failureClassification: string | null = null;
 
@@ -417,6 +445,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
         rawHash: string;
         rawCreated: boolean;
         alternativeRank: number | null;
+        quarantineHandle: StayOptiSerpApiPrivateQuarantineHandleV3 | null;
       };
       const runRequest = async (
         requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL",
@@ -430,7 +459,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
           requestKind,
         });
         const ordinal = ledger.plan({ sessionId: session.sessionId, sessionIndex, requestType: requestKind, alternativeRank });
-        const pending: PendingRequest = { ordinal, requestKind, rawName: "", rawHash: "", rawCreated: false, alternativeRank };
+        const pending: PendingRequest = { ordinal, requestKind, rawName: "", rawHash: "", rawCreated: false, alternativeRank, quarantineHandle: null };
         const request: StayOptiSerpApiPilotRequestV3 = {
             requestOrdinal: ordinal,
             sessionId: session.sessionId,
@@ -444,7 +473,33 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
           ledger.transmit(ordinal, clock());
           const transportResponse = await input.transport.send(request);
           if (requestKind === "MAIN_SEARCH") fault("AFTER_SEARCH_TRANSMITTED");
-          const serializedRaw = JSON.stringify(transportResponse.body ?? null);
+          const serializedRaw = typeof transportResponse.rawBodyText === "string"
+            ? transportResponse.rawBodyText
+            : JSON.stringify(transportResponse.body ?? null);
+          pending.quarantineHandle = input.privateRawQuarantine.capture({
+            plaintextUtf8: serializedRaw,
+            disposition: "UNRECOGNIZED_PARTIAL_OR_ERROR",
+            metadata: {
+              providerKey: "SERPAPI_GOOGLE_HOTELS",
+              endpointClass: "GOOGLE_HOTELS_SEARCH",
+              sessionReference: session.sessionId,
+              requestKind,
+              requestOrdinal: ordinal,
+              capturedAt: clock(),
+            },
+          });
+          privateQuarantineReceiptCount += 1;
+          let parsedBody = transportResponse.body;
+          let bodyParsed = transportResponse.bodyParsed;
+          if (typeof transportResponse.rawBodyText === "string") {
+            try {
+              parsedBody = JSON.parse(transportResponse.rawBodyText);
+              bodyParsed = true;
+            } catch {
+              parsedBody = null;
+              bodyParsed = false;
+            }
+          }
           pending.rawName = `request-${String(ordinal).padStart(2, "0")}.json`;
           pending.rawHash = sha256SerpApiEvidenceV3(serializedRaw);
           input.rawStore.writeEphemeral(pending.rawName, serializedRaw);
@@ -456,8 +511,8 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
             httpStatus: transportResponse.httpStatus,
             contentType: transportResponse.contentType,
             responseByteLength: transportResponse.responseByteLength,
-            bodyParsed: transportResponse.bodyParsed,
-            body: transportResponse.body,
+            bodyParsed,
+            body: parsedBody,
           });
           responseDiagnostics.push(diagnostic);
           if (diagnostic.errorClass === "HTTP_STATUS_ERROR") throw new Error("SERPAPI_PILOT_HTTP_OR_TRANSPORT_FAILURE");
@@ -467,7 +522,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
           }
           if (diagnostic.errorClass === "DETAIL_SCHEMA_MISMATCH") throw new Error("SERPAPI_PILOT_DETAIL_RESPONSE_NOT_PROCESSABLE");
           if (requestKind === "MAIN_SEARCH") fault("DURING_SEARCH_PARSING");
-          return { body: transportResponse.body as SerpApiGoogleHotelsResponseV3, pending };
+          return { body: parsedBody as SerpApiGoogleHotelsResponseV3, pending };
         } catch (error) {
           if (pending.rawCreated && input.rawStore.existsEphemeral!(pending.rawName)) {
             deleteRaw(pending.rawName, {
@@ -493,6 +548,8 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
             rawCreated: true,
           });
         }
+        if (pending.quarantineHandle === null) throw new Error("SERPAPI_PILOT_PRIVATE_RAW_QUARANTINE_MISSING");
+        pending.quarantineHandle = input.privateRawQuarantine.markProcessedSuccess(pending.quarantineHandle);
         ledger.validate(pending.ordinal, pending.rawHash, snapshotExported, true);
       };
 
@@ -625,7 +682,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   const status = failureClassification === null && snapshots.length === sessionIndexes.length ? "COMPLETED" : "ABORTED";
   sanitizedRequestLedger.push(...ledger.snapshot());
   return {
-    receipt: createReceipt(status, stage, ledger, snapshots, rawDeletionReceipts, failureClassification),
+    receipt: createReceipt(status, stage, ledger, snapshots, rawDeletionReceipts, privateQuarantineReceiptCount, failureClassification),
     snapshots,
     sanitizedRequestLedger,
     rawDeletionReceipts,
