@@ -13,6 +13,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0007 | 2026-08-31 | Correct external source roles so Expedia RecTour is the primary booking-choice target, Trivago is a secondary click/session benchmark and external access never blocks independently governed real-Golden collection. | Accepted; prospectively supersedes only D-0006 source-role ordering | `decisions/0007-v3-17s1-external-source-role-correction.md` |
 | D-0008 | 2026-09-01 | Keep provider identity as opaque lookup/provenance only; resolve V3 decision ties exclusively from canonical evidence and preserve exact semantic ties as `DECISIONALLY_EQUIVALENT`. | Accepted | `decisions/0008-provider-id-neutral-decision-ties.md` |
 | D-0009 | 2026-09-01 | Qualify SerpApi Google Hotels only as a conditional real-market evaluation source behind the external choice contract; prohibit runtime/core coupling, raw persistence and automatic Golden or policy promotion. | Accepted | `decisions/0009-serpapi-google-hotels-evaluation-source.md` |
+| D-0010 | 2026-09-01 | Freeze a fail-closed twelve-session SerpApi pilot gate with immutable inputs, exact post-manifest authorization, process-only secret handling and ephemeral raw retention. | Accepted; calls and retention remain unauthorized | `decisions/0010-v3-17t1-serpapi-pilot-authorization-gate.md` |
 
 ## Required fields for a new decision
 

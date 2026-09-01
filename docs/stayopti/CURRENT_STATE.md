@@ -166,4 +166,21 @@ Source checkpoint: `bcce90c8663cce92c8242ad5451a5619158f6331`; the implementatio
 
 Next recommendation: `V3-17T1_SERPAPI_GOOGLE_HOTELS_12_SESSION_PILOT_AUTHORIZATION_GATE`. It is an authorization gate only; V3-17 remains unmet and V3-18 remains blocked.
 
+## V3-17T1 SerpApi Google Hotels pilot authorization gate — ready
+
+Source checkpoint: `640570740317cd36901fb605d73e6b7aeeadaff5`; the implementation checkpoint is the local commit containing this entry and is reported in the V3-17T1 final receipt.
+
+- The user reports a personally created SerpApi Free owner account with API access and no VAT-number or payment-card request during signup. No account interaction or independent credential inspection occurred in T1.
+- Twelve independent European sessions, exact dates, occupancy, budgets, profiles and constraints are frozen under manifest SHA-256 `e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88`.
+- The gate remains `READY_FOR_EXPLICIT_AUTHORIZATION`. Calls and retention are not authorized; credentials, provider calls and HTTP requests are zero.
+- The future evaluation-only collector requires the exact hash-bound literal, an exact execution HEAD, explicit retention consent, an unexpired manifest and `SERPAPI_API_KEY` supplied only through the process environment.
+- Hard limits are 12 main searches, at most three detail requests per session, 48 total, concurrency one, retry zero and no automatic pagination, reviews, photos, redirect, booking, prebook, payment or provider fallback.
+- Raw JSON is temporary outside the repository and delete-always; only provider-neutral sanitized snapshots and receipts may persist after future authorization.
+- Real sessions, Golden candidates, admitted Golden cases and judgments remain zero. V3-17 remains unmet and V3-18 remains blocked.
+- Public V2, V3 decision core, weights, provider runtime, Split `OFF` and booking flow remain unchanged.
+- Validation on 2026-09-01: V3-17T1 targeted `38/38 PASS`; V3-17T `25/25`; V3-17T0A provider-neutrality `5/5`; V3-17Q/R/S/S.1 `77/77`; Engine V3 `1066/1066 PASS`; Engine V2 `196/196 PASS`; TypeScript, B1 capsule, B1 blind pipeline, B2 corpus, legacy quarantine and F0B/F0C/F0D PASS. Secret, raw-ID, license/provenance and Git checks are recorded in the phase receipt.
+- No credential, SerpApi call, Google Hotels query, provider call, HTTP request, account interaction, browser, deploy, push or fetch occurred. The seven pre-existing unrelated dirty paths remain outside this checkpoint and byte-identical.
+
+Next recommendation: `V3-17T2_SERPAPI_GOOGLE_HOTELS_12_SESSION_BOUNDED_PILOT_EXECUTION`. It requires a new user message containing the exact published authorization literal and retention approval; this T1 checkpoint is not permission to call.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

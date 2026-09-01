@@ -137,8 +137,11 @@ test("V3-17T adapter is evaluation-only and contains no network or credential lo
 
 test("V3-17T Engine V3 core does not import the SerpApi adapter", () => {
   const forbidden = /serpApiGoogleHotelsExternalAdapterV3|SERPAPI_GOOGLE_HOTELS/;
-  const evaluationBoundary = "src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts";
-  for (const file of filesUnder("src/engine-v3").filter((entry) => entry.endsWith(".ts") && entry !== evaluationBoundary)) {
+  const evaluationBoundaries = new Set([
+    "src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts",
+    "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts",
+  ]);
+  for (const file of filesUnder("src/engine-v3").filter((entry) => entry.endsWith(".ts") && !evaluationBoundaries.has(entry))) {
     assert.doesNotMatch(source(file), forbidden, file);
   }
 });
