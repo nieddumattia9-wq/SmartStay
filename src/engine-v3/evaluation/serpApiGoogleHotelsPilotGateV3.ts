@@ -5,6 +5,10 @@ import {
   type SerpApiGoogleHotelsExternalProjectionV3,
   type SerpApiGoogleHotelsResponseV3,
 } from "./serpApiGoogleHotelsExternalAdapterV3";
+import {
+  createSerpApiCanaryAuthorizationLiteralV3,
+  type StayOptiSerpApiPilotStageV3,
+} from "./serpApiGoogleHotelsPilotStageV3";
 
 export const STAYOPTI_SERPAPI_PILOT_MANIFEST_VERSION_V3 =
   "stayopti.v3.serpapi-google-hotels-pilot-manifest@1" as const;
@@ -279,13 +283,23 @@ export const STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 =
   `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_MAX48` as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3 =
-  /* RUNNER_BUNDLE_HASH_START */ "67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6" /* RUNNER_BUNDLE_HASH_END */ as const;
+  /* RUNNER_BUNDLE_HASH_START */ "c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01" /* RUNNER_BUNDLE_HASH_END */ as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3 =
   "stayopti.v3.serpapi-google-hotels-retention@2" as const;
 
+export const STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3 =
+  `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6_RETENTION_V2_MAX48` as const;
+
+export const STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3 =
+  createSerpApiCanaryAuthorizationLiteralV3(
+    STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+    STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+  );
+
+/** Current executable authorization is Stage A only. */
 export const STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3 =
-  `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_RETENTION_V2_MAX48` as const;
+  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3;
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3 = Object.freeze({
   retentionPolicyVersion: STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
@@ -308,8 +322,12 @@ export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
   sourceCommitSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
   manifestVersion: STAYOPTI_SERPAPI_PILOT_MANIFEST_VERSION_V3,
   manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
-  queryCount: 12 as const,
-  maximumApiCalls: STAYOPTI_SERPAPI_MAX_API_CALLS_V3,
+  executionModel: "STAGED_CANARY_THEN_REMAINING" as const,
+  canaryQueryCount: 1 as const,
+  canaryMaximumApiCalls: 4 as const,
+  remainingQueryCount: 11 as const,
+  remainingMaximumApiCalls: 44 as const,
+  maximumApiCallsAcrossStages: STAYOPTI_SERPAPI_MAX_API_CALLS_V3,
   maximumConcurrency: STAYOPTI_SERPAPI_MAX_CONCURRENCY_V3,
   retryBudget: STAYOPTI_SERPAPI_AUTOMATIC_RETRY_BUDGET_V3,
   allowedEngine: STAYOPTI_SERPAPI_ALLOWED_ENGINE_V3,
@@ -330,12 +348,20 @@ export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
   sanitizedSnapshotPolicy: "PERSIST_PROVIDER_NEUTRAL_ONLY" as const,
   authorizationState: "READY_FOR_EXPLICIT_AUTHORIZATION" as const,
   requiredAuthorizationLiteral: STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
+  revokedAuthorizationLiteral: STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3,
+  remainingAuthorizationRequiresCanaryZipHash: true as const,
+  stagesRequireSeparateProcesses: true as const,
   abortConditions: Object.freeze([
     "SOURCE_SHA_MISMATCH",
     "MANIFEST_HASH_MISMATCH",
     "MANIFEST_EXPIRED",
     "AUTHORIZATION_LITERAL_MISMATCH",
     "RETENTION_NOT_AUTHORIZED",
+    "STAGE_INVALID",
+    "CANARY_EVIDENCE_REQUIRED",
+    "CANARY_EVIDENCE_INVALID",
+    "CANARY_MANUAL_REVIEW_REQUIRED",
+    "DUPLICATE_REQUEST",
     "API_KEY_MISSING",
     "ENDPOINT_NOT_ALLOWLISTED",
     "ABORT_REQUEST_CAP_REACHED",
@@ -352,10 +378,12 @@ export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
 export interface StayOptiSerpApiPilotAuthorizationEnvelopeV3 {
   authorizationState: "AUTHORIZED_NOT_STARTED";
   literal: string;
+  stage: StayOptiSerpApiPilotStageV3;
   sourceCommitSha: string;
   manifestHash: string;
   accountPlan: "FREE";
   retentionAuthorized: true;
+  canaryEvidenceZipSha256?: string;
 }
 
 export interface StayOptiSerpApiPilotRequestV3 {
@@ -473,6 +501,7 @@ function validateEnvelope(
 ) {
   if (envelope === null) throw new Error("SERPAPI_PILOT_AUTHORIZATION_REQUIRED");
   if (envelope.authorizationState !== "AUTHORIZED_NOT_STARTED") throw new Error("SERPAPI_PILOT_AUTHORIZATION_STATE_INVALID");
+  if (envelope.stage !== "CANARY") throw new Error("SERPAPI_PILOT_STAGE_SESSION_NOT_ALLOWED");
   if (envelope.literal !== STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
   if (observedSourceSha !== STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3 || envelope.sourceCommitSha !== STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3) throw new Error("SERPAPI_PILOT_SOURCE_SHA_MISMATCH");
   if (envelope.manifestHash !== STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3 || createSerpApiPilotManifestHashV3() !== envelope.manifestHash) throw new Error("SERPAPI_PILOT_MANIFEST_HASH_MISMATCH");
@@ -596,7 +625,7 @@ export async function executeSerpApiGoogleHotelsPilotV3(input: {
   const requestDiagnostics: StayOptiSerpApiPilotReceiptV3["requestDiagnostics"] = [];
   const clock = input.clock ?? (() => input.nowIso);
   try {
-    for (const session of STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions) {
+    for (const session of STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions.slice(0, 1)) {
       assertSerpApiPilotRequestAllowedV3({
         endpoint: STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3,
         engine: STAYOPTI_SERPAPI_ALLOWED_ENGINE_V3,

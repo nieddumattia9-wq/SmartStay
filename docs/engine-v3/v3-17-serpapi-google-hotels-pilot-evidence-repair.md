@@ -1,5 +1,11 @@
 # V3-17T1A — SerpApi pilot sanitized snapshot and Evidence ZIP repair
 
+> Supersession notice (2026-09-01): V3-17T1B revokes the unconsumed T1A
+> direct MAX48 authorization literal. The immutable manifest and Evidence
+> contract remain historical inputs, but execution now requires the staged
+> canary/resume authorization described in
+> `v3-17-serpapi-google-hotels-staged-canary-gate.md`.
+
 Date: 2026-09-01
 Source checkpoint: `ecdeda1edc3dc88044c59ac39807a30e478f215e`
 Execution mode: offline only

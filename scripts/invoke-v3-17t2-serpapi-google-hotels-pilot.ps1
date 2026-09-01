@@ -1,8 +1,10 @@
 param(
+  [Parameter(Mandatory = $true)][ValidateSet('CANARY', 'REMAINING_11')][string]$Stage,
   [Parameter(Mandatory = $true)][string]$AuthorizationLiteral,
   [Parameter(Mandatory = $true)][string]$ExpectedHead,
   [Parameter(Mandatory = $true)][string]$CompiledRoot,
-  [Parameter(Mandatory = $true)][string]$EvidenceZipPath
+  [Parameter(Mandatory = $true)][string]$EvidenceZipPath,
+  [Parameter(Mandatory = $false)][string]$CanaryEvidenceZipPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +18,7 @@ if (Test-Path -LiteralPath $zipFullPath) { throw 'SERPAPI_PILOT_EVIDENCE_ZIP_OVE
 $workRoot = Join-Path ([IO.Path]::GetTempPath()) ('StayOpti-V3-17T2-Evidence-' + [Guid]::NewGuid().ToString('N'))
 $evidenceRoot = Join-Path $workRoot 'staging'
 $verifyRoot = Join-Path $workRoot 'verify'
+$canaryVerifyRoot = Join-Path $workRoot 'canary-verify'
 [IO.Directory]::CreateDirectory($workRoot) | Out-Null
 $secureKey = $null
 $unmanaged = [IntPtr]::Zero
@@ -24,6 +27,58 @@ $childExit = 1
 $childStarted = $false
 $node = (Get-Command node -ErrorAction Stop).Source
 $runner = Join-Path $PSScriptRoot 'run-v3-17t2-serpapi-google-hotels-pilot.mjs'
+$canaryZipHash = $null
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+if ($Stage -eq 'REMAINING_11') {
+  if ([string]::IsNullOrWhiteSpace($CanaryEvidenceZipPath)) { throw 'SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED' }
+  $canaryZipFullPath = [IO.Path]::GetFullPath($CanaryEvidenceZipPath)
+  if (-not (Test-Path -LiteralPath $canaryZipFullPath -PathType Leaf)) { throw 'SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED' }
+  [IO.Directory]::CreateDirectory($canaryVerifyRoot) | Out-Null
+  $canaryArchive = [IO.Compression.ZipFile]::OpenRead($canaryZipFullPath)
+  try {
+    if ($canaryArchive.Entries.Count -gt 256) { throw 'SERPAPI_PILOT_CANARY_EVIDENCE_ENTRY_CAP_EXCEEDED' }
+    $canaryExpandedBytes = [int64]0
+    foreach ($entry in $canaryArchive.Entries) {
+      $entryName = $entry.FullName.Replace('\', '/')
+      if ([string]::IsNullOrWhiteSpace($entryName) -or $entryName.StartsWith('/') -or
+          $entryName.Contains(':') -or $entryName.Split('/') -contains '..') {
+        throw 'SERPAPI_PILOT_CANARY_EVIDENCE_PATH_INVALID'
+      }
+      $entryTarget = [IO.Path]::GetFullPath((Join-Path $canaryVerifyRoot $entryName.Replace('/', '\')))
+      if (-not $entryTarget.StartsWith([IO.Path]::GetFullPath($canaryVerifyRoot).TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'SERPAPI_PILOT_CANARY_EVIDENCE_PATH_INVALID'
+      }
+      $canaryExpandedBytes += $entry.Length
+      if ($canaryExpandedBytes -gt 52428800) { throw 'SERPAPI_PILOT_CANARY_EVIDENCE_SIZE_CAP_EXCEEDED' }
+    }
+  }
+  finally { $canaryArchive.Dispose() }
+  [IO.Compression.ZipFile]::ExtractToDirectory($canaryZipFullPath, $canaryVerifyRoot)
+  $canaryZipHash = (Get-FileHash -LiteralPath $canaryZipFullPath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+elseif (-not [string]::IsNullOrWhiteSpace($CanaryEvidenceZipPath)) {
+  throw 'SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED'
+}
+
+$stageCapArgument = if ($Stage -eq 'CANARY') { '--single-stage-max-4' } else { '--single-stage-max-44' }
+$preflightArguments = @(
+  $runner,
+  "--stage=$Stage",
+  "--authorization=$AuthorizationLiteral",
+  "--expected-head=$ExpectedHead",
+  "--compiled-root=$CompiledRoot",
+  '--authorize-retention-policy',
+  $stageCapArgument,
+  '--preflight-only'
+)
+if ($Stage -eq 'REMAINING_11') {
+  $preflightArguments += "--canary-evidence-root=$canaryVerifyRoot"
+  $preflightArguments += "--canary-evidence-zip-sha256=$canaryZipHash"
+  $preflightArguments += '--manual-canary-review-confirmed'
+}
+& $node $preflightArguments
+if ($LASTEXITCODE -ne 0) { throw "SERPAPI_PILOT_PREFLIGHT_FAILED_$LASTEXITCODE" }
 
 try {
   $secureKey = Read-Host 'SerpApi API key' -AsSecureString
@@ -32,15 +87,22 @@ try {
   if ([string]::IsNullOrWhiteSpace($plainKey)) { throw 'SERPAPI_PILOT_API_KEY_MISSING' }
   [Environment]::SetEnvironmentVariable('SERPAPI_API_KEY', $plainKey, 'Process')
   $childStarted = $true
-  & $node @(
+  $childArguments = @(
     $runner,
+    "--stage=$Stage",
     "--authorization=$AuthorizationLiteral",
     "--expected-head=$ExpectedHead",
     "--compiled-root=$CompiledRoot",
     "--evidence-root=$evidenceRoot",
     '--authorize-retention-policy',
-    '--single-wave-max-48'
+    $stageCapArgument
   )
+  if ($Stage -eq 'REMAINING_11') {
+    $childArguments += "--canary-evidence-root=$canaryVerifyRoot"
+    $childArguments += "--canary-evidence-zip-sha256=$canaryZipHash"
+    $childArguments += '--manual-canary-review-confirmed'
+  }
+  & $node $childArguments
   $childExit = $LASTEXITCODE
 }
 finally {
@@ -63,13 +125,14 @@ try {
     credentialClearedFromProcess = ([Environment]::GetEnvironmentVariable('SERPAPI_API_KEY', 'Process') -eq $null)
     rawPayloadCommitted = $false
     evidenceZipOutsideRepository = $true
+    stage = $Stage
+    remainingStageNotStarted = ($Stage -eq 'CANARY')
   } | ConvertTo-Json
   [IO.File]::WriteAllText((Join-Path $evidenceRoot 'postflight.json'), $postflight + "`r`n", [Text.UTF8Encoding]::new($false))
 
   & $node @($runner, "--compiled-root=$CompiledRoot", "--finalize-evidence=$evidenceRoot")
   if ($LASTEXITCODE -ne 0) { throw "SERPAPI_PILOT_EVIDENCE_FINALIZE_FAILED_$LASTEXITCODE" }
 
-  Add-Type -AssemblyName System.IO.Compression.FileSystem
   [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($zipFullPath)) | Out-Null
   [IO.Compression.ZipFile]::CreateFromDirectory(
     $evidenceRoot,

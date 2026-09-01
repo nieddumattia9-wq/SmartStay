@@ -220,4 +220,42 @@ Next recommendation:
 It requires a later user message containing the exact new literal and explicit
 retention-v2 approval.
 
+## V3-17T1B SerpApi staged canary gate — ready for canary reauthorization
+
+Source checkpoint: `4986771e17e9ba9c5649c2b4732d9a25dcccc991`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the V3-17T1B final receipt.
+
+- The immutable twelve-session manifest remains
+  `e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88`.
+- The unconsumed T1A MAX48 literal is revoked. Stage A is now only the first
+  frozen session, capped at four calls and forced to stop; Stage B is a
+  separate process for the remaining eleven, capped at 44.
+- Stage B requires a PASS canary Evidence ZIP, checksum/archive/T3/cleanup
+  validation, manual review and a new authorization literal bound to the ZIP
+  SHA-256. That literal cannot exist before a successful canary.
+- The new runner bundle is
+  `c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01`.
+  The exact canary literal is published in the phase document and remains
+  unauthorized.
+- A fail-closed staged request ledger prevents concurrency, duplicate,
+  out-of-stage and over-cap requests before transport. Raw payloads remain
+  temp-only and delete-always; abort Evidence is sanitized.
+- Credentials, SerpApi calls, Google Hotels queries, provider calls and HTTP
+  requests are zero. Real sessions, Golden candidates, Golden cases and
+  judgments remain zero. V3-17 remains unmet and V3-18 remains blocked.
+- Public V2, the V3 decision core, provider runtime, weights, thresholds,
+  Split `OFF` and booking remain unchanged.
+
+- Validation on 2026-09-01: V3-17T1B `44/44 PASS`, including all eleven
+  injected fault boundaries; T1A `44/44`; T1 `38/38`; selected T,
+  provider-neutrality, B1/B2 and legacy regressions `48/48`; Engine V3
+  `1154/1154`; Engine V2 `196/196`; TypeScript, PowerShell 5.1 parsing,
+  F0B/F0C/F0D, security, license/provenance and Git integrity gates PASS.
+
+Next recommendation:
+`V3-17T2_SERPAPI_GOOGLE_HOTELS_ONE_SESSION_CANARY_REAUTHORIZATION`.
+It requires a later user message containing the exact canary literal and
+retention-v2 authorization. It does not authorize Stage B.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

@@ -14,6 +14,10 @@ const BUNDLE_FILES = Object.freeze([
   "src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts",
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts",
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts",
+  "src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.ts",
+  "src/engine-v3/evaluation/externalHotelChoiceContractV3.ts",
+  "src/engine-v3/evaluation/externalHotelChoiceReplayV3.ts",
+  "src/engine-v3/contract/stableHashV3.ts",
 ]);
 
 function valueFor(args, name) {
@@ -73,6 +77,7 @@ function compiledModules(compiledRoot) {
     gate: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.js")),
     collector: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.js")),
     evidence: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.js")),
+    stagePolicy: compiledRequire(resolve(compiledRoot, "src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.js")),
   };
 }
 function evidenceEntries(root) {
@@ -148,14 +153,29 @@ function rawStoreAt(rawDirectory) {
   };
 }
 
-function writeExecutionEvidence(evidenceRoot, gate, execution, observedHead) {
+function writeExecutionEvidence(evidenceRoot, gate, execution, observedHead, stage) {
+  const canarySession = gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[0];
   writeJsonExclusive(join(evidenceRoot, "frozen-manifest.json"), gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_V3);
   writeJsonExclusive(join(evidenceRoot, "authorization-receipt.json"), {
+    stage,
     manifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     runnerBundleHash: gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
     authorizationLiteralMatched: true,
     authorizationConsumed: execution.receipt.authorizationConsumed,
     retentionAuthorized: true,
+  });
+  writeJsonExclusive(join(evidenceRoot, "stage-declaration.json"), {
+    pilotId: gate.STAYOPTI_SERPAPI_PILOT_ID_V3,
+    stage,
+    manifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+    runnerBundleHash: gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+    maximumRequests: stage === "CANARY" ? 4 : 44,
+    remainingStageNotStarted: stage === "CANARY",
+  });
+  writeJsonExclusive(join(evidenceRoot, "canary-session.json"), {
+    sessionId: canarySession.sessionId,
+    sessionIndex: 0,
+    excludedFromRemaining: stage === "REMAINING_11",
   });
   writeJsonExclusive(join(evidenceRoot, "sanitized-request-ledger.json"), execution.sanitizedRequestLedger);
   writeJsonExclusive(join(evidenceRoot, "pilot-summary.json"), execution.receipt);
@@ -173,28 +193,86 @@ function writeExecutionEvidence(evidenceRoot, gate, execution, observedHead) {
     stagedInitiallyZero: true,
     bundleHashVerified: true,
     manifestHashVerified: true,
+    stage,
   });
+  writeJsonExclusive(join(evidenceRoot, "schema-validation.json"), {
+    snapshotT3Compatible: execution.snapshots.every((snapshot) => evidenceSnapshotValid(snapshot)),
+    snapshotCount: execution.snapshots.length,
+  });
+  writeJsonExclusive(join(evidenceRoot, "zip-roundtrip-result.json"), {
+    archiveRoundtripRequired: true,
+    validatorRequired: true,
+    finalArchiveValidationPerformedByLauncher: true,
+  });
+}
+
+let evidenceSnapshotValidator = null;
+function evidenceSnapshotValid(snapshot) {
+  return evidenceSnapshotValidator?.(snapshot).valid === true;
+}
+
+function validateCanaryEvidenceForResume(evidenceRoot, canaryZipSha256, gate, evidence) {
+  if (!evidenceRoot || !existsSync(evidenceRoot)) fail("SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED");
+  if (!/^[0-9a-f]{64}$/.test(canaryZipSha256 ?? "")) fail("SERPAPI_PILOT_CANARY_ZIP_HASH_INVALID");
+  const canarySession = gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[0];
+  const validation = evidence.validateSerpApiCanaryEvidenceArchiveEntriesV3({
+    entries: evidenceEntries(evidenceRoot),
+    expectedPilotId: gate.STAYOPTI_SERPAPI_PILOT_ID_V3,
+    expectedManifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+    expectedRunnerBundleHash: gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+    expectedCanarySessionId: canarySession.sessionId,
+    canaryEvidenceZipSha256: canaryZipSha256,
+  });
+  if (!validation.valid) fail("SERPAPI_PILOT_CANARY_EVIDENCE_INVALID");
+  return validation;
 }
 
 export async function runV317T2(argv = process.argv.slice(2)) {
   const repositoryRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
   const compiledRootValue = valueFor(argv, "--compiled-root");
   if (!compiledRootValue) fail("SERPAPI_PILOT_COMPILED_ROOT_REQUIRED");
-  const { gate, collector, evidence } = compiledModules(resolve(compiledRootValue));
+  const { gate, collector, evidence, stagePolicy } = compiledModules(resolve(compiledRootValue));
+  evidenceSnapshotValidator = evidence.validateSerpApiSanitizedSnapshotV3;
   const finalizeRoot = valueFor(argv, "--finalize-evidence");
   const validateRoot = valueFor(argv, "--validate-evidence");
   if (finalizeRoot !== null) return finalizeV317T2Evidence(repositoryRoot, resolve(finalizeRoot), evidence);
   if (validateRoot !== null) return validateV317T2Evidence(repositoryRoot, resolve(validateRoot), evidence);
 
+  const stage = valueFor(argv, "--stage");
   const authorizationLiteral = valueFor(argv, "--authorization");
   const expectedHead = valueFor(argv, "--expected-head");
   const evidenceRootValue = valueFor(argv, "--evidence-root");
-  if (!authorizationLiteral || !expectedHead || !evidenceRootValue) fail("SERPAPI_PILOT_REQUIRED_ARGUMENT_MISSING");
-  if (!argv.includes("--authorize-retention-policy") || !argv.includes("--single-wave-max-48")) fail("SERPAPI_PILOT_EXACT_ACKNOWLEDGEMENT_MISSING");
+  if (!stagePolicy.STAYOPTI_SERPAPI_PILOT_STAGES_V3.includes(stage)) fail("SERPAPI_PILOT_STAGE_REQUIRED");
+  if (!authorizationLiteral || !expectedHead) fail("SERPAPI_PILOT_REQUIRED_ARGUMENT_MISSING");
+  const stageAcknowledgement = stage === "CANARY" ? "--single-stage-max-4" : "--single-stage-max-44";
+  if (!argv.includes("--authorize-retention-policy") || !argv.includes(stageAcknowledgement)) fail("SERPAPI_PILOT_EXACT_ACKNOWLEDGEMENT_MISSING");
   const observedHead = validateGitPreflight(repositoryRoot, expectedHead);
   if (computeV317T2RunnerBundleHash(repositoryRoot) !== gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3) fail("SERPAPI_PILOT_RUNNER_BUNDLE_HASH_MISMATCH");
-  if (authorizationLiteral !== gate.STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3) fail("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+  let validatedCanaryEvidence;
+  if (stage === "CANARY") {
+    if (authorizationLiteral !== gate.STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3) fail("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+    if (valueFor(argv, "--canary-evidence-root") !== null) fail("SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED");
+  } else {
+    const canaryRoot = valueFor(argv, "--canary-evidence-root");
+    const canaryZipSha256 = valueFor(argv, "--canary-evidence-zip-sha256");
+    if (!canaryRoot || !canaryZipSha256) fail("SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED");
+    if (!argv.includes("--manual-canary-review-confirmed")) fail("SERPAPI_PILOT_MANUAL_CANARY_REVIEW_REQUIRED");
+    validatedCanaryEvidence = validateCanaryEvidenceForResume(resolve(canaryRoot), canaryZipSha256, gate, evidence);
+    const required = stagePolicy.createSerpApiRemainingAuthorizationLiteralV3({
+      manifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+      runnerBundleHash: gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+      canaryEvidenceZipSha256: canaryZipSha256,
+    });
+    if (authorizationLiteral !== required) fail("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+  }
+  if (argv.includes("--preflight-only")) return {
+    status: "PREFLIGHT_VALID",
+    stage,
+    requestCount: 0,
+    failureClassification: null,
+  };
 
+  if (!evidenceRootValue) fail("SERPAPI_PILOT_REQUIRED_ARGUMENT_MISSING");
   const evidenceRoot = resolve(evidenceRootValue);
   assertOutsideRepository(repositoryRoot, evidenceRoot);
   if (existsSync(evidenceRoot)) fail("SERPAPI_PILOT_EVIDENCE_ROOT_MUST_NOT_EXIST");
@@ -208,11 +286,14 @@ export async function runV317T2(argv = process.argv.slice(2)) {
       authorization: {
         authorizationState: "AUTHORIZED_NOT_STARTED",
         literal: authorizationLiteral,
+        stage,
         sourceCommitSha: BASELINE_SOURCE_SHA,
         manifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
         accountPlan: "FREE",
         retentionAuthorized: true,
+        canaryEvidenceZipSha256: validatedCanaryEvidence?.canaryEvidenceZipSha256,
       },
+      validatedCanaryEvidence,
       apiKey,
       observedSourceSha: BASELINE_SOURCE_SHA,
       nowIso: new Date().toISOString(),
@@ -233,7 +314,7 @@ export async function runV317T2(argv = process.argv.slice(2)) {
       rawStore,
       evidenceStore: atomicSnapshotStore(evidenceRoot),
     });
-    writeExecutionEvidence(evidenceRoot, gate, execution, observedHead);
+    writeExecutionEvidence(evidenceRoot, gate, execution, observedHead, stage);
     return execution.receipt;
   } finally {
     rawStore.removeAllEphemeral();

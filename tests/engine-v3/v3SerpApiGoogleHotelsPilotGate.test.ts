@@ -89,6 +89,7 @@ function authorization(overrides: Partial<StayOptiSerpApiPilotAuthorizationEnvel
     accountPlan: "FREE",
     retentionAuthorized: true,
     ...overrides,
+    stage: overrides.stage ?? "CANARY",
   };
 }
 
@@ -159,7 +160,7 @@ test("V3-17T1 manifest covers required occupancy duration lead-time and preferen
 test("V3-17T1 manifest hash and authorization literal are deterministic and bound", () => {
   assert.match(STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, /^[0-9a-f]{64}$/);
   assert.equal(createSerpApiPilotManifestHashV3(), STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3);
-  assert.equal(STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3, `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_RETENTION_V2_MAX48`);
+  assert.equal(STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3, `AUTHORIZE_V3_17T2_CANARY_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_RETENTION_V2_MAX4`);
   assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3, "stayopti.v3.serpapi-google-hotels-retention@2");
 });
 
@@ -253,18 +254,18 @@ test("V3-17T1 API key redaction removes query and diagnostic values", () => {
 
 test("V3-17T1 successful stub collection deletes raw payloads", async () => {
   const result = await run();
-  assert.equal(result.calls, 12);
+  assert.equal(result.calls, 1);
   assert.equal(result.rawStore.values.size, 0);
   assert.equal(result.receipt?.status, "COMPLETED");
   assert.equal(result.receipt?.rawPayloadsPersisted, 0);
 });
 
 test("V3-17T1 simulated abort deletes raw payloads and performs no retry", async () => {
-  const result = await run({ failAt: 3 });
-  assert.equal(result.calls, 3);
+  const result = await run({ failAt: 1 });
+  assert.equal(result.calls, 1);
   assert.equal(result.rawStore.values.size, 0);
   assert.equal(result.receipt?.status, "ABORTED");
-  assert.equal(result.receipt?.requestCount, 3);
+  assert.equal(result.receipt?.requestCount, 1);
 });
 
 test("V3-17T1 API key is absent from sanitized receipt and saved URLs", async () => {
@@ -305,7 +306,7 @@ test("V3-17T1 main searches use exact Google Hotels endpoint and no-cache", asyn
   const captured: string[] = [];
   const fakeTransport = transport({ capture: captured });
   await executeSerpApiGoogleHotelsPilotV3({ authorization: authorization(), apiKey: TEST_KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, nowIso: "2026-09-02T00:00:00Z", transport: fakeTransport.implementation, rawStore: new MemoryRawStore() });
-  assert.equal(captured.length, 12);
+  assert.equal(captured.length, 1);
   assert.ok(captured.every((entry) => entry.startsWith(STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3) && entry.includes("engine=google_hotels") && entry.includes("no_cache=true")));
 });
 
@@ -362,9 +363,9 @@ test("V3-17T1 raw payload policy is temp-only delete-always", () => {
   assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3.imageRetention, "NONE");
 });
 
-test("V3-17T1 only twelve main requests execute in stub and cap remains 48", async () => {
+test("V3-17T1 staged stub executes only the canary main while manifest cap remains 48", async () => {
   const result = await run();
-  assert.equal(result.receipt?.mainSearchCount, 12);
+  assert.equal(result.receipt?.mainSearchCount, 1);
   assert.equal(result.receipt?.propertyDetailCount, 0);
   assert.equal(STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.maximumApiCalls, 48);
 });

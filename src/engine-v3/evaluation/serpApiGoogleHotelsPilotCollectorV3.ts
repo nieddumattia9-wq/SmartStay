@@ -5,10 +5,10 @@ import {
   STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_V3,
   STAYOPTI_SERPAPI_PILOT_RECEIPT_VERSION_V3,
+  STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
-  STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
+  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,
   STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3,
-  StayOptiSerpApiRequestLedgerV3,
   assertSerpApiPilotRequestAllowedV3,
   createSerpApiPilotManifestHashV3,
   redactSerpApiDiagnosticV3,
@@ -20,6 +20,15 @@ import {
   type StayOptiSerpApiPilotSessionV3,
   type StayOptiSerpApiPilotTransportV3,
 } from "./serpApiGoogleHotelsPilotGateV3";
+import {
+  StayOptiSerpApiStagedRequestLedgerV3,
+  createSerpApiRemainingAuthorizationLiteralV3,
+  stageRequestCapV3,
+  stageSessionIndexesV3,
+  type StayOptiSerpApiPilotStageV3,
+  type StayOptiSerpApiStagedLedgerEntryV3,
+  type StayOptiSerpApiValidatedCanaryEvidenceV3,
+} from "./serpApiGoogleHotelsPilotStageV3";
 import {
   STAYOPTI_SERPAPI_PILOT_EVIDENCE_SCHEMA_VERSION_V3,
   createSerpApiSanitizedSnapshotV3,
@@ -40,20 +49,7 @@ export interface StayOptiSerpApiPilotEvidenceStoreV3 {
   readSnapshot(name: string): string;
 }
 
-export interface StayOptiSerpApiPilotSanitizedLedgerEntryV3 {
-  requestOrdinal: number;
-  sessionOrdinal: number;
-  sessionId: string;
-  requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL";
-  alternativeRank: number | null;
-  requestedAt: string;
-  completedAt: string;
-  httpStatus: number | null;
-  outcome: "PROCESSABLE" | "FAILED_SANITIZED";
-  noCacheRequested: true;
-  endpointClass: "SERPAPI_GOOGLE_HOTELS";
-  sensitiveUrlPersisted: false;
-}
+export type StayOptiSerpApiPilotSanitizedLedgerEntryV3 = StayOptiSerpApiStagedLedgerEntryV3;
 
 export interface StayOptiSerpApiPilotSessionSummaryV3 {
   sessionOrdinal: number;
@@ -73,8 +69,14 @@ export interface StayOptiSerpApiPilotEvidenceReceiptV3 {
   evidenceSchemaVersion: typeof STAYOPTI_SERPAPI_PILOT_EVIDENCE_SCHEMA_VERSION_V3;
   pilotId: typeof STAYOPTI_SERPAPI_PILOT_ID_V3;
   status: "COMPLETED" | "ABORTED";
+  stage: StayOptiSerpApiPilotStageV3;
   manifestHash: string;
+  runnerBundleHash: string;
   authorizationConsumed: boolean;
+  actualRequestsTransmitted: number;
+  canarySessionId: string;
+  canarySessionIndex: 0;
+  remainingStageNotStarted: boolean;
   requestCount: number;
   mainSearchCount: number;
   propertyDetailCount: number;
@@ -110,17 +112,34 @@ function validateAuthorization(input: {
   apiKey: string;
   observedSourceSha: string;
   nowIso: string;
+  validatedCanaryEvidence?: StayOptiSerpApiValidatedCanaryEvidenceV3;
 }) {
   const authorization = input.authorization;
   if (authorization === null) throw new Error("SERPAPI_PILOT_AUTHORIZATION_REQUIRED");
   if (authorization.authorizationState !== "AUTHORIZED_NOT_STARTED") throw new Error("SERPAPI_PILOT_AUTHORIZATION_STATE_INVALID");
-  if (authorization.literal !== STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+  if (!(["CANARY", "REMAINING_11"] as string[]).includes(authorization.stage)) throw new Error("SERPAPI_PILOT_STAGE_REQUIRED");
+  if (authorization.stage === "CANARY") {
+    if (authorization.literal !== STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+    if (authorization.canaryEvidenceZipSha256 !== undefined || input.validatedCanaryEvidence !== undefined) throw new Error("SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED");
+  } else {
+    const evidence = input.validatedCanaryEvidence;
+    if (evidence?.valid !== true || evidence.status !== "PASS") throw new Error("SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED");
+    if (authorization.canaryEvidenceZipSha256 !== evidence.canaryEvidenceZipSha256) throw new Error("SERPAPI_PILOT_CANARY_ZIP_HASH_MISMATCH");
+    if (evidence.manifestHash !== STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3 || evidence.runnerBundleHash !== STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3) throw new Error("SERPAPI_PILOT_CANARY_EVIDENCE_BINDING_MISMATCH");
+    const required = createSerpApiRemainingAuthorizationLiteralV3({
+      manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+      runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+      canaryEvidenceZipSha256: evidence.canaryEvidenceZipSha256,
+    });
+    if (authorization.literal !== required) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+  }
   if (input.observedSourceSha !== STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3 || authorization.sourceCommitSha !== STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3) throw new Error("SERPAPI_PILOT_SOURCE_SHA_MISMATCH");
   if (authorization.manifestHash !== STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3 || createSerpApiPilotManifestHashV3() !== authorization.manifestHash) throw new Error("SERPAPI_PILOT_MANIFEST_HASH_MISMATCH");
   if (authorization.accountPlan !== "FREE") throw new Error("SERPAPI_PILOT_ACCOUNT_PLAN_MISMATCH");
   if (authorization.retentionAuthorized !== true) throw new Error("SERPAPI_PILOT_RETENTION_NOT_AUTHORIZED");
   if (input.apiKey.length === 0) throw new Error("SERPAPI_PILOT_API_KEY_MISSING");
   if (STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions.some((session) => !dateIsValidFuture(session.checkIn, input.nowIso))) throw new Error("SERPAPI_PILOT_MANIFEST_EXPIRED");
+  return stageSessionIndexesV3(authorization.stage, STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions.length);
 }
 
 function buildMainUrl(session: StayOptiSerpApiPilotSessionV3, apiKey: string) {
@@ -205,22 +224,30 @@ function sanitizedFailure(error: unknown) {
 
 function createReceipt(
   status: "COMPLETED" | "ABORTED",
-  ledger: StayOptiSerpApiRequestLedgerV3,
+  stage: StayOptiSerpApiPilotStageV3,
+  ledger: StayOptiSerpApiStagedRequestLedgerV3,
   snapshots: readonly StayOptiSerpApiSanitizedSnapshotV3[],
   deletions: readonly StayOptiSerpApiRawDeletionReceiptV3[],
   failureClassification: string | null,
 ): StayOptiSerpApiPilotEvidenceReceiptV3 {
   const entries = ledger.snapshot();
+  const canarySession = STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[0]!;
   const body = {
     receiptVersion: STAYOPTI_SERPAPI_PILOT_RECEIPT_VERSION_V3,
     evidenceSchemaVersion: STAYOPTI_SERPAPI_PILOT_EVIDENCE_SCHEMA_VERSION_V3,
     pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3,
     status,
+    stage,
     manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
-    authorizationConsumed: entries.length > 0,
+    runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+    authorizationConsumed: ledger.transmittedCount() > 0,
+    actualRequestsTransmitted: ledger.transmittedCount(),
+    canarySessionId: canarySession.sessionId,
+    canarySessionIndex: 0 as const,
+    remainingStageNotStarted: stage === "CANARY",
     requestCount: entries.length,
-    mainSearchCount: entries.filter((entry) => entry.requestKind === "MAIN_SEARCH").length,
-    propertyDetailCount: entries.filter((entry) => entry.requestKind === "PROPERTY_DETAIL").length,
+    mainSearchCount: entries.filter((entry) => entry.requestType === "MAIN_SEARCH" && entry.transmittedAt !== null).length,
+    propertyDetailCount: entries.filter((entry) => entry.requestType === "PROPERTY_DETAIL" && entry.transmittedAt !== null).length,
     requestLedgerHash: ledger.hash(),
     sanitizedSnapshotFingerprints: snapshots.map((snapshot) => snapshot.normalizedSnapshotHash).sort(),
     rawDeletionReceiptCount: deletions.length,
@@ -243,11 +270,21 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   transport: StayOptiSerpApiPilotTransportV3;
   rawStore: StayOptiSerpApiPilotRawStoreV3;
   evidenceStore: StayOptiSerpApiPilotEvidenceStoreV3;
+  validatedCanaryEvidence?: StayOptiSerpApiValidatedCanaryEvidenceV3;
   clock?: () => string;
+  faultInjector?: (point: StayOptiSerpApiPilotFaultPointV3) => void;
 }): Promise<StayOptiSerpApiPilotEvidenceExecutionV3> {
-  validateAuthorization(input);
+  const sessionIndexes = validateAuthorization(input);
+  const stage = input.authorization!.stage;
   if (typeof input.rawStore.existsEphemeral !== "function") throw new Error("SERPAPI_PILOT_RAW_DELETE_VERIFICATION_REQUIRED");
-  const ledger = new StayOptiSerpApiRequestLedgerV3();
+  const ledger = new StayOptiSerpApiStagedRequestLedgerV3({
+    pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3,
+    manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+    runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
+    stage,
+    allowedSessionIndexes: sessionIndexes,
+    maximumRequests: stageRequestCapV3(stage),
+  });
   const snapshots: StayOptiSerpApiSanitizedSnapshotV3[] = [];
   const sanitizedRequestLedger: StayOptiSerpApiPilotSanitizedLedgerEntryV3[] = [];
   const rawDeletionReceipts: StayOptiSerpApiRawDeletionReceiptV3[] = [];
@@ -255,6 +292,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   const clock = input.clock ?? (() => input.nowIso);
   let failureClassification: string | null = null;
 
+  const fault = (point: StayOptiSerpApiPilotFaultPointV3) => input.faultInjector?.(point);
   const deleteRaw = (name: string, receipt: Omit<StayOptiSerpApiRawDeletionReceiptV3, "rawDeleted" | "verifiedAbsent">) => {
     input.rawStore.removeEphemeral(name);
     if (input.rawStore.existsEphemeral!(name)) throw new Error("SERPAPI_PILOT_RAW_DELETE_VERIFICATION_FAILED");
@@ -262,35 +300,40 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   };
 
   try {
-    sessionLoop: for (let sessionIndex = 0; sessionIndex < STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions.length; sessionIndex += 1) {
+    sessionLoop: for (const sessionIndex of sessionIndexes) {
       const session = STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[sessionIndex];
+      if (session === undefined) throw new Error("SERPAPI_PILOT_STAGE_SESSION_NOT_ALLOWED");
       const sessionOrdinal = sessionIndex + 1;
       const statuses: Record<number, StayOptiSerpApiDetailEnrichmentStatusV3> = {};
       let responseBody: SerpApiGoogleHotelsResponseV3 | null = null;
       let currentSnapshot: StayOptiSerpApiSanitizedSnapshotV3 | null = null;
+      let snapshotWasExported = false;
       let detailRequestsExecuted = 0;
       let sessionFailure: string | null = null;
 
+      type PendingRequest = {
+        ordinal: number;
+        requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL";
+        rawName: string;
+        rawHash: string;
+        rawCreated: boolean;
+        alternativeRank: number | null;
+      };
       const runRequest = async (
         requestKind: "MAIN_SEARCH" | "PROPERTY_DETAIL",
         url: string,
         alternativeRank: number | null,
       ) => {
+        if (ledger.snapshot().length === 0) fault("BEFORE_FIRST_REQUEST");
         assertSerpApiPilotRequestAllowedV3({
           endpoint: STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3,
           engine: STAYOPTI_SERPAPI_ALLOWED_ENGINE_V3,
           requestKind,
         });
-        const reservation = ledger.reserve(session.sessionId, requestKind);
-        const requestedAt = clock();
-        let rawCreated = false;
-        let rawName = "";
-        let rawHash = "";
-        let succeeded = false;
-        let observedHttpStatus: number | null = null;
-        try {
-          const request: StayOptiSerpApiPilotRequestV3 = {
-            requestOrdinal: reservation.ordinal,
+        const ordinal = ledger.plan({ sessionId: session.sessionId, sessionIndex, requestType: requestKind, alternativeRank });
+        const pending: PendingRequest = { ordinal, requestKind, rawName: "", rawHash: "", rawCreated: false, alternativeRank };
+        const request: StayOptiSerpApiPilotRequestV3 = {
+            requestOrdinal: ordinal,
             sessionId: session.sessionId,
             requestKind,
             engine: STAYOPTI_SERPAPI_ALLOWED_ENGINE_V3,
@@ -298,66 +341,69 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
             url,
             sanitizedUrl: redactSerpApiDiagnosticV3(url),
           };
+        try {
+          ledger.transmit(ordinal, clock());
           const transportResponse = await input.transport.send(request);
-          observedHttpStatus = Number.isInteger(transportResponse.httpStatus) ? transportResponse.httpStatus : null;
+          if (requestKind === "MAIN_SEARCH") fault("AFTER_SEARCH_TRANSMITTED");
           if (!Number.isInteger(transportResponse.httpStatus) || transportResponse.httpStatus < 200 || transportResponse.httpStatus >= 300) {
             throw new Error("SERPAPI_PILOT_HTTP_OR_TRANSPORT_FAILURE");
           }
+          if (requestKind === "MAIN_SEARCH") fault("DURING_SEARCH_PARSING");
           const serializedRaw = JSON.stringify(transportResponse.body);
-          rawName = `request-${String(reservation.ordinal).padStart(2, "0")}.json`;
-          rawHash = sha256SerpApiEvidenceV3(serializedRaw);
-          input.rawStore.writeEphemeral(rawName, serializedRaw);
-          rawCreated = true;
-          sanitizedRequestLedger.push({
-            requestOrdinal: reservation.ordinal,
-            sessionOrdinal,
-            sessionId: session.sessionId,
-            requestKind,
-            alternativeRank,
-            requestedAt,
-            completedAt: clock(),
-            httpStatus: transportResponse.httpStatus,
-            outcome: "PROCESSABLE",
-            noCacheRequested: true,
-            endpointClass: "SERPAPI_GOOGLE_HOTELS",
-            sensitiveUrlPersisted: false,
-          });
-          succeeded = true;
-          return { body: transportResponse.body, rawName, rawHash, requestOrdinal: reservation.ordinal };
+          pending.rawName = `request-${String(ordinal).padStart(2, "0")}.json`;
+          pending.rawHash = sha256SerpApiEvidenceV3(serializedRaw);
+          input.rawStore.writeEphemeral(pending.rawName, serializedRaw);
+          pending.rawCreated = true;
+          return { body: transportResponse.body, pending };
         } catch (error) {
-          sanitizedRequestLedger.push({
-            requestOrdinal: reservation.ordinal,
-            sessionOrdinal,
-            sessionId: session.sessionId,
-            requestKind,
-            alternativeRank,
-            requestedAt,
-            completedAt: clock(),
-            httpStatus: observedHttpStatus,
-            outcome: "FAILED_SANITIZED",
-            noCacheRequested: true,
-            endpointClass: "SERPAPI_GOOGLE_HOTELS",
-            sensitiveUrlPersisted: false,
-          });
-          throw error;
-        } finally {
-          ledger.complete();
-          if (!succeeded && rawCreated && input.rawStore.existsEphemeral!(rawName)) {
-            deleteRaw(rawName, {
-              requestOrdinal: reservation.ordinal,
+          if (pending.rawCreated && input.rawStore.existsEphemeral!(pending.rawName)) {
+            deleteRaw(pending.rawName, {
+              requestOrdinal: pending.ordinal,
               sessionId: session.sessionId,
-              requestKind,
-              ephemeralPayloadSha256: rawHash,
+              requestKind: pending.requestKind,
+              ephemeralPayloadSha256: pending.rawHash,
               rawCreated: true,
             });
           }
+          ledger.fail(pending.ordinal, sanitizedFailure(error), !pending.rawCreated || !input.rawStore.existsEphemeral!(pending.rawName), false);
+          throw error;
         }
       };
 
+      const finishValidated = (pending: PendingRequest, snapshotExported: boolean) => {
+        if (pending.rawCreated && input.rawStore.existsEphemeral!(pending.rawName)) {
+          deleteRaw(pending.rawName, {
+            requestOrdinal: pending.ordinal,
+            sessionId: session.sessionId,
+            requestKind: pending.requestKind,
+            ephemeralPayloadSha256: pending.rawHash,
+            rawCreated: true,
+          });
+        }
+        ledger.validate(pending.ordinal, pending.rawHash, snapshotExported, true);
+      };
+
+      const finishFailed = (pending: PendingRequest | null, error: unknown, snapshotExported: boolean) => {
+        if (pending === null) return;
+        if (pending.rawCreated && input.rawStore.existsEphemeral!(pending.rawName)) {
+          deleteRaw(pending.rawName, {
+            requestOrdinal: pending.ordinal,
+            sessionId: session.sessionId,
+            requestKind: pending.requestKind,
+            ephemeralPayloadSha256: pending.rawHash,
+            rawCreated: true,
+          });
+        }
+        ledger.fail(pending.ordinal, sanitizedFailure(error), !pending.rawCreated || !input.rawStore.existsEphemeral!(pending.rawName), snapshotExported);
+      };
+
       try {
-        const main = await runRequest("MAIN_SEARCH", buildMainUrl(session, input.apiKey), null);
+        let main: Awaited<ReturnType<typeof runRequest>> | null = null;
+        let mainSnapshotExported = false;
         try {
+          main = await runRequest("MAIN_SEARCH", buildMainUrl(session, input.apiKey), null);
           responseBody = main.body;
+          fault("DURING_NORMALIZATION");
           currentSnapshot = createSerpApiSanitizedSnapshotV3({
             pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3,
             manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
@@ -366,57 +412,35 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
             captureTimestamp: clock(),
             detailStatuses: statuses,
           });
+          fault("DURING_SNAPSHOT_EXPORT");
           exportAndVerifySnapshot(input.evidenceStore, snapshotName(sessionOrdinal), currentSnapshot);
-        } finally {
-          if (input.rawStore.existsEphemeral!(main.rawName)) {
-            deleteRaw(main.rawName, {
-              requestOrdinal: main.requestOrdinal,
-              sessionId: session.sessionId,
-              requestKind: "MAIN_SEARCH",
-              ephemeralPayloadSha256: main.rawHash,
-              rawCreated: true,
-            });
-          }
+          mainSnapshotExported = true;
+          snapshotWasExported = true;
+          fault("DURING_SNAPSHOT_REREAD");
+          finishValidated(main.pending, true);
+        } catch (error) {
+          finishFailed(main?.pending ?? null, error, mainSnapshotExported);
+          throw error;
         }
 
         const selected = selectSerpApiPropertyDetailCandidatesV3(detailCandidates(responseBody))
           .slice(0, STAYOPTI_SERPAPI_MAX_DETAILS_PER_SESSION_V3);
-        for (const candidate of selected) {
+        for (let detailIndex = 0; detailIndex < selected.length; detailIndex += 1) {
+          const candidate = selected[detailIndex]!;
+          if (detailIndex === 0) fault("BEFORE_DETAIL_1");
           const rank = Number(candidate.localReference.slice("RANK_".length));
           statuses[rank] = "SELECTED_PENDING";
-          detailRequestsExecuted += 1;
+          let detail: Awaited<ReturnType<typeof runRequest>> | null = null;
+          let detailSnapshotExported = false;
           try {
-            const detail = await runRequest(
+            detailRequestsExecuted += 1;
+            detail = await runRequest(
               "PROPERTY_DETAIL",
               buildDetailUrl(session, candidate.propertyToken, input.apiKey),
               rank,
             );
-            try {
-              responseBody = mergeSerpApiDetailResponseV3(responseBody, rank, detail.body);
-              statuses[rank] = "MERGED";
-              currentSnapshot = createSerpApiSanitizedSnapshotV3({
-                pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3,
-                manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
-                session,
-                response: responseBody,
-                captureTimestamp: clock(),
-                detailStatuses: statuses,
-              });
-              exportAndVerifySnapshot(input.evidenceStore, snapshotName(sessionOrdinal), currentSnapshot);
-            } finally {
-              if (input.rawStore.existsEphemeral!(detail.rawName)) {
-                deleteRaw(detail.rawName, {
-                  requestOrdinal: detail.requestOrdinal,
-                  sessionId: session.sessionId,
-                  requestKind: "PROPERTY_DETAIL",
-                  ephemeralPayloadSha256: detail.rawHash,
-                  rawCreated: true,
-                });
-              }
-            }
-          } catch (error) {
-            statuses[rank] = "FAILED_SANITIZED";
-            sessionFailure = sanitizedFailure(error);
+            responseBody = mergeSerpApiDetailResponseV3(responseBody, rank, detail.body);
+            statuses[rank] = "MERGED";
             currentSnapshot = createSerpApiSanitizedSnapshotV3({
               pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3,
               manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
@@ -426,6 +450,26 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
               detailStatuses: statuses,
             });
             exportAndVerifySnapshot(input.evidenceStore, snapshotName(sessionOrdinal), currentSnapshot);
+            detailSnapshotExported = true;
+            snapshotWasExported = true;
+            finishValidated(detail.pending, true);
+            detail = null;
+            if (detailIndex === 0) fault("AFTER_DETAIL_1");
+            if (detailIndex === 1) fault("AFTER_DETAIL_2");
+          } catch (error) {
+            statuses[rank] = "FAILED_SANITIZED";
+            sessionFailure = sanitizedFailure(error);
+            finishFailed(detail?.pending ?? null, error, detailSnapshotExported);
+            currentSnapshot = createSerpApiSanitizedSnapshotV3({
+              pilotId: STAYOPTI_SERPAPI_PILOT_ID_V3,
+              manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
+              session,
+              response: responseBody,
+              captureTimestamp: clock(),
+              detailStatuses: statuses,
+            });
+            exportAndVerifySnapshot(input.evidenceStore, snapshotName(sessionOrdinal), currentSnapshot);
+            snapshotWasExported = true;
             throw error;
           }
         }
@@ -444,17 +488,17 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
         });
       } catch (error) {
         failureClassification = sessionFailure ?? sanitizedFailure(error);
-        if (currentSnapshot !== null) snapshots.push(currentSnapshot);
+        if (currentSnapshot !== null && snapshotWasExported) snapshots.push(currentSnapshot);
         sessionSummaries.push({
           sessionOrdinal,
           sessionId: session.sessionId,
-          status: currentSnapshot === null ? "FAILED" : "PARTIAL",
+          status: currentSnapshot === null || !snapshotWasExported ? "FAILED" : "PARTIAL",
           mainRequestExecuted: responseBody !== null,
           detailRequestsExecuted,
-          snapshotExported: currentSnapshot !== null,
+          snapshotExported: snapshotWasExported,
           resultCount: currentSnapshot?.resultCount ?? 0,
           mappingCompleteness: currentSnapshot?.mappingCompleteness ?? "NOT_AVAILABLE",
-          snapshotHash: currentSnapshot?.normalizedSnapshotHash ?? null,
+          snapshotHash: snapshotWasExported ? currentSnapshot?.normalizedSnapshotHash ?? null : null,
           failureClassification,
         });
         break sessionLoop;
@@ -464,12 +508,24 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
     input.rawStore.removeAllEphemeral();
   }
 
-  const status = failureClassification === null && snapshots.length === 12 ? "COMPLETED" : "ABORTED";
+  const status = failureClassification === null && snapshots.length === sessionIndexes.length ? "COMPLETED" : "ABORTED";
+  sanitizedRequestLedger.push(...ledger.snapshot());
   return {
-    receipt: createReceipt(status, ledger, snapshots, rawDeletionReceipts, failureClassification),
+    receipt: createReceipt(status, stage, ledger, snapshots, rawDeletionReceipts, failureClassification),
     snapshots,
     sanitizedRequestLedger,
     rawDeletionReceipts,
     sessionSummaries,
   };
 }
+
+export type StayOptiSerpApiPilotFaultPointV3 =
+  | "BEFORE_FIRST_REQUEST"
+  | "AFTER_SEARCH_TRANSMITTED"
+  | "DURING_SEARCH_PARSING"
+  | "DURING_NORMALIZATION"
+  | "DURING_SNAPSHOT_EXPORT"
+  | "DURING_SNAPSHOT_REREAD"
+  | "BEFORE_DETAIL_1"
+  | "AFTER_DETAIL_1"
+  | "AFTER_DETAIL_2";
