@@ -127,3 +127,12 @@ After all offline gates pass, the next phase is
 `V3-17T2_SERPAPI_GOOGLE_HOTELS_ONE_SESSION_CANARY_REAUTHORIZATION`. A successful
 canary still does not authorize Stage B; it only permits manual Evidence and
 credit review followed by a separately hash-bound authorization gate.
+
+## Prospective T1C operational supersession
+
+The first user-operated handoff did not reach its key prompt and consumed no
+authorization. V3-17T1C preserves this result, replaces only the fragile pasted
+wrapper/launcher mechanics, and revokes the unconsumed `c412...MAX4` literal
+because covered files changed. The immutable manifest, four-call Stage A,
+separate Stage B and all Evidence requirements in this document remain in
+force. See `v3-17-serpapi-google-hotels-canary-handoff-repair.md` and D-0013.

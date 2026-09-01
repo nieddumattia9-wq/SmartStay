@@ -10,6 +10,7 @@ const BASELINE_SOURCE_SHA = "640570740317cd36901fb605d73e6b7aeeadaff5";
 const BUNDLE_FILES = Object.freeze([
   "scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs",
   "scripts/invoke-v3-17t2-serpapi-google-hotels-pilot.ps1",
+  "scripts/invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1",
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts",
   "src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts",
   "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts",
@@ -30,11 +31,19 @@ function sha256(value) { return createHash("sha256").update(value, "utf8").diges
 
 function normalizedBundleSource(path, content) {
   const normalized = content.replace(/\r\n/g, "\n");
-  if (!path.endsWith("serpApiGoogleHotelsPilotGateV3.ts")) return normalized;
-  return normalized.replace(
-    /(\/\* RUNNER_BUNDLE_HASH_START \*\/\s*")[0-9a-f]{64}("\s*\/\* RUNNER_BUNDLE_HASH_END \*\/)/,
-    "$1<BUNDLE_HASH>$2",
-  );
+  if (path.endsWith("serpApiGoogleHotelsPilotGateV3.ts")) {
+    return normalized.replace(
+      /(\/\* RUNNER_BUNDLE_HASH_START \*\/\s*")[0-9a-f]{64}("\s*\/\* RUNNER_BUNDLE_HASH_END \*\/)/,
+      "$1<BUNDLE_HASH>$2",
+    );
+  }
+  if (path.endsWith("invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1")) {
+    return normalized.replace(
+      /(# HANDOFF_BUNDLE_HASH_START\s*\n\s*')[0-9a-f]{64}('\s*\n\s*# HANDOFF_BUNDLE_HASH_END)/,
+      "$1<BUNDLE_HASH>$2",
+    );
+  }
+  return normalized;
 }
 
 export function computeV317T2RunnerBundleHash(repositoryRoot) {

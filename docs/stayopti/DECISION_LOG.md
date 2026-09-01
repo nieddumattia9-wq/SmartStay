@@ -16,6 +16,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0010 | 2026-09-01 | Freeze a fail-closed twelve-session SerpApi pilot gate with immutable inputs, exact post-manifest authorization, process-only secret handling and ephemeral raw retention. | Accepted; calls and retention remain unauthorized | `decisions/0010-v3-17t1-serpapi-pilot-authorization-gate.md` |
 | D-0011 | 2026-09-01 | Revoke the incomplete manifest-only SerpApi literal and bind any future pilot authorization to a replayable sanitized snapshot/Evidence bundle, retention version and runner hash. | Accepted; calls and retention remain unauthorized | `decisions/0011-v3-17t1a-serpapi-evidence-bundle-repair.md` |
 | D-0012 | 2026-09-01 | Revoke the direct MAX48 SerpApi path and require a four-call one-session canary followed by manual Evidence review and separately ZIP-hash-bound authorization for the remaining eleven sessions. | Accepted; calls and retention remain unauthorized | `decisions/0012-v3-17t1b-serpapi-staged-canary-gate.md` |
+| D-0013 | 2026-09-01 | Replace the failed pasted canary wrapper with a hash-bound, fail-visible, no-exit PowerShell handoff that preserves MAX4 and separate authorization. | Accepted; calls and retention remain unauthorized | `decisions/0013-v3-17t1c-canary-handoff-failure-visibility.md` |
 
 ## Required fields for a new decision
 

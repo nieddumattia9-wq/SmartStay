@@ -4,10 +4,35 @@ param(
   [Parameter(Mandatory = $true)][string]$ExpectedHead,
   [Parameter(Mandatory = $true)][string]$CompiledRoot,
   [Parameter(Mandatory = $true)][string]$EvidenceZipPath,
-  [Parameter(Mandatory = $false)][string]$CanaryEvidenceZipPath
+  [Parameter(Mandatory = $false)][string]$CanaryEvidenceZipPath,
+  [Parameter(Mandatory = $false)][switch]$HandoffPreflightOnly,
+  [Parameter(Mandatory = $false)][switch]$UseProcessEnvironmentCredential
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Get-StayOptiSha256 {
+  param([Parameter(Mandatory = $true)][string]$LiteralPath)
+  $stream = [IO.File]::OpenRead($LiteralPath)
+  try {
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+    finally { $algorithm.Dispose() }
+  }
+  finally { $stream.Dispose() }
+}
+
+function Remove-StayOptiPilotWorkRoot {
+  param([Parameter(Mandatory = $true)][string]$LiteralPath)
+  if (-not (Test-Path -LiteralPath $LiteralPath)) { return }
+  $resolvedWork = [IO.Path]::GetFullPath($LiteralPath)
+  $resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
+  if ($resolvedWork.StartsWith($resolvedTemp + '\', [StringComparison]::OrdinalIgnoreCase) -and
+      [IO.Path]::GetFileName($resolvedWork).StartsWith('StayOpti-V3-17T2-Evidence-', [StringComparison]::Ordinal)) {
+    Remove-Item -LiteralPath $resolvedWork -Recurse -Force
+  }
+}
+
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
 $zipFullPath = [IO.Path]::GetFullPath($EvidenceZipPath)
 if ($zipFullPath.StartsWith($repositoryRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
@@ -29,8 +54,9 @@ $node = (Get-Command node -ErrorAction Stop).Source
 $runner = Join-Path $PSScriptRoot 'run-v3-17t2-serpapi-google-hotels-pilot.mjs'
 $canaryZipHash = $null
 
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-if ($Stage -eq 'REMAINING_11') {
+try {
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  if ($Stage -eq 'REMAINING_11') {
   if ([string]::IsNullOrWhiteSpace($CanaryEvidenceZipPath)) { throw 'SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED' }
   $canaryZipFullPath = [IO.Path]::GetFullPath($CanaryEvidenceZipPath)
   if (-not (Test-Path -LiteralPath $canaryZipFullPath -PathType Leaf)) { throw 'SERPAPI_PILOT_CANARY_EVIDENCE_REQUIRED' }
@@ -55,11 +81,11 @@ if ($Stage -eq 'REMAINING_11') {
   }
   finally { $canaryArchive.Dispose() }
   [IO.Compression.ZipFile]::ExtractToDirectory($canaryZipFullPath, $canaryVerifyRoot)
-  $canaryZipHash = (Get-FileHash -LiteralPath $canaryZipFullPath -Algorithm SHA256).Hash.ToLowerInvariant()
-}
-elseif (-not [string]::IsNullOrWhiteSpace($CanaryEvidenceZipPath)) {
-  throw 'SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED'
-}
+    $canaryZipHash = Get-StayOptiSha256 -LiteralPath $canaryZipFullPath
+  }
+  elseif (-not [string]::IsNullOrWhiteSpace($CanaryEvidenceZipPath)) {
+    throw 'SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED'
+  }
 
 $stageCapArgument = if ($Stage -eq 'CANARY') { '--single-stage-max-4' } else { '--single-stage-max-44' }
 $preflightArguments = @(
@@ -77,13 +103,23 @@ if ($Stage -eq 'REMAINING_11') {
   $preflightArguments += "--canary-evidence-zip-sha256=$canaryZipHash"
   $preflightArguments += '--manual-canary-review-confirmed'
 }
-& $node $preflightArguments
-if ($LASTEXITCODE -ne 0) { throw "SERPAPI_PILOT_PREFLIGHT_FAILED_$LASTEXITCODE" }
+  & $node $preflightArguments
+  if ($LASTEXITCODE -ne 0) { throw "SERPAPI_PILOT_PREFLIGHT_FAILED_$LASTEXITCODE" }
 
-try {
-  $secureKey = Read-Host 'SerpApi API key' -AsSecureString
-  $unmanaged = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
-  $plainKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($unmanaged)
+  if ($HandoffPreflightOnly) {
+    'READY_FOR_SECURE_KEY_PROMPT=YES'
+    'SERPAPI_CALLS_CONFIRMED_BY_RUNNER=0'
+    return
+  }
+
+  if ($UseProcessEnvironmentCredential) {
+    $plainKey = [Environment]::GetEnvironmentVariable('SERPAPI_API_KEY', 'Process')
+  }
+  else {
+    $secureKey = Read-Host 'SerpApi API key' -AsSecureString
+    $unmanaged = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+    $plainKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($unmanaged)
+  }
   if ([string]::IsNullOrWhiteSpace($plainKey)) { throw 'SERPAPI_PILOT_API_KEY_MISSING' }
   [Environment]::SetEnvironmentVariable('SERPAPI_API_KEY', $plainKey, 'Process')
   $childStarted = $true
@@ -104,18 +140,6 @@ try {
   }
   & $node $childArguments
   $childExit = $LASTEXITCODE
-}
-finally {
-  [Environment]::SetEnvironmentVariable('SERPAPI_API_KEY', $null, 'Process')
-  $plainKey = $null
-  if ($unmanaged -ne [IntPtr]::Zero) {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($unmanaged)
-    $unmanaged = [IntPtr]::Zero
-  }
-  if ($null -ne $secureKey) { $secureKey.Dispose(); $secureKey = $null }
-}
-
-try {
   if (-not (Test-Path -LiteralPath $evidenceRoot -PathType Container)) {
     throw 'SERPAPI_PILOT_EVIDENCE_STAGING_NOT_CREATED'
   }
@@ -156,18 +180,18 @@ try {
   [IO.Compression.ZipFile]::ExtractToDirectory($zipFullPath, $verifyRoot)
   & $node @($runner, "--compiled-root=$CompiledRoot", "--validate-evidence=$verifyRoot")
   if ($LASTEXITCODE -ne 0) { throw "SERPAPI_PILOT_EVIDENCE_ZIP_VALIDATION_FAILED_$LASTEXITCODE" }
-  $zipHash = (Get-FileHash -LiteralPath $zipFullPath -Algorithm SHA256).Hash.ToLowerInvariant()
+  $zipHash = Get-StayOptiSha256 -LiteralPath $zipFullPath
   "EVIDENCE_ZIP_PATH=$zipFullPath"
   "EVIDENCE_ZIP_SHA256=$zipHash"
-  if ($childExit -ne 0) { exit $childExit }
+  if ($childExit -ne 0) { throw "SERPAPI_PILOT_CHILD_FAILED_$childExit" }
 }
 finally {
-  if (Test-Path -LiteralPath $workRoot) {
-    $resolvedWork = [IO.Path]::GetFullPath($workRoot)
-    $resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
-    if ($resolvedWork.StartsWith($resolvedTemp + '\', [StringComparison]::OrdinalIgnoreCase) -and
-        [IO.Path]::GetFileName($resolvedWork).StartsWith('StayOpti-V3-17T2-Evidence-', [StringComparison]::Ordinal)) {
-      Remove-Item -LiteralPath $resolvedWork -Recurse -Force
-    }
+  [Environment]::SetEnvironmentVariable('SERPAPI_API_KEY', $null, 'Process')
+  $plainKey = $null
+  if ($unmanaged -ne [IntPtr]::Zero) {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($unmanaged)
+    $unmanaged = [IntPtr]::Zero
   }
+  if ($null -ne $secureKey) { $secureKey.Dispose(); $secureKey = $null }
+  Remove-StayOptiPilotWorkRoot -LiteralPath $workRoot
 }

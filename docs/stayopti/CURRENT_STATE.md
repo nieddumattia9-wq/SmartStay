@@ -258,4 +258,40 @@ Next recommendation:
 It requires a later user message containing the exact canary literal and
 retention-v2 authorization. It does not authorize Stage B.
 
+## V3-17T1C SerpApi canary handoff repair — ready for new authorization
+
+Source checkpoint: `126b178f8d380e3b5b849906b6ffc34787035f58`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the V3-17T1C final receipt.
+
+- The attempted T2 handoff is preserved as unconsumed: no API-key prompt or
+  entry, user-verified SerpApi calls and credits zero, and no Evidence ZIP.
+- Offline reproduction identified Windows PowerShell 5.1 execution-policy
+  rejection of the committed launcher before its body, followed by the pasted
+  wrapper's process termination. No provider-capable code was reached.
+- A committed handoff now performs all checkpoint, dirty-set, bundle,
+  compilation, manifest, literal, runner and launcher checks; it uses a
+  process-only policy allowance for the verified scripts and no process exit.
+- The launcher exposes `-HandoffPreflightOnly`, which reaches immediately
+  before the secure prompt with zero credentials, zero calls and no execution
+  Evidence.
+- PASS and FAIL both produce an atomic allowlisted diagnostic log and a visible
+  final pause. Secret, URL, property-token, raw-payload and raw-ID values are
+  excluded.
+- The manifest is unchanged. Bundle
+  `d3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683`
+  revokes the unconsumed `c412...MAX4` literal. The new MAX4 literal is
+  published but not authorized.
+- The canary remains only Florence index 0, at most four sequential calls;
+  Stage B remains unreachable and separately authorized.
+- No credential, provider call, HTTP request, public-runtime change, push or
+  fetch occurred. V3-17 remains unmet and V3-18 remains blocked.
+- Validation on 2026-09-01: T1C `30/30`, T1B `44/44`, T1A `44/44`, T1
+  `38/38`, T `25/25`, provider neutrality `5/5`, Engine V3 `1184/1184`,
+  Engine V2 `196/196`, B1/B2/legacy `18/18`, F0 `39/39`, TypeScript,
+  PowerShell 5.1 parsing and all requested integrity scans PASS.
+
+Next recommendation:
+`V3-17T2_SERPAPI_GOOGLE_HOTELS_ONE_SESSION_CANARY_REAUTHORIZATION_WITH_HANDOFF_V2`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
