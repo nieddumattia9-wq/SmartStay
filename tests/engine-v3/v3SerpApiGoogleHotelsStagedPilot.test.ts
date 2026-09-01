@@ -16,7 +16,7 @@ import {
   type StayOptiSerpApiEvidenceArchiveEntryV3,
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3";
 import {
-  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,
+  createSerpApiT2CRequiredAuthorizationLiteralV3,
   STAYOPTI_SERPAPI_PILOT_ID_V3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_V3,
@@ -40,6 +40,7 @@ import {
 
 const KEY = "SYNTHETIC_CANARY_KEY_NOT_REAL";
 const ZIP_HASH = "a".repeat(64);
+const EXECUTION_HEAD = "1".repeat(40);
 const CANARY_SESSION = STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[0]!;
 
 function responseFor(sessionIndex: number): SerpApiGoogleHotelsResponseV3 {
@@ -122,8 +123,9 @@ function authorization(stage: StayOptiSerpApiPilotStageV3, literal?: string) {
   return {
     authorizationState: "AUTHORIZED_NOT_STARTED" as const,
     stage,
-    literal: literal ?? (stage === "CANARY" ? STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3 : createSerpApiRemainingAuthorizationLiteralV3({ manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, canaryEvidenceZipSha256: ZIP_HASH })),
+    literal: literal ?? (stage === "CANARY" ? createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD) : createSerpApiRemainingAuthorizationLiteralV3({ manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, canaryEvidenceZipSha256: ZIP_HASH })),
     sourceCommitSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+    executionHead: EXECUTION_HEAD,
     manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     accountPlan: "FREE" as const,
     retentionAuthorized: true as const,
@@ -169,6 +171,7 @@ async function run(input: {
       authorization: authorization(stage, input.literal),
       apiKey: input.noKey ? "" : KEY,
       observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+      observedExecutionHead: EXECUTION_HEAD,
       nowIso: "2026-09-02T00:00:00Z",
       clock: () => "2026-09-02T10:00:02Z",
       transport,
@@ -211,7 +214,7 @@ function entriesForCanary(execution: NonNullable<Awaited<ReturnType<typeof run>>
 }
 
 test("T1B 01 dry-run contract has no implicit authorization", () => { const source = readFileSync(resolve(process.cwd(), "scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs"), "utf8"); assert.match(source, /--preflight-only/); assert.doesNotMatch(source, /defaultAuthorization|authorization\s*\?\?/); });
-test("T1B 02 missing stage fails before transport", async () => { const result = await executeSerpApiGoogleHotelsPilotEvidenceV3({ authorization: { ...authorization("CANARY"), stage: undefined } as never, apiKey: KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, nowIso: "2026-09-02T00:00:00Z", transport: { async send() { throw new Error("transport reached"); } }, rawStore: new MemoryRawStore(), evidenceStore: new MemoryEvidenceStore(), privateRawQuarantine: memoryQuarantine() }).catch((error) => error); assert.match(String(result), /STAGE_REQUIRED/); });
+test("T1B 02 missing stage fails before transport", async () => { const result = await executeSerpApiGoogleHotelsPilotEvidenceV3({ authorization: { ...authorization("CANARY"), stage: undefined } as never, apiKey: KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, observedExecutionHead: EXECUTION_HEAD, nowIso: "2026-09-02T00:00:00Z", transport: { async send() { throw new Error("transport reached"); } }, rawStore: new MemoryRawStore(), evidenceStore: new MemoryEvidenceStore(), privateRawQuarantine: memoryQuarantine() }).catch((error) => error); assert.match(String(result), /STAGE_REQUIRED/); });
 test("T1B 03 revoked MAX48 literal is rejected with zero calls", async () => { const result = await run({ literal: STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3 }); assert.equal(result.calls, 0); assert.match(String(result.error), /LITERAL_MISMATCH/); });
 test("T1B 04 wrong canary literal is rejected", async () => { const result = await run({ literal: "WRONG" }); assert.equal(result.calls, 0); });
 test("T1B 05 canary can access only first session", () => { assert.deepEqual(stageSessionIndexesV3("CANARY", 12), [0]); });
@@ -227,7 +230,7 @@ test("T1B 14 remaining without canary Evidence is blocked", async () => { const 
 test("T1B 15 altered canary archive is invalid", async () => { const runResult = await run(); const entries = entriesForCanary(runResult.result!); entries.find((entry) => entry.name === "postflight.json")!.content = "{}"; const validation = validateSerpApiCanaryEvidenceArchiveEntriesV3({ entries, expectedPilotId: STAYOPTI_SERPAPI_PILOT_ID_V3, expectedManifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, expectedRunnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, expectedCanarySessionId: CANARY_SESSION.sessionId, canaryEvidenceZipSha256: ZIP_HASH }); assert.equal(validation.valid, false); });
 test("T1B 16 failed canary cannot validate for resume", async () => { const failed = await run({ failSearch: true }); assert.equal(failed.result?.receipt.status, "ABORTED"); });
 test("T1B 17 wrong ZIP hash is rejected", () => { assert.throws(() => createSerpApiRemainingAuthorizationLiteralV3({ manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, canaryEvidenceZipSha256: "bad" }), /HASH_INVALID/); });
-test("T1B 18 Stage A literal cannot authorize Stage B", async () => { const result = await run({ stage: "REMAINING_11", literal: STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3 }); assert.equal(result.calls, 0); });
+test("T1B 18 Stage A literal cannot authorize Stage B", async () => { const result = await run({ stage: "REMAINING_11", literal: createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD) }); assert.equal(result.calls, 0); });
 test("T1B 19 canary session is excluded from remaining", async () => { const result = await run({ stage: "REMAINING_11" }); assert.equal(result.sessions.includes(CANARY_SESSION.sessionId), false); });
 test("T1B 20 remaining contains exactly eleven sessions", async () => { const result = await run({ stage: "REMAINING_11" }); assert.equal(new Set(result.sessions).size, 11); });
 test("T1B 21 remaining is capped at 44", async () => { const result = await run({ stage: "REMAINING_11" }); assert.equal(result.calls, STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3); });

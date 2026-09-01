@@ -27,6 +27,10 @@ the literal below.
 The literal is generated for later user review only. `AUTHORIZATION_LITERAL_ACCEPTED=NO`
 and `NEW_NETWORK_AUTHORIZATION_GRANTED=NO` remain mandatory in T2B.
 
+T2C-PREFLIGHT subsequently found that the `HEAD_` label above referred to the
+T2A source rather than the execution commit. This literal was never accepted or
+consumed and is now explicitly invalidated. It must not authorize a canary.
+
 ## Fail-closed request flow
 
 1. Reserve the main-search request atomically in the stage ledger.

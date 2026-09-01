@@ -7,7 +7,7 @@ import {
   STAYOPTI_SERPAPI_PILOT_RECEIPT_VERSION_V3,
   STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
-  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,
+  createSerpApiT2CRequiredAuthorizationLiteralV3,
   STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3,
   assertSerpApiPilotRequestAllowedV3,
   createSerpApiPilotManifestHashV3,
@@ -157,6 +157,7 @@ function validateAuthorization(input: {
   authorization: StayOptiSerpApiPilotAuthorizationEnvelopeV3 | null;
   apiKey: string;
   observedSourceSha: string;
+  observedExecutionHead: string;
   nowIso: string;
   validatedCanaryEvidence?: StayOptiSerpApiValidatedCanaryEvidenceV3;
 }) {
@@ -165,7 +166,8 @@ function validateAuthorization(input: {
   if (authorization.authorizationState !== "AUTHORIZED_NOT_STARTED") throw new Error("SERPAPI_PILOT_AUTHORIZATION_STATE_INVALID");
   if (!(["CANARY", "REMAINING_11"] as string[]).includes(authorization.stage)) throw new Error("SERPAPI_PILOT_STAGE_REQUIRED");
   if (authorization.stage === "CANARY") {
-    if (authorization.literal !== STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+    if (authorization.literal !== createSerpApiT2CRequiredAuthorizationLiteralV3(input.observedExecutionHead)) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+    if (authorization.executionHead !== input.observedExecutionHead) throw new Error("SERPAPI_PILOT_EXECUTION_HEAD_MISMATCH");
     if (authorization.canaryEvidenceZipSha256 !== undefined || input.validatedCanaryEvidence !== undefined) throw new Error("SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED");
   } else {
     const evidence = input.validatedCanaryEvidence;
@@ -389,6 +391,7 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
   authorization: StayOptiSerpApiPilotAuthorizationEnvelopeV3 | null;
   apiKey: string;
   observedSourceSha: string;
+  observedExecutionHead: string;
   nowIso: string;
   transport: StayOptiSerpApiPilotTransportV3;
   rawStore: StayOptiSerpApiPilotRawStoreV3;

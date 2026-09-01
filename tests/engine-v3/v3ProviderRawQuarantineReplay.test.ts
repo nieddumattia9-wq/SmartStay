@@ -256,6 +256,7 @@ test("T2A-R0 23 collector without ready private quarantine stops before transpor
     authorization: null,
     apiKey: "",
     observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+    observedExecutionHead: "1".repeat(40),
     nowIso: "2026-09-02T00:00:00Z",
     transport: { async send() { calls += 1; throw new Error("transport reached"); } },
     rawStore,

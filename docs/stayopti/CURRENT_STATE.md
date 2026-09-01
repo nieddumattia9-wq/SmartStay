@@ -405,4 +405,34 @@ reported in the final T2B receipt.
 Next recommendation:
 `V3-17T2C_SERPAPI_GOOGLE_HOTELS_MAX2_CANARY_EXPLICIT_AUTHORIZATION_GATE`.
 
+## V3-17T2C-PREFLIGHT SerpApi execution-head binding — ready, unauthorized
+
+Gate checkpoint: `17432a19083403492e3dd28c62affad405c70737`; T2A source:
+`ed2633c1fc700a9d9199ce920b826d2909543ab8`. The implementation checkpoint is
+the local commit containing this entry and is reported in the final receipt.
+
+- Audit confirmed that the unaccepted T2B literal ambiguously labelled the
+  T2A source as `HEAD`; it did not name the actual executable gate commit.
+- That literal is invalidated without acceptance or consumption. The final
+  literal names `SOURCE_SHA` and `EXECUTION_HEAD` separately.
+- Handoff, Node runner and collector now bind the literal to the exact observed
+  Git HEAD before credential access and transport, while independently
+  verifying manifest and normalized runner-bundle hashes.
+- The final execution HEAD remains dynamic and is inserted after commit, so no
+  circular commit/hash dependency exists. Any different HEAD needs a different
+  literal and new explicit acceptance.
+- MAX2, one main plus at most one detail, one session, zero retry/pagination,
+  encrypted private quarantine, autostop, no remaining stage and no automatic
+  Golden admission remain unchanged.
+- T2C-PREFLIGHT loads no credential and performs zero SerpApi, provider or HTTP
+  calls. The final literal remains unaccepted; V3-17 and V3-18 remain blocked.
+- The normalized runner-bundle SHA-256 is
+  `639e58d2ef2eba14741f0b670f2d4ad641e583f08056f2b179eac393d1a896e5`.
+  Offline evidence passed: T2C targeted `14/14`, combined T2C/T2B/T2A
+  `64/64`, PowerShell handoff `30/30`, Engine V3 `1272/1272`, Engine V2
+  `196/196`, TypeScript build and PowerShell 5.1 parse.
+
+Next recommendation:
+`V3-17T2C_SERPAPI_GOOGLE_HOTELS_MAX2_CANARY_LITERAL_ACCEPTANCE_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

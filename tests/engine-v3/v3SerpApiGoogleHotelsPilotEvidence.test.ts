@@ -27,7 +27,7 @@ import {
   STAYOPTI_SERPAPI_PILOT_MANIFEST_V3,
   STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
-  STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
+  createSerpApiT2CRequiredAuthorizationLiteralV3,
   STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3,
   StayOptiSerpApiRequestLedgerV3,
   type StayOptiSerpApiPilotRawStoreV3,
@@ -35,6 +35,7 @@ import {
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3";
 
 const TEST_KEY = "SYNTHETIC_TEST_KEY_NOT_REAL";
+const EXECUTION_HEAD = "1".repeat(40);
 
 function mainResponse(index = 0): SerpApiGoogleHotelsResponseV3 {
   const session = STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[index]!;
@@ -108,12 +109,13 @@ function memoryQuarantine(): StayOptiSerpApiPrivateRawQuarantineV3 {
   };
 }
 
-function authorization(literal: string = STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3) {
+function authorization(literal: string = createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD)) {
   return {
     authorizationState: "AUTHORIZED_NOT_STARTED" as const,
     literal,
     stage: "CANARY" as const,
     sourceCommitSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+    executionHead: EXECUTION_HEAD,
     manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     accountPlan: "FREE" as const,
     retentionAuthorized: true as const,
@@ -144,6 +146,7 @@ async function execute(options: { failDetailAt?: number; failExport?: boolean; l
     const result = await executeSerpApiGoogleHotelsPilotEvidenceV3({
       authorization: authorization(options.literal), apiKey: TEST_KEY,
       observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+      observedExecutionHead: EXECUTION_HEAD,
       nowIso: "2026-09-02T00:00:00Z", clock: () => "2026-09-02T10:00:02Z",
       transport, rawStore: raw, evidenceStore: evidence, privateRawQuarantine: memoryQuarantine(),
     });
@@ -228,7 +231,7 @@ test("T1A 37 archive raw provider ID is rejected", async () => { const run = awa
 test("T1A 38 corrupt archive JSON is rejected", async () => { const run = await complete(); const entries = requiredEntries(run.result); entries.find((entry) => entry.name === "pilot-summary.json")!.content = "{"; assert.equal(validateSerpApiEvidenceArchiveEntriesV3(rehash(entries)).valid, false); });
 test("T1A 39 checksum mismatch is rejected", async () => { const run = await complete(); const entries = requiredEntries(run.result); entries.find((entry) => entry.name === "preflight.json")!.content = "changed"; assert.equal(validateSerpApiEvidenceArchiveEntriesV3(entries).valid, false); });
 test("T1A 40 old authorization literal is revoked", async () => { const run = await execute({ literal: STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 }); assert.equal(run.calls, 0); assert.match(String(run.error), /AUTHORIZATION_LITERAL_MISMATCH/); });
-test("T1A 41 repaired authorization is checkpoint-bound MAX2 and not granted", () => { assert.match(STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3, new RegExp(`^AUTHORIZE_V3_17T2B_MAX2_HEAD_[0-9a-f]{40}_MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$`)); const gate = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts"), "utf8"); assert.match(gate, /explicitCallAuthorizationGranted:\s*false/); assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3, "stayopti.v3.serpapi-google-hotels-retention@2"); });
+test("T1A 41 repaired authorization is source-and-execution-head-bound MAX2 and not granted", () => { assert.match(createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD), new RegExp(`^AUTHORIZE_V3_17T2C_MAX2_SOURCE_SHA_[0-9a-f]{40}_EXECUTION_HEAD_${EXECUTION_HEAD}_MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$`)); const gate = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts"), "utf8"); assert.match(gate, /explicitCallAuthorizationGranted:\s*false/); assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3, "stayopti.v3.serpapi-google-hotels-retention@2"); });
 test("T1A 42 tests use a fail-closed fake transport and no network", () => { const collector = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts"), "utf8"); assert.doesNotMatch(collector, /\bfetch\s*\(|process\.env/); });
 test("T1A 43 Evidence ZIP performs an actual PowerShell 5.1 roundtrip", async () => {
   const run = await complete();

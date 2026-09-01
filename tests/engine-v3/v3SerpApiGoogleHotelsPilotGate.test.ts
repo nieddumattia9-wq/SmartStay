@@ -15,7 +15,7 @@ import {
   STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
   STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
-  STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
+  createSerpApiT2CRequiredAuthorizationLiteralV3,
   STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3,
   StayOptiSerpApiRequestLedgerV3,
   assertSerpApiPilotRequestAllowedV3,
@@ -31,6 +31,7 @@ import type { SerpApiGoogleHotelsResponseV3 } from "../../src/engine-v3/evaluati
 
 const ROOT = process.cwd();
 const TEST_KEY = "TEST_SERPAPI_VALUE_NOT_A_REAL_CREDENTIAL";
+const EXECUTION_HEAD = "1".repeat(40);
 
 function source(path: string) {
   return readFileSync(resolve(ROOT, path), "utf8");
@@ -83,8 +84,9 @@ function responseFor(sessionIndex: number): SerpApiGoogleHotelsResponseV3 {
 function authorization(overrides: Partial<StayOptiSerpApiPilotAuthorizationEnvelopeV3> = {}): StayOptiSerpApiPilotAuthorizationEnvelopeV3 {
   return {
     authorizationState: "AUTHORIZED_NOT_STARTED",
-    literal: STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
+    literal: createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD),
     sourceCommitSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+    executionHead: EXECUTION_HEAD,
     manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     accountPlan: "FREE",
     retentionAuthorized: true,
@@ -128,6 +130,7 @@ async function run(options: {
       authorization: options.authorization === undefined ? authorization() : options.authorization,
       apiKey: options.apiKey === undefined ? TEST_KEY : options.apiKey,
       observedSourceSha: options.sourceSha ?? STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3,
+      observedExecutionHead: EXECUTION_HEAD,
       nowIso: options.nowIso ?? "2026-09-02T00:00:00Z",
       transport: fakeTransport.implementation,
       rawStore,
@@ -160,7 +163,7 @@ test("V3-17T1 manifest covers required occupancy duration lead-time and preferen
 test("V3-17T1 manifest hash and authorization literal are deterministic and bound", () => {
   assert.match(STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, /^[0-9a-f]{64}$/);
   assert.equal(createSerpApiPilotManifestHashV3(), STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3);
-  assert.match(STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3, new RegExp(`^AUTHORIZE_V3_17T2B_MAX2_HEAD_[0-9a-f]{40}_MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$`));
+  assert.match(createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD), new RegExp(`^AUTHORIZE_V3_17T2C_MAX2_SOURCE_SHA_[0-9a-f]{40}_EXECUTION_HEAD_${EXECUTION_HEAD}_MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$`));
   assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3, "stayopti.v3.serpapi-google-hotels-retention@2");
 });
 
@@ -271,7 +274,7 @@ test("V3-17T1 simulated abort deletes raw payloads and performs no retry", async
 test("V3-17T1 API key is absent from sanitized receipt and saved URLs", async () => {
   const captured: string[] = [];
   const fakeTransport = transport({ capture: captured });
-  const receipt = await executeSerpApiGoogleHotelsPilotV3({ authorization: authorization(), apiKey: TEST_KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, nowIso: "2026-09-02T00:00:00Z", transport: fakeTransport.implementation, rawStore: new MemoryRawStore() });
+  const receipt = await executeSerpApiGoogleHotelsPilotV3({ authorization: authorization(), apiKey: TEST_KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, observedExecutionHead: EXECUTION_HEAD, nowIso: "2026-09-02T00:00:00Z", transport: fakeTransport.implementation, rawStore: new MemoryRawStore() });
   assert.doesNotMatch(JSON.stringify(receipt), new RegExp(TEST_KEY));
   assert.ok(captured.every((entry) => !entry.includes(TEST_KEY) && entry.includes("REDACTED")));
 });
@@ -305,7 +308,7 @@ test("V3-17T1 projected sessions remain candidates rather than Golden admissions
 test("V3-17T1 main searches use exact Google Hotels endpoint and no-cache", async () => {
   const captured: string[] = [];
   const fakeTransport = transport({ capture: captured });
-  await executeSerpApiGoogleHotelsPilotV3({ authorization: authorization(), apiKey: TEST_KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, nowIso: "2026-09-02T00:00:00Z", transport: fakeTransport.implementation, rawStore: new MemoryRawStore() });
+  await executeSerpApiGoogleHotelsPilotV3({ authorization: authorization(), apiKey: TEST_KEY, observedSourceSha: STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3, observedExecutionHead: EXECUTION_HEAD, nowIso: "2026-09-02T00:00:00Z", transport: fakeTransport.implementation, rawStore: new MemoryRawStore() });
   assert.equal(captured.length, 1);
   assert.ok(captured.every((entry) => entry.startsWith(STAYOPTI_SERPAPI_SEARCH_ENDPOINT_V3) && entry.includes("engine=google_hotels") && entry.includes("no_cache=true")));
 });

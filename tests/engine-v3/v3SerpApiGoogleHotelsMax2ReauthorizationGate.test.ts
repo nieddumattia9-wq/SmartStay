@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import {
-  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,
+  STAYOPTI_SERPAPI_T2B_AMBIGUOUS_AUTHORIZATION_LITERAL_V3,
   STAYOPTI_SERPAPI_PILOT_GATE_AUDIT_V3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3,
@@ -66,9 +66,9 @@ test("T2B 01 MAX2 policy is exact", () => assert.deepEqual(stage, {
   propertyDetailSelectionMaximum: 1, autostop: true, remainingStageAuthorized: false,
   automaticGoldenAdmission: false, encryptedPrivateQuarantineRequired: true,
 }));
-test("T2B 02 literal binds the required source checkpoint", () => assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, new RegExp(`HEAD_${STAYOPTI_SERPAPI_T2B_SOURCE_SHA_V3}_`)));
-test("T2B 03 literal binds manifest and MAX2 dimensions", () => assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, new RegExp(`MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_[\\s\\S]*MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0`)));
-test("T2B 04 literal binds encrypted quarantine, autostop and no remaining", () => assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/));
+test("T2B 02 historical literal binds the source checkpoint", () => assert.match(STAYOPTI_SERPAPI_T2B_AMBIGUOUS_AUTHORIZATION_LITERAL_V3, new RegExp(`HEAD_${STAYOPTI_SERPAPI_T2B_SOURCE_SHA_V3}_`)));
+test("T2B 03 historical literal binds manifest and MAX2 dimensions", () => assert.match(STAYOPTI_SERPAPI_T2B_AMBIGUOUS_AUTHORIZATION_LITERAL_V3, new RegExp(`MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_[\\s\\S]*MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0`)));
+test("T2B 04 historical literal binds encrypted quarantine, autostop and no remaining", () => assert.match(STAYOPTI_SERPAPI_T2B_AMBIGUOUS_AUTHORIZATION_LITERAL_V3, /QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/));
 test("T2B 05 literal is generated but not authorized", () => assert.equal(STAYOPTI_SERPAPI_PILOT_GATE_AUDIT_V3.explicitCallAuthorizationGranted, false));
 test("T2B 06 prior e485 MAX2 literal is revoked", () => assert.ok(STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3.some((value) => value.includes("e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde"))));
 test("T2B 07 immutable canary selects only manifest session zero", () => assert.deepEqual(stageSessionIndexesV3("CANARY", 12), [0]));

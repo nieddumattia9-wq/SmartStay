@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 import { createProviderRawQuarantineStoreV3 } from "./provider-raw-quarantine-store.mjs";
 
 const BASELINE_SOURCE_SHA = "640570740317cd36901fb605d73e6b7aeeadaff5";
+const T2A_SOURCE_SHA = "ed2633c1fc700a9d9199ce920b826d2909543ab8";
+const T2B_GATE_COMMIT_SHA = "17432a19083403492e3dd28c62affad405c70737";
 const BUNDLE_FILES = Object.freeze([
   "scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs",
   "scripts/invoke-v3-17t2-serpapi-google-hotels-pilot.ps1",
@@ -130,6 +132,9 @@ export function validateV317T2Evidence(repositoryRoot, evidenceRoot, evidence) {
 function validateGitPreflight(repositoryRoot, expectedHead) {
   const observedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim();
   if (!/^[0-9a-f]{40}$/.test(expectedHead) || observedHead !== expectedHead) fail("SERPAPI_PILOT_EXECUTION_HEAD_MISMATCH");
+  const gateParent = execFileSync("git", ["rev-parse", `${T2B_GATE_COMMIT_SHA}^`], { cwd: repositoryRoot, encoding: "utf8" }).trim();
+  if (gateParent !== T2A_SOURCE_SHA) fail("SERPAPI_PILOT_SOURCE_GATE_CHAIN_MISMATCH");
+  execFileSync("git", ["merge-base", "--is-ancestor", T2B_GATE_COMMIT_SHA, observedHead], { cwd: repositoryRoot, stdio: "ignore" });
   execFileSync("git", ["merge-base", "--is-ancestor", BASELINE_SOURCE_SHA, observedHead], { cwd: repositoryRoot, stdio: "ignore" });
   if (execFileSync("git", ["diff", "--cached", "--name-only"], { cwd: repositoryRoot, encoding: "utf8" }).trim().length > 0) fail("SERPAPI_PILOT_STAGED_NOT_ZERO");
   return observedHead;
@@ -267,7 +272,8 @@ export async function runV317T2(argv = process.argv.slice(2)) {
   if (computeV317T2RunnerBundleHash(repositoryRoot) !== gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3) fail("SERPAPI_PILOT_RUNNER_BUNDLE_HASH_MISMATCH");
   let validatedCanaryEvidence;
   if (stage === "CANARY") {
-    if (authorizationLiteral !== gate.STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3) fail("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+    const requiredLiteral = gate.createSerpApiT2CRequiredAuthorizationLiteralV3(observedHead);
+    if (authorizationLiteral !== requiredLiteral) fail("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
     if (valueFor(argv, "--canary-evidence-root") !== null) fail("SERPAPI_PILOT_CANARY_RESUME_INPUT_PROHIBITED");
   } else {
     const canaryRoot = valueFor(argv, "--canary-evidence-root");
@@ -312,6 +318,7 @@ export async function runV317T2(argv = process.argv.slice(2)) {
         literal: authorizationLiteral,
         stage,
         sourceCommitSha: BASELINE_SOURCE_SHA,
+        executionHead: observedHead,
         manifestHash: gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
         accountPlan: "FREE",
         retentionAuthorized: true,
@@ -320,6 +327,7 @@ export async function runV317T2(argv = process.argv.slice(2)) {
       validatedCanaryEvidence,
       apiKey,
       observedSourceSha: BASELINE_SOURCE_SHA,
+      observedExecutionHead: observedHead,
       nowIso: new Date().toISOString(),
       clock: () => new Date().toISOString(),
       transport: {

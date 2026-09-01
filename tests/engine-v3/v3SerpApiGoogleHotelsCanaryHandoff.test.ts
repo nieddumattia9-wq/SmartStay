@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import {
-  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,
+  createSerpApiT2CRequiredAuthorizationLiteralV3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3,
@@ -19,6 +19,8 @@ const RUNNER = resolve(REPOSITORY, "scripts/run-v3-17t2-serpapi-google-hotels-pi
 const handoffSource = readFileSync(HANDOFF, "utf8");
 const launcherSource = readFileSync(LAUNCHER, "utf8");
 const runnerSource = readFileSync(RUNNER, "utf8");
+const CURRENT_EXECUTION_HEAD = spawnSync("git", ["rev-parse", "HEAD"], { cwd: REPOSITORY, encoding: "utf8" }).stdout.trim();
+const CURRENT_CANARY_LITERAL = createSerpApiT2CRequiredAuthorizationLiteralV3(CURRENT_EXECUTION_HEAD);
 
 function psQuote(value: string) { return `'${value.replaceAll("'", "''")}'`; }
 
@@ -33,7 +35,7 @@ function runHandoff(input: { failure?: string; preflight?: boolean } = {}) {
     `-InjectedFailure ${psQuote(failure)}`,
     `-DiagnosticDirectory ${psQuote(diagnosticRoot)}`,
     "-SkipFinalPause",
-    failure === "EMPTY_KEY" ? `-AuthorizationLiteral ${psQuote(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3)}` : "",
+    failure === "EMPTY_KEY" ? `-AuthorizationLiteral ${psQuote(CURRENT_CANARY_LITERAL)}` : "",
     "; Write-Output 'PARENT_SENTINEL=REACHED'",
   ].filter(Boolean).join(" ");
   const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], {
@@ -116,6 +118,6 @@ test("T1C 27 launcher and handoff use .NET SHA-256 instead of cmdlet autoload", 
 test("T1C 28 process-scoped execution-policy repair is explicit", () => { assert.match(handoffSource, /-ExecutionPolicy Bypass -File \$PilotLauncher/); });
 test("T1C 29 manifest remains immutable", () => { assert.equal(STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, "e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88"); });
 test("T2B 30 new literal binds checkpoint and every MAX2 guard", () => {
-  assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /^AUTHORIZE_V3_17T2B_MAX2_HEAD_[0-9a-f]{40}_MANIFEST_[0-9a-f]{64}_RUNNER_[0-9a-f]{64}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
-  assert.doesNotMatch(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /MAX48|REMAINING_11/);
+  assert.match(CURRENT_CANARY_LITERAL, /^AUTHORIZE_V3_17T2C_MAX2_SOURCE_SHA_[0-9a-f]{40}_EXECUTION_HEAD_[0-9a-f]{40}_MANIFEST_[0-9a-f]{64}_RUNNER_[0-9a-f]{64}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
+  assert.doesNotMatch(CURRENT_CANARY_LITERAL, /MAX48|REMAINING_11/);
 });

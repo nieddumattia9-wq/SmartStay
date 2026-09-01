@@ -16,7 +16,7 @@ import {
 import { createSerpApiResponseDiagnosticV3 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3";
 import { validateSerpApiCanaryEvidenceArchiveEntriesV3 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3";
 import {
-  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,
+  createSerpApiT2CRequiredAuthorizationLiteralV3,
   STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
   STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3";
@@ -40,6 +40,8 @@ const HISTORICAL_ABORT = Object.freeze({
   excludedFromRemaining: false,
   automaticGoldenAdmission: false,
 });
+const TEST_EXECUTION_HEAD = "1".repeat(40);
+const TEST_CANARY_LITERAL = createSerpApiT2CRequiredAuthorizationLiteralV3(TEST_EXECUTION_HEAD);
 
 function property(index: number, priced: boolean): SerpApiGoogleHotelsPropertyV3 {
   return {
@@ -197,7 +199,7 @@ test("T2AB 20 V3 core remains provider-agnostic and authorization stays ungrante
   const gate = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts"), "utf8");
   assert.doesNotMatch(core, /SerpApi|serpApiGoogleHotelsPilot/i);
   assert.match(gate, /explicitCallAuthorizationGranted:\s*false/);
-  assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
+  assert.match(TEST_CANARY_LITERAL, /QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
   assert.equal(STAYOPTI_SERPAPI_PRIOR_CONSUMED_CANARY_CALLS_V3, 2);
 });
 

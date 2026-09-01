@@ -96,6 +96,34 @@ export function createSerpApiT2BMax2AuthorizationLiteralV3(input: {
   ].join("_");
 }
 
+export function createSerpApiT2CMax2AuthorizationLiteralV3(input: {
+  sourceSha: string;
+  executionHead: string;
+  manifestHash: string;
+  runnerBundleHash: string;
+}) {
+  if (!/^[0-9a-f]{40}$/.test(input.sourceSha)) throw new Error("SERPAPI_PILOT_SOURCE_SHA_INVALID");
+  if (!/^[0-9a-f]{40}$/.test(input.executionHead)) throw new Error("SERPAPI_PILOT_EXECUTION_HEAD_INVALID");
+  if (!/^[0-9a-f]{64}$/.test(input.manifestHash)) throw new Error("SERPAPI_PILOT_MANIFEST_HASH_INVALID");
+  if (!/^[0-9a-f]{64}$/.test(input.runnerBundleHash)) throw new Error("SERPAPI_PILOT_RUNNER_BUNDLE_HASH_INVALID");
+  return [
+    "AUTHORIZE_V3_17T2C_MAX2",
+    `SOURCE_SHA_${input.sourceSha}`,
+    `EXECUTION_HEAD_${input.executionHead}`,
+    `MANIFEST_${input.manifestHash}`,
+    `RUNNER_${input.runnerBundleHash}`,
+    "MAIN1",
+    "DETAIL1",
+    "SESSIONS1",
+    "CONCURRENCY1",
+    "RETRIES0",
+    "PAGINATION0",
+    "QUARANTINE_AES256GCM_DPAPI_CURRENTUSER",
+    "AUTOSTOP",
+    "REMAINING_NO",
+  ].join("_");
+}
+
 export const STAYOPTI_SERPAPI_T2B_MAX2_STAGE_POLICY_V3 = Object.freeze({
   maximumTotalRequests: STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3,
   mainSearchMaximum: STAYOPTI_SERPAPI_CANARY_MAIN_SEARCH_MAX_V3,

@@ -7,7 +7,7 @@ import {
 } from "./serpApiGoogleHotelsExternalAdapterV3";
 import {
   createSerpApiCanaryAuthorizationLiteralV3,
-  createSerpApiT2BMax2AuthorizationLiteralV3,
+  createSerpApiT2CMax2AuthorizationLiteralV3,
   STAYOPTI_SERPAPI_T2B_MAX2_STAGE_POLICY_V3,
   type StayOptiSerpApiPilotStageV3,
 } from "./serpApiGoogleHotelsPilotStageV3";
@@ -289,13 +289,16 @@ export const STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 =
   `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_MAX48` as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3 =
-  /* RUNNER_BUNDLE_HASH_START */ "891a8c2cbf564ab433ec6553f3dffe880981137797fda9ed3fbb513a5d3e7f9c" /* RUNNER_BUNDLE_HASH_END */ as const;
+  /* RUNNER_BUNDLE_HASH_START */ "639e58d2ef2eba14741f0b670f2d4ad641e583f08056f2b179eac393d1a896e5" /* RUNNER_BUNDLE_HASH_END */ as const;
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3 =
   "stayopti.v3.serpapi-google-hotels-retention@2" as const;
 
 export const STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3 =
   `AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6_RETENTION_V2_MAX48` as const;
+
+export const STAYOPTI_SERPAPI_T2B_AMBIGUOUS_AUTHORIZATION_LITERAL_V3 =
+  "AUTHORIZE_V3_17T2B_MAX2_HEAD_ed2633c1fc700a9d9199ce920b826d2909543ab8_MANIFEST_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_891a8c2cbf564ab433ec6553f3dffe880981137797fda9ed3fbb513a5d3e7f9c_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO" as const;
 
 export const STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3 = Object.freeze([
   `AUTHORIZE_V3_17T2_CANARY_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01_RETENTION_V2_MAX4`,
@@ -304,18 +307,17 @@ export const STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3 = Object.
     STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     "e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde",
   ),
+  STAYOPTI_SERPAPI_T2B_AMBIGUOUS_AUTHORIZATION_LITERAL_V3,
 ]);
 
-export const STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3 =
-  createSerpApiT2BMax2AuthorizationLiteralV3({
+export function createSerpApiT2CRequiredAuthorizationLiteralV3(executionHead: string) {
+  return createSerpApiT2CMax2AuthorizationLiteralV3({
     sourceSha: STAYOPTI_SERPAPI_T2B_SOURCE_SHA_V3,
+    executionHead,
     manifestHash: STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,
     runnerBundleHash: STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,
   });
-
-/** Current executable authorization is Stage A only. */
-export const STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3 =
-  STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3;
+}
 
 export const STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_V3 = Object.freeze({
   retentionPolicyVersion: STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3,
@@ -366,12 +368,14 @@ export const STAYOPTI_SERPAPI_PILOT_AUTHORIZATION_CONTRACT_V3 = Object.freeze({
   rawPayloadPolicy: "ENCRYPT_BEFORE_STABLE_PERSISTENCE_THEN_DELETE_PLAINTEXT" as const,
   sanitizedSnapshotPolicy: "PERSIST_PROVIDER_NEUTRAL_ONLY" as const,
   authorizationState: "READY_FOR_EXPLICIT_AUTHORIZATION" as const,
-  requiredAuthorizationLiteral: STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3,
+  requiredAuthorizationLiteral: null,
+  requiredAuthorizationLiteralFactory: "SOURCE_SHA_PLUS_EXECUTION_HEAD" as const,
   revokedAuthorizationLiteral: STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3,
   remainingAuthorizationRequiresCanaryZipHash: true as const,
   stagesRequireSeparateProcesses: true as const,
   abortConditions: Object.freeze([
     "SOURCE_SHA_MISMATCH",
+    "EXECUTION_HEAD_MISMATCH",
     "MANIFEST_HASH_MISMATCH",
     "MANIFEST_EXPIRED",
     "AUTHORIZATION_LITERAL_MISMATCH",
@@ -399,6 +403,7 @@ export interface StayOptiSerpApiPilotAuthorizationEnvelopeV3 {
   literal: string;
   stage: StayOptiSerpApiPilotStageV3;
   sourceCommitSha: string;
+  executionHead: string;
   manifestHash: string;
   accountPlan: "FREE";
   retentionAuthorized: true;
@@ -520,12 +525,14 @@ function validateEnvelope(
   envelope: StayOptiSerpApiPilotAuthorizationEnvelopeV3 | null,
   apiKey: string,
   observedSourceSha: string,
+  observedExecutionHead: string,
   nowIso: string,
 ) {
   if (envelope === null) throw new Error("SERPAPI_PILOT_AUTHORIZATION_REQUIRED");
   if (envelope.authorizationState !== "AUTHORIZED_NOT_STARTED") throw new Error("SERPAPI_PILOT_AUTHORIZATION_STATE_INVALID");
   if (envelope.stage !== "CANARY") throw new Error("SERPAPI_PILOT_STAGE_SESSION_NOT_ALLOWED");
-  if (envelope.literal !== STAYOPTI_SERPAPI_REQUIRED_AUTHORIZATION_LITERAL_V3) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+  if (envelope.literal !== createSerpApiT2CRequiredAuthorizationLiteralV3(observedExecutionHead)) throw new Error("SERPAPI_PILOT_AUTHORIZATION_LITERAL_MISMATCH");
+  if (envelope.executionHead !== observedExecutionHead) throw new Error("SERPAPI_PILOT_EXECUTION_HEAD_MISMATCH");
   if (observedSourceSha !== STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3 || envelope.sourceCommitSha !== STAYOPTI_SERPAPI_PILOT_SOURCE_SHA_V3) throw new Error("SERPAPI_PILOT_SOURCE_SHA_MISMATCH");
   if (envelope.manifestHash !== STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3 || createSerpApiPilotManifestHashV3() !== envelope.manifestHash) throw new Error("SERPAPI_PILOT_MANIFEST_HASH_MISMATCH");
   if (envelope.accountPlan !== "FREE") throw new Error("SERPAPI_PILOT_ACCOUNT_PLAN_MISMATCH");
@@ -637,12 +644,13 @@ export async function executeSerpApiGoogleHotelsPilotV3(input: {
   authorization: StayOptiSerpApiPilotAuthorizationEnvelopeV3 | null;
   apiKey: string;
   observedSourceSha: string;
+  observedExecutionHead: string;
   nowIso: string;
   transport: StayOptiSerpApiPilotTransportV3;
   rawStore: StayOptiSerpApiPilotRawStoreV3;
   clock?: () => string;
 }): Promise<StayOptiSerpApiPilotReceiptV3> {
-  validateEnvelope(input.authorization, input.apiKey, input.observedSourceSha, input.nowIso);
+  validateEnvelope(input.authorization, input.apiKey, input.observedSourceSha, input.observedExecutionHead, input.nowIso);
   const ledger = new StayOptiSerpApiRequestLedgerV3();
   const projections: SerpApiGoogleHotelsExternalProjectionV3[] = [];
   const requestDiagnostics: StayOptiSerpApiPilotReceiptV3["requestDiagnostics"] = [];
@@ -715,6 +723,10 @@ export async function executeSerpApiGoogleHotelsPilotV3(input: {
 export const STAYOPTI_SERPAPI_PILOT_GATE_AUDIT_V3 = Object.freeze({
   authorizationState: "READY_FOR_EXPLICIT_AUTHORIZATION" as const,
   explicitCallAuthorizationGranted: false as const,
+  t2bAmbiguousLiteralInvalidated: true as const,
+  sourceAndExecutionHeadDistinct: true as const,
+  executionHeadBoundByLiteral: true as const,
+  executionHeadVerifiedBeforeNetwork: true as const,
   retentionAuthorizationGranted: true as const,
   collectorNetworkEnabledInT1: false as const,
   credentialSource: "PROCESS_ENVIRONMENT_ONLY" as const,
