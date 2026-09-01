@@ -368,4 +368,41 @@ final T2A-R0 receipt.
 Next recommendation:
 `V3-17T2B_SERPAPI_PROPERTY_DETAIL_MAX2_REAUTHORIZATION_GATE`.
 
+## V3-17T2B SerpApi property-detail MAX2 gate — ready, unauthorized
+
+Source checkpoint: `ed2633c1fc700a9d9199ce920b826d2909543ab8`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the final T2B receipt.
+
+- The immutable twelve-session manifest remains bound to
+  `e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88`.
+- The prior T2A MAX2 literal is revoked and unconsumed. The replacement literal
+  binds the source checkpoint, manifest, complete runner bundle and explicit
+  main/detail/session/concurrency/retry/pagination/quarantine/autostop limits.
+- The new runner bundle is
+  `891a8c2cbf564ab433ec6553f3dffe880981137797fda9ed3fbb513a5d3e7f9c`.
+  Its literal is published for later review but remains unaccepted; no network
+  authorization exists in T2B.
+- The canary request ledger now enforces one validated main search before at
+  most one detail, one session and two transmitted calls total. A second main,
+  second detail, second session, concurrent request or third request fails
+  before transport. Stage REMAINING remains unauthorized.
+- Raw provider material remains private and encrypted before stable storage:
+  AES-256-GCM, CurrentUser DPAPI-protected key, 14-day successful retention or
+  90-day failure/partial retention, offline replay, tamper detection and no
+  Evidence-ZIP or automatic-Golden admission.
+- Handoff, canary, collection and Evidence outcomes are reported separately.
+  A detail failure remains canary `ABORTED` plus collection `PARTIAL`, even when
+  handoff and Evidence pass.
+- Validation on 2026-09-01: targeted T2B `25/25 PASS`; impacted gate/quarantine
+  regressions PASS; Engine V3 `1258/1258 PASS`; Engine V2 `196/196 PASS`;
+  TypeScript, PowerShell 5.1, B1 capsule/blind, B2 corpus, legacy quarantine,
+  provider neutrality, F0B/F0C/F0D and requested integrity scans PASS.
+- Credentials loaded, SerpApi calls, provider calls and HTTP requests are all
+  zero. V2, core V3, providers, ranking, weights and public runtime are
+  unchanged. V3-17 remains unmet and V3-18 remains blocked.
+
+Next recommendation:
+`V3-17T2C_SERPAPI_GOOGLE_HOTELS_MAX2_CANARY_EXPLICIT_AUTHORIZATION_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

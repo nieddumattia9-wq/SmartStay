@@ -9,6 +9,12 @@ export type StayOptiSerpApiPilotStageV3 = typeof STAYOPTI_SERPAPI_PILOT_STAGES_V
 export const STAYOPTI_SERPAPI_CANARY_SESSION_INDEX_V3 = 0 as const;
 export const STAYOPTI_SERPAPI_PRIOR_CONSUMED_CANARY_CALLS_V3 = 2 as const;
 export const STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3 = 2 as const;
+export const STAYOPTI_SERPAPI_CANARY_MAIN_SEARCH_MAX_V3 = 1 as const;
+export const STAYOPTI_SERPAPI_CANARY_PROPERTY_DETAIL_MAX_V3 = 1 as const;
+export const STAYOPTI_SERPAPI_CANARY_SESSIONS_MAX_V3 = 1 as const;
+export const STAYOPTI_SERPAPI_CANARY_CONCURRENCY_V3 = 1 as const;
+export const STAYOPTI_SERPAPI_CANARY_RETRY_BUDGET_V3 = 0 as const;
+export const STAYOPTI_SERPAPI_CANARY_PAGINATION_BUDGET_V3 = 0 as const;
 export const STAYOPTI_SERPAPI_REMAINING_MAX_CALLS_V3 = 44 as const;
 export const STAYOPTI_SERPAPI_STAGED_MAX_TOTAL_CALLS_V3 = 48 as const;
 
@@ -59,6 +65,51 @@ export function createSerpApiCanaryAuthorizationLiteralV3(
 ) {
   return `AUTHORIZE_V3_17T2_CANARY_${manifestHash}_RUNNER_${runnerBundleHash}_RETENTION_V2_MAX2`;
 }
+
+export function createSerpApiT2BMax2AuthorizationLiteralV3(input: {
+  sourceSha: string;
+  manifestHash: string;
+  runnerBundleHash: string;
+}) {
+  for (const [field, value] of Object.entries(input)) {
+    if (!/^[0-9a-f]{40}$/.test(value) && !/^[0-9a-f]{64}$/.test(value)) {
+      throw new Error(`SERPAPI_PILOT_${field.toUpperCase()}_INVALID`);
+    }
+  }
+  if (!/^[0-9a-f]{40}$/.test(input.sourceSha)) throw new Error("SERPAPI_PILOT_SOURCE_SHA_INVALID");
+  if (!/^[0-9a-f]{64}$/.test(input.manifestHash)) throw new Error("SERPAPI_PILOT_MANIFEST_HASH_INVALID");
+  if (!/^[0-9a-f]{64}$/.test(input.runnerBundleHash)) throw new Error("SERPAPI_PILOT_RUNNER_BUNDLE_HASH_INVALID");
+  return [
+    "AUTHORIZE_V3_17T2B_MAX2",
+    `HEAD_${input.sourceSha}`,
+    `MANIFEST_${input.manifestHash}`,
+    `RUNNER_${input.runnerBundleHash}`,
+    "MAIN1",
+    "DETAIL1",
+    "SESSIONS1",
+    "CONCURRENCY1",
+    "RETRIES0",
+    "PAGINATION0",
+    "QUARANTINE_AES256GCM_DPAPI_CURRENTUSER",
+    "AUTOSTOP",
+    "REMAINING_NO",
+  ].join("_");
+}
+
+export const STAYOPTI_SERPAPI_T2B_MAX2_STAGE_POLICY_V3 = Object.freeze({
+  maximumTotalRequests: STAYOPTI_SERPAPI_CANARY_MAX_CALLS_V3,
+  mainSearchMaximum: STAYOPTI_SERPAPI_CANARY_MAIN_SEARCH_MAX_V3,
+  propertyDetailMaximum: STAYOPTI_SERPAPI_CANARY_PROPERTY_DETAIL_MAX_V3,
+  sessionsMaximum: STAYOPTI_SERPAPI_CANARY_SESSIONS_MAX_V3,
+  maximumConcurrency: STAYOPTI_SERPAPI_CANARY_CONCURRENCY_V3,
+  retryBudget: STAYOPTI_SERPAPI_CANARY_RETRY_BUDGET_V3,
+  paginationBudget: STAYOPTI_SERPAPI_CANARY_PAGINATION_BUDGET_V3,
+  propertyDetailSelectionMaximum: STAYOPTI_SERPAPI_CANARY_PROPERTY_DETAIL_MAX_V3,
+  autostop: true as const,
+  remainingStageAuthorized: false as const,
+  automaticGoldenAdmission: false as const,
+  encryptedPrivateQuarantineRequired: true as const,
+});
 
 export function createSerpApiRemainingAuthorizationLiteralV3(input: {
   manifestHash: string;
@@ -138,6 +189,21 @@ export class StayOptiSerpApiStagedRequestLedgerV3 {
     const alternativeRank = input.alternativeRank ?? null;
     const key = `${input.sessionIndex}:${input.requestType}:${alternativeRank ?? "MAIN"}`;
     if (this.#keys.has(key)) throw new Error("SERPAPI_PILOT_DUPLICATE_REQUEST");
+    if (this.#policy.stage === "CANARY") {
+      const mainEntries = this.#entries.filter((entry) => entry.requestType === "MAIN_SEARCH");
+      const detailEntries = this.#entries.filter((entry) => entry.requestType === "PROPERTY_DETAIL");
+      if (input.requestType === "MAIN_SEARCH" && mainEntries.length >= STAYOPTI_SERPAPI_CANARY_MAIN_SEARCH_MAX_V3) {
+        throw new Error("SERPAPI_PILOT_MAIN_SEARCH_CAP_REACHED");
+      }
+      if (input.requestType === "PROPERTY_DETAIL") {
+        if (mainEntries.length !== 1 || mainEntries[0]?.requestState !== "VALIDATED") {
+          throw new Error("SERPAPI_PILOT_MAIN_SEARCH_VALIDATION_REQUIRED");
+        }
+        if (detailEntries.length >= STAYOPTI_SERPAPI_CANARY_PROPERTY_DETAIL_MAX_V3) {
+          throw new Error("SERPAPI_PILOT_PROPERTY_DETAIL_CAP_REACHED");
+        }
+      }
+    }
     this.#keys.add(key);
     this.#active = 1;
     const entry: StayOptiSerpApiStagedLedgerEntryV3 = {

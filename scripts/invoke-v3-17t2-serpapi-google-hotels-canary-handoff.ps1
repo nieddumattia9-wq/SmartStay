@@ -12,21 +12,22 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$SourceSha = '0c052ad1efd579fc6d7ff5a16d7e0bfd8f1d3154'
+$SourceSha = 'ed2633c1fc700a9d9199ce920b826d2909543ab8'
 $ExpectedBranch = 'main'
 $ExpectedManifestHash = 'e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88'
 $ExpectedRunnerBundleHash =
   # HANDOFF_BUNDLE_HASH_START
-  'e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde'
+  '891a8c2cbf564ab433ec6553f3dffe880981137797fda9ed3fbb513a5d3e7f9c'
   # HANDOFF_BUNDLE_HASH_END
 $ExpectedCanarySession = 'SERP_PILOT_01_FLORENCE_COUPLE_BALANCED'
 $ExpectedCanaryIndex = 0
 $ExpectedCanaryCap = 2
 $ExpectedRevokedCanaryLiterals = @(
   'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01_RETENTION_V2_MAX4',
-  'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_d3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683_RETENTION_V2_MAX4'
+  'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_d3176600f3d028c450174b7e14de87084a3eab549eb60350f260043539a08683_RETENTION_V2_MAX4',
+  'AUTHORIZE_V3_17T2_CANARY_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_e48525178e847c30e0c597ab67671327d5f972763b00882f33fdef111365ddde_RETENTION_V2_MAX2'
 )
-$ExpectedNewCanaryLiteral = "AUTHORIZE_V3_17T2_CANARY_${ExpectedManifestHash}_RUNNER_${ExpectedRunnerBundleHash}_RETENTION_V2_MAX2"
+$ExpectedNewCanaryLiteral = "AUTHORIZE_V3_17T2B_MAX2_HEAD_${SourceSha}_MANIFEST_${ExpectedManifestHash}_RUNNER_${ExpectedRunnerBundleHash}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO"
 $ExpectedRevokedMax48Literal = 'AUTHORIZE_V3_17T2_SERPAPI_12_SESSION_PILOT_e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88_RUNNER_67cfd073efbc3177590c9a05feafb1612cc09c359421791414a3c5fadd901cd6_RETENTION_V2_MAX48'
 $RepositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
 $NodeRunner = Join-Path $PSScriptRoot 'run-v3-17t2-serpapi-google-hotels-pilot.mjs'
@@ -45,6 +46,7 @@ $ApiKeyPromptReached = $false
 $EvidenceZipFound = $false
 $ActualRequestsTransmitted = 0
 $CanaryResult = 'NOT_STARTED'
+$CollectionResult = 'NOT_STARTED'
 $EvidenceResult = 'NOT_CREATED'
 $SecureKey = $null
 $UnmanagedSecret = [IntPtr]::Zero
@@ -91,12 +93,15 @@ $DevelopmentPaths = @(
   'tests/engine-v3/v3SerpApiGoogleHotelsStagedPilot.test.ts',
   'tests/engine-v3/v3SerpApiGoogleHotelsCanaryEvidenceRepair.test.ts',
   'tests/engine-v3/v3ProviderRawQuarantineReplay.test.ts',
+  'tests/engine-v3/v3SerpApiGoogleHotelsMax2ReauthorizationGate.test.ts',
   'docs/engine-v3/v3-17-serpapi-google-hotels-canary-evidence-repair.md',
   'docs/engine-v3/v3-17-serpapi-private-raw-quarantine-replay.md',
+  'docs/engine-v3/v3-17-serpapi-property-detail-max2-reauthorization-gate.md',
   'docs/stayopti/CURRENT_STATE.md',
   'docs/stayopti/DECISION_LOG.md',
   'docs/stayopti/decisions/0014-v3-17t2ab-canary-abort-repair.md',
-  'docs/stayopti/decisions/0015-provider-raw-private-quarantine.md'
+  'docs/stayopti/decisions/0015-provider-raw-private-quarantine.md',
+  'docs/stayopti/decisions/0016-v3-17t2b-max2-reauthorization-gate.md'
 )
 
 function Get-StayOptiSha256 {
@@ -173,6 +178,7 @@ function Write-StayOptiDiagnosticLog {
     "RESULT_CODE=$ResultCode",
     "HANDOFF_RESULT=$(if ($ResultCode -eq 0) { 'PASS' } else { 'FAIL' })",
     "CANARY_RESULT=$CanaryResult",
+    "COLLECTION_RESULT=$CollectionResult",
     "EVIDENCE_RESULT=$EvidenceResult",
     "EVIDENCE_ZIP_FOUND=$(if ($EvidenceZipFound) { 'YES' } else { 'NO' })",
     "ACTUAL_REQUESTS_TRANSMITTED=$ActualRequestsTransmitted",
@@ -259,13 +265,21 @@ try {
   Set-StayOptiStep 'COMPILED_CONTRACT_INSPECTION'
   $gateModule = Join-Path $CompiledRoot 'src\engine-v3\evaluation\serpApiGoogleHotelsPilotGateV3.js'
   $stageModule = Join-Path $CompiledRoot 'src\engine-v3\evaluation\serpApiGoogleHotelsPilotStageV3.js'
-  $inspectionProgram = "const gate=require(process.argv[1]);const stage=require(process.argv[2]);process.stdout.write(JSON.stringify({manifestHash:gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,bundleHash:gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,literal:gate.STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,revokedCanary:gate.STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3,revokedMax48:gate.STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3,sessionId:gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[0].sessionId,indexes:stage.stageSessionIndexesV3('CANARY',12),cap:stage.stageRequestCapV3('CANARY')}));"
+  $inspectionProgram = "const gate=require(process.argv[1]);const stage=require(process.argv[2]);process.stdout.write(JSON.stringify({manifestHash:gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3,bundleHash:gate.STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3,literal:gate.STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3,revokedCanary:gate.STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3,revokedMax48:gate.STAYOPTI_SERPAPI_REVOKED_MAX48_AUTHORIZATION_LITERAL_V3,sessionId:gate.STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[0].sessionId,indexes:stage.stageSessionIndexesV3('CANARY',12),cap:stage.stageRequestCapV3('CANARY'),policy:stage.STAYOPTI_SERPAPI_T2B_MAX2_STAGE_POLICY_V3,source:gate.STAYOPTI_SERPAPI_T2B_SOURCE_SHA_V3}));"
   $contractJson = & $node -e $inspectionProgram $gateModule $stageModule
   if ($LASTEXITCODE -ne 0) { throw 'STAYOPTI_T1C_CONTRACT_INSPECTION_FAILED' }
   $contract = $contractJson | ConvertFrom-Json
   if ($contract.manifestHash -ne $ExpectedManifestHash) { throw 'STAYOPTI_T1C_MANIFEST_HASH_MISMATCH' }
   Invoke-StayOptiInjectedFailure 'MANIFEST' 'STAYOPTI_T1C_MANIFEST_HASH_MISMATCH'
   if ($contract.bundleHash -ne $ExpectedRunnerBundleHash -or $contract.literal -cne $ExpectedNewCanaryLiteral) { throw 'STAYOPTI_T1C_LITERAL_MISMATCH' }
+  if ($contract.source -ne $SourceSha -or $contract.policy.maximumTotalRequests -ne 2 -or
+      $contract.policy.mainSearchMaximum -ne 1 -or $contract.policy.propertyDetailMaximum -ne 1 -or
+      $contract.policy.sessionsMaximum -ne 1 -or $contract.policy.maximumConcurrency -ne 1 -or
+      $contract.policy.retryBudget -ne 0 -or $contract.policy.paginationBudget -ne 0 -or
+      -not $contract.policy.autostop -or $contract.policy.remainingStageAuthorized -or
+      $contract.policy.automaticGoldenAdmission -or -not $contract.policy.encryptedPrivateQuarantineRequired) {
+    throw 'STAYOPTI_T2B_MAX2_POLICY_MISMATCH'
+  }
   foreach ($revokedLiteral in $ExpectedRevokedCanaryLiterals) {
     if ($contract.revokedCanary -notcontains $revokedLiteral) { throw 'STAYOPTI_T1C_REVOCATION_MISMATCH' }
   }
@@ -326,14 +340,17 @@ try {
         $ActualRequestsTransmitted = [int]$summary.actualRequestsTransmitted
         if ($summary.status -eq 'COMPLETED') {
           $CanaryResult = 'PASS'
+          $CollectionResult = 'COMPLETE'
           $FailureClassification = 'NONE'
         }
         elseif ($summary.status -eq 'ABORTED') {
           $CanaryResult = 'ABORTED'
+          $CollectionResult = if ([int]$summary.mainSearchCount -eq 1) { 'PARTIAL' } else { 'FAIL' }
           $FailureClassification = [string]$summary.failureClassification
         }
         else {
           $CanaryResult = 'FAIL'
+          $CollectionResult = 'FAIL'
           $FailureClassification = 'STAYOPTI_T2B_CANARY_RESULT_INVALID'
         }
         $EvidenceResult = 'PASS'
@@ -364,6 +381,7 @@ finally {
   catch { $DiagnosticLogPath = 'DIAGNOSTIC_LOG_WRITE_FAILED' }
   "HANDOFF_RESULT=$(if ($ResultCode -eq 0) { 'PASS' } else { 'FAIL' })"
   "CANARY_RESULT=$CanaryResult"
+  "COLLECTION_RESULT=$CollectionResult"
   "EVIDENCE_RESULT=$EvidenceResult"
   "RESULT_CODE=$ResultCode"
   "FAILURE_CLASSIFICATION=$FailureClassification"

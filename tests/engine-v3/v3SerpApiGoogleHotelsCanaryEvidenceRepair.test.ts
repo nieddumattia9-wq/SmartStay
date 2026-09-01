@@ -197,7 +197,7 @@ test("T2AB 20 V3 core remains provider-agnostic and authorization stays ungrante
   const gate = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts"), "utf8");
   assert.doesNotMatch(core, /SerpApi|serpApiGoogleHotelsPilot/i);
   assert.match(gate, /explicitCallAuthorizationGranted:\s*false/);
-  assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /RETENTION_V2_MAX2$/);
+  assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
   assert.equal(STAYOPTI_SERPAPI_PRIOR_CONSUMED_CANARY_CALLS_V3, 2);
 });
 

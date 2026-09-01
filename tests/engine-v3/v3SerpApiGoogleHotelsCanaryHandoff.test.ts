@@ -115,4 +115,7 @@ test("T1C 26 launcher has deterministic preflight-only mode", () => { assert.mat
 test("T1C 27 launcher and handoff use .NET SHA-256 instead of cmdlet autoload", () => { assert.doesNotMatch(`${handoffSource}\n${launcherSource}`, /Get-FileHash/); assert.match(handoffSource, /Security\.Cryptography\.SHA256/); });
 test("T1C 28 process-scoped execution-policy repair is explicit", () => { assert.match(handoffSource, /-ExecutionPolicy Bypass -File \$PilotLauncher/); });
 test("T1C 29 manifest remains immutable", () => { assert.equal(STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, "e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88"); });
-test("T2B 30 new literal remains canary MAX2 only", () => { assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /^AUTHORIZE_V3_17T2_CANARY_[0-9a-f]{64}_RUNNER_[0-9a-f]{64}_RETENTION_V2_MAX2$/); assert.doesNotMatch(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /MAX48|REMAINING/); });
+test("T2B 30 new literal binds checkpoint and every MAX2 guard", () => {
+  assert.match(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /^AUTHORIZE_V3_17T2B_MAX2_HEAD_[0-9a-f]{40}_MANIFEST_[0-9a-f]{64}_RUNNER_[0-9a-f]{64}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
+  assert.doesNotMatch(STAYOPTI_SERPAPI_CANARY_AUTHORIZATION_LITERAL_V3, /MAX48|REMAINING_11/);
+});
