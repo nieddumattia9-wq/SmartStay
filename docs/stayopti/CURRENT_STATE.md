@@ -519,4 +519,38 @@ Next recommendation: determine the next offline or separately authorized
 package from the sealed Evidence and current repository state; T2E grants no
 new network authority.
 
+## V3-17T3 repaired snapshot eligibility — diagnostic only
+
+Source checkpoint: `79e3a19d8bbdeb2032fd03d160ce6dbea6bdf302`;
+the implementation checkpoint is the local commit containing this entry and
+is reported in the final T3 receipt.
+
+- T2E seal SHA-256
+  `27d4c7274432599dbdc70ba695ac7877d39ea5690babb11e3cc3ab8113d08b26`
+  and all `14/14` internal checksums passed. Both encrypted raw envelopes
+  authenticated via AES-256-GCM and CurrentUser DPAPI and remained unchanged.
+- Offline base/detail replay reconstructed 29 alternatives. Twenty aggregated
+  display prices remain observed and non-exact; nine remain missing.
+- The detail changed nightly, total and before-tax price evidence for one
+  alternative. Those fields are single-item diagnostic only and excluded from
+  decision use.
+- A provider-neutral diagnostic snapshot was created with SHA-256
+  `5cae64e985f844ae89ea84f92458de2acf0aed812836e11b235c480b2bf63925`.
+  Original order, sponsorship and source provenance remain only in a separate
+  private audit ledger and cannot affect the snapshot fingerprint.
+- Eligibility is `DIAGNOSTIC_ONLY`; V3 replay is `NOT_ELIGIBLE`, blind judgment
+  is `NO`, Golden admission is `NO`. No capsule, judgment or deblind was
+  produced.
+- Shared Evidence is
+  `StayOpti-V3-17T3-Provider-Neutral-Diagnostic-Evidence-20260902-124430.zip`
+  with SHA-256
+  `1a669961375fc3838c100c7d7ca03623a9902acab4c87621799366aa671f50a6`.
+  It contains seven sanitized entries and six passing internal checksums; raw,
+  encrypted raw and the private audit ledger are excluded.
+- No network, credential, provider call, ranking/weight change, public-runtime
+  change, Stage REMAINING authority, push or fetch occurred.
+
+Next recommendation:
+`V3-17T4_COMPARABLE_SET_WIDE_EVIDENCE_REQUIREMENTS_AND_COLLECTION_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
