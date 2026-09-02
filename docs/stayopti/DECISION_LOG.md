@@ -21,6 +21,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0015 | 2026-09-01 | Retain paid provider raw only in a private, AES-GCM-encrypted, Windows-user-protected and expiring quarantine; keep replay offline and adapter-bound. | Accepted; raw retention authorized, provider calls remain unauthorized | `decisions/0015-provider-raw-private-quarantine.md` |
 | D-0016 | 2026-09-01 | Bind any future SerpApi repair canary to one session, one main search, one detail and two calls total, with encrypted quarantine, autostop and no remaining-stage authority. | Accepted; exact literal generated but calls remain unauthorized | `decisions/0016-v3-17t2b-max2-reauthorization-gate.md` |
 | D-0017 | 2026-09-02 | Distinguish the immutable T2A source from the exact execution HEAD in every future SerpApi MAX2 authorization and verify both before transport. | Accepted; final literal remains unaccepted and calls unauthorized | `decisions/0017-v3-17t2c-execution-head-binding.md` |
+| D-0018 | 2026-09-02 | Accept structurally valid direct-root SerpApi property details only at the evaluation boundary while preserving fail-closed errors, async states and provider neutrality. | Accepted offline repair; no provider-call authority | `decisions/0018-serpapi-direct-root-property-detail.md` |
 
 ## Required fields for a new decision
 

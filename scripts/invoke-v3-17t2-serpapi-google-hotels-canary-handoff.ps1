@@ -18,7 +18,7 @@ $ExpectedBranch = 'main'
 $ExpectedManifestHash = 'e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88'
 $ExpectedRunnerBundleHash =
   # HANDOFF_BUNDLE_HASH_START
-  '639e58d2ef2eba14741f0b670f2d4ad641e583f08056f2b179eac393d1a896e5'
+  'e8f81dd4778aa6b15ace287d03bb2ebb908454a349b840357f7a8ac5df19e476'
   # HANDOFF_BUNDLE_HASH_END
 $ExpectedCanarySession = 'SERP_PILOT_01_FLORENCE_COUPLE_BALANCED'
 $ExpectedCanaryIndex = 0

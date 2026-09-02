@@ -138,6 +138,7 @@ export interface SerpApiGoogleHotelsPropertyV3 {
   property_token?: string;
   gps_coordinates?: { latitude?: number; longitude?: number };
   hotel_class?: string | number;
+  extracted_hotel_class?: number;
   overall_rating?: number;
   reviews?: number;
   rate_per_night?: SerpApiGoogleHotelsMoneyV3;

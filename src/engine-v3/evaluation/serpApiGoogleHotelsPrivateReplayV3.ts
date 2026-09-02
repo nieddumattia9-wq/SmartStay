@@ -15,7 +15,7 @@ import {
 import type { SerpApiGoogleHotelsResponseV3 } from "./serpApiGoogleHotelsExternalAdapterV3";
 
 export const STAYOPTI_SERPAPI_PRIVATE_REPLAY_PARSER_VERSION_V3 =
-  "stayopti.v3.serpapi-google-hotels-private-replay-parser@1" as const;
+  "stayopti.v3.serpapi-google-hotels-private-replay-parser@2" as const;
 
 export interface StayOptiSerpApiPrivateReplayResultV3 {
   parserVersion: typeof STAYOPTI_SERPAPI_PRIVATE_REPLAY_PARSER_VERSION_V3;

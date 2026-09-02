@@ -435,4 +435,41 @@ the local commit containing this entry and is reported in the final receipt.
 Next recommendation:
 `V3-17T2C_SERPAPI_GOOGLE_HOTELS_MAX2_CANARY_LITERAL_ACCEPTANCE_GATE`.
 
+## V3-17T2D SerpApi property-detail offline replay — repaired
+
+Source checkpoint: `5c4f2b36568fa825599a62f25e2d2c18b52fb085`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the final T2D receipt.
+
+- The sanitized canary Evidence SHA-256 is
+  `647e4f3dd789e092eaf42a321580d135f3a99e2996d8787215bd984f2123591e`;
+  all 18 listed internal checksums passed and the two encrypted raw envelopes
+  matched the canary session uniquely.
+- AES-256-GCM authentication and CurrentUser DPAPI unwrap passed. Replay used
+  memory only, left both encrypted files byte-identical and created no
+  plaintext file.
+- Root cause is demonstrated: the HTTP 200 JSON detail was a valid property
+  object returned directly at the response root, while the parser accepted
+  only `property`, `properties[0]` or `ads[0]` wrappers.
+- The evaluation boundary now supports the direct-root property shape using a
+  structural allowlist. Provider errors, asynchronous incomplete statuses,
+  non-JSON/wrong-content-type responses and ambiguous shapes remain
+  fail-closed.
+- Replay after repair preserved the 29-item main choice set and merged exactly
+  one detail. The snapshot remains partial diagnostic external evidence,
+  never automatically Golden.
+- The repaired execution bundle is sealed by
+  `e8f81dd4778aa6b15ace287d03bb2ebb908454a349b840357f7a8ac5df19e476`;
+  the consumed T2C literal does not authorize this changed bundle and no new
+  live authority is created.
+- The 20 observed display prices remain
+  `OBSERVED_AGGREGATED_DISPLAY_PRICE`; nine missing prices remain missing and
+  none is promoted to exact or bookable.
+- Credentials and external calls are zero. Stage REMAINING remains
+  unauthorized and unstarted; Engine V2, V3 core, ranking, weights, providers
+  and public runtime are unchanged.
+
+Next recommendation:
+`V3-17T2E_SERPAPI_REPAIRED_DETAIL_OFFLINE_EVIDENCE_SEAL`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

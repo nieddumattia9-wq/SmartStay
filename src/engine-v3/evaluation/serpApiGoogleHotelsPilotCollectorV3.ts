@@ -31,6 +31,7 @@ import {
 } from "./serpApiGoogleHotelsPilotStageV3";
 import {
   STAYOPTI_SERPAPI_PILOT_EVIDENCE_SCHEMA_VERSION_V3,
+  classifySerpApiPropertyDetailShapeV3,
   createSerpApiSanitizedSnapshotV3,
   mergeSerpApiDetailResponseV3,
   sha256SerpApiEvidenceV3,
@@ -128,9 +129,11 @@ export interface StayOptiSerpApiPilotEvidenceExecutionV3 {
 export type StayOptiSerpApiResponseErrorClassV3 =
   | "NONE"
   | "HTTP_STATUS_ERROR"
+  | "CONTENT_TYPE_UNSUPPORTED"
   | "NON_JSON_OR_NON_OBJECT_RESPONSE"
   | "PROVIDER_ERROR_FIELD_PRESENT"
   | "SEARCH_METADATA_ERROR_STATUS"
+  | "ASYNC_INCOMPLETE_STATUS"
   | "DETAIL_SCHEMA_MISMATCH";
 
 export interface StayOptiSerpApiResponseDiagnosticV3 {
@@ -298,11 +301,7 @@ function sanitizedSearchMetadataStatus(body: unknown): StayOptiSerpApiResponseDi
 }
 
 function detailShapeMismatchPaths(body: unknown) {
-  if (!plainRecord(body)) return ["response"];
-  const property = plainRecord(body.property) ? body.property : null;
-  const properties = Array.isArray(body.properties) && plainRecord(body.properties[0]) ? body.properties[0] : null;
-  const ads = Array.isArray(body.ads) && plainRecord(body.ads[0]) ? body.ads[0] : null;
-  return property !== null || properties !== null || ads !== null
+  return classifySerpApiPropertyDetailShapeV3(body) !== "UNSUPPORTED"
     ? []
     : ["response.ads[0]", "response.properties[0]", "response.property"];
 }
@@ -318,14 +317,17 @@ export function createSerpApiResponseDiagnosticV3(input: {
   body: unknown;
 }): StayOptiSerpApiResponseDiagnosticV3 {
   const httpStatus = Number.isInteger(input.httpStatus) ? Number(input.httpStatus) : null;
+  const contentType = sanitizedContentType(input.contentType);
   const searchMetadataStatus = sanitizedSearchMetadataStatus(input.body);
   const errorPresent = plainRecord(input.body) && Object.prototype.hasOwnProperty.call(input.body, "error");
   const schemaMismatchPaths = input.requestKind === "PROPERTY_DETAIL" ? detailShapeMismatchPaths(input.body) : [];
   const errorClass: StayOptiSerpApiResponseErrorClassV3 =
     httpStatus === null || httpStatus < 200 || httpStatus >= 300 ? "HTTP_STATUS_ERROR"
+      : contentType !== null && contentType !== "application/json" && !contentType.endsWith("+json") ? "CONTENT_TYPE_UNSUPPORTED"
       : input.bodyParsed === false || !plainRecord(input.body) ? "NON_JSON_OR_NON_OBJECT_RESPONSE"
         : errorPresent ? "PROVIDER_ERROR_FIELD_PRESENT"
           : searchMetadataStatus === "ERROR" ? "SEARCH_METADATA_ERROR_STATUS"
+            : searchMetadataStatus === "PROCESSING" ? "ASYNC_INCOMPLETE_STATUS"
             : schemaMismatchPaths.length > 0 ? "DETAIL_SCHEMA_MISMATCH"
               : "NONE";
   return {
@@ -333,7 +335,7 @@ export function createSerpApiResponseDiagnosticV3(input: {
     requestKind: input.requestKind,
     alternativeRank: input.alternativeRank,
     httpStatus,
-    contentType: sanitizedContentType(input.contentType),
+    contentType,
     responseByteLength: Number.isInteger(input.responseByteLength) && Number(input.responseByteLength) >= 0
       ? Number(input.responseByteLength)
       : null,
@@ -519,10 +521,12 @@ export async function executeSerpApiGoogleHotelsPilotEvidenceV3(input: {
           });
           responseDiagnostics.push(diagnostic);
           if (diagnostic.errorClass === "HTTP_STATUS_ERROR") throw new Error("SERPAPI_PILOT_HTTP_OR_TRANSPORT_FAILURE");
+          if (diagnostic.errorClass === "CONTENT_TYPE_UNSUPPORTED") throw new Error("SERPAPI_PILOT_RESPONSE_CONTENT_TYPE_UNSUPPORTED");
           if (diagnostic.errorClass === "NON_JSON_OR_NON_OBJECT_RESPONSE") throw new Error("SERPAPI_PILOT_RESPONSE_NOT_PROCESSABLE");
           if (diagnostic.errorClass === "PROVIDER_ERROR_FIELD_PRESENT" || diagnostic.errorClass === "SEARCH_METADATA_ERROR_STATUS") {
             throw new Error("SERPAPI_PILOT_PROVIDER_ERROR_RESPONSE");
           }
+          if (diagnostic.errorClass === "ASYNC_INCOMPLETE_STATUS") throw new Error("SERPAPI_PILOT_ASYNC_RESPONSE_NOT_COMPLETE");
           if (diagnostic.errorClass === "DETAIL_SCHEMA_MISMATCH") throw new Error("SERPAPI_PILOT_DETAIL_RESPONSE_NOT_PROCESSABLE");
           if (requestKind === "MAIN_SEARCH") fault("DURING_SEARCH_PARSING");
           return { body: parsedBody as SerpApiGoogleHotelsResponseV3, pending };

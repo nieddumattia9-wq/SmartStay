@@ -393,6 +393,54 @@ function fillMissing<T>(base: T | undefined, detail: T | undefined) {
   return base === undefined ? detail : base;
 }
 
+export type StayOptiSerpApiPropertyDetailShapeV3 =
+  | "WRAPPED_PROPERTY"
+  | "WRAPPED_PROPERTIES_ARRAY"
+  | "WRAPPED_ADS_ARRAY"
+  | "UNWRAPPED_PROPERTY"
+  | "UNSUPPORTED";
+
+const directDetailEvidenceFields = [
+  "gps_coordinates",
+  "hotel_class",
+  "extracted_hotel_class",
+  "overall_rating",
+  "reviews",
+  "rate_per_night",
+  "total_rate",
+  "prices",
+  "amenities",
+  "free_cancellation",
+] as const;
+
+function isUnwrappedPropertyDetailV3(value: unknown): value is SerpApiGoogleHotelsPropertyV3 {
+  if (!plainRecord(value)) return false;
+  if (plainRecord(value.property) || Array.isArray(value.properties) || Array.isArray(value.ads)) return false;
+  if (typeof value.name !== "string" || value.name.trim().length === 0) return false;
+  return directDetailEvidenceFields.some((field) => Object.prototype.hasOwnProperty.call(value, field));
+}
+
+export function classifySerpApiPropertyDetailShapeV3(value: unknown): StayOptiSerpApiPropertyDetailShapeV3 {
+  if (!plainRecord(value)) return "UNSUPPORTED";
+  if (plainRecord(value.property)) return "WRAPPED_PROPERTY";
+  if (Array.isArray(value.properties) && plainRecord(value.properties[0])) return "WRAPPED_PROPERTIES_ARRAY";
+  if (Array.isArray(value.ads) && plainRecord(value.ads[0])) return "WRAPPED_ADS_ARRAY";
+  return isUnwrappedPropertyDetailV3(value) ? "UNWRAPPED_PROPERTY" : "UNSUPPORTED";
+}
+
+export function extractSerpApiPropertyDetailV3(value: unknown): SerpApiGoogleHotelsPropertyV3 | null {
+  if (!plainRecord(value)) return null;
+  const properties = value.properties;
+  const ads = value.ads;
+  switch (classifySerpApiPropertyDetailShapeV3(value)) {
+    case "WRAPPED_PROPERTY": return value.property as SerpApiGoogleHotelsPropertyV3;
+    case "WRAPPED_PROPERTIES_ARRAY": return (properties as unknown[])[0] as SerpApiGoogleHotelsPropertyV3;
+    case "WRAPPED_ADS_ARRAY": return (ads as unknown[])[0] as SerpApiGoogleHotelsPropertyV3;
+    case "UNWRAPPED_PROPERTY": return value as SerpApiGoogleHotelsPropertyV3;
+    default: return null;
+  }
+}
+
 export function mergeSerpApiPropertyDetailV3(
   base: SerpApiGoogleHotelsPropertyV3,
   detail: SerpApiGoogleHotelsPropertyV3,
@@ -403,7 +451,7 @@ export function mergeSerpApiPropertyDetailV3(
     name: base.name,
     property_token: base.property_token,
     gps_coordinates: fillMissing(base.gps_coordinates, detail.gps_coordinates),
-    hotel_class: fillMissing(base.hotel_class, detail.hotel_class),
+    hotel_class: fillMissing(base.hotel_class, detail.hotel_class ?? detail.extracted_hotel_class),
     overall_rating: fillMissing(base.overall_rating, detail.overall_rating),
     reviews: fillMissing(base.reviews, detail.reviews),
     rate_per_night: fillMissing(base.rate_per_night, detail.rate_per_night),
@@ -417,15 +465,15 @@ export function mergeSerpApiPropertyDetailV3(
 export function mergeSerpApiDetailResponseV3(
   response: SerpApiGoogleHotelsResponseV3,
   displayedRank: number,
-  detailResponse: SerpApiGoogleHotelsResponseV3,
+  detailResponse: unknown,
 ) {
   const cloned = cloneJson(response);
   const adsCount = cloned.ads?.length ?? 0;
   const target = displayedRank <= adsCount
     ? cloned.ads?.[displayedRank - 1]
     : cloned.properties?.[displayedRank - adsCount - 1];
-  const detail = detailResponse.property ?? detailResponse.properties?.[0] ?? detailResponse.ads?.[0];
-  if (target === undefined || detail === undefined) throw new Error("SERPAPI_PILOT_DETAIL_RESPONSE_NOT_PROCESSABLE");
+  const detail = extractSerpApiPropertyDetailV3(detailResponse);
+  if (target === undefined || detail === null) throw new Error("SERPAPI_PILOT_DETAIL_RESPONSE_NOT_PROCESSABLE");
   const merged = mergeSerpApiPropertyDetailV3(target, detail);
   if (displayedRank <= adsCount && cloned.ads !== undefined) cloned.ads[displayedRank - 1] = merged;
   else if (cloned.properties !== undefined) cloned.properties[displayedRank - adsCount - 1] = merged;
