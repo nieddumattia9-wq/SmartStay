@@ -620,4 +620,34 @@ is reported in the final T5 receipt.
 Next recommendation:
 `V3-17T6_CANARY2_LITERAL_ACCEPTANCE_AND_CONTROLLED_HANDOFF`.
 
+## V3-17T5A-R0 manual public-market Decision Golden gate
+
+Reconciled base: `47b4075043afcd151a8f4f8fa8b5a8d3f2aaf669`;
+the implementation checkpoint is the local commit containing this entry and
+is reported in the final T5A-R0 receipt.
+
+- The previous T5 commit is preserved forward-only as
+  `DORMANT_DIAGNOSTIC_ONLY`. Its CANARY2 literal is revoked, unaccepted, and
+  rejected as `AUTHORIZATION_REVOKED_OR_EXECUTION_HEAD_MISMATCH`; REMAINING10
+  is unauthorized and unreachable.
+- The active gate is a local manual capture of five to eight alternatives
+  under one logged-out consumer surface, shared currency/occupancy/config and
+  collection window, full pre-checkout prices, observed availability and
+  frozen pre-judgment selection.
+- `PUBLIC_PRECHECKOUT_VERIFIED_PRICE` preserves observed amounts and
+  missingness while fixing purchase, booking, exact-bookability and verified
+  checkout claims to false.
+- Screenshots, URLs, saved pages and real names stay in the existing
+  AES-256-GCM plus Windows CurrentUser DPAPI private-evidence boundary outside
+  the repository. Shared Evidence and blind capsules exclude them.
+- Provider-neutral snapshots exclude source order, sponsorship and private
+  identity. Blind judgment is required before V3 reveal. Automatic Decision
+  Golden admission is impossible; Live Bookable Golden is unavailable and
+  the T3 sample remains diagnostic-only.
+- No real capture, judgment, HTTP, provider call, Product API, credential,
+  scraping, booking, public-runtime/weight change, push or fetch occurred.
+
+Next recommendation:
+`V3-17T5B_MANUAL_PUBLIC_MARKET_DECISION_GOLDEN_CANARY`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

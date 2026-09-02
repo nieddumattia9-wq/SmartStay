@@ -26,6 +26,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0020 | 2026-09-02 | Keep the repaired real-market sample diagnostic-only: exclude incomplete aggregated prices, single-item detail enrichment, provider identity, sponsorship and source order from decision use. | Accepted offline evidence boundary; no provider-call authority | `decisions/0020-t3-diagnostic-only-provider-neutral-boundary.md` |
 | D-0021 | 2026-09-02 | Require set-wide comparable evidence before V3 replay or blind judgment; permit only a separately authorized, one-call-per-session limited collection path while full-tier evidence remains unproven. | Accepted offline requirements boundary; no collection authority | `decisions/0021-comparable-set-wide-evidence-gate.md` |
 | D-0022 | 2026-09-02 | Freeze the twelve limited-comparable scenarios into a two-call CANARY2 and separate ten-call remaining stage, with main-search-only collection, encrypted quarantine and exact post-commit authorization binding. | Accepted offline gate; all collection authority remains ungranted | `decisions/0022-limited-comparable-canary2-collection-gate.md` |
+| D-0023 | 2026-09-02 | Revoke the dormant SerpApi T5 collection authority and use a private, uniform, encrypted manual public-market protocol as the active Decision Golden capture path. | Accepted offline gate; no capture or network authority | `decisions/0023-manual-public-market-decision-golden-capture.md` |
 
 ## Required fields for a new decision
 
