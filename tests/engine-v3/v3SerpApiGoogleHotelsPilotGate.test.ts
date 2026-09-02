@@ -342,6 +342,7 @@ test("V3-17T1 core V3 does not import collector or SerpApi", () => {
     "src/engine-v3/evaluation/serpApiGoogleHotelsPrivateReplayV3.ts",
     "src/engine-v3/evaluation/providerRawQuarantineV3.ts",
     "src/engine-v3/evaluation/repairedMarketSnapshotEligibilityV3.ts",
+    "src/engine-v3/evaluation/serpApiLimitedComparableCollectionGateV3.ts",
   ]);
   for (const file of filesUnder("src/engine-v3").filter((entry) => entry.endsWith(".ts") && !evaluationFiles.has(entry))) {
     assert.doesNotMatch(source(file), /serpApiGoogleHotelsPilotGateV3|serpApiGoogleHotelsExternalAdapterV3|SERPAPI_GOOGLE_HOTELS/, file);

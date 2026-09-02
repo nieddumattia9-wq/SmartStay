@@ -587,4 +587,37 @@ is reported in the final T4 receipt.
 Next recommendation:
 `V3-17T5_LIMITED_COMPARABLE_MAIN_SEARCH_COLLECTION_AUTHORIZATION_GATE`.
 
+## V3-17T5 limited-comparable CANARY2 gate
+
+Source checkpoint: `d99982ab57d80b0d9d78b8e8470bfd6ed80cb821`;
+the implementation checkpoint is the local commit containing this entry and
+is reported in the final T5 receipt.
+
+- The canonical twelve-session registry is frozen at SHA-256
+  `59d84e01d7c46f8616ed64da90f25701ebd7c8fcc1730ec4c80d3c7100671cb0`.
+- CANARY2 deterministically contains Rome solo/budget and Vienna
+  family/comfort. REMAINING10 contains the disjoint other ten sessions; their
+  union is exactly the original registry.
+- The campaign is main-search-only: one request per session, two CANARY2
+  calls, ten future remaining calls, twelve theoretical calls total,
+  concurrency one, retry and pagination zero, property details zero and
+  mandatory autostop.
+- Both CANARY2 sessions must independently reach
+  `LIMITED_COMPARABLE_JUDGMENT`; one diagnostic-only or failed session aborts
+  the stage. Missing prices remain a separate denominator and observed display
+  prices remain non-exact.
+- The private encrypted quarantine is mandatory. Provider identity,
+  sponsorship, original order and property tokens cannot affect selection or
+  enter shared Evidence.
+- The post-commit literal binds source SHA, exact execution HEAD, campaign,
+  CANARY2, registry and runner-bundle hashes. It is generated for user review
+  but remains unaccepted. No REMAINING10 literal exists.
+- Targeted T5 tests pass `42/42`; full canonical regressions and the exact
+  post-commit PowerShell preflight are reported in the final phase receipt.
+- No HTTP, provider call, credential loading, public-runtime change, Golden
+  admission, push or fetch occurred in T5.
+
+Next recommendation:
+`V3-17T6_CANARY2_LITERAL_ACCEPTANCE_AND_CONTROLLED_HANDOFF`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
