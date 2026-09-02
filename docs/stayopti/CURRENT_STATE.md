@@ -650,4 +650,29 @@ is reported in the final T5A-R0 receipt.
 Next recommendation:
 `V3-17T5B_MANUAL_PUBLIC_MARKET_DECISION_GOLDEN_CANARY`.
 
+## V3-17T5B guided manual capture repair
+
+Source checkpoint: `c33406adcc71310f3f8c4fde2c716be120866696`;
+the repair checkpoint is the local commit containing this entry and is
+reported in the T5B receipt.
+
+- The T5A JSON editor failed the T5B usability preflight before any real data
+  was requested. No real collection was started through that interface.
+- The operational T5B tool is a guided Italian flow for the frozen Florence
+  scenario and exactly five accepted alternatives. It saves progress after
+  every result, resumes automatically, supports corrections and selects
+  optional private files through a native Windows dialog.
+- Private identity, URLs and files are encrypted immediately with AES-256-GCM
+  and CurrentUser DPAPI outside the repository; the progress file contains
+  only sanitized values and encrypted handles.
+- The synthetic five-alternative dry run validates save/resume, encryption,
+  tamper rejection, provider-neutral snapshot, blind capsule, sanitized ZIP,
+  checksums and cleanup with zero HTTP and zero credentials.
+- The real session can finish only as `ELIGIBLE_FOR_BLIND_JUDGMENT` or
+  `DIAGNOSTIC_ONLY`. Judgment, V3 execution, deblind and Golden admission
+  remain outside this phase.
+
+Next recommendation after the user completes the guided capture:
+`V3-17T5B_MANUAL_CAPTURE_POSTFLIGHT_AND_ELIGIBILITY_DECISION`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

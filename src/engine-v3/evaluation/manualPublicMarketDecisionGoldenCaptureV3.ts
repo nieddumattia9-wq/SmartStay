@@ -90,7 +90,9 @@ export interface StayOptiManualMarketAlternativeV3 {
   distanceMeters: number | null;
   accommodationCategory: string | null;
   roomEvidence: string | null;
+  mealPlanEvidence: string | null;
   cancellationEvidence: string | null;
+  refundabilityEvidence: string | null;
   amenityEvidence: readonly string[];
   availabilityEvidence: "OBSERVED_AVAILABLE" | "UNKNOWN" | "NOT_AVAILABLE";
   missingness: readonly string[];
@@ -148,7 +150,9 @@ export interface StayOptiManualMarketSnapshotAlternativeV3 {
   distanceMeters: number;
   accommodationCategory: string;
   roomEvidence: string;
+  mealPlanEvidence: string;
   cancellationEvidence: string;
+  refundabilityEvidence: string;
   amenityEvidence: readonly string[];
   availabilityEvidence: "OBSERVED_AVAILABLE";
   missingness: readonly string[];
@@ -288,7 +292,9 @@ function captureFingerprintMaterial(capture: StayOptiManualMarketCaptureV3) {
         distanceMeters: alternative.distanceMeters,
         accommodationCategory: alternative.accommodationCategory,
         roomEvidence: alternative.roomEvidence,
+        mealPlanEvidence: alternative.mealPlanEvidence,
         cancellationEvidence: alternative.cancellationEvidence,
+        refundabilityEvidence: alternative.refundabilityEvidence,
         amenityEvidence: sortedUnique(alternative.amenityEvidence),
         availabilityEvidence: alternative.availabilityEvidence,
         missingness: sortedUnique(alternative.missingness),
@@ -333,7 +339,7 @@ export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptu
   if (capture.alternatives.length < STAYOPTI_MANUAL_MARKET_MIN_ALTERNATIVES_V3) issues.push({ code: "MANUAL_CAPTURE_TOO_FEW_ALTERNATIVES", path: "$.alternatives", disposition: "DIAGNOSTIC_ONLY" });
   if (capture.alternatives.length > STAYOPTI_MANUAL_MARKET_MAX_ALTERNATIVES_V3) issues.push({ code: "MANUAL_CAPTURE_TOO_MANY_ALTERNATIVES", path: "$.alternatives", disposition: "REJECTED" });
   const ids = new Set<string>();
-  const comparable = new Set(["price", "rating", "reviewCount", "distance", "category", "room", "cancellation", "amenities", "availability"]);
+  const comparable = new Set(["price", "rating", "reviewCount", "distance", "category", "room", "mealPlan", "cancellation", "refundability", "amenities", "availability"]);
   const auditOnly = new Set(["consumerSurface", "originalOrder", "sponsored", "privateRealName", "privateSourceUrl", "privateScreenshotRefs"]);
   const excluded = new Set(auditOnly);
   const firstCoverage = capture.alternatives[0]?.detailCoverage ?? [];
@@ -346,7 +352,7 @@ export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptu
     if (alternative.guestConfigurationFingerprint !== `${capture.adults}|${capture.childrenAges.join(",")}|${capture.rooms}`) issues.push({ code: "MANUAL_CAPTURE_GUEST_CONFIGURATION_MISMATCH", path: `${path}.guestConfigurationFingerprint`, disposition: "REJECTED" });
     validatePrice(alternative.price, capture.currency, `${path}.price`, issues);
     if (alternative.availabilityEvidence !== "OBSERVED_AVAILABLE") issues.push({ code: "MANUAL_CAPTURE_AVAILABILITY_REQUIRED", path: `${path}.availabilityEvidence`, disposition: "DIAGNOSTIC_ONLY" });
-    for (const [field, value] of [["rating", alternative.rating], ["ratingScale", alternative.ratingScale], ["reviewCount", alternative.reviewCount], ["distanceMeters", alternative.distanceMeters], ["accommodationCategory", alternative.accommodationCategory], ["roomEvidence", alternative.roomEvidence], ["cancellationEvidence", alternative.cancellationEvidence]] as const) {
+    for (const [field, value] of [["rating", alternative.rating], ["ratingScale", alternative.ratingScale], ["reviewCount", alternative.reviewCount], ["distanceMeters", alternative.distanceMeters], ["accommodationCategory", alternative.accommodationCategory], ["roomEvidence", alternative.roomEvidence], ["mealPlanEvidence", alternative.mealPlanEvidence], ["cancellationEvidence", alternative.cancellationEvidence], ["refundabilityEvidence", alternative.refundabilityEvidence]] as const) {
       if (value === null) {
         comparable.delete(field === "ratingScale" ? "rating" : field);
         excluded.add(field);
@@ -376,7 +382,7 @@ export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptu
 }
 
 function publicAlternativeMaterial(alternative: StayOptiManualMarketAlternativeV3) {
-  if (alternative.price === null || alternative.rating === null || alternative.ratingScale === null || alternative.reviewCount === null || alternative.distanceMeters === null || alternative.accommodationCategory === null || alternative.roomEvidence === null || alternative.cancellationEvidence === null || alternative.availabilityEvidence !== "OBSERVED_AVAILABLE") throw new Error("MANUAL_CAPTURE_ALTERNATIVE_NOT_COMPARABLE");
+  if (alternative.price === null || alternative.rating === null || alternative.ratingScale === null || alternative.reviewCount === null || alternative.distanceMeters === null || alternative.accommodationCategory === null || alternative.roomEvidence === null || alternative.mealPlanEvidence === null || alternative.cancellationEvidence === null || alternative.refundabilityEvidence === null || alternative.availabilityEvidence !== "OBSERVED_AVAILABLE") throw new Error("MANUAL_CAPTURE_ALTERNATIVE_NOT_COMPARABLE");
   return {
     price: { ...alternative.price, missingness: sortedUnique(alternative.price.missingness) },
     rating: alternative.rating,
@@ -385,7 +391,9 @@ function publicAlternativeMaterial(alternative: StayOptiManualMarketAlternativeV
     distanceMeters: alternative.distanceMeters,
     accommodationCategory: alternative.accommodationCategory,
     roomEvidence: alternative.roomEvidence,
+    mealPlanEvidence: alternative.mealPlanEvidence,
     cancellationEvidence: alternative.cancellationEvidence,
+    refundabilityEvidence: alternative.refundabilityEvidence,
     amenityEvidence: sortedUnique(alternative.amenityEvidence),
     availabilityEvidence: alternative.availabilityEvidence,
     missingness: sortedUnique(alternative.missingness),

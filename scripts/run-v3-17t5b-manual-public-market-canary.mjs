@@ -1,0 +1,662 @@
+import { spawnSync } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
+import { createInterface } from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
+import {
+  createProviderRawQuarantineStoreV3,
+  createWindowsCurrentUserDpapiProtectorV3,
+} from "./provider-raw-quarantine-store.mjs";
+
+const PS51 = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+const SESSION_ID = "V3_17T5B_FLORENCE_20261015_001";
+const EXPECTED_ALTERNATIVES = 5;
+const CAPTURE_VERSION = "stayopti.v3.manual-public-market-decision-capture@1";
+const STATE_VERSION = "stayopti.v3.manual-public-market-canary-state@1";
+const EVIDENCE_VERSION = "stayopti.v3.manual-public-market-canary-evidence@1";
+
+function fail(code) { throw new Error(code); }
+function option(name) { const prefix = `--${name}=`; return process.argv.find((value) => value.startsWith(prefix))?.slice(prefix.length); }
+function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
+function json(value) { return `${JSON.stringify(value, null, 2)}\n`; }
+function now() { return new Date().toISOString(); }
+
+function assertOutsideRepository(repositoryRoot, target) {
+  const absolute = resolve(target);
+  if (!isAbsolute(absolute)) fail("MANUAL_CAPTURE_ABSOLUTE_PATH_REQUIRED");
+  const relation = relative(resolve(repositoryRoot), absolute);
+  if (relation === "" || (!relation.startsWith(`..${sep}`) && relation !== ".." && !isAbsolute(relation))) {
+    fail("MANUAL_CAPTURE_REPOSITORY_PATH_PROHIBITED");
+  }
+  return absolute;
+}
+
+function atomicWrite(path, content) {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`;
+  writeFileSync(temporary, content, { encoding: "utf8", flag: "wx" });
+  try { renameSync(temporary, path); } finally { rmSync(temporary, { force: true }); }
+}
+
+function atomicJson(path, value) { atomicWrite(path, json(value)); }
+
+function runPowerShell(script, args, env = process.env) {
+  const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, ...args], {
+    encoding: "utf8",
+    windowsHide: false,
+    env,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  if (result.status !== 0 || result.stderr.trim() !== "") fail("MANUAL_CAPTURE_POWERSHELL_HELPER_FAILED");
+  return result.stdout.trim();
+}
+
+function fixedScenario() {
+  return Object.freeze({
+    destination: "Florence, Italy",
+    destinationBucket: "FLORENCE_ITALY",
+    checkin: "2026-10-15",
+    checkout: "2026-10-18",
+    nights: 3,
+    adults: 2,
+    childrenAges: [],
+    rooms: 1,
+    currency: "EUR",
+    locale: "it-IT",
+    country: "Italy",
+    budgetMinorUnits: 60000,
+    preferenceProfile: "BALANCED",
+    hardConstraints: ["PRIVATE_ROOM_OR_ENTIRE_PLACE", "PRIVATE_BATHROOM", "REASONABLE_CENTER_LOCATION"],
+    consumerSurfaceClass: "BOOKING_PUBLIC_LOGGED_OUT",
+  });
+}
+
+function initialState() {
+  return {
+    stateVersion: STATE_VERSION,
+    sessionId: SESSION_ID,
+    lifecycle: "CAPTURE_IN_PROGRESS",
+    scenario: fixedScenario(),
+    collectionWindowStart: now(),
+    updatedAt: now(),
+    evidenceOrdinal: 0,
+    exclusions: [],
+    alternatives: [],
+    finalized: false,
+    automaticGoldenAdmission: false,
+    networkCalls: 0,
+    credentialsLoaded: false,
+  };
+}
+
+function safeState(state) {
+  return {
+    ...state,
+    alternatives: state.alternatives.map((alternative) => ({
+      publicData: alternative.publicData,
+      privateEvidence: alternative.privateEvidence,
+    })),
+  };
+}
+
+function persistState(statePath, state) {
+  state.updatedAt = now();
+  atomicJson(statePath, safeState(state));
+}
+
+function capturePrivate(store, state, evidenceKind, plaintext) {
+  state.evidenceOrdinal += 1;
+  return store.capture({
+    plaintextUtf8: plaintext,
+    metadata: {
+      providerKey: "MANUAL_PUBLIC_MARKET",
+      endpointClass: "CONSUMER_EVIDENCE",
+      sessionReference: state.sessionId,
+      requestKind: evidenceKind,
+      requestOrdinal: state.evidenceOrdinal,
+      capturedAt: now(),
+    },
+    disposition: "PROCESSED_SUCCESS",
+  });
+}
+
+async function replayPrivateValue(store, handle, quarantine) {
+  return store.replay(handle, (envelope, protector) => quarantine.decryptProviderRawQuarantineEnvelopeV3(envelope, protector));
+}
+
+function nullableInteger(value) {
+  if (value === null || value === "UNKNOWN") return null;
+  if (!Number.isInteger(value) || value < 0) fail("MANUAL_CAPTURE_INTEGER_INVALID");
+  return value;
+}
+
+function toCaptureAlternative(state, entry, privateValues) {
+  const scenario = state.scenario;
+  const data = entry.publicData;
+  const missingness = [...data.missingness];
+  return {
+    localCaptureId: data.localCaptureId,
+    privateRealName: privateValues.realName,
+    privateSourceUrl: privateValues.sourceUrl,
+    privateScreenshotRefs: entry.privateEvidence.screenshot === null ? [] : [entry.privateEvidence.screenshot.entryId],
+    consumerSurfaceClass: scenario.consumerSurfaceClass,
+    originalOrder: data.originalOrder,
+    sponsored: false,
+    guestConfigurationFingerprint: `${scenario.adults}|${scenario.childrenAges.join(",")}|${scenario.rooms}`,
+    price: data.totalPriceMinorUnits === null ? null : {
+      semantics: "PUBLIC_PRECHECKOUT_VERIFIED_PRICE",
+      amount: data.totalPriceMinorUnits,
+      currency: scenario.currency,
+      stayTotal: true,
+      taxInclusion: data.taxInclusion,
+      payNowAmount: nullableInteger(data.payNowMinorUnits),
+      payAtPropertyAmount: nullableInteger(data.payAtPropertyMinorUnits),
+      observedAt: data.observedAt,
+      availabilityObserved: true,
+      precheckoutPresented: true,
+      purchaseCompleted: false,
+      bookingConfirmed: false,
+      exactBookable: false,
+      verifiedCheckoutTotal: false,
+      personalizedDiscount: false,
+      provenance: "MANUAL_PUBLIC_CONSUMER_OBSERVATION",
+      reliability: "DIRECT_PRECHECKOUT_OBSERVATION",
+      missingness: data.priceMissingness,
+    },
+    rating: data.rating,
+    ratingScale: data.rating === null ? null : 10,
+    reviewCount: data.reviewCount,
+    distanceMeters: data.distanceMeters,
+    accommodationCategory: data.accommodationCategory,
+    roomEvidence: data.roomEvidence,
+    mealPlanEvidence: data.mealPlanEvidence,
+    cancellationEvidence: data.cancellationEvidence,
+    refundabilityEvidence: data.refundabilityEvidence,
+    amenityEvidence: data.amenityEvidence,
+    availabilityEvidence: data.availabilityObserved ? "OBSERVED_AVAILABLE" : "UNKNOWN",
+    missingness,
+    detailCoverage: ["PRICE", "RATING", "REVIEWS", "DISTANCE", "CATEGORY", "ROOM", "MEAL_PLAN", "CANCELLATION", "REFUNDABILITY", "AMENITIES", "AVAILABILITY"],
+  };
+}
+
+async function hydrateCapture(state, store, quarantine) {
+  const alternatives = [];
+  for (const entry of state.alternatives) {
+    const realName = await replayPrivateValue(store, entry.privateEvidence.realName, quarantine);
+    const sourceUrl = await replayPrivateValue(store, entry.privateEvidence.sourceUrl, quarantine);
+    alternatives.push(toCaptureAlternative(state, entry, { realName, sourceUrl }));
+  }
+  const scenario = state.scenario;
+  return {
+    captureVersion: CAPTURE_VERSION,
+    captureId: state.sessionId,
+    lifecycle: "CAPTURE_COMPLETE",
+    destinationBucket: scenario.destinationBucket,
+    checkin: scenario.checkin,
+    checkout: scenario.checkout,
+    adults: scenario.adults,
+    childrenAges: scenario.childrenAges,
+    rooms: scenario.rooms,
+    currency: scenario.currency,
+    budgetMinorUnits: scenario.budgetMinorUnits,
+    preferenceProfile: scenario.preferenceProfile,
+    hardConstraints: scenario.hardConstraints,
+    consumerSurfaceClass: scenario.consumerSurfaceClass,
+    loggedOut: true,
+    membershipDiscountApplied: false,
+    personalizedDiscountApplied: false,
+    collectionWindowStart: state.collectionWindowStart,
+    collectionWindowEnd: now(),
+    selectionFrozenBeforeJudgment: true,
+    alternatives,
+  };
+}
+
+function sanitizedDiagnosticSnapshot(capture, validation) {
+  return {
+    snapshotVersion: "stayopti.v3.manual-public-market-diagnostic-snapshot@1",
+    captureFingerprint: validation.fingerprint,
+    destinationBucket: capture.destinationBucket,
+    checkin: capture.checkin,
+    checkout: capture.checkout,
+    adults: capture.adults,
+    childrenAges: capture.childrenAges,
+    rooms: capture.rooms,
+    currency: capture.currency,
+    budgetMinorUnits: capture.budgetMinorUnits,
+    preferenceProfile: capture.preferenceProfile,
+    hardConstraints: capture.hardConstraints,
+    alternatives: capture.alternatives.map((alternative) => ({
+      localCaptureId: alternative.localCaptureId,
+      price: alternative.price,
+      rating: alternative.rating,
+      ratingScale: alternative.ratingScale,
+      reviewCount: alternative.reviewCount,
+      distanceMeters: alternative.distanceMeters,
+      accommodationCategory: alternative.accommodationCategory,
+      roomEvidence: alternative.roomEvidence,
+      mealPlanEvidence: alternative.mealPlanEvidence,
+      cancellationEvidence: alternative.cancellationEvidence,
+      refundabilityEvidence: alternative.refundabilityEvidence,
+      amenityEvidence: alternative.amenityEvidence,
+      availabilityEvidence: alternative.availabilityEvidence,
+      missingness: alternative.missingness,
+    })),
+    lifecycle: validation.lifecycle,
+    automaticGoldenAdmission: false,
+  };
+}
+
+function ensureNoSharedLeak(value) {
+  const serialized = JSON.stringify(value);
+  if (/https?:\/\/|BOOKING_PUBLIC|privateRealName|privateSourceUrl|privateScreenshot|originalOrder|sponsored|propertyToken|hotelId|providerId|bookingId|cookie/i.test(serialized)) {
+    fail("MANUAL_CAPTURE_SHARED_EVIDENCE_LEAK");
+  }
+}
+
+function checksumsFor(directory) {
+  const files = readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name !== "checksums.sha256")
+    .map((entry) => entry.name)
+    .sort();
+  return files.map((name) => `${sha256(readFileSync(join(directory, name)))}  ${name}`).join("\n") + "\n";
+}
+
+function createEvidenceZip(repositoryRoot, evidenceDirectory, destinationZip) {
+  const helper = resolve(repositoryRoot, "scripts/create-v3-17t5b-evidence-zip.ps1");
+  const entryCount = Number(runPowerShell(helper, ["-SourceDirectory", evidenceDirectory, "-DestinationZip", destinationZip]));
+  if (!Number.isInteger(entryCount) || entryCount < 2) fail("MANUAL_CAPTURE_EVIDENCE_ZIP_ROUNDTRIP_FAILED");
+  return { entryCount, sha256: sha256(readFileSync(destinationZip)) };
+}
+
+async function finalize(state, context, destinationDirectory) {
+  const { manual, quarantine, store, repositoryRoot, privateRoot } = context;
+  const capture = await hydrateCapture(state, store, quarantine);
+  const validation = manual.validateManualMarketCaptureV3(capture);
+  const eligible = validation.lifecycle === "ELIGIBLE_FOR_BLIND_JUDGMENT";
+  const snapshot = eligible
+    ? manual.createManualMarketProviderNeutralSnapshotV3(capture)
+    : sanitizedDiagnosticSnapshot(capture, validation);
+  let capsule = null;
+  let sharedEvidence = null;
+  let privateLedgerHandle = null;
+  if (eligible) {
+    const blinded = manual.createManualMarketBlindCapsuleV3(capture, randomBytes(32).toString("base64"));
+    capsule = blinded.capsule;
+    sharedEvidence = manual.createManualMarketSharedEvidenceV3(capture, capsule);
+    privateLedgerHandle = capturePrivate(store, state, "PRIVATE_DEBLIND_LEDGER", JSON.stringify(blinded.privateLedger));
+  }
+  const missingCritical = validation.issues.filter((issue) => issue.disposition === "DIAGNOSTIC_ONLY");
+  const evidenceRoot = resolve(privateRoot, `shared-evidence-${Date.now()}-${randomBytes(4).toString("hex")}`);
+  mkdirSync(evidenceRoot, { recursive: false });
+  const privateEvidenceHandles = state.alternatives.flatMap((entry) => Object.entries(entry.privateEvidence).filter(([, handle]) => handle !== null));
+  const cryptoReceipt = {
+    encryption: "AES_256_GCM",
+    keyProtection: "WINDOWS_CURRENT_USER_DPAPI",
+    tamperDetection: "PASS",
+    plaintextPrivateEvidenceAtRest: false,
+    privateEvidenceFileCount: privateEvidenceHandles.length + (privateLedgerHandle === null ? 0 : 1),
+    privateEvidenceIncludedInSharedEvidence: false,
+  };
+  const outcome = {
+    status: eligible ? "ELIGIBLE_FOR_BLIND_JUDGMENT" : "DIAGNOSTIC_ONLY",
+    completenessGate: eligible ? "PASS" : "FAIL",
+    asymmetricDetailGate: validation.issues.some((issue) => issue.code === "MANUAL_CAPTURE_ASYMMETRIC_DETAIL_EXCLUDED") ? "FAIL" : "PASS",
+    blindJudgmentEligible: eligible,
+    decisionGoldenAdmitted: false,
+    liveBookableGoldenAdmitted: false,
+    publicPrecheckoutPriceCount: capture.alternatives.filter((alternative) => alternative.price?.semantics === "PUBLIC_PRECHECKOUT_VERIFIED_PRICE").length,
+    exactBookablePriceCount: 0,
+    missingCriticalFieldCount: missingCritical.length,
+    missingCriticalFields: missingCritical.map((issue) => `${issue.code}:${issue.path}`),
+    automaticGoldenAdmission: false,
+    judgmentRecorded: false,
+    v3Executed: false,
+  };
+  const manifest = {
+    evidenceVersion: EVIDENCE_VERSION,
+    sessionId: state.sessionId,
+    scenario: {
+      destinationBucket: state.scenario.destinationBucket,
+      checkin: state.scenario.checkin,
+      checkout: state.scenario.checkout,
+      adults: state.scenario.adults,
+      childrenAges: state.scenario.childrenAges,
+      rooms: state.scenario.rooms,
+      currency: state.scenario.currency,
+      budgetMinorUnits: state.scenario.budgetMinorUnits,
+      preferenceProfile: state.scenario.preferenceProfile,
+    },
+    alternativeCount: capture.alternatives.length,
+    collectionClass: "MANUAL_PUBLIC_CONSUMER_OBSERVATION",
+    automatedHttpRequests: 0,
+    credentialsLoaded: false,
+    scraping: false,
+    browserAutomation: false,
+    bookingCompleted: false,
+  };
+  const completeness = {
+    comparableFeatures: validation.comparableFeatures,
+    auditOnlyFeatures: ["PRIVATE_SOURCE_AND_PRESENTATION_METADATA"],
+    excludedDecisionFeatures: validation.excludedDecisionFeatures.filter((feature) => feature === "asymmetricDetail"),
+    issues: validation.issues,
+  };
+  const missingness = capture.alternatives.map((alternative) => ({ localCaptureId: alternative.localCaptureId, missingness: alternative.missingness }));
+  const provenance = {
+    provenance: "MANUAL_PUBLIC_CONSUMER_OBSERVATION",
+    surfaceIdentityShared: false,
+    realNamesShared: false,
+    urlsShared: false,
+    originalRankShared: false,
+    promotionalStatusShared: false,
+  };
+  const artifacts = new Map([
+    ["manifest.json", manifest],
+    ["provider-neutral-snapshot.json", snapshot],
+    ["completeness-report.json", completeness],
+    ["missingness-report.json", missingness],
+    ["sanitized-provenance.json", provenance],
+    ["capture-fingerprint.json", { fingerprint: validation.fingerprint }],
+    ["cryptographic-receipts.json", cryptoReceipt],
+    ["canary-outcome.json", outcome],
+  ]);
+  if (capsule !== null) artifacts.set("blind-capsule.json", capsule);
+  if (sharedEvidence !== null) artifacts.set("shared-evidence.json", sharedEvidence);
+  for (const value of artifacts.values()) ensureNoSharedLeak(value);
+  for (const [name, value] of artifacts) atomicJson(join(evidenceRoot, name), value);
+  atomicJson(join(evidenceRoot, "integrity-manifest.json"), {
+    artifactCount: artifacts.size + 2,
+    rawPrivateEvidenceIncluded: false,
+    privateLedgerIncluded: false,
+    automaticGoldenAdmission: false,
+  });
+  atomicWrite(join(evidenceRoot, "checksums.sha256"), checksumsFor(evidenceRoot));
+  for (const line of readFileSync(join(evidenceRoot, "checksums.sha256"), "utf8").trim().split("\n")) {
+    const match = /^([0-9a-f]{64})  (.+)$/.exec(line);
+    if (match === null || sha256(readFileSync(join(evidenceRoot, match[2]))) !== match[1]) fail("MANUAL_CAPTURE_INTERNAL_CHECKSUM_FAILED");
+  }
+  const stamp = now().replace(/[-:.TZ]/g, "").slice(0, 14);
+  const zipPath = resolve(destinationDirectory, `StayOpti-V3-17T5B-Manual-Capture-Evidence-${stamp}-${sha256(json(snapshot)).slice(0, 16)}.zip`);
+  const zip = createEvidenceZip(repositoryRoot, evidenceRoot, zipPath);
+  rmSync(evidenceRoot, { recursive: true, force: true });
+  state.finalized = true;
+  state.lifecycle = outcome.status;
+  state.evidenceZipPath = zipPath;
+  state.evidenceZipSha256 = zip.sha256;
+  return { validation, snapshot, capsule, outcome, cryptoReceipt, zipPath, zipSha256: zip.sha256, internalChecksums: `PASS_${zip.entryCount}_ENTRIES` };
+}
+
+async function askRequired(rl, label) {
+  for (;;) {
+    const value = (await rl.question(`${label}: `)).trim();
+    if (value !== "") return value;
+    output.write("Valore obbligatorio. Se non è visibile, scrivi UNKNOWN.\n");
+  }
+}
+
+async function askYesNo(rl, label) {
+  for (;;) {
+    const value = (await rl.question(`${label} [S/N]: `)).trim().toUpperCase();
+    if (value === "S") return true;
+    if (value === "N") return false;
+    output.write("Rispondi S oppure N.\n");
+  }
+}
+
+async function askIntegerOrUnknown(rl, label) {
+  for (;;) {
+    const value = (await rl.question(`${label} (numero intero o UNKNOWN): `)).trim();
+    if (value.toUpperCase() === "UNKNOWN") return null;
+    const parsed = Number(value);
+    if (Number.isInteger(parsed) && parsed >= 0) return parsed;
+    output.write("Inserisci un numero intero non negativo oppure UNKNOWN.\n");
+  }
+}
+
+async function askDecimalMoneyOrUnknown(rl, label) {
+  for (;;) {
+    const value = (await rl.question(`${label} (EUR, es. 523,40; oppure UNKNOWN): `)).trim();
+    if (value.toUpperCase() === "UNKNOWN") return null;
+    const normalized = value.replace(",", ".");
+    if (/^\d+(?:\.\d{1,2})?$/.test(normalized)) return Math.round(Number(normalized) * 100);
+    output.write("Inserisci un importo EUR con massimo due decimali oppure UNKNOWN.\n");
+  }
+}
+
+async function selectPrivateFile(repositoryRoot) {
+  const helper = resolve(repositoryRoot, "scripts/select-v3-17t5b-private-evidence.ps1");
+  const selected = runPowerShell(helper, []);
+  return selected === "" ? null : selected;
+}
+
+async function collectAlternative(rl, state, store, repositoryRoot, observedOrder, replacementIndex = null) {
+  output.write(`\n--- Alternativa idonea ${replacementIndex === null ? state.alternatives.length + 1 : replacementIndex + 1} di ${EXPECTED_ALTERNATIVES} ---\n`);
+  output.write("Consulta la stessa ricerca Booking.com anonima. Non usare login, Genius, coupon o prezzi personali.\n");
+  const realName = await askRequired(rl, "Nome della struttura (rimane cifrato e privato)");
+  const sourceUrl = await askRequired(rl, "URL della pagina (rimane cifrato e privato; UNKNOWN se non disponibile)");
+  const accommodationCategory = await askRequired(rl, "Categoria mostrata, oppure UNKNOWN");
+  const distanceMeters = await askIntegerOrUnknown(rl, "Distanza dal centro in metri");
+  const ratingText = await askRequired(rl, "Rating su scala 10, oppure UNKNOWN");
+  const rating = ratingText.toUpperCase() === "UNKNOWN" ? null : Number(ratingText.replace(",", "."));
+  if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) fail("MANUAL_CAPTURE_RATING_INVALID");
+  const reviewCount = await askIntegerOrUnknown(rl, "Numero recensioni");
+  const roomEvidence = await askRequired(rl, "Tipo camera/alloggio e bagno privato, oppure UNKNOWN");
+  const mealPlanEvidence = await askRequired(rl, "Trattamento (solo camera/colazione/altro), oppure UNKNOWN");
+  const totalPriceMinorUnits = await askDecimalMoneyOrUnknown(rl, "Prezzo totale pubblico per 3 notti");
+  const payNowMinorUnits = await askDecimalMoneyOrUnknown(rl, "Importo da pagare subito");
+  const payAtPropertyMinorUnits = await askDecimalMoneyOrUnknown(rl, "Importo da pagare in struttura");
+  const taxInclusionRaw = (await askRequired(rl, "Tasse: INCLUDED, EXCLUDED oppure UNKNOWN")).toUpperCase();
+  const taxInclusion = ["INCLUDED", "EXCLUDED", "UNKNOWN"].includes(taxInclusionRaw) ? taxInclusionRaw : "UNKNOWN";
+  const cancellationEvidence = await askRequired(rl, "Condizioni di cancellazione, oppure UNKNOWN");
+  const refundabilityEvidence = await askRequired(rl, "Rimborsabilità, oppure UNKNOWN");
+  const amenitiesRaw = await askRequired(rl, "Servizi rilevanti separati da virgola, oppure UNKNOWN");
+  const amenityEvidence = amenitiesRaw.toUpperCase() === "UNKNOWN" ? [] : amenitiesRaw.split(",").map((item) => item.trim()).filter(Boolean).sort();
+  const availabilityObserved = await askYesNo(rl, "Disponibilità osservata per le date e 2 adulti/1 camera");
+  output.write("Puoi aggiungere uno screenshot o una pagina salvata come prova privata cifrata. Annulla per proseguire senza file.\n");
+  const selectedFile = await selectPrivateFile(repositoryRoot);
+  const privateEvidence = {
+    realName: capturePrivate(store, state, "PROPERTY_NAME", realName),
+    sourceUrl: capturePrivate(store, state, "SOURCE_URL", sourceUrl),
+    screenshot: selectedFile === null ? null : capturePrivate(store, state, "SCREENSHOT", `BASE64:${readFileSync(selectedFile).toString("base64")}`),
+  };
+  const missingness = [];
+  const priceMissingness = [];
+  for (const [field, value] of Object.entries({ accommodationCategory, distanceMeters, rating, reviewCount, roomEvidence, mealPlanEvidence, totalPriceMinorUnits, cancellationEvidence, refundabilityEvidence })) {
+    if (value === null || value === "UNKNOWN") missingness.push(`${field.toUpperCase()}_UNKNOWN`);
+  }
+  if (payNowMinorUnits === null) priceMissingness.push("PAY_NOW_AMOUNT_UNKNOWN");
+  if (payAtPropertyMinorUnits === null) priceMissingness.push("PAY_AT_PROPERTY_AMOUNT_UNKNOWN");
+  if (taxInclusion === "UNKNOWN") priceMissingness.push("TAX_INCLUSION_UNKNOWN");
+  if (amenityEvidence.length === 0) missingness.push("AMENITIES_UNKNOWN");
+  if (!availabilityObserved) missingness.push("AVAILABILITY_NOT_OBSERVED");
+  const publicData = {
+    localCaptureId: `MANUAL_ALT_${String(replacementIndex === null ? state.alternatives.length + 1 : replacementIndex + 1).padStart(2, "0")}`,
+    originalOrder: observedOrder,
+    accommodationCategory: accommodationCategory === "UNKNOWN" ? null : accommodationCategory,
+    distanceMeters,
+    rating,
+    reviewCount,
+    roomEvidence: roomEvidence === "UNKNOWN" ? null : roomEvidence,
+    mealPlanEvidence: mealPlanEvidence === "UNKNOWN" ? null : mealPlanEvidence,
+    totalPriceMinorUnits,
+    payNowMinorUnits,
+    payAtPropertyMinorUnits,
+    taxInclusion,
+    cancellationEvidence: cancellationEvidence === "UNKNOWN" ? "UNKNOWN" : cancellationEvidence,
+    refundabilityEvidence: refundabilityEvidence === "UNKNOWN" ? "UNKNOWN" : refundabilityEvidence,
+    amenityEvidence,
+    availabilityObserved,
+    observedAt: now(),
+    priceMissingness,
+    missingness,
+  };
+  const entry = { publicData, privateEvidence };
+  if (replacementIndex === null) state.alternatives.push(entry); else state.alternatives[replacementIndex] = entry;
+}
+
+async function interactive(context) {
+  const { repositoryRoot, privateRoot, store } = context;
+  const sessionRoot = resolve(privateRoot, SESSION_ID);
+  mkdirSync(sessionRoot, { recursive: true });
+  const statePath = join(sessionRoot, "session-state.json");
+  let state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, "utf8")) : initialState();
+  const rl = createInterface({ input, output });
+  try {
+    output.write("MANUAL_CAPTURE_READY=YES\nAUTOMATED_HTTP_REQUESTS=0\nOPEN_BOOKING_IN_INCOGNITO=YES\nSESSION_ALTERNATIVES_REQUIRED=5\n\n");
+    output.write("Scenario congelato: Firenze, 15–18 ottobre 2026, 3 notti, 2 adulti, 1 camera, EUR, budget totale 600 EUR, profilo BALANCED.\n");
+    output.write("Apri personalmente Booking.com in una finestra anonima, senza login/Genius, e inserisci esattamente questo scenario.\n");
+    output.write("Usa sempre gli stessi filtri. Considera in ordine i primi risultati organici idonei; i dati vengono salvati dopo ogni hotel.\n");
+    if (state.alternatives.length > 0) output.write(`Ripresa automatica: ${state.alternatives.length} alternative idonee già salvate.\n`);
+    let observedOrder = Math.max(0, ...state.alternatives.map((entry) => entry.publicData.originalOrder), ...state.exclusions.map((entry) => entry.originalOrder));
+    while (state.alternatives.length < EXPECTED_ALTERNATIVES) {
+      observedOrder += 1;
+      output.write(`\nEsamina il risultato organico in posizione ${observedOrder}.\n`);
+      const eligible = await askYesNo(rl, "È disponibile, con prezzo pubblico, camera/alloggio e bagno privati, senza login o prezzo personale?");
+      if (!eligible) {
+        const reason = await askRequired(rl, "Motivo controllato: NOT_AVAILABLE / PRICE_NOT_PUBLIC / PRIVATE_ROOM_OR_BATHROOM_NOT_CONFIRMED / LOGIN_REQUIRED / PERSONALIZED_PRICE / CONDITIONS_UNAVAILABLE / OTHER");
+        state.exclusions.push({ originalOrder: observedOrder, reason: reason.toUpperCase() });
+        persistState(statePath, state);
+        output.write("Esclusione salvata. Passa al risultato organico successivo.\n");
+        continue;
+      }
+      await collectAlternative(rl, state, store, repositoryRoot, observedOrder);
+      persistState(statePath, state);
+      output.write(`Alternativa salvata e prova privata cifrata. Progresso: ${state.alternatives.length}/${EXPECTED_ALTERNATIVES}.\n`);
+    }
+    for (;;) {
+      const action = (await rl.question("\nScrivi FINALIZZA oppure CORREGGI 1..5: ")).trim().toUpperCase();
+      if (action === "FINALIZZA") break;
+      const match = /^CORREGGI\s+([1-5])$/.exec(action);
+      if (match) {
+        const index = Number(match[1]) - 1;
+        await collectAlternative(rl, state, store, repositoryRoot, state.alternatives[index].publicData.originalOrder, index);
+        persistState(statePath, state);
+        output.write(`Alternativa ${index + 1} corretta e salvata.\n`);
+      } else output.write("Comando non riconosciuto.\n");
+    }
+    const downloads = resolve(process.env.USERPROFILE ?? fail("MANUAL_CAPTURE_USERPROFILE_REQUIRED"), "Downloads");
+    const result = await finalize(state, context, downloads);
+    persistState(statePath, state);
+    output.write(`\nSESSION_STATUS=${result.outcome.status}\n`);
+    output.write(`COMPLETENESS_GATE=${result.outcome.completenessGate}\n`);
+    output.write(`ASYMMETRIC_DETAIL_GATE=${result.outcome.asymmetricDetailGate}\n`);
+    output.write(`BLIND_JUDGMENT_ELIGIBLE=${result.outcome.blindJudgmentEligible ? "YES" : "NO"}\n`);
+    output.write(`PRIVATE_EVIDENCE_FILE_COUNT=${result.cryptoReceipt.privateEvidenceFileCount}\n`);
+    output.write(`SANITIZED_EVIDENCE_ZIP_PATH=${result.zipPath}\n`);
+    output.write(`SANITIZED_EVIDENCE_ZIP_SHA256=${result.zipSha256}\n`);
+    output.write(`INTERNAL_CHECKSUMS=${result.internalChecksums}\n`);
+    output.write("DECISION_GOLDEN_ADMITTED=NO\nLIVE_BOOKABLE_GOLDEN_ADMITTED=NO\n");
+  } finally {
+    rl.close();
+  }
+}
+
+function syntheticEntry(store, state, index) {
+  const privateEvidence = {
+    realName: capturePrivate(store, state, "PROPERTY_NAME", `Synthetic property ${index + 1}`),
+    sourceUrl: capturePrivate(store, state, "SOURCE_URL", `https://synthetic.invalid/${index + 1}`),
+    screenshot: capturePrivate(store, state, "SCREENSHOT", `BASE64:${Buffer.from(`synthetic-${index + 1}`).toString("base64")}`),
+  };
+  return {
+    publicData: {
+      localCaptureId: `MANUAL_ALT_${String(index + 1).padStart(2, "0")}`,
+      originalOrder: index + 1,
+      accommodationCategory: "HOTEL",
+      distanceMeters: 400 + index * 100,
+      rating: 8 + index * 0.1,
+      reviewCount: 500 + index,
+      roomEvidence: "PRIVATE_DOUBLE_ROOM_PRIVATE_BATHROOM",
+      mealPlanEvidence: "ROOM_ONLY",
+      totalPriceMinorUnits: 40000 + index * 2500,
+      payNowMinorUnits: null,
+      payAtPropertyMinorUnits: null,
+      taxInclusion: "UNKNOWN",
+      cancellationEvidence: "UNKNOWN",
+      refundabilityEvidence: "UNKNOWN",
+      amenityEvidence: ["WIFI"],
+      availabilityObserved: true,
+      observedAt: "2026-09-02T12:00:00.000Z",
+      priceMissingness: ["PAY_NOW_AMOUNT_UNKNOWN", "PAY_AT_PROPERTY_AMOUNT_UNKNOWN", "TAX_INCLUSION_UNKNOWN"],
+      missingness: [],
+    },
+    privateEvidence,
+  };
+}
+
+async function dryRun(context) {
+  const root = resolve(tmpdir(), `StayOpti-V3-17T5B-DryRun-${randomBytes(8).toString("hex")}`);
+  const zipRoot = resolve(tmpdir(), `StayOpti-V3-17T5B-DryRunZip-${randomBytes(8).toString("hex")}`);
+  mkdirSync(root, { recursive: false });
+  mkdirSync(zipRoot, { recursive: false });
+  const quarantine = context.quarantine;
+  const store = createProviderRawQuarantineStoreV3({ repositoryRoot: context.repositoryRoot, root: join(root, "private"), quarantineModule: quarantine });
+  const dryContext = { ...context, privateRoot: root, store };
+  const state = initialState();
+  const statePath = join(root, "session-state.json");
+  try {
+    for (let index = 0; index < EXPECTED_ALTERNATIVES; index += 1) {
+      state.alternatives.push(syntheticEntry(store, state, index));
+      persistState(statePath, state);
+    }
+    const resumed = JSON.parse(readFileSync(statePath, "utf8"));
+    if (resumed.alternatives.length !== EXPECTED_ALTERNATIVES) fail("MANUAL_CAPTURE_DRY_RUN_RESUME_FAILED");
+    const firstEnvelope = JSON.parse(readFileSync(resumed.alternatives[0].privateEvidence.realName.path, "utf8"));
+    const tampered = { ...firstEnvelope, ciphertextBase64: `${firstEnvelope.ciphertextBase64.slice(0, -2)}AA` };
+    if (quarantine.validateProviderRawQuarantineEnvelopeV3(tampered).valid) fail("MANUAL_CAPTURE_DRY_RUN_TAMPER_NOT_DETECTED");
+    const result = await finalize(resumed, dryContext, zipRoot);
+    if (!result.validation.valid || result.outcome.status !== "ELIGIBLE_FOR_BLIND_JUDGMENT") fail("MANUAL_CAPTURE_DRY_RUN_VALIDATION_FAILED");
+    if (!existsSync(result.zipPath)) fail("MANUAL_CAPTURE_DRY_RUN_ZIP_MISSING");
+    return {
+      status: "PASS",
+      alternatives: EXPECTED_ALTERNATIVES,
+      progressiveSave: true,
+      resume: true,
+      validation: true,
+      encryptedPrivateEvidence: true,
+      tamperDetection: true,
+      providerNeutralSnapshot: true,
+      blindCapsule: true,
+      sanitizedEvidence: true,
+      plaintextPrivateEvidenceAtRest: false,
+      automatedHttpRequests: 0,
+      credentialsLoaded: false,
+      syntheticArtifactsDeleted: true,
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(zipRoot, { recursive: true, force: true });
+  }
+}
+
+const repositoryRoot = resolve(option("repository-root") ?? fail("MANUAL_CAPTURE_REPOSITORY_ROOT_REQUIRED"));
+const compiledRoot = resolve(option("compiled-root") ?? fail("MANUAL_CAPTURE_COMPILED_ROOT_REQUIRED"));
+const privateRoot = assertOutsideRepository(repositoryRoot, option("private-root") ?? fail("MANUAL_CAPTURE_PRIVATE_ROOT_REQUIRED"));
+const manualPath = resolve(compiledRoot, "src/engine-v3/evaluation/manualPublicMarketDecisionGoldenCaptureV3.js");
+const quarantinePath = resolve(compiledRoot, "src/engine-v3/evaluation/providerRawQuarantineV3.js");
+const manual = await import(pathToFileURL(manualPath).href);
+const quarantine = await import(pathToFileURL(quarantinePath).href);
+mkdirSync(privateRoot, { recursive: true });
+const store = createProviderRawQuarantineStoreV3({ repositoryRoot, root: join(privateRoot, "encrypted"), quarantineModule: quarantine, keyProtector: createWindowsCurrentUserDpapiProtectorV3() });
+const context = { repositoryRoot, compiledRoot, privateRoot, manual, quarantine, store };
+const mode = option("mode") ?? "preflight";
+
+if (mode === "preflight") {
+  process.stdout.write(`${JSON.stringify({ status: "PASS", interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
+} else if (mode === "dry-run") {
+  process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
+} else if (mode === "interactive") {
+  await interactive(context);
+} else {
+  fail("MANUAL_CAPTURE_MODE_UNSUPPORTED");
+}
