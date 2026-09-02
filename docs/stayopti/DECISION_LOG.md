@@ -22,6 +22,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0016 | 2026-09-01 | Bind any future SerpApi repair canary to one session, one main search, one detail and two calls total, with encrypted quarantine, autostop and no remaining-stage authority. | Accepted; exact literal generated but calls remain unauthorized | `decisions/0016-v3-17t2b-max2-reauthorization-gate.md` |
 | D-0017 | 2026-09-02 | Distinguish the immutable T2A source from the exact execution HEAD in every future SerpApi MAX2 authorization and verify both before transport. | Accepted; final literal remains unaccepted and calls unauthorized | `decisions/0017-v3-17t2c-execution-head-binding.md` |
 | D-0018 | 2026-09-02 | Accept structurally valid direct-root SerpApi property details only at the evaluation boundary while preserving fail-closed errors, async states and provider neutrality. | Accepted offline repair; no provider-call authority | `decisions/0018-serpapi-direct-root-property-detail.md` |
+| D-0019 | 2026-09-02 | Seal the repaired SerpApi detail replay by binding sanitized provenance, encrypted-envelope hashes, parser fingerprints and before/after outcomes while preserving the live abort and private raw custody. | Accepted offline evidence boundary; no provider-call authority | `decisions/0019-serpapi-repaired-detail-offline-evidence-seal.md` |
 
 ## Required fields for a new decision
 

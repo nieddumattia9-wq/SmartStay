@@ -472,4 +472,51 @@ reported in the final T2D receipt.
 Next recommendation:
 `V3-17T2E_SERPAPI_REPAIRED_DETAIL_OFFLINE_EVIDENCE_SEAL`.
 
+## V3-17T2E SerpApi repaired-detail offline Evidence seal
+
+Source checkpoint: `2ec5cdaf314b363e2b48dbf856badd9c78591f66`; the
+implementation checkpoint is the local commit containing this entry and is
+reported in the final T2E receipt.
+
+- The original live canary remains `ABORTED`, collection remains `PARTIAL`,
+  and its sanitized Evidence remains `PASS`; no historical result is promoted
+  or reinterpreted.
+- The original Evidence ZIP SHA-256
+  `647e4f3dd789e092eaf42a321580d135f3a99e2996d8787215bd984f2123591e`
+  and all `18/18` internal checksums passed again.
+- Both encrypted raw envelopes matched the canary session uniquely and passed
+  AES-256-GCM authentication with CurrentUser DPAPI in memory. They remained
+  byte-identical, outside the repository, and no plaintext file was created.
+- The controlled pre-repair compatibility replay failed on the direct-root
+  property shape as expected; parser
+  `stayopti.v3.serpapi-google-hotels-private-replay-parser@2` accepted the
+  same encrypted input as `UNWRAPPED_PROPERTY`, preserved 29 alternatives and
+  merged one detail with zero network and zero credentials.
+- The root cause remains
+  `VALID_UNSUPPORTED_UNWRAPPED_PROPERTY_DETAIL_SHAPE`. The offline replay and
+  parser repair pass; this does not change the original live abort.
+- A fifteen-artifact sanitized Evidence seal binds source Evidence, encrypted
+  envelope/file hashes, repair commit, parser fingerprints, before/after
+  replay, price semantics, security, provider neutrality and regressions.
+  The ZIP stays outside the repository and contains neither raw nor encrypted
+  raw, secret, property reference, provider ID, URL or key material.
+- The generated package is
+  `StayOpti-V3-17T2E-SerpApi-Repaired-Detail-Offline-Evidence-Seal-20260902-095053.zip`
+  with SHA-256
+  `27d4c7274432599dbdc70ba695ac7877d39ea5690babb11e3cc3ab8113d08b26`;
+  its 15-artifact roundtrip and 14 internal checksums pass.
+- The 20 observed display prices remain
+  `OBSERVED_AGGREGATED_DISPLAY_PRICE`; nine missing prices remain missing.
+  Automatic Golden admission and Stage REMAINING are still disabled.
+- T2E targeted tests pass `25/25`; the combined T2A/T2B/T2C/T2D,
+  provider-neutrality and seal regression passes `137/137`; Engine V2 passes
+  `196/196`; TypeScript and PowerShell 5.1 parsing pass. The complete Engine
+  V3 and final Git postflight counts are reported in the final phase receipt.
+- No provider call, HTTP, credential loading, public-runtime change, push or
+  fetch occurred in T2E.
+
+Next recommendation: determine the next offline or separately authorized
+package from the sealed Evidence and current repository state; T2E grants no
+new network authority.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
