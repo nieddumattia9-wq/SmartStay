@@ -553,4 +553,38 @@ is reported in the final T3 receipt.
 Next recommendation:
 `V3-17T4_COMPARABLE_SET_WIDE_EVIDENCE_REQUIREMENTS_AND_COLLECTION_GATE`.
 
+## V3-17T4 comparable set-wide evidence gate
+
+Source checkpoint: `b859441705a3ef99f62644a05fbebcbeed9d09e7`;
+the implementation checkpoint is the local commit containing this entry and
+is reported in the final T4 receipt.
+
+- T3 Evidence SHA-256
+  `1a669961375fc3838c100c7d7ca03623a9902acab4c87621799366aa671f50a6`
+  passes `6/6` checksums; T2E passes `14/14`. Both encrypted raw envelopes
+  authenticate offline and remain outside the repository.
+- The existing 29-alternative sample remains `DIAGNOSTIC_ONLY`; there is no
+  automatic eligibility upgrade, replay, blind judgment or Golden admission.
+- Evidence is frozen into diagnostic, limited-comparable and full-decision
+  tiers. Comparable sets use minimum five, target eight and maximum ten.
+- Full tier requires 100% exact-bookable price, availability, currency,
+  stay/occupancy, tax/fee status, freshness, cancellation, room/offer,
+  category and symmetric detail coverage. Missing critical fields are not
+  allowed.
+- The current public-market main search is only partially demonstrated for
+  display prices, amenities and freshness. Property detail is demonstrated
+  for one structural replay but not for set-wide exact bookability,
+  cancellation or availability. Full-tier feasibility is therefore not
+  demonstrated.
+- The selected future strategy is a limited main-search-only frozen subset:
+  one call per session, 12 sessions maximum, retries and pagination zero,
+  concurrency one. The all-detail strategy is rejected because its 108 target
+  or 132 worst-case calls still cannot prove the full tier.
+- No manifest, runner hash or literal was materialized. No provider call,
+  HTTP, credential, Stage REMAINING authority, ranking/weight change, public
+  runtime change, push or fetch occurred.
+
+Next recommendation:
+`V3-17T5_LIMITED_COMPARABLE_MAIN_SEARCH_COLLECTION_AUTHORIZATION_GATE`.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

@@ -24,6 +24,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0018 | 2026-09-02 | Accept structurally valid direct-root SerpApi property details only at the evaluation boundary while preserving fail-closed errors, async states and provider neutrality. | Accepted offline repair; no provider-call authority | `decisions/0018-serpapi-direct-root-property-detail.md` |
 | D-0019 | 2026-09-02 | Seal the repaired SerpApi detail replay by binding sanitized provenance, encrypted-envelope hashes, parser fingerprints and before/after outcomes while preserving the live abort and private raw custody. | Accepted offline evidence boundary; no provider-call authority | `decisions/0019-serpapi-repaired-detail-offline-evidence-seal.md` |
 | D-0020 | 2026-09-02 | Keep the repaired real-market sample diagnostic-only: exclude incomplete aggregated prices, single-item detail enrichment, provider identity, sponsorship and source order from decision use. | Accepted offline evidence boundary; no provider-call authority | `decisions/0020-t3-diagnostic-only-provider-neutral-boundary.md` |
+| D-0021 | 2026-09-02 | Require set-wide comparable evidence before V3 replay or blind judgment; permit only a separately authorized, one-call-per-session limited collection path while full-tier evidence remains unproven. | Accepted offline requirements boundary; no collection authority | `decisions/0021-comparable-set-wide-evidence-gate.md` |
 
 ## Required fields for a new decision
 
