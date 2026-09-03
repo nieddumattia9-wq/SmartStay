@@ -199,3 +199,49 @@ test("T5B 27 clean restart uses a new session identity and cannot reuse the abor
   assert.match(host, /PREVIOUS_SESSION_REUSED=NO/);
   assert.match(host, /previousSessionReuse: false/);
 });
+
+test("T5B 28 finalized diagnostic session supports field-targeted offline repair and re-export", () => {
+  assert.match(launcher, /repair-export/);
+  assert.match(host, /CORREGGI <alternativa 1\.\.5> <campo 3\.\.16>/);
+  assert.match(host, /ALTERNATIVES_REUSED=5/);
+  assert.match(host, /PRIVATE_EVIDENCE_MODIFIED=NO/);
+  assert.match(host, /allowBlindCapsule: false/);
+  assert.match(host, /BLIND_CAPSULE_CREATED=NO/);
+  assert.match(host, /V3_EXECUTED=NO/);
+  assert.match(host, /GOLDEN_ADMISSION=NO/);
+});
+
+test("T5B 29 location entry preserves verified text instead of coercing it to distance", () => {
+  assert.match(host, /posizione testuale verificata/);
+  assert.match(host, /VERIFIED_TEXTUAL_POSITION/);
+  assert.match(host, /locationEvidence/);
+});
+
+test("T5B 30 repair applies only after explicit single-field confirmation", () => {
+  const applyIndex = host.indexOf('confirm !== "APPLICA"');
+  const mutationIndex = host.indexOf("entry.publicData = repairedPublicData");
+  assert.ok(applyIndex >= 0 && mutationIndex > applyIndex);
+  assert.match(host, /Correzione annullata; lo stato salvato non è cambiato/);
+});
+
+test("T5B 31 synthetic repair reuses five alternatives, preserves private handles and exports without blind work", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
+  const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "repair-dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
+  assert.deepEqual(receipt, {
+    status: "PASS",
+    existingAlternativesReused: 5,
+    targetedFieldsRepaired: true,
+    caseInsensitiveUnknownDetected: true,
+    paymentSplitMismatchDetected: true,
+    textualLocationPreserved: true,
+    privateEvidenceModified: false,
+    sanitizedReexport: true,
+    blindCapsuleCreated: false,
+    v3Executed: false,
+    goldenAdmission: false,
+    automatedHttpRequests: 0,
+    syntheticArtifactsDeleted: true,
+  });
+});

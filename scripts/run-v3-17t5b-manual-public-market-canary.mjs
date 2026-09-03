@@ -142,6 +142,12 @@ function nullableInteger(value) {
   return value;
 }
 
+function normalizedTextOrNull(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  return normalized.toUpperCase() === "UNKNOWN" ? null : normalized;
+}
+
 function toCaptureAlternative(state, entry, privateValues) {
   const scenario = state.scenario;
   const data = entry.publicData;
@@ -179,11 +185,12 @@ function toCaptureAlternative(state, entry, privateValues) {
     ratingScale: data.rating === null ? null : 10,
     reviewCount: data.reviewCount,
     distanceMeters: data.distanceMeters,
-    accommodationCategory: data.accommodationCategory,
-    roomEvidence: data.roomEvidence,
-    mealPlanEvidence: data.mealPlanEvidence,
-    cancellationEvidence: data.cancellationEvidence,
-    refundabilityEvidence: data.refundabilityEvidence,
+    locationEvidence: data.locationEvidence ?? null,
+    accommodationCategory: normalizedTextOrNull(data.accommodationCategory),
+    roomEvidence: normalizedTextOrNull(data.roomEvidence),
+    mealPlanEvidence: normalizedTextOrNull(data.mealPlanEvidence),
+    cancellationEvidence: normalizedTextOrNull(data.cancellationEvidence),
+    refundabilityEvidence: normalizedTextOrNull(data.refundabilityEvidence),
     amenityEvidence: data.amenityEvidence,
     availabilityEvidence: data.availabilityObserved ? "OBSERVED_AVAILABLE" : "UNKNOWN",
     missingness,
@@ -245,6 +252,7 @@ function sanitizedDiagnosticSnapshot(capture, validation) {
       ratingScale: alternative.ratingScale,
       reviewCount: alternative.reviewCount,
       distanceMeters: alternative.distanceMeters,
+      locationEvidence: alternative.locationEvidence ?? null,
       accommodationCategory: alternative.accommodationCategory,
       roomEvidence: alternative.roomEvidence,
       mealPlanEvidence: alternative.mealPlanEvidence,
@@ -281,7 +289,7 @@ function createEvidenceZip(repositoryRoot, evidenceDirectory, destinationZip) {
   return { entryCount, sha256: sha256(readFileSync(destinationZip)) };
 }
 
-async function finalize(state, context, destinationDirectory) {
+async function finalize(state, context, destinationDirectory, options = { allowBlindCapsule: true }) {
   const { manual, quarantine, store, repositoryRoot, privateRoot } = context;
   const capture = await hydrateCapture(state, store, quarantine);
   const validation = manual.validateManualMarketCaptureV3(capture);
@@ -292,7 +300,7 @@ async function finalize(state, context, destinationDirectory) {
   let capsule = null;
   let sharedEvidence = null;
   let privateLedgerHandle = null;
-  if (eligible) {
+  if (eligible && options.allowBlindCapsule) {
     const blinded = manual.createManualMarketBlindCapsuleV3(capture, randomBytes(32).toString("base64"));
     capsule = blinded.capsule;
     sharedEvidence = manual.createManualMarketSharedEvidenceV3(capture, capsule);
@@ -435,6 +443,19 @@ async function askDecimalMoneyOrUnknown(rl, label) {
   }
 }
 
+async function askLocationEvidence(rl, label) {
+  for (;;) {
+    const value = (await rl.question(`${label} (metri interi, posizione testuale verificata oppure UNKNOWN): `)).trim();
+    if (value.toUpperCase() === "UNKNOWN") return { distanceMeters: null, locationEvidence: null };
+    if (/^\d+$/.test(value)) return { distanceMeters: Number(value), locationEvidence: null };
+    if (/https?:\/\//i.test(value) || value.length < 3) {
+      output.write("Inserisci metri interi, il testo di posizione mostrato dalla pagina, oppure UNKNOWN. Non inserire URL.\n");
+      continue;
+    }
+    return { distanceMeters: null, locationEvidence: { kind: "VERIFIED_TEXTUAL_POSITION", text: value } };
+  }
+}
+
 async function selectPrivateFile(repositoryRoot) {
   const helper = resolve(repositoryRoot, "scripts/select-v3-17t5b-private-evidence.ps1");
   const selected = runPowerShell(helper, []);
@@ -507,9 +528,12 @@ async function editDraftField(rl, draft, fieldNumber, context) {
     case 3:
       draft.accommodationCategory = await askRequired(rl, label("Categoria mostrata — esempi: Hotel 3 stelle, Appartamento, Affittacamere, Campeggio; oppure UNKNOWN"));
       return;
-    case 4:
-      draft.distanceMeters = await askIntegerOrUnknown(rl, label("Distanza dal centro — converti in metri solo se Booking mostra una distanza; altrimenti UNKNOWN"));
+    case 4: {
+      const location = await askLocationEvidence(rl, label("Posizione — inserisci metri soltanto se la pagina mostra una vera distanza dal centro; altrimenti conserva il testo verificato così come appare"));
+      draft.distanceMeters = location.distanceMeters;
+      draft.locationEvidence = location.locationEvidence;
       return;
+    }
     case 5:
       draft.rating = await askRatingOrUnknown(rl, label("Rating mostrato da Booking; non dedurlo dalle stelle"));
       return;
@@ -586,7 +610,7 @@ function showDraftSummary(draft, observedOrder) {
   const shown = (value) => value === null || value === undefined || value === "" ? "UNKNOWN" : String(value);
   output.write(`\nRIEPILOGO PRIMA DEL SALVATAGGIO — posizione organica ${observedOrder}\n`);
   output.write(`1. Nome: ${shown(draft.realName)}\n2. URL della stessa struttura: ${shown(draft.sourceUrl)}\n`);
-  output.write(`3. Categoria: ${shown(draft.accommodationCategory)}\n4. Distanza metri: ${shown(draft.distanceMeters)}\n`);
+  output.write(`3. Categoria: ${shown(draft.accommodationCategory)}\n4. Distanza metri: ${shown(draft.distanceMeters)}; posizione testuale verificata: ${shown(draft.locationEvidence?.text)}\n`);
   output.write(`5. Rating: ${shown(draft.rating)}\n6. Recensioni: ${shown(draft.reviewCount)}\n`);
   output.write(`7. Camera/bagno: ${shown(draft.roomEvidence)}\n8. Trattamento: ${shown(draft.mealPlanEvidence)}\n`);
   output.write(`9. Totale EUR cent: ${shown(draft.totalPriceMinorUnits)}\n10. Pagamento subito EUR cent: ${shown(draft.payNowMinorUnits)}\n`);
@@ -596,12 +620,143 @@ function showDraftSummary(draft, observedOrder) {
   output.write(`17. Prova privata selezionata: ${draft.selectedFile === null ? "NO" : "SI"}\n`);
 }
 
+function draftFromSavedPublicData(publicData) {
+  return {
+    realName: "identità privata invariata",
+    sourceUrl: "UNKNOWN",
+    accommodationCategory: publicData.accommodationCategory ?? "UNKNOWN",
+    distanceMeters: publicData.distanceMeters ?? null,
+    locationEvidence: publicData.locationEvidence ?? null,
+    rating: publicData.rating ?? null,
+    reviewCount: publicData.reviewCount ?? null,
+    roomEvidence: publicData.roomEvidence ?? "UNKNOWN",
+    mealPlanEvidence: publicData.mealPlanEvidence ?? "UNKNOWN",
+    totalPriceMinorUnits: publicData.totalPriceMinorUnits ?? null,
+    payNowMinorUnits: publicData.payNowMinorUnits ?? null,
+    payAtPropertyMinorUnits: publicData.payAtPropertyMinorUnits ?? null,
+    taxInclusion: publicData.taxInclusion ?? "UNKNOWN",
+    cancellationEvidence: publicData.cancellationEvidence ?? "UNKNOWN",
+    refundabilityEvidence: publicData.refundabilityEvidence ?? "UNKNOWN",
+    amenitiesRaw: Array.isArray(publicData.amenityEvidence) && publicData.amenityEvidence.length > 0 ? publicData.amenityEvidence.join(", ") : "UNKNOWN",
+    availabilityObserved: publicData.availabilityObserved === true,
+    selectedFile: null,
+  };
+}
+
+function repairedPublicData(existing, draft) {
+  const amenityEvidence = normalizedTextOrNull(draft.amenitiesRaw) === null
+    ? []
+    : draft.amenitiesRaw.split(",").map((item) => item.trim()).filter(Boolean).sort();
+  const next = {
+    ...existing,
+    accommodationCategory: normalizedTextOrNull(draft.accommodationCategory),
+    distanceMeters: draft.distanceMeters,
+    locationEvidence: draft.locationEvidence,
+    rating: draft.rating,
+    reviewCount: draft.reviewCount,
+    roomEvidence: normalizedTextOrNull(draft.roomEvidence),
+    mealPlanEvidence: normalizedTextOrNull(draft.mealPlanEvidence),
+    totalPriceMinorUnits: draft.totalPriceMinorUnits,
+    payNowMinorUnits: draft.payNowMinorUnits,
+    payAtPropertyMinorUnits: draft.payAtPropertyMinorUnits,
+    taxInclusion: draft.taxInclusion,
+    cancellationEvidence: normalizedTextOrNull(draft.cancellationEvidence),
+    refundabilityEvidence: normalizedTextOrNull(draft.refundabilityEvidence),
+    amenityEvidence,
+    availabilityObserved: draft.availabilityObserved,
+  };
+  const missingness = [];
+  for (const [field, value] of Object.entries({ accommodationCategory: next.accommodationCategory, rating: next.rating, reviewCount: next.reviewCount, roomEvidence: next.roomEvidence, mealPlanEvidence: next.mealPlanEvidence, totalPriceMinorUnits: next.totalPriceMinorUnits, cancellationEvidence: next.cancellationEvidence, refundabilityEvidence: next.refundabilityEvidence })) {
+    if (value === null || normalizedTextOrNull(value) === null) missingness.push(`${field.toUpperCase()}_UNKNOWN`);
+  }
+  if (next.distanceMeters === null && next.locationEvidence === null) missingness.push("LOCATION_UNKNOWN");
+  if (amenityEvidence.length === 0) missingness.push("AMENITIES_UNKNOWN");
+  if (!next.availabilityObserved) missingness.push("AVAILABILITY_NOT_OBSERVED");
+  const priceMissingness = [];
+  if (next.payNowMinorUnits === null) priceMissingness.push("PAY_NOW_AMOUNT_UNKNOWN");
+  if (next.payAtPropertyMinorUnits === null) priceMissingness.push("PAY_AT_PROPERTY_AMOUNT_UNKNOWN");
+  if (next.taxInclusion === "UNKNOWN") priceMissingness.push("TAX_INCLUSION_UNKNOWN");
+  return { ...next, missingness, priceMissingness };
+}
+
+function showSavedPublicSummary(draft, alternativeNumber, originalOrder) {
+  const shown = (value) => value === null || value === undefined || value === "" ? "UNKNOWN" : String(value);
+  output.write(`\nRIEPILOGO PUBBLICO ALTERNATIVA ${alternativeNumber} — posizione organica ${originalOrder}\n`);
+  output.write(`3. Categoria: ${shown(draft.accommodationCategory)}\n4. Distanza metri: ${shown(draft.distanceMeters)}; posizione testuale verificata: ${shown(draft.locationEvidence?.text)}\n`);
+  output.write(`5. Rating: ${shown(draft.rating)}\n6. Recensioni: ${shown(draft.reviewCount)}\n7. Camera/bagno: ${shown(draft.roomEvidence)}\n8. Trattamento: ${shown(draft.mealPlanEvidence)}\n`);
+  output.write(`9. Totale EUR cent: ${shown(draft.totalPriceMinorUnits)}\n10. Pagamento subito EUR cent: ${shown(draft.payNowMinorUnits)}\n11. Pagamento in struttura EUR cent: ${shown(draft.payAtPropertyMinorUnits)}\n`);
+  output.write(`12. Tasse: ${shown(draft.taxInclusion)}\n13. Cancellazione: ${shown(draft.cancellationEvidence)}\n14. Rimborsabilità: ${shown(draft.refundabilityEvidence)}\n`);
+  output.write(`15. Servizi: ${shown(draft.amenitiesRaw)}\n16. Disponibilità: ${draft.availabilityObserved ? "SI" : "NO"}\n`);
+}
+
+async function repairExport(context) {
+  const sessionRoot = resolve(context.privateRoot, SESSION_ID);
+  const statePath = join(sessionRoot, "session-state.json");
+  if (!existsSync(statePath)) fail("MANUAL_CAPTURE_REPAIR_SESSION_NOT_FOUND");
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  if (state.sessionId !== SESSION_ID || state.alternatives.length !== EXPECTED_ALTERNATIVES || state.networkCalls !== 0 || state.credentialsLoaded !== false) fail("MANUAL_CAPTURE_REPAIR_SESSION_INVALID");
+  Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
+  const rl = createInterface({ input, output });
+  let correctionCount = 0;
+  try {
+    output.write(`OFFLINE_REPAIR_READY=YES\nSESSION_ID=${SESSION_ID}\nALTERNATIVES_REUSED=5\nPRIVATE_EVIDENCE_MODIFIED=NO\nAUTOMATED_HTTP_REQUESTS=0\n`);
+    output.write("Correggi soltanto i campi pubblici necessari; nomi, URL e prove private restano invariati e non vengono mostrati.\n");
+    for (;;) {
+      const action = (await rl.question("Scrivi CORREGGI <alternativa 1..5> <campo 3..16>, RIEPILOGO <alternativa>, RIESPORTA oppure ANNULLA: ")).trim().toUpperCase();
+      if (action === "ANNULLA") return;
+      if (action === "RIESPORTA") {
+        if (correctionCount === 0) {
+          output.write("Nessuna correzione confermata: la riesportazione non viene eseguita.\n");
+          continue;
+        }
+        const downloads = resolve(process.env.USERPROFILE ?? fail("MANUAL_CAPTURE_USERPROFILE_REQUIRED"), "Downloads");
+        const result = await finalize(state, context, downloads, { allowBlindCapsule: false });
+        persistState(statePath, state);
+        output.write(`REPAIR_EXPORT_STATUS=${result.outcome.status}\nBLIND_CAPSULE_CREATED=NO\nV3_EXECUTED=NO\nGOLDEN_ADMISSION=NO\nSANITIZED_EVIDENCE_ZIP_PATH=${result.zipPath}\nSANITIZED_EVIDENCE_ZIP_SHA256=${result.zipSha256}\n`);
+        return;
+      }
+      const summary = /^RIEPILOGO\s+([1-5])$/.exec(action);
+      if (summary) {
+        const index = Number(summary[1]) - 1;
+        showSavedPublicSummary(draftFromSavedPublicData(state.alternatives[index].publicData), index + 1, state.alternatives[index].publicData.originalOrder);
+        continue;
+      }
+      const correction = /^CORREGGI\s+([1-5])\s+(1[0-6]|[3-9])$/.exec(action);
+      if (correction) {
+        const index = Number(correction[1]) - 1;
+        const field = Number(correction[2]);
+        const entry = state.alternatives[index];
+        const draft = draftFromSavedPublicData(entry.publicData);
+        await editDraftField(rl, draft, field, { manual: context.manual, observedOrder: entry.publicData.originalOrder, repositoryRoot: context.repositoryRoot });
+        showSavedPublicSummary(draft, index + 1, entry.publicData.originalOrder);
+        const confirm = (await rl.question("Scrivi APPLICA per confermare questa singola correzione, oppure ANNULLA: ")).trim().toUpperCase();
+        if (confirm !== "APPLICA") {
+          output.write("Correzione annullata; lo stato salvato non è cambiato.\n");
+          continue;
+        }
+        entry.publicData = repairedPublicData(entry.publicData, draft);
+        state.finalized = false;
+        state.lifecycle = "CAPTURE_COMPLETE";
+        delete state.evidenceZipPath;
+        delete state.evidenceZipSha256;
+        persistState(statePath, state);
+        correctionCount += 1;
+        output.write("Correzione applicata. Le prove private sono rimaste byte-identiche.\n");
+        continue;
+      }
+      output.write("Comando non riconosciuto; nessun dato è stato modificato.\n");
+    }
+  } finally {
+    rl.close();
+  }
+}
+
 async function collectAlternative(rl, state, store, repositoryRoot, observedOrder, replacementIndex = null) {
   output.write(`\n--- Alternativa idonea ${replacementIndex === null ? state.alternatives.length + 1 : replacementIndex + 1} di ${EXPECTED_ALTERNATIVES} ---\n`);
   output.write("Consulta la stessa ricerca Booking.com anonima. Non usare login, Genius, coupon o prezzi personali.\n");
   output.write("La bozza resta soltanto in memoria: nessun dato viene salvato prima del riepilogo e della conferma SALVA. UNKNOWN è sempre ammesso quando un dato non è visibile.\n");
   output.write("Dopo ogni risposta puoi usare INDIETRO o CORREGGI <numero campo>; ANNULLA scarta soltanto l'alternativa corrente e conserva la sessione.\n");
-  const draft = { realName: "", sourceUrl: "UNKNOWN", accommodationCategory: "UNKNOWN", distanceMeters: null, rating: null, reviewCount: null, roomEvidence: "UNKNOWN", mealPlanEvidence: "UNKNOWN", totalPriceMinorUnits: null, payNowMinorUnits: null, payAtPropertyMinorUnits: null, taxInclusion: "UNKNOWN", cancellationEvidence: "UNKNOWN", refundabilityEvidence: "UNKNOWN", amenitiesRaw: "UNKNOWN", availabilityObserved: false, selectedFile: null };
+  const draft = { realName: "", sourceUrl: "UNKNOWN", accommodationCategory: "UNKNOWN", distanceMeters: null, locationEvidence: null, rating: null, reviewCount: null, roomEvidence: "UNKNOWN", mealPlanEvidence: "UNKNOWN", totalPriceMinorUnits: null, payNowMinorUnits: null, payAtPropertyMinorUnits: null, taxInclusion: "UNKNOWN", cancellationEvidence: "UNKNOWN", refundabilityEvidence: "UNKNOWN", amenitiesRaw: "UNKNOWN", availabilityObserved: false, selectedFile: null };
   const editContext = { manual: state.manualModule, observedOrder, repositoryRoot };
   let field = 1;
   while (field <= 17) {
@@ -637,7 +792,7 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
     }
     output.write("Comando non riconosciuto. Scrivi SALVA, CORREGGI seguito dal numero del campo, oppure ANNULLA.\n");
   }
-  const { realName, sourceUrl, accommodationCategory, distanceMeters, rating, reviewCount, roomEvidence, mealPlanEvidence, totalPriceMinorUnits, payNowMinorUnits, payAtPropertyMinorUnits, taxInclusion, cancellationEvidence, refundabilityEvidence, amenitiesRaw, availabilityObserved, selectedFile } = draft;
+  const { realName, sourceUrl, accommodationCategory, distanceMeters, locationEvidence, rating, reviewCount, roomEvidence, mealPlanEvidence, totalPriceMinorUnits, payNowMinorUnits, payAtPropertyMinorUnits, taxInclusion, cancellationEvidence, refundabilityEvidence, amenitiesRaw, availabilityObserved, selectedFile } = draft;
   const amenityEvidence = amenitiesRaw.toUpperCase() === "UNKNOWN" ? [] : amenitiesRaw.split(",").map((item) => item.trim()).filter(Boolean).sort();
   const privateEvidence = {
     realName: capturePrivate(store, state, "PROPERTY_NAME", realName),
@@ -646,9 +801,10 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
   };
   const missingness = [];
   const priceMissingness = [];
-  for (const [field, value] of Object.entries({ accommodationCategory, distanceMeters, rating, reviewCount, roomEvidence, mealPlanEvidence, totalPriceMinorUnits, cancellationEvidence, refundabilityEvidence })) {
-    if (value === null || value === "UNKNOWN") missingness.push(`${field.toUpperCase()}_UNKNOWN`);
+  for (const [field, value] of Object.entries({ accommodationCategory, rating, reviewCount, roomEvidence, mealPlanEvidence, totalPriceMinorUnits, cancellationEvidence, refundabilityEvidence })) {
+    if (value === null || normalizedTextOrNull(value) === null) missingness.push(`${field.toUpperCase()}_UNKNOWN`);
   }
+  if (distanceMeters === null && locationEvidence === null) missingness.push("LOCATION_UNKNOWN");
   if (payNowMinorUnits === null) priceMissingness.push("PAY_NOW_AMOUNT_UNKNOWN");
   if (payAtPropertyMinorUnits === null) priceMissingness.push("PAY_AT_PROPERTY_AMOUNT_UNKNOWN");
   if (taxInclusion === "UNKNOWN") priceMissingness.push("TAX_INCLUSION_UNKNOWN");
@@ -657,18 +813,19 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
   const publicData = {
     localCaptureId: `MANUAL_ALT_${String(replacementIndex === null ? state.alternatives.length + 1 : replacementIndex + 1).padStart(2, "0")}`,
     originalOrder: observedOrder,
-    accommodationCategory: accommodationCategory === "UNKNOWN" ? null : accommodationCategory,
+    accommodationCategory: normalizedTextOrNull(accommodationCategory),
     distanceMeters,
+    locationEvidence,
     rating,
     reviewCount,
-    roomEvidence: roomEvidence === "UNKNOWN" ? null : roomEvidence,
-    mealPlanEvidence: mealPlanEvidence === "UNKNOWN" ? null : mealPlanEvidence,
+    roomEvidence: normalizedTextOrNull(roomEvidence),
+    mealPlanEvidence: normalizedTextOrNull(mealPlanEvidence),
     totalPriceMinorUnits,
     payNowMinorUnits,
     payAtPropertyMinorUnits,
     taxInclusion,
-    cancellationEvidence: cancellationEvidence === "UNKNOWN" ? "UNKNOWN" : cancellationEvidence,
-    refundabilityEvidence: refundabilityEvidence === "UNKNOWN" ? "UNKNOWN" : refundabilityEvidence,
+    cancellationEvidence: normalizedTextOrNull(cancellationEvidence),
+    refundabilityEvidence: normalizedTextOrNull(refundabilityEvidence),
     amenityEvidence,
     availabilityObserved,
     observedAt: now(),
@@ -758,6 +915,7 @@ function syntheticEntry(store, state, index) {
       originalOrder: index + 1,
       accommodationCategory: "HOTEL",
       distanceMeters: 400 + index * 100,
+      locationEvidence: null,
       rating: 8 + index * 0.1,
       reviewCount: 500 + index,
       roomEvidence: "PRIVATE_DOUBLE_ROOM_PRIVATE_BATHROOM",
@@ -766,8 +924,8 @@ function syntheticEntry(store, state, index) {
       payNowMinorUnits: null,
       payAtPropertyMinorUnits: null,
       taxInclusion: "UNKNOWN",
-      cancellationEvidence: "UNKNOWN",
-      refundabilityEvidence: "UNKNOWN",
+      cancellationEvidence: "CANCELLATION_FREE_UNTIL_SYNTHETIC_DAY",
+      refundabilityEvidence: "REFUNDABLE_UNTIL_SYNTHETIC_DAY",
       amenityEvidence: ["WIFI"],
       availabilityObserved: true,
       observedAt: "2026-09-02T12:00:00.000Z",
@@ -823,6 +981,59 @@ async function dryRun(context) {
   }
 }
 
+async function repairDryRun(context) {
+  const root = resolve(tmpdir(), `StayOpti-V3-17T5B-RepairDryRun-${randomBytes(8).toString("hex")}`);
+  const zipRoot = resolve(tmpdir(), `StayOpti-V3-17T5B-RepairDryRunZip-${randomBytes(8).toString("hex")}`);
+  mkdirSync(root, { recursive: false });
+  mkdirSync(zipRoot, { recursive: false });
+  const store = createProviderRawQuarantineStoreV3({ repositoryRoot: context.repositoryRoot, root: join(root, "private"), quarantineModule: context.quarantine });
+  const dryContext = { ...context, privateRoot: root, store };
+  const state = initialState();
+  try {
+    for (let index = 0; index < EXPECTED_ALTERNATIVES; index += 1) state.alternatives.push(syntheticEntry(store, state, index));
+    state.alternatives[3].publicData.mealPlanEvidence = "unknown";
+    state.alternatives[4].publicData.distanceMeters = null;
+    state.alternatives[4].publicData.locationEvidence = null;
+    state.alternatives[4].publicData.payNowMinorUnits = state.alternatives[4].publicData.totalPriceMinorUnits - 10;
+    state.alternatives[4].publicData.payAtPropertyMinorUnits = 0;
+    state.alternatives[4].publicData.refundabilityEvidence = "REFUNDABLE UNTIL 99 OTT";
+    const handlesBefore = JSON.stringify(state.alternatives.map((entry) => entry.privateEvidence));
+    const before = await hydrateCapture(state, store, context.quarantine);
+    const beforeValidation = context.manual.validateManualMarketCaptureV3(before);
+    if (!beforeValidation.issues.some((issue) => issue.code === "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH")) fail("MANUAL_CAPTURE_REPAIR_DRY_RUN_MISMATCH_NOT_DETECTED");
+    if (!beforeValidation.issues.some((issue) => issue.code === "MANUAL_CAPTURE_TEXT_DATE_IMPLAUSIBLE")) fail("MANUAL_CAPTURE_REPAIR_DRY_RUN_TYPO_NOT_DETECTED");
+    const fourth = draftFromSavedPublicData(state.alternatives[3].publicData);
+    fourth.mealPlanEvidence = "ROOM_ONLY";
+    state.alternatives[3].publicData = repairedPublicData(state.alternatives[3].publicData, fourth);
+    const fifth = draftFromSavedPublicData(state.alternatives[4].publicData);
+    fifth.locationEvidence = { kind: "VERIFIED_TEXTUAL_POSITION", text: "zona centrale verificata" };
+    fifth.payAtPropertyMinorUnits = 10;
+    fifth.refundabilityEvidence = "REFUNDABLE UNTIL SYNTHETIC DAY";
+    state.alternatives[4].publicData = repairedPublicData(state.alternatives[4].publicData, fifth);
+    const result = await finalize(state, dryContext, zipRoot, { allowBlindCapsule: false });
+    if (!result.validation.valid || !existsSync(result.zipPath)) fail("MANUAL_CAPTURE_REPAIR_DRY_RUN_EXPORT_FAILED");
+    if (result.capsule !== null || JSON.stringify(state.alternatives.map((entry) => entry.privateEvidence)) !== handlesBefore) fail("MANUAL_CAPTURE_REPAIR_DRY_RUN_BOUNDARY_FAILED");
+    return {
+      status: "PASS",
+      existingAlternativesReused: 5,
+      targetedFieldsRepaired: true,
+      caseInsensitiveUnknownDetected: true,
+      paymentSplitMismatchDetected: true,
+      textualLocationPreserved: true,
+      privateEvidenceModified: false,
+      sanitizedReexport: true,
+      blindCapsuleCreated: false,
+      v3Executed: false,
+      goldenAdmission: false,
+      automatedHttpRequests: 0,
+      syntheticArtifactsDeleted: true,
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(zipRoot, { recursive: true, force: true });
+  }
+}
+
 const repositoryRoot = resolve(option("repository-root") ?? fail("MANUAL_CAPTURE_REPOSITORY_ROOT_REQUIRED"));
 const compiledRoot = resolve(option("compiled-root") ?? fail("MANUAL_CAPTURE_COMPILED_ROOT_REQUIRED"));
 const privateRoot = assertOutsideRepository(repositoryRoot, option("private-root") ?? fail("MANUAL_CAPTURE_PRIVATE_ROOT_REQUIRED"));
@@ -839,8 +1050,12 @@ if (mode === "preflight") {
   process.stdout.write(`${JSON.stringify({ status: "PASS", sessionId: SESSION_ID, previousAbortedSessionId: PREVIOUS_ABORTED_SESSION_ID, previousSessionReuse: false, interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, interruptPartialPersistence: false, fieldCorrectionDuringEntry: true, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, textualConditionAmountGuard: true, localNameUrlConsistencyCheck: true, currentAlternativeCancellationPreservesSession: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
 } else if (mode === "dry-run") {
   process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
+} else if (mode === "repair-dry-run") {
+  process.stdout.write(`${JSON.stringify(await repairDryRun(context))}\n`);
 } else if (mode === "interactive") {
   await interactive(context);
+} else if (mode === "repair-export") {
+  await repairExport(context);
 } else {
   fail("MANUAL_CAPTURE_MODE_UNSUPPORTED");
 }

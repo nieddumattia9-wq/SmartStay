@@ -734,4 +734,33 @@ frozen Florence scenario, followed by manual completion and postflight only.
 The next action remains manual entry from organic position one in a fresh
 logged-out incognito Booking.com window.
 
+## V3-17T5B completed diagnostic session audit and offline repair
+
+- The supplied sanitized ZIP matched its declared SHA-256, contained ten
+  entries, and passed all `9/9` internal artifact checksums.
+- The sealed outcome remains `DIAGNOSTIC_ONLY`: five alternatives, no blind
+  judgment, no V3 execution, no deblind and no Golden admission.
+- Offline inspection reconfirmed the two declared missing comparable fields
+  and exposed three validation gaps: lower-case explicit unknown evidence was
+  not normalized, a known payment decomposition did not reconcile to its
+  displayed total, and an implausible day remained accepted in a textual
+  refundability condition.
+- The contract now treats `UNKNOWN` case-insensitively, emits a deterministic
+  diagnostic issue for a known payment split mismatch, and rejects implausible
+  calendar days in cancellation/refundability text.
+- A verified textual position is preserved independently from numeric
+  distance. The system never fabricates a distance-from-centre value from a
+  landmark or neighbourhood description.
+- A new `repair-export` mode can amend one public field of one saved
+  alternative after explicit confirmation and produce a new sanitized ZIP.
+  It reuses the five alternatives but neither rewrites nor exposes encrypted
+  names, URLs or private proof. The mode does not create a blind capsule,
+  execute V3, record a judgment or admit Golden evidence.
+- No real session field was changed and no corrected export was produced in
+  this implementation phase.
+
+The next action is an explicitly user-driven offline correction/export of the
+existing T5B diagnostic session, followed by a fresh seal audit. No new market
+collection is required or authorized.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

@@ -17,6 +17,7 @@ import {
   encryptManualMarketPrivateEvidenceV3,
   fingerprintManualMarketCaptureV3,
   markManualMarketDecisionRevealedV3,
+  normalizeManualMarketUnknownTextV3,
   recordManualMarketBlindJudgmentV3,
   renderManualMarketCaptureInterfaceHtmlV3,
   validateManualMarketCaptureV3,
@@ -94,11 +95,12 @@ function fixture(count = 5): StayOptiManualMarketCaptureV3 {
       ratingScale: 10,
       reviewCount: 300 + index,
       distanceMeters: 500 + index * 100,
+      locationEvidence: null,
       accommodationCategory: "HOTEL",
       roomEvidence: "DOUBLE_ROOM",
       mealPlanEvidence: "ROOM_ONLY",
-      cancellationEvidence: "UNKNOWN",
-      refundabilityEvidence: "UNKNOWN",
+      cancellationEvidence: "FREE_CANCELLATION_UNTIL_SYNTHETIC_DAY",
+      refundabilityEvidence: "REFUNDABLE_UNTIL_SYNTHETIC_DAY",
       amenityEvidence: ["WIFI"],
       availabilityEvidence: "OBSERVED_AVAILABLE",
       missingness: ["CANCELLATION_DETAIL_UNKNOWN"],
@@ -155,3 +157,33 @@ test("blind labels are deterministic", () => { const first = createManualMarketB
 test("blind labels do not leak original order", () => { const first = fixture(); const second = clone(first); second.alternatives.forEach((alternative, index) => { alternative.originalOrder = 50 - index; }); assert.deepEqual(createManualMarketBlindCapsuleV3(first, "SYNTHETIC_PRIVATE_BATCH_KEY_001").capsule.alternatives, createManualMarketBlindCapsuleV3(second, "SYNTHETIC_PRIVATE_BATCH_KEY_001").capsule.alternatives); });
 test("blind capsule requires a caller key", () => assert.throws(() => createManualMarketBlindCapsuleV3(fixture(), "short"), /PRIVATE_BATCH_KEY_REQUIRED/));
 test("declared fingerprint mismatch is rejected", () => { const value = fixture(); value.declaredFingerprint = "0".repeat(64); assert.ok(codes(value).includes("MANUAL_CAPTURE_FINGERPRINT_MISMATCH")); });
+test("UNKNOWN text is normalized case-insensitively and remains missing evidence", () => {
+  assert.equal(normalizeManualMarketUnknownTextV3(" unknown "), null);
+  const value = clone(fixture());
+  value.alternatives[4].mealPlanEvidence = "unknown";
+  const result = validateManualMarketCaptureV3(value);
+  assert.equal(result.lifecycle, "DIAGNOSTIC_ONLY");
+  assert.ok(result.issues.some((issue) => issue.path === "$.alternatives[4].mealPlanEvidence" && issue.code === "MANUAL_CAPTURE_COMPARABLE_FIELD_MISSING"));
+});
+test("known payment components must reconcile exactly to the displayed total", () => {
+  const value = clone(fixture());
+  value.alternatives[4].price!.payNowAmount = 9990;
+  value.alternatives[4].price!.payAtPropertyAmount = 0;
+  value.alternatives[4].price!.amount = 10000;
+  assert.ok(codes(value).includes("MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH"));
+  assert.equal(validateManualMarketCaptureV3(value).lifecycle, "DIAGNOSTIC_ONLY");
+});
+test("verified textual position is preserved without fabricating a distance", () => {
+  const value = clone(fixture());
+  value.alternatives[4].distanceMeters = null;
+  value.alternatives[4].locationEvidence = { kind: "VERIFIED_TEXTUAL_POSITION", text: "quartiere centrale vicino al museo civico" };
+  const validation = validateManualMarketCaptureV3(value);
+  assert.equal(validation.valid, true);
+  const snapshot = createManualMarketProviderNeutralSnapshotV3(value);
+  assert.ok(snapshot.alternatives.some((alternative) => alternative.distanceMeters === null && alternative.locationEvidence?.kind === "VERIFIED_TEXTUAL_POSITION"));
+});
+test("implausible calendar day in a textual condition is diagnostic", () => {
+  const value = clone(fixture());
+  value.alternatives[4].refundabilityEvidence = "RIMBORSABILE FINO AL 99 OTT";
+  assert.ok(codes(value).includes("MANUAL_CAPTURE_TEXT_DATE_IMPLAUSIBLE"));
+});

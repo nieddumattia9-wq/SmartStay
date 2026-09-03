@@ -36,7 +36,8 @@ export type StayOptiManualMarketTextConditionCheckV3 = {
   reasonCode:
     | "MANUAL_CAPTURE_TEXT_CONDITION_ACCEPTED"
     | "MANUAL_CAPTURE_TEXT_CONDITION_UNKNOWN"
-    | "MANUAL_CAPTURE_NUMERIC_VALUE_NOT_TEXT_CONDITION";
+    | "MANUAL_CAPTURE_NUMERIC_VALUE_NOT_TEXT_CONDITION"
+    | "MANUAL_CAPTURE_TEXT_DATE_IMPLAUSIBLE";
 };
 
 function manualIdentityTokensV3(value: string): readonly string[] {
@@ -98,7 +99,16 @@ export function validateManualMarketTextConditionV3(value: string): StayOptiManu
   if (/^(?:EUR|€)?\s*\d+(?:[.,]\d{1,2})?\s*(?:EUR|€)?$/i.test(normalized)) {
     return { valid: false, reasonCode: "MANUAL_CAPTURE_NUMERIC_VALUE_NOT_TEXT_CONDITION" };
   }
+  if (/\b(?:3[2-9]|[4-9]\d|[1-9]\d{2,})\s+(?:gen(?:naio)?|feb(?:braio)?|mar(?:zo)?|apr(?:ile)?|mag(?:gio)?|giu(?:gno)?|lug(?:lio)?|ago(?:sto)?|set(?:tembre)?|ott(?:obre)?|nov(?:embre)?|dic(?:embre)?)\b/i.test(normalized)) {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_TEXT_DATE_IMPLAUSIBLE" };
+  }
   return { valid: true, reasonCode: "MANUAL_CAPTURE_TEXT_CONDITION_ACCEPTED" };
+}
+
+export function normalizeManualMarketUnknownTextV3(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const normalized = value.trim();
+  return normalized.toUpperCase() === "UNKNOWN" ? null : normalized;
 }
 
 export const STAYOPTI_DORMANT_T5_EXECUTION_HEAD_V3 =
@@ -169,6 +179,10 @@ export interface StayOptiManualMarketAlternativeV3 {
   ratingScale: number | null;
   reviewCount: number | null;
   distanceMeters: number | null;
+  locationEvidence?: {
+    kind: "VERIFIED_TEXTUAL_POSITION";
+    text: string;
+  } | null;
   accommodationCategory: string | null;
   roomEvidence: string | null;
   mealPlanEvidence: string | null;
@@ -228,7 +242,11 @@ export interface StayOptiManualMarketSnapshotAlternativeV3 {
   rating: number;
   ratingScale: number;
   reviewCount: number;
-  distanceMeters: number;
+  distanceMeters: number | null;
+  locationEvidence: {
+    kind: "VERIFIED_TEXTUAL_POSITION";
+    text: string;
+  } | null;
   accommodationCategory: string;
   roomEvidence: string;
   mealPlanEvidence: string;
@@ -371,11 +389,14 @@ function captureFingerprintMaterial(capture: StayOptiManualMarketCaptureV3) {
         ratingScale: alternative.ratingScale,
         reviewCount: alternative.reviewCount,
         distanceMeters: alternative.distanceMeters,
-        accommodationCategory: alternative.accommodationCategory,
-        roomEvidence: alternative.roomEvidence,
-        mealPlanEvidence: alternative.mealPlanEvidence,
-        cancellationEvidence: alternative.cancellationEvidence,
-        refundabilityEvidence: alternative.refundabilityEvidence,
+        locationEvidence: alternative.locationEvidence === undefined || alternative.locationEvidence === null
+          ? null
+          : { kind: alternative.locationEvidence.kind, text: normalizeManualMarketUnknownTextV3(alternative.locationEvidence.text) },
+        accommodationCategory: normalizeManualMarketUnknownTextV3(alternative.accommodationCategory),
+        roomEvidence: normalizeManualMarketUnknownTextV3(alternative.roomEvidence),
+        mealPlanEvidence: normalizeManualMarketUnknownTextV3(alternative.mealPlanEvidence),
+        cancellationEvidence: normalizeManualMarketUnknownTextV3(alternative.cancellationEvidence),
+        refundabilityEvidence: normalizeManualMarketUnknownTextV3(alternative.refundabilityEvidence),
         amenityEvidence: sortedUnique(alternative.amenityEvidence),
         availabilityEvidence: alternative.availabilityEvidence,
         missingness: sortedUnique(alternative.missingness),
@@ -404,6 +425,9 @@ function validatePrice(price: StayOptiManualMarketPriceV3 | null, currency: stri
   for (const [field, amount] of [["payNowAmount", price.payNowAmount], ["payAtPropertyAmount", price.payAtPropertyAmount]] as const) {
     if (amount !== null && (!Number.isInteger(amount) || amount < 0)) issues.push({ code: "MANUAL_CAPTURE_PRICE_COMPONENT_INVALID", path: `${path}.${field}`, disposition: "REJECTED" });
   }
+  if (price.payNowAmount !== null && price.payAtPropertyAmount !== null && price.payNowAmount + price.payAtPropertyAmount !== price.amount) {
+    issues.push({ code: "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH", path, disposition: "DIAGNOSTIC_ONLY" });
+  }
 }
 
 export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptureV3): StayOptiManualMarketValidationV3 {
@@ -420,7 +444,7 @@ export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptu
   if (capture.alternatives.length < STAYOPTI_MANUAL_MARKET_MIN_ALTERNATIVES_V3) issues.push({ code: "MANUAL_CAPTURE_TOO_FEW_ALTERNATIVES", path: "$.alternatives", disposition: "DIAGNOSTIC_ONLY" });
   if (capture.alternatives.length > STAYOPTI_MANUAL_MARKET_MAX_ALTERNATIVES_V3) issues.push({ code: "MANUAL_CAPTURE_TOO_MANY_ALTERNATIVES", path: "$.alternatives", disposition: "REJECTED" });
   const ids = new Set<string>();
-  const comparable = new Set(["price", "rating", "reviewCount", "distance", "category", "room", "mealPlan", "cancellation", "refundability", "amenities", "availability"]);
+  const comparable = new Set(["price", "rating", "reviewCount", "location", "category", "room", "mealPlan", "cancellation", "refundability", "amenities", "availability"]);
   const auditOnly = new Set(["consumerSurface", "originalOrder", "sponsored", "privateRealName", "privateSourceUrl", "privateScreenshotRefs"]);
   const excluded = new Set(auditOnly);
   const firstCoverage = capture.alternatives[0]?.detailCoverage ?? [];
@@ -433,11 +457,28 @@ export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptu
     if (alternative.guestConfigurationFingerprint !== `${capture.adults}|${capture.childrenAges.join(",")}|${capture.rooms}`) issues.push({ code: "MANUAL_CAPTURE_GUEST_CONFIGURATION_MISMATCH", path: `${path}.guestConfigurationFingerprint`, disposition: "REJECTED" });
     validatePrice(alternative.price, capture.currency, `${path}.price`, issues);
     if (alternative.availabilityEvidence !== "OBSERVED_AVAILABLE") issues.push({ code: "MANUAL_CAPTURE_AVAILABILITY_REQUIRED", path: `${path}.availabilityEvidence`, disposition: "DIAGNOSTIC_ONLY" });
-    for (const [field, value] of [["rating", alternative.rating], ["ratingScale", alternative.ratingScale], ["reviewCount", alternative.reviewCount], ["distanceMeters", alternative.distanceMeters], ["accommodationCategory", alternative.accommodationCategory], ["roomEvidence", alternative.roomEvidence], ["mealPlanEvidence", alternative.mealPlanEvidence], ["cancellationEvidence", alternative.cancellationEvidence], ["refundabilityEvidence", alternative.refundabilityEvidence]] as const) {
-      if (value === null) {
+    const textualLocation = alternative.locationEvidence === undefined || alternative.locationEvidence === null
+      ? null
+      : normalizeManualMarketUnknownTextV3(alternative.locationEvidence.text);
+    if (alternative.locationEvidence !== undefined && alternative.locationEvidence !== null && (alternative.locationEvidence.kind !== "VERIFIED_TEXTUAL_POSITION" || textualLocation === null)) {
+      issues.push({ code: "MANUAL_CAPTURE_LOCATION_EVIDENCE_INVALID", path: `${path}.locationEvidence`, disposition: "DIAGNOSTIC_ONLY" });
+    }
+    if (alternative.distanceMeters === null && textualLocation === null) {
+      comparable.delete("location");
+      excluded.add("location");
+      issues.push({ code: "MANUAL_CAPTURE_COMPARABLE_FIELD_MISSING", path: `${path}.locationEvidence`, disposition: "DIAGNOSTIC_ONLY" });
+    }
+    for (const [field, value] of [["rating", alternative.rating], ["ratingScale", alternative.ratingScale], ["reviewCount", alternative.reviewCount], ["accommodationCategory", alternative.accommodationCategory], ["roomEvidence", alternative.roomEvidence], ["mealPlanEvidence", alternative.mealPlanEvidence], ["cancellationEvidence", alternative.cancellationEvidence], ["refundabilityEvidence", alternative.refundabilityEvidence]] as const) {
+      if (value === null || (typeof value === "string" && normalizeManualMarketUnknownTextV3(value) === null)) {
         comparable.delete(field === "ratingScale" ? "rating" : field);
         excluded.add(field);
         issues.push({ code: "MANUAL_CAPTURE_COMPARABLE_FIELD_MISSING", path: `${path}.${field}`, disposition: "DIAGNOSTIC_ONLY" });
+      }
+    }
+    for (const [field, value] of [["cancellationEvidence", alternative.cancellationEvidence], ["refundabilityEvidence", alternative.refundabilityEvidence]] as const) {
+      if (value !== null && normalizeManualMarketUnknownTextV3(value) !== null) {
+        const condition = validateManualMarketTextConditionV3(value);
+        if (!condition.valid) issues.push({ code: condition.reasonCode, path: `${path}.${field}`, disposition: "DIAGNOSTIC_ONLY" });
       }
     }
     if (!sameStringSet(firstCoverage, alternative.detailCoverage)) {
@@ -463,18 +504,26 @@ export function validateManualMarketCaptureV3(capture: StayOptiManualMarketCaptu
 }
 
 function publicAlternativeMaterial(alternative: StayOptiManualMarketAlternativeV3) {
-  if (alternative.price === null || alternative.rating === null || alternative.ratingScale === null || alternative.reviewCount === null || alternative.distanceMeters === null || alternative.accommodationCategory === null || alternative.roomEvidence === null || alternative.mealPlanEvidence === null || alternative.cancellationEvidence === null || alternative.refundabilityEvidence === null || alternative.availabilityEvidence !== "OBSERVED_AVAILABLE") throw new Error("MANUAL_CAPTURE_ALTERNATIVE_NOT_COMPARABLE");
+  const locationText = alternative.locationEvidence === undefined || alternative.locationEvidence === null
+    ? null
+    : normalizeManualMarketUnknownTextV3(alternative.locationEvidence.text);
+  const locationEvidence = locationText === null ? null : { kind: "VERIFIED_TEXTUAL_POSITION" as const, text: locationText };
+  const mealPlanEvidence = normalizeManualMarketUnknownTextV3(alternative.mealPlanEvidence);
+  const cancellationEvidence = normalizeManualMarketUnknownTextV3(alternative.cancellationEvidence);
+  const refundabilityEvidence = normalizeManualMarketUnknownTextV3(alternative.refundabilityEvidence);
+  if (alternative.price === null || alternative.rating === null || alternative.ratingScale === null || alternative.reviewCount === null || (alternative.distanceMeters === null && locationEvidence === null) || alternative.accommodationCategory === null || alternative.roomEvidence === null || mealPlanEvidence === null || cancellationEvidence === null || refundabilityEvidence === null || alternative.availabilityEvidence !== "OBSERVED_AVAILABLE") throw new Error("MANUAL_CAPTURE_ALTERNATIVE_NOT_COMPARABLE");
   return {
     price: { ...alternative.price, missingness: sortedUnique(alternative.price.missingness) },
     rating: alternative.rating,
     ratingScale: alternative.ratingScale,
     reviewCount: alternative.reviewCount,
     distanceMeters: alternative.distanceMeters,
+    locationEvidence,
     accommodationCategory: alternative.accommodationCategory,
     roomEvidence: alternative.roomEvidence,
-    mealPlanEvidence: alternative.mealPlanEvidence,
-    cancellationEvidence: alternative.cancellationEvidence,
-    refundabilityEvidence: alternative.refundabilityEvidence,
+    mealPlanEvidence,
+    cancellationEvidence,
+    refundabilityEvidence,
     amenityEvidence: sortedUnique(alternative.amenityEvidence),
     availabilityEvidence: alternative.availabilityEvidence,
     missingness: sortedUnique(alternative.missingness),

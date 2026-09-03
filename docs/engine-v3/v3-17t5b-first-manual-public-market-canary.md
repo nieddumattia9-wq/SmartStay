@@ -132,3 +132,31 @@ same frozen Florence scenario and explicitly prevents the retired session ID
 from becoming the active session. Every new alternative begins as a blank
 in-memory draft and still requires a full summary plus explicit `SALVA` before
 any encryption or persistence.
+
+## Completed diagnostic session and correction-only export
+
+The first completed `_002` session remains `DIAGNOSTIC_ONLY`. Its sanitized
+archive passed all internal checksums, while offline audit found that the
+initial validator did not fully model three recoverable input defects:
+case-variant explicit unknown evidence, a mismatch between a known displayed
+total and two known payment components, and an implausible calendar day in a
+textual condition.
+
+The validator now:
+
+- normalizes `UNKNOWN` without case sensitivity;
+- reports `MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH` when both payment components
+  are known but do not sum to the displayed total;
+- reports `MANUAL_CAPTURE_TEXT_DATE_IMPLAUSIBLE` for an impossible day attached
+  to a recognized month in cancellation/refundability text;
+- accepts either a numeric distance genuinely shown by the consumer surface or
+  a separate `VERIFIED_TEXTUAL_POSITION` wrapper. Textual position is never
+  converted into fabricated metres.
+
+The PowerShell runner exposes a separate `repair-export` mode. It loads the
+existing five-alternative session, allows `CORREGGI <alternativa> <campo>` for
+public fields 3–16, displays a scoped summary and writes the change only after
+exact `APPLICA`. `RIESPORTA` creates a new sanitized archive from the corrected
+state. Encrypted private identity/proof handles remain unchanged and are never
+shown. The repair path expressly suppresses blind-capsule creation, V3
+execution, judgment, deblind and Golden admission.

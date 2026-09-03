@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('preflight','dry-run','interactive')]
+  [ValidateSet('preflight','dry-run','repair-dry-run','interactive','repair-export')]
   [string]$Mode = 'preflight',
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^[0-9a-f]{40}$')]
@@ -13,7 +13,7 @@ $CompilationRoot = Join-Path ([IO.Path]::GetTempPath()) ('StayOpti-V3-17T5B-Comp
 $LocalData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
 $PrivateRoot = Join-Path $LocalData 'StayOpti\private-evidence\manual-market-golden-capture'
 $SyntheticPrivateRoot = $null
-if ($Mode -cne 'interactive') {
+if ($Mode -cne 'interactive' -and $Mode -cne 'repair-export') {
   $SyntheticPrivateRoot = Join-Path ([IO.Path]::GetTempPath()) ('StayOpti-V3-17T5B-Preflight-' + [Guid]::NewGuid().ToString('N'))
   $PrivateRoot = $SyntheticPrivateRoot
 }
@@ -62,7 +62,7 @@ try {
   }
 }
 
-if ($Mode -ceq 'interactive') {
+if ($Mode -ceq 'interactive' -or $Mode -ceq 'repair-export') {
   Write-Host ''
   Write-Host 'La finestra resta aperta. Conserva il percorso Evidence mostrato al termine.'
   Read-Host 'Premi INVIO per chiudere'
