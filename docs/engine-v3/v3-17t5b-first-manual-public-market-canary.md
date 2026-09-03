@@ -100,3 +100,21 @@ choose `SALVA`, may use `CORREGGI 1..17` to revisit one field, or may choose
 same-property name/URL inconsistencies are rejected locally without HTTP. The
 guard is a plausibility check, not a network-backed identity proof, so the
 human confirmation remains authoritative.
+
+## Mid-entry correction and field semantics
+
+A second real preflight was interrupted before confirmation after values were
+entered into the wrong payment/refundability fields. The incomplete alternative
+was not persisted and produced no snapshot, Evidence or eligibility result.
+
+The interface now exposes navigation after every field, not only at the final
+summary. `INDIETRO` reopens the preceding field, `CORREGGI 1..17` edits any
+field already reached, `RIEPILOGO` displays the current in-memory draft, and
+`ANNULLA` discards only that draft while preserving the session. Ctrl+C before
+`SALVA` leaves no partial alternative at rest.
+
+Payment-now and payment-at-property are numeric amount fields. A statement that
+nothing is payable immediately does not prove that the amount payable at the
+property is zero; absent an explicit amount, the correct value is `UNKNOWN`.
+Cancellation and refundability are textual condition fields, and a bare numeric
+amount is rejected rather than coerced.

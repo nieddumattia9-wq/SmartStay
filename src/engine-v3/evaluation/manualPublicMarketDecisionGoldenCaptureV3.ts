@@ -31,6 +31,14 @@ export type StayOptiManualMarketPrivateIdentityCheckV3 = {
     | "MANUAL_CAPTURE_NAME_URL_MISMATCH_DETECTED";
 };
 
+export type StayOptiManualMarketTextConditionCheckV3 = {
+  valid: boolean;
+  reasonCode:
+    | "MANUAL_CAPTURE_TEXT_CONDITION_ACCEPTED"
+    | "MANUAL_CAPTURE_TEXT_CONDITION_UNKNOWN"
+    | "MANUAL_CAPTURE_NUMERIC_VALUE_NOT_TEXT_CONDITION";
+};
+
 function manualIdentityTokensV3(value: string): readonly string[] {
   const ignored = new Set(["hotel", "the", "di", "del", "della", "dei", "residence", "apartments", "apartment"]);
   return value
@@ -79,6 +87,18 @@ export function validateManualMarketPrivateIdentityPairV3(
     return { valid: false, reasonCode: "MANUAL_CAPTURE_NAME_URL_MISMATCH_DETECTED" };
   }
   return { valid: true, reasonCode: "MANUAL_CAPTURE_PRIVATE_IDENTITY_MATCH_PLAUSIBLE" };
+}
+
+/** Prevents an amount from being silently stored as cancellation/refundability text. */
+export function validateManualMarketTextConditionV3(value: string): StayOptiManualMarketTextConditionCheckV3 {
+  const normalized = value.trim();
+  if (normalized.toUpperCase() === "UNKNOWN") {
+    return { valid: true, reasonCode: "MANUAL_CAPTURE_TEXT_CONDITION_UNKNOWN" };
+  }
+  if (/^(?:EUR|€)?\s*\d+(?:[.,]\d{1,2})?\s*(?:EUR|€)?$/i.test(normalized)) {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_NUMERIC_VALUE_NOT_TEXT_CONDITION" };
+  }
+  return { valid: true, reasonCode: "MANUAL_CAPTURE_TEXT_CONDITION_ACCEPTED" };
 }
 
 export const STAYOPTI_DORMANT_T5_EXECUTION_HEAD_V3 =

@@ -7,6 +7,7 @@ import {
   STAYOPTI_MANUAL_MARKET_CREDENTIALS_LOADED_V3,
   STAYOPTI_MANUAL_MARKET_NETWORK_CALLS_V3,
   validateManualMarketPrivateIdentityPairV3,
+  validateManualMarketTextConditionV3,
 } from "../../src/engine-v3/evaluation/manualPublicMarketDecisionGoldenCaptureV3";
 
 const root = process.cwd();
@@ -162,4 +163,31 @@ test("T5B 22 interrupted or cancelled incomplete alternative is never auto-saved
   assert.match(host, /partialAlternativeAutoSave: false/);
   assert.match(host, /Bozza annullata: nessuna alternativa e nessuna prova privata sono state salvate/);
   assert.doesNotMatch(host.slice(host.indexOf("async function collectAlternative"), host.indexOf("const privateEvidence")), /persistState\(/);
+});
+
+test("T5B 23 every completed field exposes immediate back and single-field correction", () => {
+  assert.match(host, /Premi INVIO per continuare; oppure INDIETRO, CORREGGI 1\.\.17, RIEPILOGO o ANNULLA/);
+  assert.match(host, /reviewProgressBeforeNextField/);
+  assert.match(host, /Campo \$\{field\} corretto nella bozza in memoria/);
+});
+
+test("T5B 24 numeric values cannot become refundability or cancellation conditions", () => {
+  assert.deepEqual(validateManualMarketTextConditionV3("123,45"), {
+    valid: false,
+    reasonCode: "MANUAL_CAPTURE_NUMERIC_VALUE_NOT_TEXT_CONDITION",
+  });
+  assert.equal(validateManualMarketTextConditionV3("CONDIZIONE TESTUALE VISIBILE ALL'UTENTE").valid, true);
+  assert.equal(validateManualMarketTextConditionV3("UNKNOWN").valid, true);
+  assert.match(host, /CONDIZIONE TESTUALE di rimborsabilità/);
+});
+
+test("T5B 25 pay-later wording cannot silently become a zero pay-at-property amount", () => {
+  assert.match(host, /se leggi soltanto 'non paghi ora', scrivi UNKNOWN: non equivale a pagamento in struttura = 0/);
+  assert.match(host, /IMPORTO NUMERICO da pagare in struttura/);
+});
+
+test("T5B 26 cancellation of the current draft preserves the session", () => {
+  assert.match(host, /ANNULLA scarta soltanto l'alternativa corrente e conserva la sessione/);
+  assert.match(host, /La sessione rimane disponibile/);
+  assert.match(host, /interruptPartialPersistence: false/);
 });

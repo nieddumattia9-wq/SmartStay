@@ -29,6 +29,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0023 | 2026-09-02 | Revoke the dormant SerpApi T5 collection authority and use a private, uniform, encrypted manual public-market protocol as the active Decision Golden capture path. | Accepted offline gate; no capture or network authority | `decisions/0023-manual-public-market-decision-golden-capture.md` |
 | D-0024 | 2026-09-02 | Replace the technical JSON capture surface with a guided Italian, progressively saved and immediately encrypted manual-market canary interface. | Accepted offline usability repair; no automatic Golden admission | `decisions/0024-guided-manual-market-canary-interface.md` |
 | D-0025 | 2026-09-03 | Keep each manual alternative in memory until an explicit reviewed save; reject detectable name/URL mismatch and support field-level correction. | Accepted usability repair; no automatic Golden admission | `decisions/0025-confirm-before-save-manual-capture.md` |
+| D-0026 | 2026-09-03 | Allow backward and single-field correction throughout manual entry; separate numeric payment amounts from textual cancellation/refundability evidence. | Accepted usability repair; no automatic Golden admission | `decisions/0026-mid-entry-correction-manual-capture.md` |
 
 ## Required fields for a new decision
 

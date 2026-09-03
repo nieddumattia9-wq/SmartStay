@@ -463,6 +463,15 @@ async function askTaxInclusion(rl, label) {
   }
 }
 
+async function askTextConditionOrUnknown(rl, label, manual) {
+  for (;;) {
+    const value = await askRequired(rl, `${label}; scrivi una condizione testuale oppure UNKNOWN`);
+    const check = manual.validateManualMarketTextConditionV3(value);
+    if (check.valid) return value;
+    output.write("Questo campo descrive una condizione, non un importo. Non inserire un numero: scrivi il testo mostrato oppure UNKNOWN.\n");
+  }
+}
+
 function privateIdentityPairValid(manual, realName, sourceUrl) {
   const result = manual.validateManualMarketPrivateIdentityPairV3(realName, sourceUrl);
   if (!result.valid) {
@@ -516,19 +525,19 @@ async function editDraftField(rl, draft, fieldNumber, context) {
       draft.totalPriceMinorUnits = await askDecimalMoneyOrUnknown(rl, label("Prezzo totale pubblico per tutte le 3 notti e 2 adulti"));
       return;
     case 10:
-      draft.payNowMinorUnits = await askDecimalMoneyOrUnknown(rl, label("Importo indicato da pagare subito; UNKNOWN se non visibile"));
+      draft.payNowMinorUnits = await askDecimalMoneyOrUnknown(rl, label("IMPORTO NUMERICO da pagare subito; UNKNOWN se Booking non mostra un importo"));
       return;
     case 11:
-      draft.payAtPropertyMinorUnits = await askDecimalMoneyOrUnknown(rl, label("Importo indicato da pagare in struttura; UNKNOWN se non visibile"));
+      draft.payAtPropertyMinorUnits = await askDecimalMoneyOrUnknown(rl, label("IMPORTO NUMERICO da pagare in struttura; se leggi soltanto 'non paghi ora', scrivi UNKNOWN: non equivale a pagamento in struttura = 0"));
       return;
     case 12:
       draft.taxInclusion = await askTaxInclusion(rl, label("Stato di tasse e costi nel totale mostrato"));
       return;
     case 13:
-      draft.cancellationEvidence = await askRequired(rl, label("Condizioni di cancellazione mostrate; oppure UNKNOWN"));
+      draft.cancellationEvidence = await askTextConditionOrUnknown(rl, label("CONDIZIONE TESTUALE di cancellazione mostrata, inclusa l'eventuale scadenza"), manual);
       return;
     case 14:
-      draft.refundabilityEvidence = await askRequired(rl, label("Rimborsabilità mostrata; oppure UNKNOWN"));
+      draft.refundabilityEvidence = await askTextConditionOrUnknown(rl, label("CONDIZIONE TESTUALE di rimborsabilità mostrata, non un prezzo"), manual);
       return;
     case 15:
       draft.amenitiesRaw = await askRequired(rl, label("Servizi rilevanti visibili, separati da virgola; oppure UNKNOWN"));
@@ -542,6 +551,33 @@ async function editDraftField(rl, draft, fieldNumber, context) {
       return;
     default:
       fail("MANUAL_CAPTURE_CORRECTION_FIELD_INVALID");
+  }
+}
+
+async function reviewProgressBeforeNextField(rl, draft, completedField, context) {
+  for (;;) {
+    const action = (await rl.question("Premi INVIO per continuare; oppure INDIETRO, CORREGGI 1..17, RIEPILOGO o ANNULLA: ")).trim().toUpperCase();
+    if (action === "" || action === "AVANTI") return "NEXT";
+    if (action === "ANNULLA") return "CANCEL";
+    if (action === "RIEPILOGO") {
+      showDraftSummary(draft, context.observedOrder);
+      continue;
+    }
+    if (action === "INDIETRO") {
+      return completedField === 1 ? "REPEAT_CURRENT" : "BACK";
+    }
+    const correction = /^CORREGGI\s+(1[0-7]|[1-9])$/.exec(action);
+    if (correction) {
+      const field = Number(correction[1]);
+      if (field > completedField) {
+        output.write(`Il campo ${field} non è ancora stato compilato. Puoi correggere i campi da 1 a ${completedField}.\n`);
+        continue;
+      }
+      await editDraftField(rl, draft, field, context);
+      output.write(`Campo ${field} corretto nella bozza in memoria; nulla è stato ancora salvato.\n`);
+      continue;
+    }
+    output.write("Comando non riconosciuto. Usa INVIO, INDIETRO, CORREGGI seguito dal numero, RIEPILOGO oppure ANNULLA.\n");
   }
 }
 
@@ -563,14 +599,29 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
   output.write(`\n--- Alternativa idonea ${replacementIndex === null ? state.alternatives.length + 1 : replacementIndex + 1} di ${EXPECTED_ALTERNATIVES} ---\n`);
   output.write("Consulta la stessa ricerca Booking.com anonima. Non usare login, Genius, coupon o prezzi personali.\n");
   output.write("La bozza resta soltanto in memoria: nessun dato viene salvato prima del riepilogo e della conferma SALVA. UNKNOWN è sempre ammesso quando un dato non è visibile.\n");
+  output.write("Dopo ogni risposta puoi usare INDIETRO o CORREGGI <numero campo>; ANNULLA scarta soltanto l'alternativa corrente e conserva la sessione.\n");
   const draft = { realName: "", sourceUrl: "UNKNOWN", accommodationCategory: "UNKNOWN", distanceMeters: null, rating: null, reviewCount: null, roomEvidence: "UNKNOWN", mealPlanEvidence: "UNKNOWN", totalPriceMinorUnits: null, payNowMinorUnits: null, payAtPropertyMinorUnits: null, taxInclusion: "UNKNOWN", cancellationEvidence: "UNKNOWN", refundabilityEvidence: "UNKNOWN", amenitiesRaw: "UNKNOWN", availabilityObserved: false, selectedFile: null };
   const editContext = { manual: state.manualModule, observedOrder, repositoryRoot };
-  for (let field = 1; field <= 17; field += 1) await editDraftField(rl, draft, field, editContext);
+  let field = 1;
+  while (field <= 17) {
+    await editDraftField(rl, draft, field, editContext);
+    const navigation = await reviewProgressBeforeNextField(rl, draft, field, editContext);
+    if (navigation === "CANCEL") {
+      output.write("Bozza annullata: nessuna alternativa e nessuna prova privata sono state salvate. La sessione rimane disponibile.\n");
+      return false;
+    }
+    if (navigation === "BACK") {
+      field -= 1;
+      continue;
+    }
+    if (navigation === "REPEAT_CURRENT") continue;
+    field += 1;
+  }
   for (;;) {
     showDraftSummary(draft, observedOrder);
     const action = (await rl.question("Scrivi SALVA, CORREGGI 1..17 oppure ANNULLA: ")).trim().toUpperCase();
     if (action === "ANNULLA") {
-      output.write("Bozza annullata: nessuna alternativa e nessuna prova privata sono state salvate.\n");
+      output.write("Bozza annullata: nessuna alternativa e nessuna prova privata sono state salvate. La sessione rimane disponibile.\n");
       return false;
     }
     if (action === "SALVA") {
@@ -783,7 +834,7 @@ const context = { repositoryRoot, compiledRoot, privateRoot, manual, quarantine,
 const mode = option("mode") ?? "preflight";
 
 if (mode === "preflight") {
-  process.stdout.write(`${JSON.stringify({ status: "PASS", interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, localNameUrlConsistencyCheck: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
+  process.stdout.write(`${JSON.stringify({ status: "PASS", interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, interruptPartialPersistence: false, fieldCorrectionDuringEntry: true, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, textualConditionAmountGuard: true, localNameUrlConsistencyCheck: true, currentAlternativeCancellationPreservesSession: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
 } else if (mode === "dry-run") {
   process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
 } else if (mode === "interactive") {

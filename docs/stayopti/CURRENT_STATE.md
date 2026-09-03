@@ -697,4 +697,22 @@ The active next action remains completion of the restarted T5B manual capture;
 the runner must stop before finalization until the user has reviewed all five
 alternatives.
 
+## V3-17T5B mid-entry correction safe hold
+
+- The restarted runner was interrupted with Ctrl+C before confirmation. Its
+  current alternative was not persisted; the session directory again contained
+  no state or encrypted evidence and was reset narrowly.
+- After every field, the repaired draft flow now supports `INDIETRO`,
+  `CORREGGI 1..17`, `RIEPILOGO` and `ANNULLA`. No action before final `SALVA`
+  writes an alternative or encrypts private evidence.
+- Numeric payment prompts are distinct from textual cancellation and
+  refundability conditions. Bare numeric values are rejected in condition
+  fields. A no-payment-now statement cannot become a zero pay-at-property
+  amount; missing amount evidence remains `UNKNOWN`.
+- No erroneous snapshot, Evidence ZIP, classification, judgment, V3 execution
+  or Golden admission was produced.
+
+The next action remains a clean restart of alternative one under the same
+frozen Florence scenario, followed by manual completion and postflight only.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
