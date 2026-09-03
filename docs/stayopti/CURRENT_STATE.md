@@ -675,4 +675,26 @@ reported in the T5B receipt.
 Next recommendation after the user completes the guided capture:
 `V3-17T5B_MANUAL_CAPTURE_POSTFLIGHT_AND_ELIGIBILITY_DECISION`.
 
+## V3-17T5B confirm-before-save recovery
+
+- The first incomplete alternative was never persisted: the process stopped
+  before category entry, the session directory was empty and the encrypted
+  store contained no T5B evidence.
+- The empty current-session directory was reset without touching other private
+  evidence or the seven pre-existing unrelated dirty paths.
+- The guided interface now holds an alternative only in memory until a full
+  summary receives explicit `SALVA`; `CORREGGI 1..17` and `ANNULLA` are
+  available before encryption or state persistence.
+- Organic position and current property name remain visible throughout entry.
+  Clear Italian guidance, category examples and `UNKNOWN` handling are part of
+  every relevant prompt.
+- A deterministic offline plausibility guard rejects a URL pasted as the name,
+  a non-Booking URL and detectable name/URL disagreement without any network.
+- No erroneous snapshot, Evidence ZIP, eligibility result, judgment or Golden
+  admission was produced.
+
+The active next action remains completion of the restarted T5B manual capture;
+the runner must stop before finalization until the user has reviewed all five
+alternatives.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

@@ -80,3 +80,23 @@ deleted at completion. The run performs zero HTTP and loads zero credentials.
 T5B implements no API, scraping, browser automation, login, booking, payment,
 public runtime, ranking, weight, Golden admission, push or fetch capability.
 The dormant SerpApi T5 gate remains `DORMANT_NOT_AUTHORIZED`.
+
+## Interrupted-entry recovery and confirm-before-save repair
+
+The first real entry attempt was interrupted after two URLs belonging to
+different organic results were entered into the name and URL fields. No
+alternative or encrypted evidence had yet been persisted. The empty session
+directory was removed without touching other private evidence.
+
+The repaired interface keeps every incomplete alternative only in process
+memory. Every field displays the organic position and current property name,
+and every prompt explains in Italian where to find the value. The category
+prompt includes concrete examples and every unavailable value may be recorded
+as `UNKNOWN`.
+
+Before persistence, a complete summary is shown. The user must explicitly
+choose `SALVA`, may use `CORREGGI 1..17` to revisit one field, or may choose
+`ANNULLA` to discard the entire unsaved draft. Detectable URL-in-name and
+same-property name/URL inconsistencies are rejected locally without HTTP. The
+guard is a plausibility check, not a network-backed identity proof, so the
+human confirmation remains authoritative.

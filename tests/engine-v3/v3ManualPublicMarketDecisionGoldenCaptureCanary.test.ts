@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   STAYOPTI_MANUAL_MARKET_CREDENTIALS_LOADED_V3,
   STAYOPTI_MANUAL_MARKET_NETWORK_CALLS_V3,
+  validateManualMarketPrivateIdentityPairV3,
 } from "../../src/engine-v3/evaluation/manualPublicMarketDecisionGoldenCaptureV3";
 
 const root = process.cwd();
@@ -125,4 +126,40 @@ test("T5B 16 synthetic dry run covers save, resume, encryption, snapshot, capsul
     credentialsLoaded: false,
     syntheticArtifactsDeleted: true,
   });
+});
+
+test("T5B 17 name prompt rejects a pasted URL before any save", () => {
+  assert.equal(validateManualMarketPrivateIdentityPairV3("https://www.booking.com/hotel/it/uno.it.html", "UNKNOWN").reasonCode, "MANUAL_CAPTURE_NAME_LOOKS_LIKE_URL");
+  assert.match(host, /scrivi soltanto il nome visibile, non incollare il link/);
+});
+
+test("T5B 18 locally detectable cross-property name and URL mismatch is rejected", () => {
+  assert.deepEqual(validateManualMarketPrivateIdentityPairV3("Palazzo Firenze", "https://www.booking.com/hotel/it/casa-arno.it.html"), {
+    valid: false,
+    reasonCode: "MANUAL_CAPTURE_NAME_URL_MISMATCH_DETECTED",
+  });
+  assert.equal(validateManualMarketPrivateIdentityPairV3("Palazzo Firenze", "https://www.booking.com/hotel/it/palazzo-firenze.it.html").valid, true);
+});
+
+test("T5B 19 category guidance and UNKNOWN are explicit", () => {
+  for (const value of ["Hotel 3 stelle", "Appartamento", "Affittacamere", "Campeggio", "UNKNOWN"]) assert.match(host, new RegExp(value));
+});
+
+test("T5B 20 every field is contextualized by organic position and current name", () => {
+  assert.match(host, /\[Posizione organica \$\{observedOrder\} — \$\{currentName\}\]/);
+  assert.match(host, /alternativeFieldLabel\(observedOrder, draft\.realName/);
+});
+
+test("T5B 21 a draft is confirmed and field-correctable before persistence", () => {
+  assert.match(host, /RIEPILOGO PRIMA DEL SALVATAGGIO/);
+  assert.match(host, /SALVA, CORREGGI 1\.\.17 oppure ANNULLA/);
+  const confirmationIndex = host.indexOf('action === "SALVA"');
+  const encryptionIndex = host.indexOf('realName: capturePrivate');
+  assert.ok(confirmationIndex >= 0 && encryptionIndex > confirmationIndex);
+});
+
+test("T5B 22 interrupted or cancelled incomplete alternative is never auto-saved", () => {
+  assert.match(host, /partialAlternativeAutoSave: false/);
+  assert.match(host, /Bozza annullata: nessuna alternativa e nessuna prova privata sono state salvate/);
+  assert.doesNotMatch(host.slice(host.indexOf("async function collectAlternative"), host.indexOf("const privateEvidence")), /persistState\(/);
 });

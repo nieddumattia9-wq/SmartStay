@@ -440,31 +440,153 @@ async function selectPrivateFile(repositoryRoot) {
   return selected === "" ? null : selected;
 }
 
+function alternativeFieldLabel(observedOrder, realName, label) {
+  const currentName = realName?.trim() ? realName.trim() : "nome non ancora inserito";
+  return `[Posizione organica ${observedOrder} — ${currentName}] ${label}`;
+}
+
+async function askRatingOrUnknown(rl, label) {
+  for (;;) {
+    const value = await askRequired(rl, `${label} (scala 0–10 oppure UNKNOWN)`);
+    if (value.toUpperCase() === "UNKNOWN") return null;
+    const parsed = Number(value.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 10) return parsed;
+    output.write("Inserisci un rating tra 0 e 10 oppure UNKNOWN.\n");
+  }
+}
+
+async function askTaxInclusion(rl, label) {
+  for (;;) {
+    const value = (await askRequired(rl, `${label}: INCLUDED, EXCLUDED oppure UNKNOWN`)).toUpperCase();
+    if (["INCLUDED", "EXCLUDED", "UNKNOWN"].includes(value)) return value;
+    output.write("Scrivi INCLUDED, EXCLUDED oppure UNKNOWN.\n");
+  }
+}
+
+function privateIdentityPairValid(manual, realName, sourceUrl) {
+  const result = manual.validateManualMarketPrivateIdentityPairV3(realName, sourceUrl);
+  if (!result.valid) {
+    output.write(`Nome e URL non possono essere salvati: ${result.reasonCode}. Controlla che appartengano alla stessa struttura.\n`);
+  }
+  return result.valid;
+}
+
+async function editDraftField(rl, draft, fieldNumber, context) {
+  const { manual, observedOrder, repositoryRoot } = context;
+  const label = (text) => alternativeFieldLabel(observedOrder, draft.realName, text);
+  switch (fieldNumber) {
+    case 1: {
+      for (;;) {
+        const value = await askRequired(rl, label("Nome della struttura — scrivi soltanto il nome visibile, non incollare il link"));
+        if (manual.validateManualMarketPrivateIdentityPairV3(value, "UNKNOWN").valid) {
+          draft.realName = value;
+          return;
+        }
+        output.write("Il nome sembra un URL. Scrivi soltanto il nome visibile della struttura.\n");
+      }
+    }
+    case 2: {
+      for (;;) {
+        const value = await askRequired(rl, label("URL della pagina — incolla l'URL della stessa struttura appena nominata; UNKNOWN se non visibile"));
+        if (privateIdentityPairValid(manual, draft.realName, value)) {
+          draft.sourceUrl = value;
+          return;
+        }
+      }
+    }
+    case 3:
+      draft.accommodationCategory = await askRequired(rl, label("Categoria mostrata — esempi: Hotel 3 stelle, Appartamento, Affittacamere, Campeggio; oppure UNKNOWN"));
+      return;
+    case 4:
+      draft.distanceMeters = await askIntegerOrUnknown(rl, label("Distanza dal centro — converti in metri solo se Booking mostra una distanza; altrimenti UNKNOWN"));
+      return;
+    case 5:
+      draft.rating = await askRatingOrUnknown(rl, label("Rating mostrato da Booking; non dedurlo dalle stelle"));
+      return;
+    case 6:
+      draft.reviewCount = await askIntegerOrUnknown(rl, label("Numero di recensioni mostrato accanto al rating"));
+      return;
+    case 7:
+      draft.roomEvidence = await askRequired(rl, label("Tipo di camera/alloggio e bagno privato come mostrati; oppure UNKNOWN"));
+      return;
+    case 8:
+      draft.mealPlanEvidence = await askRequired(rl, label("Trattamento mostrato, per esempio solo camera o colazione; oppure UNKNOWN"));
+      return;
+    case 9:
+      draft.totalPriceMinorUnits = await askDecimalMoneyOrUnknown(rl, label("Prezzo totale pubblico per tutte le 3 notti e 2 adulti"));
+      return;
+    case 10:
+      draft.payNowMinorUnits = await askDecimalMoneyOrUnknown(rl, label("Importo indicato da pagare subito; UNKNOWN se non visibile"));
+      return;
+    case 11:
+      draft.payAtPropertyMinorUnits = await askDecimalMoneyOrUnknown(rl, label("Importo indicato da pagare in struttura; UNKNOWN se non visibile"));
+      return;
+    case 12:
+      draft.taxInclusion = await askTaxInclusion(rl, label("Stato di tasse e costi nel totale mostrato"));
+      return;
+    case 13:
+      draft.cancellationEvidence = await askRequired(rl, label("Condizioni di cancellazione mostrate; oppure UNKNOWN"));
+      return;
+    case 14:
+      draft.refundabilityEvidence = await askRequired(rl, label("Rimborsabilità mostrata; oppure UNKNOWN"));
+      return;
+    case 15:
+      draft.amenitiesRaw = await askRequired(rl, label("Servizi rilevanti visibili, separati da virgola; oppure UNKNOWN"));
+      return;
+    case 16:
+      draft.availabilityObserved = await askYesNo(rl, label("La disponibilità è mostrata per 15–18 ottobre 2026, 2 adulti e 1 camera?"));
+      return;
+    case 17:
+      output.write(`${label("Prova privata opzionale")}: seleziona uno screenshot/pagina salvata; Annulla significa nessun file.\n`);
+      draft.selectedFile = await selectPrivateFile(repositoryRoot);
+      return;
+    default:
+      fail("MANUAL_CAPTURE_CORRECTION_FIELD_INVALID");
+  }
+}
+
+function showDraftSummary(draft, observedOrder) {
+  const shown = (value) => value === null || value === undefined || value === "" ? "UNKNOWN" : String(value);
+  output.write(`\nRIEPILOGO PRIMA DEL SALVATAGGIO — posizione organica ${observedOrder}\n`);
+  output.write(`1. Nome: ${shown(draft.realName)}\n2. URL della stessa struttura: ${shown(draft.sourceUrl)}\n`);
+  output.write(`3. Categoria: ${shown(draft.accommodationCategory)}\n4. Distanza metri: ${shown(draft.distanceMeters)}\n`);
+  output.write(`5. Rating: ${shown(draft.rating)}\n6. Recensioni: ${shown(draft.reviewCount)}\n`);
+  output.write(`7. Camera/bagno: ${shown(draft.roomEvidence)}\n8. Trattamento: ${shown(draft.mealPlanEvidence)}\n`);
+  output.write(`9. Totale EUR cent: ${shown(draft.totalPriceMinorUnits)}\n10. Pagamento subito EUR cent: ${shown(draft.payNowMinorUnits)}\n`);
+  output.write(`11. Pagamento in struttura EUR cent: ${shown(draft.payAtPropertyMinorUnits)}\n12. Tasse: ${shown(draft.taxInclusion)}\n`);
+  output.write(`13. Cancellazione: ${shown(draft.cancellationEvidence)}\n14. Rimborsabilità: ${shown(draft.refundabilityEvidence)}\n`);
+  output.write(`15. Servizi: ${shown(draft.amenitiesRaw)}\n16. Disponibilità: ${draft.availabilityObserved ? "SI" : "NO"}\n`);
+  output.write(`17. Prova privata selezionata: ${draft.selectedFile === null ? "NO" : "SI"}\n`);
+}
+
 async function collectAlternative(rl, state, store, repositoryRoot, observedOrder, replacementIndex = null) {
   output.write(`\n--- Alternativa idonea ${replacementIndex === null ? state.alternatives.length + 1 : replacementIndex + 1} di ${EXPECTED_ALTERNATIVES} ---\n`);
   output.write("Consulta la stessa ricerca Booking.com anonima. Non usare login, Genius, coupon o prezzi personali.\n");
-  const realName = await askRequired(rl, "Nome della struttura (rimane cifrato e privato)");
-  const sourceUrl = await askRequired(rl, "URL della pagina (rimane cifrato e privato; UNKNOWN se non disponibile)");
-  const accommodationCategory = await askRequired(rl, "Categoria mostrata, oppure UNKNOWN");
-  const distanceMeters = await askIntegerOrUnknown(rl, "Distanza dal centro in metri");
-  const ratingText = await askRequired(rl, "Rating su scala 10, oppure UNKNOWN");
-  const rating = ratingText.toUpperCase() === "UNKNOWN" ? null : Number(ratingText.replace(",", "."));
-  if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) fail("MANUAL_CAPTURE_RATING_INVALID");
-  const reviewCount = await askIntegerOrUnknown(rl, "Numero recensioni");
-  const roomEvidence = await askRequired(rl, "Tipo camera/alloggio e bagno privato, oppure UNKNOWN");
-  const mealPlanEvidence = await askRequired(rl, "Trattamento (solo camera/colazione/altro), oppure UNKNOWN");
-  const totalPriceMinorUnits = await askDecimalMoneyOrUnknown(rl, "Prezzo totale pubblico per 3 notti");
-  const payNowMinorUnits = await askDecimalMoneyOrUnknown(rl, "Importo da pagare subito");
-  const payAtPropertyMinorUnits = await askDecimalMoneyOrUnknown(rl, "Importo da pagare in struttura");
-  const taxInclusionRaw = (await askRequired(rl, "Tasse: INCLUDED, EXCLUDED oppure UNKNOWN")).toUpperCase();
-  const taxInclusion = ["INCLUDED", "EXCLUDED", "UNKNOWN"].includes(taxInclusionRaw) ? taxInclusionRaw : "UNKNOWN";
-  const cancellationEvidence = await askRequired(rl, "Condizioni di cancellazione, oppure UNKNOWN");
-  const refundabilityEvidence = await askRequired(rl, "Rimborsabilità, oppure UNKNOWN");
-  const amenitiesRaw = await askRequired(rl, "Servizi rilevanti separati da virgola, oppure UNKNOWN");
+  output.write("La bozza resta soltanto in memoria: nessun dato viene salvato prima del riepilogo e della conferma SALVA. UNKNOWN è sempre ammesso quando un dato non è visibile.\n");
+  const draft = { realName: "", sourceUrl: "UNKNOWN", accommodationCategory: "UNKNOWN", distanceMeters: null, rating: null, reviewCount: null, roomEvidence: "UNKNOWN", mealPlanEvidence: "UNKNOWN", totalPriceMinorUnits: null, payNowMinorUnits: null, payAtPropertyMinorUnits: null, taxInclusion: "UNKNOWN", cancellationEvidence: "UNKNOWN", refundabilityEvidence: "UNKNOWN", amenitiesRaw: "UNKNOWN", availabilityObserved: false, selectedFile: null };
+  const editContext = { manual: state.manualModule, observedOrder, repositoryRoot };
+  for (let field = 1; field <= 17; field += 1) await editDraftField(rl, draft, field, editContext);
+  for (;;) {
+    showDraftSummary(draft, observedOrder);
+    const action = (await rl.question("Scrivi SALVA, CORREGGI 1..17 oppure ANNULLA: ")).trim().toUpperCase();
+    if (action === "ANNULLA") {
+      output.write("Bozza annullata: nessuna alternativa e nessuna prova privata sono state salvate.\n");
+      return false;
+    }
+    if (action === "SALVA") {
+      if (privateIdentityPairValid(state.manualModule, draft.realName, draft.sourceUrl)) break;
+      output.write("Usa CORREGGI 1 per il nome o CORREGGI 2 per l'URL.\n");
+      continue;
+    }
+    const correction = /^CORREGGI\s+(1[0-7]|[1-9])$/.exec(action);
+    if (correction) {
+      await editDraftField(rl, draft, Number(correction[1]), editContext);
+      continue;
+    }
+    output.write("Comando non riconosciuto. Scrivi SALVA, CORREGGI seguito dal numero del campo, oppure ANNULLA.\n");
+  }
+  const { realName, sourceUrl, accommodationCategory, distanceMeters, rating, reviewCount, roomEvidence, mealPlanEvidence, totalPriceMinorUnits, payNowMinorUnits, payAtPropertyMinorUnits, taxInclusion, cancellationEvidence, refundabilityEvidence, amenitiesRaw, availabilityObserved, selectedFile } = draft;
   const amenityEvidence = amenitiesRaw.toUpperCase() === "UNKNOWN" ? [] : amenitiesRaw.split(",").map((item) => item.trim()).filter(Boolean).sort();
-  const availabilityObserved = await askYesNo(rl, "Disponibilità osservata per le date e 2 adulti/1 camera");
-  output.write("Puoi aggiungere uno screenshot o una pagina salvata come prova privata cifrata. Annulla per proseguire senza file.\n");
-  const selectedFile = await selectPrivateFile(repositoryRoot);
   const privateEvidence = {
     realName: capturePrivate(store, state, "PROPERTY_NAME", realName),
     sourceUrl: capturePrivate(store, state, "SOURCE_URL", sourceUrl),
@@ -503,6 +625,7 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
   };
   const entry = { publicData, privateEvidence };
   if (replacementIndex === null) state.alternatives.push(entry); else state.alternatives[replacementIndex] = entry;
+  return true;
 }
 
 async function interactive(context) {
@@ -510,7 +633,8 @@ async function interactive(context) {
   const sessionRoot = resolve(privateRoot, SESSION_ID);
   mkdirSync(sessionRoot, { recursive: true });
   const statePath = join(sessionRoot, "session-state.json");
-  let state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, "utf8")) : initialState();
+    let state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, "utf8")) : initialState();
+    Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
   const rl = createInterface({ input, output });
   try {
     output.write("MANUAL_CAPTURE_READY=YES\nAUTOMATED_HTTP_REQUESTS=0\nOPEN_BOOKING_IN_INCOGNITO=YES\nSESSION_ALTERNATIVES_REQUIRED=5\n\n");
@@ -530,7 +654,12 @@ async function interactive(context) {
         output.write("Esclusione salvata. Passa al risultato organico successivo.\n");
         continue;
       }
-      await collectAlternative(rl, state, store, repositoryRoot, observedOrder);
+      const saved = await collectAlternative(rl, state, store, repositoryRoot, observedOrder);
+      if (!saved) {
+        observedOrder -= 1;
+        output.write("La stessa posizione organica verrà riproposta.\n");
+        continue;
+      }
       persistState(statePath, state);
       output.write(`Alternativa salvata e prova privata cifrata. Progresso: ${state.alternatives.length}/${EXPECTED_ALTERNATIVES}.\n`);
     }
@@ -540,9 +669,11 @@ async function interactive(context) {
       const match = /^CORREGGI\s+([1-5])$/.exec(action);
       if (match) {
         const index = Number(match[1]) - 1;
-        await collectAlternative(rl, state, store, repositoryRoot, state.alternatives[index].publicData.originalOrder, index);
-        persistState(statePath, state);
-        output.write(`Alternativa ${index + 1} corretta e salvata.\n`);
+        const saved = await collectAlternative(rl, state, store, repositoryRoot, state.alternatives[index].publicData.originalOrder, index);
+        if (saved) {
+          persistState(statePath, state);
+          output.write(`Alternativa ${index + 1} corretta e salvata.\n`);
+        }
       } else output.write("Comando non riconosciuto.\n");
     }
     const downloads = resolve(process.env.USERPROFILE ?? fail("MANUAL_CAPTURE_USERPROFILE_REQUIRED"), "Downloads");
@@ -652,7 +783,7 @@ const context = { repositoryRoot, compiledRoot, privateRoot, manual, quarantine,
 const mode = option("mode") ?? "preflight";
 
 if (mode === "preflight") {
-  process.stdout.write(`${JSON.stringify({ status: "PASS", interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
+  process.stdout.write(`${JSON.stringify({ status: "PASS", interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, localNameUrlConsistencyCheck: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
 } else if (mode === "dry-run") {
   process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
 } else if (mode === "interactive") {

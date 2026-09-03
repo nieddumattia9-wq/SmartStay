@@ -28,6 +28,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0022 | 2026-09-02 | Freeze the twelve limited-comparable scenarios into a two-call CANARY2 and separate ten-call remaining stage, with main-search-only collection, encrypted quarantine and exact post-commit authorization binding. | Accepted offline gate; all collection authority remains ungranted | `decisions/0022-limited-comparable-canary2-collection-gate.md` |
 | D-0023 | 2026-09-02 | Revoke the dormant SerpApi T5 collection authority and use a private, uniform, encrypted manual public-market protocol as the active Decision Golden capture path. | Accepted offline gate; no capture or network authority | `decisions/0023-manual-public-market-decision-golden-capture.md` |
 | D-0024 | 2026-09-02 | Replace the technical JSON capture surface with a guided Italian, progressively saved and immediately encrypted manual-market canary interface. | Accepted offline usability repair; no automatic Golden admission | `decisions/0024-guided-manual-market-canary-interface.md` |
+| D-0025 | 2026-09-03 | Keep each manual alternative in memory until an explicit reviewed save; reject detectable name/URL mismatch and support field-level correction. | Accepted usability repair; no automatic Golden admission | `decisions/0025-confirm-before-save-manual-capture.md` |
 
 ## Required fields for a new decision
 

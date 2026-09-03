@@ -20,6 +20,67 @@ export const STAYOPTI_MANUAL_MARKET_PRIVATE_EVIDENCE_RELATIVE_PATH_V3 =
 export const STAYOPTI_MANUAL_MARKET_MIN_ALTERNATIVES_V3 = 5 as const;
 export const STAYOPTI_MANUAL_MARKET_MAX_ALTERNATIVES_V3 = 8 as const;
 
+export type StayOptiManualMarketPrivateIdentityCheckV3 = {
+  valid: boolean;
+  reasonCode:
+    | "MANUAL_CAPTURE_PRIVATE_IDENTITY_MATCH_PLAUSIBLE"
+    | "MANUAL_CAPTURE_PRIVATE_URL_UNKNOWN"
+    | "MANUAL_CAPTURE_NAME_LOOKS_LIKE_URL"
+    | "MANUAL_CAPTURE_SOURCE_URL_INVALID"
+    | "MANUAL_CAPTURE_SOURCE_NOT_BOOKING"
+    | "MANUAL_CAPTURE_NAME_URL_MISMATCH_DETECTED";
+};
+
+function manualIdentityTokensV3(value: string): readonly string[] {
+  const ignored = new Set(["hotel", "the", "di", "del", "della", "dei", "residence", "apartments", "apartment"]);
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3 && !ignored.has(token));
+}
+
+/**
+ * Performs a deliberately local-only plausibility check. It never resolves or
+ * fetches the URL and returns controlled reason codes without echoing private
+ * identity values.
+ */
+export function validateManualMarketPrivateIdentityPairV3(
+  visibleName: string,
+  sourceUrl: string,
+): StayOptiManualMarketPrivateIdentityCheckV3 {
+  const name = visibleName.trim();
+  const url = sourceUrl.trim();
+  if (/^(?:https?:\/\/|www\.)/i.test(name)) {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_NAME_LOOKS_LIKE_URL" };
+  }
+  if (url.toUpperCase() === "UNKNOWN") {
+    return { valid: true, reasonCode: "MANUAL_CAPTURE_PRIVATE_URL_UNKNOWN" };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_SOURCE_URL_INVALID" };
+  }
+  if (parsed.protocol !== "https:" || !/(^|\.)booking\.com$/i.test(parsed.hostname)) {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_SOURCE_NOT_BOOKING" };
+  }
+  const nameTokens = manualIdentityTokensV3(name);
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(parsed.pathname);
+  } catch {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_SOURCE_URL_INVALID" };
+  }
+  const urlTokens = new Set(manualIdentityTokensV3(decodedPath));
+  if (nameTokens.length > 0 && !nameTokens.some((token) => urlTokens.has(token))) {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_NAME_URL_MISMATCH_DETECTED" };
+  }
+  return { valid: true, reasonCode: "MANUAL_CAPTURE_PRIVATE_IDENTITY_MATCH_PLAUSIBLE" };
+}
+
 export const STAYOPTI_DORMANT_T5_EXECUTION_HEAD_V3 =
   "47b4075043afcd151a8f4f8fa8b5a8d3f2aaf669" as const;
 export const STAYOPTI_DORMANT_T5_RUNNER_BUNDLE_HASH_V3 =
