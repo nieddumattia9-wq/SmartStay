@@ -30,6 +30,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0024 | 2026-09-02 | Replace the technical JSON capture surface with a guided Italian, progressively saved and immediately encrypted manual-market canary interface. | Accepted offline usability repair; no automatic Golden admission | `decisions/0024-guided-manual-market-canary-interface.md` |
 | D-0025 | 2026-09-03 | Keep each manual alternative in memory until an explicit reviewed save; reject detectable name/URL mismatch and support field-level correction. | Accepted usability repair; no automatic Golden admission | `decisions/0025-confirm-before-save-manual-capture.md` |
 | D-0026 | 2026-09-03 | Allow backward and single-field correction throughout manual entry; separate numeric payment amounts from textual cancellation/refundability evidence. | Accepted usability repair; no automatic Golden admission | `decisions/0026-mid-entry-correction-manual-capture.md` |
+| D-0027 | 2026-09-03 | Retire the incomplete T5B session identity after invalid input and require a fresh, non-reused identity for the clean manual restart. | Accepted recovery boundary; no real data classified or exported | `decisions/0027-clean-manual-canary-restart.md` |
 
 ## Required fields for a new decision
 

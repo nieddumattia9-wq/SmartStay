@@ -20,7 +20,8 @@ import {
 } from "./provider-raw-quarantine-store.mjs";
 
 const PS51 = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
-const SESSION_ID = "V3_17T5B_FLORENCE_20261015_001";
+const PREVIOUS_ABORTED_SESSION_ID = "V3_17T5B_FLORENCE_20261015_001";
+const SESSION_ID = "V3_17T5B_FLORENCE_20261015_002";
 const EXPECTED_ALTERNATIVES = 5;
 const CAPTURE_VERSION = "stayopti.v3.manual-public-market-decision-capture@1";
 const STATE_VERSION = "stayopti.v3.manual-public-market-canary-state@1";
@@ -680,6 +681,7 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
 }
 
 async function interactive(context) {
+  if (SESSION_ID === PREVIOUS_ABORTED_SESSION_ID) fail("MANUAL_CAPTURE_ABORTED_SESSION_REUSE_PROHIBITED");
   const { repositoryRoot, privateRoot, store } = context;
   const sessionRoot = resolve(privateRoot, SESSION_ID);
   mkdirSync(sessionRoot, { recursive: true });
@@ -688,7 +690,7 @@ async function interactive(context) {
     Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
   const rl = createInterface({ input, output });
   try {
-    output.write("MANUAL_CAPTURE_READY=YES\nAUTOMATED_HTTP_REQUESTS=0\nOPEN_BOOKING_IN_INCOGNITO=YES\nSESSION_ALTERNATIVES_REQUIRED=5\n\n");
+    output.write(`MANUAL_CAPTURE_READY=YES\nSESSION_ID=${SESSION_ID}\nPREVIOUS_SESSION_REUSED=NO\nAUTOMATED_HTTP_REQUESTS=0\nOPEN_BOOKING_IN_INCOGNITO=YES\nSESSION_ALTERNATIVES_REQUIRED=5\n\n`);
     output.write("Scenario congelato: Firenze, 15–18 ottobre 2026, 3 notti, 2 adulti, 1 camera, EUR, budget totale 600 EUR, profilo BALANCED.\n");
     output.write("Apri personalmente Booking.com in una finestra anonima, senza login/Genius, e inserisci esattamente questo scenario.\n");
     output.write("Usa sempre gli stessi filtri. Considera in ordine i primi risultati organici idonei; i dati vengono salvati dopo ogni hotel.\n");
@@ -834,7 +836,7 @@ const context = { repositoryRoot, compiledRoot, privateRoot, manual, quarantine,
 const mode = option("mode") ?? "preflight";
 
 if (mode === "preflight") {
-  process.stdout.write(`${JSON.stringify({ status: "PASS", interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, interruptPartialPersistence: false, fieldCorrectionDuringEntry: true, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, textualConditionAmountGuard: true, localNameUrlConsistencyCheck: true, currentAlternativeCancellationPreservesSession: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
+  process.stdout.write(`${JSON.stringify({ status: "PASS", sessionId: SESSION_ID, previousAbortedSessionId: PREVIOUS_ABORTED_SESSION_ID, previousSessionReuse: false, interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, interruptPartialPersistence: false, fieldCorrectionDuringEntry: true, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, textualConditionAmountGuard: true, localNameUrlConsistencyCheck: true, currentAlternativeCancellationPreservesSession: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
 } else if (mode === "dry-run") {
   process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
 } else if (mode === "interactive") {

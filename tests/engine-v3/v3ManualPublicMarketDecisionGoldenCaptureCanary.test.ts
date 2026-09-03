@@ -191,3 +191,11 @@ test("T5B 26 cancellation of the current draft preserves the session", () => {
   assert.match(host, /La sessione rimane disponibile/);
   assert.match(host, /interruptPartialPersistence: false/);
 });
+
+test("T5B 27 clean restart uses a new session identity and cannot reuse the aborted attempt", () => {
+  assert.match(host, /PREVIOUS_ABORTED_SESSION_ID = "V3_17T5B_FLORENCE_20261015_001"/);
+  assert.match(host, /SESSION_ID = "V3_17T5B_FLORENCE_20261015_002"/);
+  assert.match(host, /MANUAL_CAPTURE_ABORTED_SESSION_REUSE_PROHIBITED/);
+  assert.match(host, /PREVIOUS_SESSION_REUSED=NO/);
+  assert.match(host, /previousSessionReuse: false/);
+});

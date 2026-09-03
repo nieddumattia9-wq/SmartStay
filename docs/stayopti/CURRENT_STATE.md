@@ -715,4 +715,23 @@ alternatives.
 The next action remains a clean restart of alternative one under the same
 frozen Florence scenario, followed by manual completion and postflight only.
 
+## V3-17T5B clean manual canary restart
+
+- The prior `_001` attempt is classified only as `ABORTED_INVALID_INPUT`.
+  Its process had ended before recovery inspection; its session directory was
+  empty, with no progress state, encrypted evidence or shared Evidence ZIP.
+- The empty `_001` directory was removed narrowly. No other private evidence
+  or repository dirty path was touched, and no prior value is reused or
+  prefilled.
+- The replacement capture uses the fresh local session identity
+  `V3_17T5B_FLORENCE_20261015_002`; the runner explicitly rejects reuse of the
+  retired identity and reports the active identity during preflight/startup.
+- The frozen scenario, five-alternative protocol, in-memory draft, field
+  correction, full summary and explicit `SALVA` confirmation remain unchanged.
+- No snapshot, capsule, Evidence ZIP, eligibility classification, judgment or
+  Golden admission was produced from the aborted attempt.
+
+The next action remains manual entry from organic position one in a fresh
+logged-out incognito Booking.com window.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

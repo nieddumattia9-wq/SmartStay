@@ -118,3 +118,17 @@ nothing is payable immediately does not prove that the amount payable at the
 property is zero; absent an explicit amount, the correct value is `UNKNOWN`.
 Cancellation and refundability are textual condition fields, and a bare numeric
 amount is rejected rather than coerced.
+
+## Clean restart after invalid input
+
+The incomplete `_001` attempt is retired as `ABORTED_INVALID_INPUT`. Recovery
+inspection found no saved alternative, progress state, encrypted evidence or
+shared Evidence ZIP; only its empty session directory existed and was removed
+without touching other private evidence. No value from that attempt is reused,
+recovered or prefilled.
+
+The clean restart uses `V3_17T5B_FLORENCE_20261015_002`. The runner keeps the
+same frozen Florence scenario and explicitly prevents the retired session ID
+from becoming the active session. Every new alternative begins as a blank
+in-memory draft and still requires a full summary plus explicit `SALVA` before
+any encryption or persistence.
