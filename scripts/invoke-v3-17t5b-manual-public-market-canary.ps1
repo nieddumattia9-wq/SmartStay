@@ -1,11 +1,12 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('preflight','dry-run','repair-dry-run','interactive','repair-export')]
+  [ValidateSet('preflight','dry-run','repair-dry-run','repair-preflight','interactive','repair-export')]
   [string]$Mode = 'preflight',
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^[0-9a-f]{40}$')]
   [string]$ExpectedExecutionHead,
-  [string]$SessionId = ''
+  [string]$SessionId = '',
+  [string]$DiagnosticPrivateRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,15 +16,25 @@ $LocalData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalAppl
 $PrivateRoot = Join-Path $LocalData 'StayOpti\private-evidence\manual-market-golden-capture'
 $SyntheticPrivateRoot = $null
 $IsRepairExport = $Mode -ieq 'repair-export'
+$IsRepairPreflight = $Mode -ieq 'repair-preflight'
+$IsRepairMode = $IsRepairExport -or $IsRepairPreflight
 $IsInteractive = $Mode -ieq 'interactive'
-if ($IsRepairExport) {
+if ($IsRepairMode) {
   if ([string]::IsNullOrWhiteSpace($SessionId) -or $SessionId -cnotmatch '^V3_17T5B_[A-Z0-9_]+$') {
     throw 'MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED'
   }
 } elseif (-not [string]::IsNullOrWhiteSpace($SessionId)) {
   throw 'MANUAL_CAPTURE_SESSION_ID_ONLY_ALLOWED_FOR_REPAIR'
 }
-if (-not $IsInteractive -and -not $IsRepairExport) {
+if (-not [string]::IsNullOrWhiteSpace($DiagnosticPrivateRoot)) {
+  if (-not $IsRepairPreflight) { throw 'MANUAL_CAPTURE_DIAGNOSTIC_ROOT_MODE_PROHIBITED' }
+  $ResolvedDiagnosticRoot = [IO.Path]::GetFullPath($DiagnosticPrivateRoot).TrimEnd('\')
+  $ResolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
+  if (-not $ResolvedDiagnosticRoot.StartsWith($ResolvedTemp + '\', [StringComparison]::OrdinalIgnoreCase) -or -not [IO.Path]::GetFileName($ResolvedDiagnosticRoot).StartsWith('StayOpti-V3-17T5B-RepairPreflight-', [StringComparison]::Ordinal)) {
+    throw 'MANUAL_CAPTURE_DIAGNOSTIC_ROOT_UNSAFE'
+  }
+  $PrivateRoot = $ResolvedDiagnosticRoot
+} elseif (-not $IsInteractive -and -not $IsRepairMode) {
   $SyntheticPrivateRoot = Join-Path ([IO.Path]::GetTempPath()) ('StayOpti-V3-17T5B-Preflight-' + [Guid]::NewGuid().ToString('N'))
   $PrivateRoot = $SyntheticPrivateRoot
 }
@@ -48,9 +59,10 @@ try {
       "--mode=$Mode",
       "--repository-root=$RepositoryRoot",
       "--compiled-root=$CompilationRoot",
-      "--private-root=$PrivateRoot"
+      "--private-root=$PrivateRoot",
+      "--launcher-powershell-version=$($PSVersionTable.PSVersion.ToString())"
     )
-    if ($IsRepairExport) {
+    if ($IsRepairMode) {
       $Arguments += "--session-id=$SessionId"
     }
     & node @Arguments

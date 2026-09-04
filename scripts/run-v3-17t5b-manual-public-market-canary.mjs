@@ -1,15 +1,18 @@
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
+  accessSync,
+  constants as fsConstants,
   existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createInterface } from "node:readline/promises";
@@ -36,6 +39,117 @@ function now() { return new Date().toISOString(); }
 function repairSessionId(value) {
   if (typeof value !== "string" || !/^V3_17T5B_[A-Z0-9_]+$/.test(value)) fail("MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED");
   return value;
+}
+
+function sameFilesystemPath(first, second) {
+  const left = resolve(first);
+  const right = resolve(second);
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
+
+function isWithinFilesystemPath(parent, candidate) {
+  const pathFromParent = relative(resolve(parent), resolve(candidate));
+  return pathFromParent === "" || (!pathFromParent.startsWith(`..${sep}`) && pathFromParent !== ".." && !isAbsolute(pathFromParent));
+}
+
+function inspectRepairSession(context, requestedSessionId) {
+  const sessionId = repairSessionId(requestedSessionId);
+  const sessionRoot = resolve(context.privateRoot, sessionId);
+  const statePath = join(sessionRoot, "session-state.json");
+  const diagnostic = {
+    diagnosticVersion: "stayopti.v3.manual-repair-session-preflight@1",
+    cliArguments: process.argv.slice(1),
+    sessionId,
+    processLocalAppData: process.env.LOCALAPPDATA ?? null,
+    osHomeDirectory: homedir(),
+    osTemporaryDirectory: tmpdir(),
+    launcherPowerShellVersion: option("launcher-powershell-version") ?? null,
+    privateRoot: context.privateRoot,
+    sessionRoot,
+    statePath,
+    privateRootMatchesProcessLocalAppData: process.env.LOCALAPPDATA
+      ? sameFilesystemPath(resolve(process.env.LOCALAPPDATA, "StayOpti", "private-evidence", "manual-market-golden-capture"), context.privateRoot)
+      : false,
+    privateRootUsesTemporaryDirectory: isWithinFilesystemPath(tmpdir(), context.privateRoot),
+    stateFileExists: false,
+    stateFileIsFile: false,
+    stateFileReadable: false,
+    stateJsonParseable: false,
+    stateSchemaValid: false,
+    sessionIdMatch: false,
+    alternativeCount: null,
+    noStateMutation: false,
+    failureClassification: "MANUAL_CAPTURE_REPAIR_SESSION_NOT_FOUND",
+  };
+  if (!existsSync(statePath)) return { diagnostic, state: null };
+  diagnostic.stateFileExists = true;
+  try {
+    diagnostic.stateFileIsFile = statSync(statePath).isFile();
+  } catch {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_STAT_FAILED";
+    return { diagnostic, state: null };
+  }
+  if (!diagnostic.stateFileIsFile) {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_NOT_FILE";
+    return { diagnostic, state: null };
+  }
+  try {
+    accessSync(statePath, fsConstants.R_OK);
+    diagnostic.stateFileReadable = true;
+  } catch {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_NOT_READABLE";
+    return { diagnostic, state: null };
+  }
+  let serialized;
+  try {
+    serialized = readFileSync(statePath, "utf8");
+  } catch {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_READ_FAILED";
+    return { diagnostic, state: null };
+  }
+  let state;
+  try {
+    state = JSON.parse(serialized);
+    diagnostic.stateJsonParseable = true;
+  } catch {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_PARSE_FAILED";
+    return { diagnostic, state: null };
+  }
+  diagnostic.alternativeCount = Array.isArray(state?.alternatives) ? state.alternatives.length : null;
+  diagnostic.sessionIdMatch = state?.sessionId === sessionId;
+  diagnostic.stateSchemaValid = Boolean(
+    state
+      && Object.getPrototypeOf(state) === Object.prototype
+      && state.stateVersion === STATE_VERSION
+      && typeof state.sessionId === "string"
+      && Array.isArray(state.alternatives)
+      && state.alternatives.length === EXPECTED_ALTERNATIVES
+      && state.alternatives.every((entry) => entry && Object.getPrototypeOf(entry) === Object.prototype && entry.publicData && entry.privateEvidence)
+      && state.networkCalls === 0
+      && state.credentialsLoaded === false,
+  );
+  try {
+    diagnostic.noStateMutation = readFileSync(statePath, "utf8") === serialized;
+  } catch {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_REREAD_FAILED";
+    return { diagnostic, state: null };
+  }
+  if (!diagnostic.stateSchemaValid) {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_SCHEMA_INVALID";
+    return { diagnostic, state: null };
+  }
+  if (!diagnostic.sessionIdMatch) {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_ID_MISMATCH";
+    return { diagnostic, state: null };
+  }
+  if (!diagnostic.noStateMutation) {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_CHANGED_DURING_PREFLIGHT";
+    return { diagnostic, state: null };
+  }
+  diagnostic.failureClassification = "NONE";
+  return { diagnostic, state };
 }
 
 function assertOutsideRepository(repositoryRoot, target) {
@@ -695,12 +809,13 @@ function showSavedPublicSummary(draft, alternativeNumber, originalOrder) {
 }
 
 async function repairExport(context, requestedSessionId) {
-  const sessionId = repairSessionId(requestedSessionId);
-  const sessionRoot = resolve(context.privateRoot, sessionId);
-  const statePath = join(sessionRoot, "session-state.json");
-  if (!existsSync(statePath)) fail("MANUAL_CAPTURE_REPAIR_SESSION_NOT_FOUND");
-  const state = JSON.parse(readFileSync(statePath, "utf8"));
-  if (state.sessionId !== sessionId || state.alternatives.length !== EXPECTED_ALTERNATIVES || state.networkCalls !== 0 || state.credentialsLoaded !== false) fail("MANUAL_CAPTURE_REPAIR_SESSION_INVALID");
+  const inspection = inspectRepairSession(context, requestedSessionId);
+  if (inspection.diagnostic.failureClassification !== "NONE" || inspection.state === null) {
+    process.stderr.write(`MANUAL_CAPTURE_REPAIR_PREFLIGHT=${JSON.stringify(inspection.diagnostic)}\n`);
+    fail(inspection.diagnostic.failureClassification);
+  }
+  const { sessionId, statePath } = inspection.diagnostic;
+  const state = inspection.state;
   Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
   const rl = createInterface({ input, output });
   let correctionCount = 0;
@@ -1058,6 +1173,10 @@ if (mode === "preflight") {
   process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
 } else if (mode === "repair-dry-run") {
   process.stdout.write(`${JSON.stringify(await repairDryRun(context))}\n`);
+} else if (mode === "repair-preflight") {
+  const inspection = inspectRepairSession(context, option("session-id"));
+  process.stdout.write(`${JSON.stringify(inspection.diagnostic)}\n`);
+  if (inspection.diagnostic.failureClassification !== "NONE") fail(inspection.diagnostic.failureClassification);
 } else if (mode === "interactive") {
   await interactive(context);
 } else if (mode === "repair-export") {

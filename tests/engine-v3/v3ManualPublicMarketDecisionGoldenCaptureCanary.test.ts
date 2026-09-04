@@ -260,7 +260,13 @@ test("T5B 32 repair lookup selects the explicitly requested synthetic session ra
     for (const sessionId of [selectedSessionId, decoySessionId]) {
       const sessionRoot = join(privateRoot, sessionId);
       mkdirSync(sessionRoot, { recursive: true });
-      writeFileSync(join(sessionRoot, "session-state.json"), `${JSON.stringify({ sessionId, alternatives: Array.from({ length: 5 }, () => ({})), networkCalls: 0, credentialsLoaded: false })}\n`, "utf8");
+      writeFileSync(join(sessionRoot, "session-state.json"), `${JSON.stringify({
+        stateVersion: "stayopti.v3.manual-public-market-canary-state@1",
+        sessionId,
+        alternatives: Array.from({ length: 5 }, () => ({ publicData: {}, privateEvidence: {} })),
+        networkCalls: 0,
+        credentialsLoaded: false,
+      })}\n`, "utf8");
     }
     const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, `--session-id=${selectedSessionId}`], {
       cwd: root,
@@ -292,6 +298,116 @@ test("T5B 33 repair lookup fails closed when no explicit session identity is sup
     assert.notEqual(run.status, 0);
     assert.match(run.stderr, /MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED/);
     assert.doesNotMatch(run.stdout, /OFFLINE_REPAIR_READY=YES/);
+  } finally {
+    rmSync(privateRoot, { recursive: true, force: true });
+  }
+});
+
+test("T5B 34 PowerShell launcher end-to-end preflight uses the same repair lookup without mutating state", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  assert.match(host, /async function repairExport\(context, requestedSessionId\) \{\s+const inspection = inspectRepairSession\(context, requestedSessionId\);/);
+  assert.match(host, /mode === "repair-preflight"[\s\S]+inspectRepairSession\(context, option\("session-id"\)\)/);
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairPreflight-"));
+  const sessionId = "V3_17T5B_SYNTHETIC_LAUNCHER_E2E_009";
+  const sessionRoot = join(privateRoot, sessionId);
+  const statePath = join(sessionRoot, "session-state.json");
+  mkdirSync(sessionRoot, { recursive: true });
+  const serialized = `${JSON.stringify({
+    stateVersion: "stayopti.v3.manual-public-market-canary-state@1",
+    sessionId,
+    alternatives: Array.from({ length: 5 }, () => ({ publicData: {}, privateEvidence: {} })),
+    networkCalls: 0,
+    credentialsLoaded: false,
+  })}\n`;
+  writeFileSync(statePath, serialized, "utf8");
+  try {
+    const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
+    const run = spawnSync("powershell.exe", [
+      "-NoLogo",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      launcherPath,
+      "-Mode",
+      "repair-preflight",
+      "-ExpectedExecutionHead",
+      head,
+      "-SessionId",
+      sessionId,
+      "-DiagnosticPrivateRoot",
+      privateRoot,
+    ], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
+    assert.equal(receipt.sessionId, sessionId);
+    assert.equal(receipt.privateRoot, privateRoot);
+    assert.equal(receipt.statePath, statePath);
+    assert.equal(receipt.stateFileExists, true);
+    assert.equal(receipt.stateFileIsFile, true);
+    assert.equal(receipt.stateFileReadable, true);
+    assert.equal(receipt.stateJsonParseable, true);
+    assert.equal(receipt.stateSchemaValid, true);
+    assert.equal(receipt.sessionIdMatch, true);
+    assert.equal(receipt.alternativeCount, 5);
+    assert.equal(receipt.noStateMutation, true);
+    assert.equal(receipt.failureClassification, "NONE");
+    assert.ok(receipt.cliArguments.includes(`--session-id=${sessionId}`));
+    assert.ok(receipt.cliArguments.includes(`--private-root=${privateRoot}`));
+    assert.equal(readFileSync(statePath, "utf8"), serialized);
+  } finally {
+    rmSync(privateRoot, { recursive: true, force: true });
+  }
+});
+
+test("T5B 35 repair preflight distinguishes parse failure from a missing state file", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairParse-"));
+  const sessionId = "V3_17T5B_SYNTHETIC_PARSE_010";
+  const sessionRoot = join(privateRoot, sessionId);
+  const statePath = join(sessionRoot, "session-state.json");
+  mkdirSync(sessionRoot, { recursive: true });
+  writeFileSync(statePath, "{invalid-json", "utf8");
+  try {
+    const run = spawnSync("node", [hostPath, "--mode=repair-preflight", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, "--launcher-powershell-version=5.1", `--session-id=${sessionId}`], {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    assert.notEqual(run.status, 0);
+    const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/)[0]);
+    assert.equal(receipt.stateFileExists, true);
+    assert.equal(receipt.stateFileIsFile, true);
+    assert.equal(receipt.stateFileReadable, true);
+    assert.equal(receipt.stateJsonParseable, false);
+    assert.equal(receipt.failureClassification, "MANUAL_CAPTURE_REPAIR_SESSION_PARSE_FAILED");
+    assert.equal(readFileSync(statePath, "utf8"), "{invalid-json");
+  } finally {
+    rmSync(privateRoot, { recursive: true, force: true });
+  }
+});
+
+test("T5B 36 repair-export emits the sanitized shared diagnostic before a fail-closed lookup error", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairMissing-"));
+  const sessionId = "V3_17T5B_SYNTHETIC_MISSING_011";
+  try {
+    const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, "--launcher-powershell-version=5.1", `--session-id=${sessionId}`], {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    assert.notEqual(run.status, 0);
+    const diagnosticLine = run.stderr.split(/\r?\n/).find((line) => line.startsWith("MANUAL_CAPTURE_REPAIR_PREFLIGHT="));
+    assert.ok(diagnosticLine);
+    const diagnostic = JSON.parse(diagnosticLine.slice("MANUAL_CAPTURE_REPAIR_PREFLIGHT=".length));
+    assert.equal(diagnostic.sessionId, sessionId);
+    assert.equal(diagnostic.stateFileExists, false);
+    assert.equal(diagnostic.stateFileIsFile, false);
+    assert.equal(diagnostic.stateFileReadable, false);
+    assert.equal(diagnostic.failureClassification, "MANUAL_CAPTURE_REPAIR_SESSION_NOT_FOUND");
+    assert.doesNotMatch(diagnosticLine, /hotelName|booking\.com|https?:\/\//i);
   } finally {
     rmSync(privateRoot, { recursive: true, force: true });
   }

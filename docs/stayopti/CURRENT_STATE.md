@@ -784,3 +784,24 @@ collection is required or authorized.
   deblind or Golden admission occurred during diagnosis or repair.
 
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.
+
+## V3-17T5B runtime-identical repair lookup diagnosis
+
+- The user-confirmed D-0029 command still failed with
+  `MANUAL_CAPTURE_REPAIR_SESSION_NOT_FOUND`; D-0029 is therefore not accepted as
+  proof that the operational lookup was repaired.
+- The earlier positive path probe was independent PowerShell filesystem logic,
+  not the Node resolver reached by `repair-export`. The old single
+  `existsSync` branch did not preserve enough runtime diagnostics to reconstruct
+  the exact historical divergent root after the failed process exited.
+- `repair-export` and the read-only `repair-preflight` now call one shared
+  resolver. The actual PowerShell launcher reports its effective Node
+  arguments, parsed identity, CurrentUser root and state path, then separately
+  classifies existence, file type, readability, parsing, schema, identity and
+  no-mutation checks without printing private state content.
+- A real read-only preflight for `V3_17T5B_FLORENCE_20261015_002` through that
+  launcher reports: identity match, state file present/readable, supported
+  schema, five alternatives and no state mutation.
+- No real correction, re-export, Evidence mutation, judgment, V3 execution,
+  deblind or Golden admission has occurred. A commit and a subsequent real
+  repair invocation both remain outside this diagnostic checkpoint.

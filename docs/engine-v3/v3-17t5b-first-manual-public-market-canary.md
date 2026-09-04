@@ -185,3 +185,26 @@ invalid or wrong identities fail closed without fallback. Synthetic regression
 tests place two sibling states under a temporary root and prove that only the
 explicitly requested state is selected. The repair remains user-driven and no
 real state is changed by this reconciliation.
+
+## Runtime-identical repair preflight
+
+The explicit-session D-0029 launcher still failed on the user's real invocation,
+so its standalone filesystem probe is no longer treated as proof of the
+operational path. That probe and `repair-export` did not execute the same
+resolver, and the runtime exposed only a generic `existsSync` failure. The exact
+historical alternate root is not recoverable from that output.
+
+The launcher now provides a read-only `repair-preflight` mode that traverses the
+same `inspectRepairSession` function used by `repair-export`. It records only
+sanitized technical metadata: received CLI arguments, parsed session identity,
+effective `LOCALAPPDATA`, private root, state path, file-existence/type/read
+checks, parse/schema status, embedded identity match, alternative count and a
+no-mutation check. Missing, unreadable, malformed, unsupported and mismatched
+states have separate fail-closed classifications.
+
+An end-to-end regression invokes the actual PowerShell launcher in a child
+process against a synthetic five-alternative state. A second read-only run
+through the same launcher against the real `_002` session confirms the exact
+identity, canonical CurrentUser root, regular readable state file, supported
+schema, five alternatives and no mutation. This diagnosis does not apply a
+repair or produce a new export.
