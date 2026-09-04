@@ -763,4 +763,24 @@ The next action is an explicitly user-driven offline correction/export of the
 existing T5B diagnostic session, followed by a fresh seal audit. No new market
 collection is required or authorized.
 
+## V3-17T5B repair-session lookup reconciliation
+
+- Read-only inspection confirms that the `_002` state still exists under the
+  canonical CurrentUser private root, contains five alternatives, remains
+  finalized `DIAGNOSTIC_ONLY`, and records zero network calls and zero loaded
+  credentials.
+- Collection and repair use the same private root, state version and
+  `session-state.json` filename. The saved state is structurally repairable;
+  reconstruction from shared Evidence is neither needed nor permitted.
+- The failed repair boundary used a hardcoded Node session constant rather than
+  an explicit launcher parameter. It also mixed case-insensitive PowerShell
+  mode validation with case-sensitive private-root routing, permitting a valid
+  case variant to select a temporary root.
+- `repair-export` now requires and forwards an explicit, validated session ID;
+  loaded state identity must match exactly and no fallback lookup is allowed.
+  Synthetic sibling-session tests prove deterministic selection and fail-closed
+  behavior when the identity is omitted.
+- No real correction, re-export, Evidence mutation, judgment, V3 execution,
+  deblind or Golden admission occurred during diagnosis or repair.
+
 Determine the next package from the newest Evidence and repository state. Do not infer it only from an old alphabetical package label. After every accepted checkpoint, update this file with the exact commit, suites, evidence filename, external calls, and remaining blockers.

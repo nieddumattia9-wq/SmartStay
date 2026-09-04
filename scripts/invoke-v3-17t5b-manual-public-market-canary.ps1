@@ -4,7 +4,8 @@ param(
   [string]$Mode = 'preflight',
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^[0-9a-f]{40}$')]
-  [string]$ExpectedExecutionHead
+  [string]$ExpectedExecutionHead,
+  [string]$SessionId = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +14,16 @@ $CompilationRoot = Join-Path ([IO.Path]::GetTempPath()) ('StayOpti-V3-17T5B-Comp
 $LocalData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
 $PrivateRoot = Join-Path $LocalData 'StayOpti\private-evidence\manual-market-golden-capture'
 $SyntheticPrivateRoot = $null
-if ($Mode -cne 'interactive' -and $Mode -cne 'repair-export') {
+$IsRepairExport = $Mode -ieq 'repair-export'
+$IsInteractive = $Mode -ieq 'interactive'
+if ($IsRepairExport) {
+  if ([string]::IsNullOrWhiteSpace($SessionId) -or $SessionId -cnotmatch '^V3_17T5B_[A-Z0-9_]+$') {
+    throw 'MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED'
+  }
+} elseif (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+  throw 'MANUAL_CAPTURE_SESSION_ID_ONLY_ALLOWED_FOR_REPAIR'
+}
+if (-not $IsInteractive -and -not $IsRepairExport) {
   $SyntheticPrivateRoot = Join-Path ([IO.Path]::GetTempPath()) ('StayOpti-V3-17T5B-Preflight-' + [Guid]::NewGuid().ToString('N'))
   $PrivateRoot = $SyntheticPrivateRoot
 }
@@ -40,6 +50,9 @@ try {
       "--compiled-root=$CompilationRoot",
       "--private-root=$PrivateRoot"
     )
+    if ($IsRepairExport) {
+      $Arguments += "--session-id=$SessionId"
+    }
     & node @Arguments
     if ($LASTEXITCODE -ne 0) { throw 'MANUAL_CAPTURE_RUNNER_FAILED' }
   } finally {
@@ -62,7 +75,7 @@ try {
   }
 }
 
-if ($Mode -ceq 'interactive' -or $Mode -ceq 'repair-export') {
+if ($IsInteractive -or $IsRepairExport) {
   Write-Host ''
   Write-Host 'La finestra resta aperta. Conserva il percorso Evidence mostrato al termine.'
   Read-Host 'Premi INVIO per chiudere'

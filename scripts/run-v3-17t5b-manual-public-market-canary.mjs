@@ -33,6 +33,11 @@ function sha256(value) { return createHash("sha256").update(value).digest("hex")
 function json(value) { return `${JSON.stringify(value, null, 2)}\n`; }
 function now() { return new Date().toISOString(); }
 
+function repairSessionId(value) {
+  if (typeof value !== "string" || !/^V3_17T5B_[A-Z0-9_]+$/.test(value)) fail("MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED");
+  return value;
+}
+
 function assertOutsideRepository(repositoryRoot, target) {
   const absolute = resolve(target);
   if (!isAbsolute(absolute)) fail("MANUAL_CAPTURE_ABSOLUTE_PATH_REQUIRED");
@@ -689,17 +694,18 @@ function showSavedPublicSummary(draft, alternativeNumber, originalOrder) {
   output.write(`15. Servizi: ${shown(draft.amenitiesRaw)}\n16. Disponibilità: ${draft.availabilityObserved ? "SI" : "NO"}\n`);
 }
 
-async function repairExport(context) {
-  const sessionRoot = resolve(context.privateRoot, SESSION_ID);
+async function repairExport(context, requestedSessionId) {
+  const sessionId = repairSessionId(requestedSessionId);
+  const sessionRoot = resolve(context.privateRoot, sessionId);
   const statePath = join(sessionRoot, "session-state.json");
   if (!existsSync(statePath)) fail("MANUAL_CAPTURE_REPAIR_SESSION_NOT_FOUND");
   const state = JSON.parse(readFileSync(statePath, "utf8"));
-  if (state.sessionId !== SESSION_ID || state.alternatives.length !== EXPECTED_ALTERNATIVES || state.networkCalls !== 0 || state.credentialsLoaded !== false) fail("MANUAL_CAPTURE_REPAIR_SESSION_INVALID");
+  if (state.sessionId !== sessionId || state.alternatives.length !== EXPECTED_ALTERNATIVES || state.networkCalls !== 0 || state.credentialsLoaded !== false) fail("MANUAL_CAPTURE_REPAIR_SESSION_INVALID");
   Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
   const rl = createInterface({ input, output });
   let correctionCount = 0;
   try {
-    output.write(`OFFLINE_REPAIR_READY=YES\nSESSION_ID=${SESSION_ID}\nALTERNATIVES_REUSED=5\nPRIVATE_EVIDENCE_MODIFIED=NO\nAUTOMATED_HTTP_REQUESTS=0\n`);
+    output.write(`OFFLINE_REPAIR_READY=YES\nSESSION_ID=${sessionId}\nALTERNATIVES_REUSED=5\nPRIVATE_EVIDENCE_MODIFIED=NO\nAUTOMATED_HTTP_REQUESTS=0\n`);
     output.write("Correggi soltanto i campi pubblici necessari; nomi, URL e prove private restano invariati e non vengono mostrati.\n");
     for (;;) {
       const action = (await rl.question("Scrivi CORREGGI <alternativa 1..5> <campo 3..16>, RIEPILOGO <alternativa>, RIESPORTA oppure ANNULLA: ")).trim().toUpperCase();
@@ -1055,7 +1061,7 @@ if (mode === "preflight") {
 } else if (mode === "interactive") {
   await interactive(context);
 } else if (mode === "repair-export") {
-  await repairExport(context);
+  await repairExport(context, option("session-id"));
 } else {
   fail("MANUAL_CAPTURE_MODE_UNSUPPORTED");
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import {
@@ -11,6 +12,7 @@ import {
 } from "../../src/engine-v3/evaluation/manualPublicMarketDecisionGoldenCaptureV3";
 
 const root = process.cwd();
+const compiledRoot = resolve(__dirname, "../..");
 const hostPath = resolve(root, "scripts/run-v3-17t5b-manual-public-market-canary.mjs");
 const launcherPath = resolve(root, "scripts/invoke-v3-17t5b-manual-public-market-canary.ps1");
 const pickerPath = resolve(root, "scripts/select-v3-17t5b-private-evidence.ps1");
@@ -202,6 +204,10 @@ test("T5B 27 clean restart uses a new session identity and cannot reuse the abor
 
 test("T5B 28 finalized diagnostic session supports field-targeted offline repair and re-export", () => {
   assert.match(launcher, /repair-export/);
+  assert.match(launcher, /--session-id=\$SessionId/);
+  assert.match(launcher, /MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED/);
+  assert.match(launcher, /\$Mode -ieq 'repair-export'/);
+  assert.doesNotMatch(launcher, /\$Mode -c(?:eq|ne) 'repair-export'/);
   assert.match(host, /CORREGGI <alternativa 1\.\.5> <campo 3\.\.16>/);
   assert.match(host, /ALTERNATIVES_REUSED=5/);
   assert.match(host, /PRIVATE_EVIDENCE_MODIFIED=NO/);
@@ -244,4 +250,49 @@ test("T5B 31 synthetic repair reuses five alternatives, preserves private handle
     automatedHttpRequests: 0,
     syntheticArtifactsDeleted: true,
   });
+});
+
+test("T5B 32 repair lookup selects the explicitly requested synthetic session rather than a hardcoded sibling", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairLookup-"));
+  const selectedSessionId = "V3_17T5B_SYNTHETIC_LOOKUP_007";
+  const decoySessionId = "V3_17T5B_SYNTHETIC_LOOKUP_002";
+  try {
+    for (const sessionId of [selectedSessionId, decoySessionId]) {
+      const sessionRoot = join(privateRoot, sessionId);
+      mkdirSync(sessionRoot, { recursive: true });
+      writeFileSync(join(sessionRoot, "session-state.json"), `${JSON.stringify({ sessionId, alternatives: Array.from({ length: 5 }, () => ({})), networkCalls: 0, credentialsLoaded: false })}\n`, "utf8");
+    }
+    const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, `--session-id=${selectedSessionId}`], {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+      input: "ANNULLA\n",
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    assert.match(run.stdout, new RegExp(`SESSION_ID=${selectedSessionId}`));
+    assert.doesNotMatch(run.stdout, new RegExp(decoySessionId));
+  } finally {
+    rmSync(privateRoot, { recursive: true, force: true });
+  }
+});
+
+test("T5B 33 repair lookup fails closed when no explicit session identity is supplied", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairLookupMissing-"));
+  try {
+    const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`], {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+      input: "ANNULLA\n",
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    assert.notEqual(run.status, 0);
+    assert.match(run.stderr, /MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED/);
+    assert.doesNotMatch(run.stdout, /OFFLINE_REPAIR_READY=YES/);
+  } finally {
+    rmSync(privateRoot, { recursive: true, force: true });
+  }
 });

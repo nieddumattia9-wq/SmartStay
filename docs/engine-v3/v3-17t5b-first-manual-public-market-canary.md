@@ -160,3 +160,28 @@ exact `APPLICA`. `RIESPORTA` creates a new sanitized archive from the corrected
 state. Encrypted private identity/proof handles remain unchanged and are never
 shown. The repair path expressly suppresses blind-capsule creation, V3
 execution, judgment, deblind and Golden admission.
+
+## Repair-session lookup reconciliation
+
+Read-only recovery inspection found the completed five-alternative state at the
+canonical CurrentUser root and confirmed that its embedded session identity is
+`V3_17T5B_FLORENCE_20261015_002`. The collection runner and repaired runner use
+the same state version, `session-state.json` filename and
+`%LOCALAPPDATA%\StayOpti\private-evidence\manual-market-golden-capture` root.
+No reconstruction from the sanitized ZIP is required.
+
+The initial repair launcher nevertheless did not bind a session identity in
+its command line: the Node runner selected a hardcoded constant. In addition,
+PowerShell's case-insensitive `ValidateSet` was followed by case-sensitive mode
+comparisons, so a differently cased valid mode could incorrectly select a
+synthetic temporary root. The original lookup failure cannot be reproduced at
+the canonical path now, but this ambiguous boundary is removed rather than
+treated as evidence loss.
+
+`repair-export` now requires an explicit, pattern-validated `SessionId`; the
+launcher passes it as `--session-id`, mode routing is case-insensitive, and the
+loaded state's own identity must exactly match the requested identity. Missing,
+invalid or wrong identities fail closed without fallback. Synthetic regression
+tests place two sibling states under a temporary root and prove that only the
+explicitly requested state is selected. The repair remains user-driven and no
+real state is changed by this reconciliation.
