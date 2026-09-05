@@ -19,12 +19,12 @@ $IsRepairExport = $Mode -ieq 'repair-export'
 $IsRepairPreflight = $Mode -ieq 'repair-preflight'
 $IsRepairMode = $IsRepairExport -or $IsRepairPreflight
 $IsInteractive = $Mode -ieq 'interactive'
-if ($IsRepairMode) {
-  if ([string]::IsNullOrWhiteSpace($SessionId) -or $SessionId -cnotmatch '^V3_17T5B_[A-Z0-9_]+$') {
-    throw 'MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED'
+if ($IsRepairMode -or $IsInteractive) {
+  if ([string]::IsNullOrWhiteSpace($SessionId) -or $SessionId -cnotmatch '^V3_17T5[A-Z0-9_]+$') {
+    throw 'MANUAL_CAPTURE_SUCCESSOR_SESSION_ID_REQUIRED'
   }
 } elseif (-not [string]::IsNullOrWhiteSpace($SessionId)) {
-  throw 'MANUAL_CAPTURE_SESSION_ID_ONLY_ALLOWED_FOR_REPAIR'
+  throw 'MANUAL_CAPTURE_SESSION_ID_MODE_PROHIBITED'
 }
 if (-not [string]::IsNullOrWhiteSpace($DiagnosticPrivateRoot)) {
   if (-not $IsRepairPreflight) { throw 'MANUAL_CAPTURE_DIAGNOSTIC_ROOT_MODE_PROHIBITED' }
@@ -62,7 +62,7 @@ try {
       "--private-root=$PrivateRoot",
       "--launcher-powershell-version=$($PSVersionTable.PSVersion.ToString())"
     )
-    if ($IsRepairMode) {
+    if ($IsRepairMode -or $IsInteractive) {
       $Arguments += "--session-id=$SessionId"
     }
     & node @Arguments

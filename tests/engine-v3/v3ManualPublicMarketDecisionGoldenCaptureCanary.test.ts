@@ -3,10 +3,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   STAYOPTI_MANUAL_MARKET_CREDENTIALS_LOADED_V3,
   STAYOPTI_MANUAL_MARKET_NETWORK_CALLS_V3,
+  validateManualMarketPaymentDecompositionV3,
   validateManualMarketPrivateIdentityPairV3,
   validateManualMarketTextConditionV3,
 } from "../../src/engine-v3/evaluation/manualPublicMarketDecisionGoldenCaptureV3";
@@ -17,10 +19,14 @@ const hostPath = resolve(root, "scripts/run-v3-17t5b-manual-public-market-canary
 const launcherPath = resolve(root, "scripts/invoke-v3-17t5b-manual-public-market-canary.ps1");
 const pickerPath = resolve(root, "scripts/select-v3-17t5b-private-evidence.ps1");
 const zipPath = resolve(root, "scripts/create-v3-17t5b-evidence-zip.ps1");
+const postfinalizationPath = resolve(root, "scripts/test-v3-17t5b-postfinalization-user-filesystem.ps1");
+const custodyPath = resolve(root, "scripts/manual-market-session-custody-v2.mjs");
 const host = readFileSync(hostPath, "utf8");
 const launcher = readFileSync(launcherPath, "utf8");
 const picker = readFileSync(pickerPath, "utf8");
 const zipper = readFileSync(zipPath, "utf8");
+const custody = readFileSync(custodyPath, "utf8");
+const postfinalization = readFileSync(postfinalizationPath, "utf8");
 
 test("T5B 01 interface is a guided Italian flow and not a JSON editor", () => {
   assert.match(host, /Scenario congelato: Firenze/);
@@ -48,8 +54,8 @@ test("T5B 05 a saved session resumes without re-entering prior hotels", () => {
 });
 
 test("T5B 06 corrections are supported before finalization", () => {
-  assert.match(host, /CORREGGI 1\.\.5/);
-  assert.match(host, /Alternativa \$\{index \+ 1\} corretta e salvata/);
+  assert.match(host, /CORREGGI <alternativa 1\.\.5> <campo 3\.\.16>/);
+  assert.match(host, /Le tre prove private restano invariate/);
 });
 
 test("T5B 07 private files are selected through a native dialog", () => {
@@ -102,7 +108,7 @@ test("T5B 14 PowerShell launcher binds an explicit execution HEAD before startup
 });
 
 test("T5B 15 PowerShell 5.1 scripts parse", { skip: process.platform !== "win32" }, () => {
-  for (const path of [launcherPath, pickerPath, zipPath]) {
+  for (const path of [launcherPath, pickerPath, zipPath, postfinalizationPath]) {
     const parse = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$e=$null;$t=$null;[Management.Automation.Language.Parser]::ParseFile($env:STAYOPTI_PS,[ref]$t,[ref]$e)|Out-Null;if($e.Count){exit 1}"], { encoding: "utf8", windowsHide: true, env: { ...process.env, STAYOPTI_PS: path } });
     assert.equal(parse.status, 0, parse.stderr);
   }
@@ -122,9 +128,16 @@ test("T5B 16 synthetic dry run covers save, resume, encryption, snapshot, capsul
     encryptedPrivateEvidence: true,
     tamperDetection: true,
     providerNeutralSnapshot: true,
-    blindCapsule: true,
+    blindCapsule: false,
     sanitizedEvidence: true,
     plaintextPrivateEvidenceAtRest: false,
+    sessionScopedCustody: true,
+    atomicVersionedState: true,
+    privateManifest: true,
+    fileByFileFingerprintBinding: true,
+    finalizedSessionReopened: true,
+    powerShell51PostfinalizationVerifierAvailable: true,
+    syntheticFixtureEligibleAsRealProof: false,
     automatedHttpRequests: 0,
     credentialsLoaded: false,
     syntheticArtifactsDeleted: true,
@@ -186,6 +199,9 @@ test("T5B 24 numeric values cannot become refundability or cancellation conditio
 test("T5B 25 pay-later wording cannot silently become a zero pay-at-property amount", () => {
   assert.match(host, /se leggi soltanto 'non paghi ora', scrivi UNKNOWN: non equivale a pagamento in struttura = 0/);
   assert.match(host, /IMPORTO NUMERICO da pagare in struttura/);
+  assert.equal(validateManualMarketPaymentDecompositionV3(54400, 54360, 0).reasonCode, "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH");
+  assert.equal(validateManualMarketPaymentDecompositionV3(54400, 54360, null).reasonCode, "MANUAL_CAPTURE_PAYMENT_SPLIT_PARTIALLY_UNKNOWN");
+  assert.match(host, /Nessun dato è stato salvato/);
 });
 
 test("T5B 26 cancellation of the current draft preserves the session", () => {
@@ -194,18 +210,17 @@ test("T5B 26 cancellation of the current draft preserves the session", () => {
   assert.match(host, /interruptPartialPersistence: false/);
 });
 
-test("T5B 27 clean restart uses a new session identity and cannot reuse the aborted attempt", () => {
-  assert.match(host, /PREVIOUS_ABORTED_SESSION_ID = "V3_17T5B_FLORENCE_20261015_001"/);
-  assert.match(host, /SESSION_ID = "V3_17T5B_FLORENCE_20261015_002"/);
-  assert.match(host, /MANUAL_CAPTURE_ABORTED_SESSION_REUSE_PROHIBITED/);
-  assert.match(host, /PREVIOUS_SESSION_REUSED=NO/);
-  assert.match(host, /previousSessionReuse: false/);
+test("T5B 27 legacy diagnostic sessions are immutable and successor identity is explicit", () => {
+  assert.match(host, /RETIRED_DIAGNOSTIC_SESSION_ID = "V3_17T5B_FLORENCE_20261015_002"/);
+  assert.match(host, /validateSuccessorSessionIdV2\(option\("session-id"\)\)/);
+  assert.match(launcher, /MANUAL_CAPTURE_SUCCESSOR_SESSION_ID_REQUIRED/);
+  assert.match(host, /legacySessionRepairAllowed: false/);
 });
 
 test("T5B 28 finalized diagnostic session supports field-targeted offline repair and re-export", () => {
   assert.match(launcher, /repair-export/);
   assert.match(launcher, /--session-id=\$SessionId/);
-  assert.match(launcher, /MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED/);
+  assert.match(launcher, /MANUAL_CAPTURE_SUCCESSOR_SESSION_ID_REQUIRED/);
   assert.match(launcher, /\$Mode -ieq 'repair-export'/);
   assert.doesNotMatch(launcher, /\$Mode -c(?:eq|ne) 'repair-export'/);
   assert.match(host, /CORREGGI <alternativa 1\.\.5> <campo 3\.\.16>/);
@@ -252,36 +267,13 @@ test("T5B 31 synthetic repair reuses five alternatives, preserves private handle
   });
 });
 
-test("T5B 32 repair lookup selects the explicitly requested synthetic session rather than a hardcoded sibling", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
-  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairLookup-"));
-  const selectedSessionId = "V3_17T5B_SYNTHETIC_LOOKUP_007";
-  const decoySessionId = "V3_17T5B_SYNTHETIC_LOOKUP_002";
+test("T5B 32 retired diagnostic session cannot enter repair lookup", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-Retired-"));
   try {
-    for (const sessionId of [selectedSessionId, decoySessionId]) {
-      const sessionRoot = join(privateRoot, sessionId);
-      mkdirSync(sessionRoot, { recursive: true });
-      writeFileSync(join(sessionRoot, "session-state.json"), `${JSON.stringify({
-        stateVersion: "stayopti.v3.manual-public-market-canary-state@1",
-        sessionId,
-        alternatives: Array.from({ length: 5 }, () => ({ publicData: {}, privateEvidence: {} })),
-        networkCalls: 0,
-        credentialsLoaded: false,
-      })}\n`, "utf8");
-    }
-    const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, `--session-id=${selectedSessionId}`], {
-      cwd: root,
-      encoding: "utf8",
-      windowsHide: true,
-      input: "ANNULLA\n",
-      timeout: 120_000,
-      maxBuffer: 8 * 1024 * 1024,
-    });
-    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-    assert.match(run.stdout, new RegExp(`SESSION_ID=${selectedSessionId}`));
-    assert.doesNotMatch(run.stdout, new RegExp(decoySessionId));
-  } finally {
-    rmSync(privateRoot, { recursive: true, force: true });
-  }
+    const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, "--session-id=V3_17T5B_FLORENCE_20261015_002"], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000 });
+    assert.notEqual(run.status, 0);
+    assert.match(run.stderr, /MANUAL_CAPTURE_LEGACY_DIAGNOSTIC_SESSION_IMMUTABLE/);
+  } finally { rmSync(privateRoot, { recursive: true, force: true }); }
 });
 
 test("T5B 33 repair lookup fails closed when no explicit session identity is supplied", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
@@ -303,60 +295,14 @@ test("T5B 33 repair lookup fails closed when no explicit session identity is sup
   }
 });
 
-test("T5B 34 PowerShell launcher end-to-end preflight uses the same repair lookup without mutating state", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
-  assert.match(host, /async function repairExport\(context, requestedSessionId\) \{\s+const inspection = inspectRepairSession\(context, requestedSessionId\);/);
-  assert.match(host, /mode === "repair-preflight"[\s\S]+inspectRepairSession\(context, option\("session-id"\)\)/);
-  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairPreflight-"));
-  const sessionId = "V3_17T5B_SYNTHETIC_LAUNCHER_E2E_009";
-  const sessionRoot = join(privateRoot, sessionId);
-  const statePath = join(sessionRoot, "session-state.json");
-  mkdirSync(sessionRoot, { recursive: true });
-  const serialized = `${JSON.stringify({
-    stateVersion: "stayopti.v3.manual-public-market-canary-state@1",
-    sessionId,
-    alternatives: Array.from({ length: 5 }, () => ({ publicData: {}, privateEvidence: {} })),
-    networkCalls: 0,
-    credentialsLoaded: false,
-  })}\n`;
-  writeFileSync(statePath, serialized, "utf8");
-  try {
-    const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-    const run = spawnSync("powershell.exe", [
-      "-NoLogo",
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      launcherPath,
-      "-Mode",
-      "repair-preflight",
-      "-ExpectedExecutionHead",
-      head,
-      "-SessionId",
-      sessionId,
-      "-DiagnosticPrivateRoot",
-      privateRoot,
-    ], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
-    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-    const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
-    assert.equal(receipt.sessionId, sessionId);
-    assert.equal(receipt.privateRoot, privateRoot);
-    assert.equal(receipt.statePath, statePath);
-    assert.equal(receipt.stateFileExists, true);
-    assert.equal(receipt.stateFileIsFile, true);
-    assert.equal(receipt.stateFileReadable, true);
-    assert.equal(receipt.stateJsonParseable, true);
-    assert.equal(receipt.stateSchemaValid, true);
-    assert.equal(receipt.sessionIdMatch, true);
-    assert.equal(receipt.alternativeCount, 5);
-    assert.equal(receipt.noStateMutation, true);
-    assert.equal(receipt.failureClassification, "NONE");
-    assert.ok(receipt.cliArguments.includes(`--session-id=${sessionId}`));
-    assert.ok(receipt.cliArguments.includes(`--private-root=${privateRoot}`));
-    assert.equal(readFileSync(statePath, "utf8"), serialized);
-  } finally {
-    rmSync(privateRoot, { recursive: true, force: true });
-  }
+test("T5B 34 true PowerShell launcher finalizes then reopens hardened synthetic custody", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
+  const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
+  assert.equal(receipt.powerShell51PostfinalizationVerifierAvailable, true);
+  assert.equal(receipt.finalizedSessionReopened, true);
+  assert.equal(receipt.syntheticFixtureEligibleAsRealProof, false);
 });
 
 test("T5B 35 repair preflight distinguishes parse failure from a missing state file", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
@@ -411,4 +357,94 @@ test("T5B 36 repair-export emits the sanitized shared diagnostic before a fail-c
   } finally {
     rmSync(privateRoot, { recursive: true, force: true });
   }
+});
+
+test("T5B 37 successor custody is session-scoped and legacy diagnostic identities are immutable", () => {
+  assert.match(custody, /MANUAL_CAPTURE_LEGACY_DIAGNOSTIC_SESSION_IMMUTABLE/);
+  assert.match(custody, /encryptedRoot: join\(sessionRoot, "encrypted"\)/);
+  assert.match(host, /legacySessionRepairAllowed: false/);
+});
+
+test("T5B 38 state is atomic, versioned, recoverable and never deleted at finalization", () => {
+  assert.match(custody, /session-state\.recovery\.json/);
+  assert.match(custody, /state-history/);
+  assert.match(custody, /persistVersionedSessionStateV2/);
+  assert.match(custody, /renameSync\(temporary, path\)/);
+  assert.doesNotMatch(host.slice(host.indexOf("async function finalize"), host.indexOf("async function askRequired")), /rmSync\([^\n]*(?:statePath|sessionRoot|privateManifestPath)/);
+});
+
+test("T5B 39 each alternative is bound to three encrypted envelopes and shared Evidence receives non-identifying fingerprints", () => {
+  for (const kind of ["PROPERTY_NAME", "SOURCE_URL", "SCREENSHOT"]) assert.match(custody, new RegExp(kind));
+  assert.match(custody, /MANUAL_CAPTURE_THREE_PRIVATE_ENVELOPES_REQUIRED/);
+  assert.match(host, /private-envelope-fingerprints\.json/);
+  assert.match(custody, /FILE_BY_FILE_NON_IDENTIFYING_HASH_BINDING/);
+});
+
+test("T5B 40 fixtures and temporary roots can never be promoted as real filesystem proof", () => {
+  assert.match(postfinalization, /eligibleAsRealOperationalProof/);
+  assert.match(postfinalization, /fixtureOrTempResultPromotableToRealProof = \$false/);
+  assert.match(postfinalization, /SYNTHETIC_TEMP_FIXTURE/);
+  assert.match(host, /syntheticFixtureEligibleAsRealProof: false/);
+});
+
+test("T5B 41 successor save requires complete payment consistency and three private evidence items", () => {
+  assert.match(host, /validateManualMarketPaymentDecompositionV3/);
+  assert.match(host, /draft\.selectedFile === null/);
+  assert.match(host, /Nessun dato è stato salvato/);
+  assert.equal(validateManualMarketPaymentDecompositionV3(60000, 50000, 10000).valid, true);
+});
+
+test("T5B 42 implausible dates and case-insensitive unknown remain fail-closed", () => {
+  assert.equal(validateManualMarketTextConditionV3("Rimborsabile prima del 122 ott").reasonCode, "MANUAL_CAPTURE_TEXT_DATE_IMPLAUSIBLE");
+  assert.equal(validateManualMarketTextConditionV3("unknown").reasonCode, "MANUAL_CAPTURE_TEXT_CONDITION_UNKNOWN");
+});
+
+test("T5B 43 PowerShell 5.1 postfinalization verifier checks a synthetic session file by file and refuses real-proof promotion", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+  const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-Postfinalization-"));
+  const sessionId = "V3_17T5C_SYNTHETIC_POSTFINALIZATION_001";
+  const sessionRoot = join(privateRoot, sessionId);
+  const encryptedRoot = join(sessionRoot, "encrypted");
+  const historyRoot = join(sessionRoot, "state-history");
+  mkdirSync(encryptedRoot, { recursive: true });
+  mkdirSync(historyRoot, { recursive: true });
+  const alternatives = [];
+  const alternativeBindings = [];
+  const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
+  let ordinal = 0;
+  for (let index = 0; index < 5; index += 1) {
+    const localCaptureId = `MANUAL_ALT_${String(index + 1).padStart(2, "0")}`;
+    const privateEvidence: Record<string, unknown> = {};
+    const envelopes = [];
+    for (const [field, evidenceKind] of [["realName", "PROPERTY_NAME"], ["sourceUrl", "SOURCE_URL"], ["screenshot", "SCREENSHOT"]] as const) {
+      ordinal += 1;
+      const entryId = `synthetic-entry-${String(ordinal).padStart(2, "0")}`;
+      const envelopeFingerprint = hash(`fingerprint-${ordinal}`);
+      const serialized = `${JSON.stringify({ entryId, envelopeFingerprint, sessionReference: sessionId, requestKind: evidenceKind })}\n`;
+      const filename = `${entryId}.stayopti-rawq`;
+      writeFileSync(join(encryptedRoot, filename), serialized, "utf8");
+      const handle = { entryId, path: join(encryptedRoot, filename), envelopeFingerprint };
+      privateEvidence[field] = handle;
+      envelopes.push({ evidenceKind, requestOrdinal: ordinal, entryId, relativePath: `encrypted/${filename}`, envelopeFingerprint, envelopeFileSha256: hash(serialized), localCaptureId });
+    }
+    alternatives.push({ publicData: { localCaptureId }, privateEvidence });
+    alternativeBindings.push({ localCaptureId, envelopes });
+  }
+  const manifest = { manifestVersion: "stayopti.v3.manual-public-market-private-manifest@2", sessionId, stateVersion: "stayopti.v3.manual-public-market-canary-state@2", alternativeBindings, createdAt: "2026-09-04T00:00:00.000Z", manifestFingerprint: hash("synthetic-manifest-material") };
+  const manifestSerialized = `${JSON.stringify(manifest, null, 2)}\n`;
+  const manifestHash = hash(manifestSerialized);
+  writeFileSync(join(sessionRoot, "private-manifest.json"), manifestSerialized, "utf8");
+  const state = { stateVersion: "stayopti.v3.manual-public-market-canary-state@2", sessionId, stateRevision: 2, alternatives, finalized: true, finalizedCustodyVerified: true, privateManifestFileSha256: manifestHash, finalizedPrivateManifestFileSha256: manifestHash };
+  const stateSerialized = `${JSON.stringify(state, null, 2)}\n`;
+  writeFileSync(join(sessionRoot, "session-state.json"), stateSerialized, "utf8");
+  writeFileSync(join(sessionRoot, "session-state.recovery.json"), stateSerialized, "utf8");
+  writeFileSync(join(historyRoot, "session-state-r000002-synthetic.json"), stateSerialized, "utf8");
+  try {
+    const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", postfinalizationPath, "-SessionId", sessionId, "-DiagnosticPrivateRoot", privateRoot, "-SyntheticFixture"], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000 });
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    const receipt = JSON.parse(run.stdout.trim());
+    assert.equal(receipt.status, "PASS");
+    assert.equal(receipt.envelopeCount, 15);
+    assert.equal(receipt.eligibleAsRealOperationalProof, false);
+    assert.equal(receipt.fixtureOrTempResultPromotableToRealProof, false);
+  } finally { rmSync(privateRoot, { recursive: true, force: true }); }
 });

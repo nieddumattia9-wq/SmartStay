@@ -805,3 +805,50 @@ Determine the next package from the newest Evidence and repository state. Do not
 - No real correction, re-export, Evidence mutation, judgment, V3 execution,
   deblind or Golden admission has occurred. A commit and a subsequent real
   repair invocation both remain outside this diagnostic checkpoint.
+
+## V3-17T5B legacy custody incident closure and successor hardening
+
+- Direct inspection by the user in Windows PowerShell found no
+  `V3_17T5B_FLORENCE_20261015_002` directory and no `session-state.json` in
+  the real CurrentUser private root. The earlier positive probes observed a
+  divergent Codex filesystem namespace or synthetic `%TEMP%` fixtures and are
+  not valid evidence of the user's filesystem. D-0029 and D-0030 are
+  superseded on that factual claim.
+- The original sanitized ZIP remains byte-bound by SHA-256
+  `c0e26c01aab4f4cc5486345955a91cb74d9c0722b5591556ed996718ceccc598`.
+  Its five provider-neutral alternatives are deterministically recoverable.
+  The fifteen legacy encrypted envelopes remain unchanged, but the ZIP-to-file
+  relationship is only aggregate and cannot be strengthened retroactively.
+- Session `_002` is permanently `DIAGNOSTIC_ONLY`. It is not eligible for
+  blind judgment, V3 replay, deblind, repair-export or any form of Golden
+  admission. No state reconstruction or evidence relinking is permitted.
+- The successor collector requires an explicit non-legacy session identity
+  and writes all encrypted envelopes below that session's own `encrypted`
+  directory. It atomically persists `session-state.json`, an immutable version
+  history, a recovery copy and a private per-alternative three-envelope
+  manifest; finalization preserves every one of these artifacts.
+- Shared sanitized Evidence receives only non-identifying per-envelope and
+  ciphertext-file SHA-256 bindings. A dedicated PowerShell 5.1 command reopens
+  the finalized state directly under the user's CurrentUser filesystem and
+  verifies all fifteen files without decryption. Synthetic/TEMP results report
+  that they cannot serve as real operational proof.
+- Collection finalization no longer creates a blind capsule automatically.
+  Case-insensitive unknown normalization, pre-save payment decomposition,
+  textual-position separation, implausible-date rejection, full summary and
+  targeted pre/post-finalization correction are enforced offline.
+
+The next action is validation of this forward-only hardening. A new real
+manual collection remains unauthorized until the working tree is committed by
+separate user approval and the direct user-filesystem verification procedure
+has been accepted.
+
+Validation completed offline on 2026-09-04: the targeted successor-custody
+suite passed 43/43, the canonical Engine V3 suite passed 1514/1514 (including
+the real Windows PowerShell 5.1 T1C launcher path under an isolated Git view
+that preserved the exact seven-path dirty contract), Engine V2 passed 196/196,
+TypeScript compilation passed, and both new PowerShell files parsed under
+Windows PowerShell 5.1. No HTTP, provider call, credential access, evidence
+mutation, commit, push or fetch occurred. The implementation is ready for a
+separately authorized successor capture; only a post-finalization verification
+run against the user's canonical CurrentUser filesystem may establish that a
+future real session satisfied the custody contract.

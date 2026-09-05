@@ -15,7 +15,8 @@ guided Italian questionnaire that:
 - saves after every accepted or excluded result;
 - resumes the same session automatically;
 - permits correction before finalization;
-- opens a native private-file selector for optional screenshots or saved pages;
+- opens a native private-file selector; successor custody requires one private
+  screenshot or saved-page envelope per accepted alternative;
 - never asks for JSON editing, API keys, login, payment, or technical commands.
 
 The execution command is intentionally supplied by Codex with the exact
@@ -70,9 +71,11 @@ admission or Live Bookable Golden admission occurs in T5B.
 ## Synthetic dry run
 
 Before opening the real tool, the runner performs a five-alternative synthetic
-cycle covering progressive save, resume, validation, AES-GCM/DPAPI custody,
-tamper rejection, provider-neutral snapshot, blind capsule, sanitized Evidence
-ZIP and checksum roundtrip. Its unique temporary directories and ZIP are
+cycle covering progressive save, resume, validation, AES-GCM custody, tamper
+rejection, provider-neutral snapshot, sanitized Evidence ZIP, session reopen
+and checksum roundtrip. Synthetic key protection is explicitly test-only;
+CurrentUser DPAPI remains mandatory for real sessions. Blind-capsule creation
+is deliberately absent from collection finalization. Its unique temporary directories and ZIP are
 deleted at completion. The run performs zero HTTP and loads zero credentials.
 
 ## Non-goals
@@ -208,3 +211,47 @@ through the same launcher against the real `_002` session confirms the exact
 identity, canonical CurrentUser root, regular readable state file, supported
 schema, five alternatives and no mutation. This diagnosis does not apply a
 repair or produce a new export.
+
+## Legacy custody incident closure
+
+The user's direct Windows PowerShell inspection supersedes the prior
+runtime-probe conclusion: the real CurrentUser root contains the legacy
+`encrypted` directory but no `_002` session directory and no
+`session-state.json`. Prior positive observations came from a divergent Codex
+filesystem namespace or synthetic temporary fixtures and cannot prove the
+user-visible filesystem.
+
+The original ZIP identified by
+`c0e26c01aab4f4cc5486345955a91cb74d9c0722b5591556ed996718ceccc598`
+and the fifteen `.stayopti-rawq` envelopes remain immutable. The ZIP reliably
+recovers five sanitized provider-neutral alternatives, while its relationship
+to the encrypted custody is aggregate only. No per-file association is
+asserted or retrofitted. Session `_002` remains `DIAGNOSTIC_ONLY`; blind
+judgment, V3 replay, deblind, repair and Golden admission are prohibited.
+
+## Successor custody contract
+
+New sessions use state contract version 2 and must provide a fresh explicit
+session ID. Their directory contains:
+
+- `session-state.json`, atomically replaced after every accepted state change;
+- `session-state.recovery.json` and immutable `state-history/` versions;
+- a session-local `encrypted/` directory;
+- `private-manifest.json` plus immutable manifest history, binding each local
+  alternative to exactly one name, URL and screenshot envelope.
+
+Before `SALVA`, the runner shows the full draft, requires explicit
+confirmation, checks name/URL plausibility, requires all three private
+envelopes and immediately checks that a fully known payment decomposition
+matches the displayed total. `UNKNOWN` is case-insensitive. Verified textual
+position and numeric distance remain distinct, and implausible textual dates
+are rejected. The same public fields can be corrected after finalization, but
+legacy `_002` cannot enter that path.
+
+The sanitized Evidence package includes only non-identifying envelope and
+file SHA-256 fingerprints. A separate PowerShell 5.1 post-finalization verifier
+must be run directly against the user's CurrentUser filesystem; it checks
+state, recovery/history, private manifest and all fifteen encrypted files
+without decryption. Synthetic or `%TEMP%` runs are labeled non-promotable and
+cannot establish real collection proof. Collection finalization does not create
+a blind capsule or admit Golden evidence.

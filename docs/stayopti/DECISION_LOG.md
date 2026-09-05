@@ -34,6 +34,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0028 | 2026-09-03 | Keep the completed T5B sample diagnostic-only, normalize explicit unknown evidence case-insensitively, validate payment decomposition and preserve verified textual location without fabricated distance. | Accepted offline validation repair; no blind judgment, V3 execution or Golden admission | `decisions/0028-manual-capture-validation-and-reexport-repair.md` |
 | D-0029 | 2026-09-04 | Bind manual repair-export to an explicit validated session identity and route private modes case-insensitively; never reconstruct a repairable private state from shared Evidence. | Accepted offline lookup repair; no real state mutation or export | `decisions/0029-explicit-manual-repair-session-lookup.md` |
 | D-0030 | 2026-09-04 | Require repair lookup proof through the actual PowerShell-to-Node runtime and one shared resolver; distinguish missing, unreadable, malformed and mismatched private states. | Accepted offline diagnostic repair; operationally supersedes D-0029's incomplete proof | `decisions/0030-runtime-identical-manual-repair-preflight.md` |
+| D-0031 | 2026-09-04 | Close the legacy `_002` manual canary as diagnostic-only and require session-scoped, versioned, file-by-file verifiable private custody for every successor capture. | Accepted forward-only custody repair; operationally supersedes D-0029/D-0030 state-existence claims | `decisions/0031-manual-capture-custody-incident-and-successor-hardening.md` |
 
 ## Required fields for a new decision
 

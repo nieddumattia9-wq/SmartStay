@@ -111,6 +111,35 @@ export function normalizeManualMarketUnknownTextV3(value: string | null | undefi
   return normalized.toUpperCase() === "UNKNOWN" ? null : normalized;
 }
 
+export type StayOptiManualMarketPaymentDecompositionCheckV3 = {
+  valid: boolean;
+  reasonCode:
+    | "MANUAL_CAPTURE_PAYMENT_SPLIT_COMPLETE_AND_COHERENT"
+    | "MANUAL_CAPTURE_PAYMENT_SPLIT_PARTIALLY_UNKNOWN"
+    | "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH"
+    | "MANUAL_CAPTURE_PAYMENT_COMPONENT_INVALID";
+};
+
+/** Runs before persistence: UNKNOWN components remain unknown, while a complete split must equal the stay total. */
+export function validateManualMarketPaymentDecompositionV3(
+  totalAmount: number | null,
+  payNowAmount: number | null,
+  payAtPropertyAmount: number | null,
+): StayOptiManualMarketPaymentDecompositionCheckV3 {
+  for (const amount of [totalAmount, payNowAmount, payAtPropertyAmount]) {
+    if (amount !== null && (!Number.isInteger(amount) || amount < 0)) {
+      return { valid: false, reasonCode: "MANUAL_CAPTURE_PAYMENT_COMPONENT_INVALID" };
+    }
+  }
+  if (totalAmount === null || payNowAmount === null || payAtPropertyAmount === null) {
+    return { valid: true, reasonCode: "MANUAL_CAPTURE_PAYMENT_SPLIT_PARTIALLY_UNKNOWN" };
+  }
+  if (payNowAmount + payAtPropertyAmount !== totalAmount) {
+    return { valid: false, reasonCode: "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH" };
+  }
+  return { valid: true, reasonCode: "MANUAL_CAPTURE_PAYMENT_SPLIT_COMPLETE_AND_COHERENT" };
+}
+
 export const STAYOPTI_DORMANT_T5_EXECUTION_HEAD_V3 =
   "47b4075043afcd151a8f4f8fa8b5a8d3f2aaf669" as const;
 export const STAYOPTI_DORMANT_T5_RUNNER_BUNDLE_HASH_V3 =
@@ -425,7 +454,7 @@ function validatePrice(price: StayOptiManualMarketPriceV3 | null, currency: stri
   for (const [field, amount] of [["payNowAmount", price.payNowAmount], ["payAtPropertyAmount", price.payAtPropertyAmount]] as const) {
     if (amount !== null && (!Number.isInteger(amount) || amount < 0)) issues.push({ code: "MANUAL_CAPTURE_PRICE_COMPONENT_INVALID", path: `${path}.${field}`, disposition: "REJECTED" });
   }
-  if (price.payNowAmount !== null && price.payAtPropertyAmount !== null && price.payNowAmount + price.payAtPropertyAmount !== price.amount) {
+  if (validateManualMarketPaymentDecompositionV3(price.amount, price.payNowAmount, price.payAtPropertyAmount).reasonCode === "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH") {
     issues.push({ code: "MANUAL_CAPTURE_PAYMENT_SPLIT_MISMATCH", path, disposition: "DIAGNOSTIC_ONLY" });
   }
 }

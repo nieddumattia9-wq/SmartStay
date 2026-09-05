@@ -21,13 +21,22 @@ import {
   createProviderRawQuarantineStoreV3,
   createWindowsCurrentUserDpapiProtectorV3,
 } from "./provider-raw-quarantine-store.mjs";
+import {
+  MANUAL_MARKET_STATE_VERSION_V2,
+  createManualMarketSessionPathsV2,
+  persistPrivateManifestV2,
+  persistVersionedSessionStateV2,
+  readAndVerifyPrivateManifestV2,
+  sanitizedEnvelopeFingerprintProjectionV2,
+  validateSuccessorSessionIdV2,
+} from "./manual-market-session-custody-v2.mjs";
 
 const PS51 = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
-const PREVIOUS_ABORTED_SESSION_ID = "V3_17T5B_FLORENCE_20261015_001";
-const SESSION_ID = "V3_17T5B_FLORENCE_20261015_002";
+const RETIRED_DIAGNOSTIC_SESSION_ID = "V3_17T5B_FLORENCE_20261015_002";
+const SYNTHETIC_SESSION_ID = "V3_17T5C_SYNTHETIC_HARDENING_001";
 const EXPECTED_ALTERNATIVES = 5;
 const CAPTURE_VERSION = "stayopti.v3.manual-public-market-decision-capture@1";
-const STATE_VERSION = "stayopti.v3.manual-public-market-canary-state@1";
+const STATE_VERSION = MANUAL_MARKET_STATE_VERSION_V2;
 const EVIDENCE_VERSION = "stayopti.v3.manual-public-market-canary-evidence@1";
 
 function fail(code) { throw new Error(code); }
@@ -37,8 +46,8 @@ function json(value) { return `${JSON.stringify(value, null, 2)}\n`; }
 function now() { return new Date().toISOString(); }
 
 function repairSessionId(value) {
-  if (typeof value !== "string" || !/^V3_17T5B_[A-Z0-9_]+$/.test(value)) fail("MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED");
-  return value;
+  if (typeof value !== "string" || value.trim() === "") fail("MANUAL_CAPTURE_REPAIR_SESSION_ID_REQUIRED");
+  return validateSuccessorSessionIdV2(value);
 }
 
 function sameFilesystemPath(first, second) {
@@ -56,8 +65,8 @@ function isWithinFilesystemPath(parent, candidate) {
 
 function inspectRepairSession(context, requestedSessionId) {
   const sessionId = repairSessionId(requestedSessionId);
-  const sessionRoot = resolve(context.privateRoot, sessionId);
-  const statePath = join(sessionRoot, "session-state.json");
+  const paths = createManualMarketSessionPathsV2(context.privateRoot, sessionId);
+  const { sessionRoot, statePath } = paths;
   const diagnostic = {
     diagnosticVersion: "stayopti.v3.manual-repair-session-preflight@1",
     cliArguments: process.argv.slice(1),
@@ -148,8 +157,14 @@ function inspectRepairSession(context, requestedSessionId) {
     diagnostic.failureClassification = "MANUAL_CAPTURE_REPAIR_SESSION_CHANGED_DURING_PREFLIGHT";
     return { diagnostic, state: null };
   }
+  try {
+    readAndVerifyPrivateManifestV2(paths, state);
+  } catch {
+    diagnostic.failureClassification = "MANUAL_CAPTURE_PRIVATE_CUSTODY_NOT_VERIFIABLE";
+    return { diagnostic, state: null };
+  }
   diagnostic.failureClassification = "NONE";
-  return { diagnostic, state };
+  return { diagnostic, state, paths };
 }
 
 function assertOutsideRepository(repositoryRoot, target) {
@@ -178,7 +193,10 @@ function runPowerShell(script, args, env = process.env) {
     env,
     maxBuffer: 8 * 1024 * 1024,
   });
-  if (result.status !== 0 || result.stderr.trim() !== "") fail("MANUAL_CAPTURE_POWERSHELL_HELPER_FAILED");
+  if (result.status !== 0) {
+    const controlledCode = result.stderr.match(/MANUAL_CAPTURE_[A-Z0-9_]+/)?.[0] ?? "MANUAL_CAPTURE_POWERSHELL_HELPER_FAILED";
+    fail(controlledCode);
+  }
   return result.stdout.trim();
 }
 
@@ -202,10 +220,11 @@ function fixedScenario() {
   });
 }
 
-function initialState() {
+function initialState(sessionId) {
   return {
     stateVersion: STATE_VERSION,
-    sessionId: SESSION_ID,
+    sessionId: validateSuccessorSessionIdV2(sessionId),
+    stateRevision: 0,
     lifecycle: "CAPTURE_IN_PROGRESS",
     scenario: fixedScenario(),
     collectionWindowStart: now(),
@@ -231,8 +250,14 @@ function safeState(state) {
 }
 
 function persistState(statePath, state) {
-  state.updatedAt = now();
-  atomicJson(statePath, safeState(state));
+  const paths = createManualMarketSessionPathsV2(dirname(dirname(statePath)), state.sessionId);
+  if (!sameFilesystemPath(paths.statePath, statePath)) fail("MANUAL_CAPTURE_STATE_PATH_MISMATCH");
+  persistPrivateManifestV2(paths, state);
+  persistVersionedSessionStateV2(paths, safeState(state));
+  state.stateRevision = JSON.parse(readFileSync(paths.statePath, "utf8")).stateRevision;
+  state.updatedAt = JSON.parse(readFileSync(paths.statePath, "utf8")).updatedAt;
+  state.privateManifestFingerprint = JSON.parse(readFileSync(paths.statePath, "utf8")).privateManifestFingerprint;
+  state.privateManifestFileSha256 = JSON.parse(readFileSync(paths.statePath, "utf8")).privateManifestFileSha256;
 }
 
 function capturePrivate(store, state, evidenceKind, plaintext) {
@@ -249,6 +274,21 @@ function capturePrivate(store, state, evidenceKind, plaintext) {
     },
     disposition: "PROCESSED_SUCCESS",
   });
+}
+
+function createSessionContext(context, sessionId, options = { syntheticFixture: false }) {
+  const sessionPaths = createManualMarketSessionPathsV2(context.privateRoot, sessionId);
+  mkdirSync(sessionPaths.sessionRoot, { recursive: true });
+  const keyProtector = options.syntheticFixture
+    ? Object.freeze({ protectionClass: "SYNTHETIC_TEST_ONLY", protectDataKey: (value) => value, unprotectDataKey: (value) => value })
+    : createWindowsCurrentUserDpapiProtectorV3();
+  const store = createProviderRawQuarantineStoreV3({
+    repositoryRoot: context.repositoryRoot,
+    root: sessionPaths.encryptedRoot,
+    quarantineModule: context.quarantine,
+    keyProtector,
+  });
+  return { ...context, sessionId: sessionPaths.sessionId, sessionPaths, store };
 }
 
 async function replayPrivateValue(store, handle, quarantine) {
@@ -408,8 +448,11 @@ function createEvidenceZip(repositoryRoot, evidenceDirectory, destinationZip) {
   return { entryCount, sha256: sha256(readFileSync(destinationZip)) };
 }
 
-async function finalize(state, context, destinationDirectory, options = { allowBlindCapsule: true }) {
-  const { manual, quarantine, store, repositoryRoot, privateRoot } = context;
+async function finalize(state, context, destinationDirectory, options = { allowBlindCapsule: false }) {
+  const { manual, quarantine, store, repositoryRoot, privateRoot, sessionPaths } = context;
+  if (!sessionPaths || sessionPaths.sessionId !== state.sessionId) fail("MANUAL_CAPTURE_SESSION_CUSTODY_CONTEXT_REQUIRED");
+  const privateCustody = readAndVerifyPrivateManifestV2(sessionPaths, state);
+  const envelopeFingerprintProjection = sanitizedEnvelopeFingerprintProjectionV2(privateCustody.manifest);
   const capture = await hydrateCapture(state, store, quarantine);
   const validation = manual.validateManualMarketCaptureV3(capture);
   const eligible = validation.lifecycle === "ELIGIBLE_FOR_BLIND_JUDGMENT";
@@ -431,7 +474,7 @@ async function finalize(state, context, destinationDirectory, options = { allowB
   const privateEvidenceHandles = state.alternatives.flatMap((entry) => Object.entries(entry.privateEvidence).filter(([, handle]) => handle !== null));
   const cryptoReceipt = {
     encryption: "AES_256_GCM",
-    keyProtection: "WINDOWS_CURRENT_USER_DPAPI",
+    keyProtection: store.keyProtection,
     tamperDetection: "PASS",
     plaintextPrivateEvidenceAtRest: false,
     privateEvidenceFileCount: privateEvidenceHandles.length + (privateLedgerHandle === null ? 0 : 1),
@@ -497,6 +540,7 @@ async function finalize(state, context, destinationDirectory, options = { allowB
     ["sanitized-provenance.json", provenance],
     ["capture-fingerprint.json", { fingerprint: validation.fingerprint }],
     ["cryptographic-receipts.json", cryptoReceipt],
+    ["private-envelope-fingerprints.json", envelopeFingerprintProjection],
     ["canary-outcome.json", outcome],
   ]);
   if (capsule !== null) artifacts.set("blind-capsule.json", capsule);
@@ -522,6 +566,8 @@ async function finalize(state, context, destinationDirectory, options = { allowB
   state.lifecycle = outcome.status;
   state.evidenceZipPath = zipPath;
   state.evidenceZipSha256 = zip.sha256;
+  state.finalizedCustodyVerified = true;
+  state.finalizedPrivateManifestFileSha256 = privateCustody.manifestFileSha256;
   return { validation, snapshot, capsule, outcome, cryptoReceipt, zipPath, zipSha256: zip.sha256, internalChecksums: `PASS_${zip.entryCount}_ENTRIES` };
 }
 
@@ -815,8 +861,9 @@ async function repairExport(context, requestedSessionId) {
     fail(inspection.diagnostic.failureClassification);
   }
   const { sessionId, statePath } = inspection.diagnostic;
+  const activeContext = createSessionContext(context, sessionId);
   const state = inspection.state;
-  Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
+  Object.defineProperty(state, "manualModule", { value: activeContext.manual, enumerable: false });
   const rl = createInterface({ input, output });
   let correctionCount = 0;
   try {
@@ -831,7 +878,7 @@ async function repairExport(context, requestedSessionId) {
           continue;
         }
         const downloads = resolve(process.env.USERPROFILE ?? fail("MANUAL_CAPTURE_USERPROFILE_REQUIRED"), "Downloads");
-        const result = await finalize(state, context, downloads, { allowBlindCapsule: false });
+        const result = await finalize(state, activeContext, downloads, { allowBlindCapsule: false });
         persistState(statePath, state);
         output.write(`REPAIR_EXPORT_STATUS=${result.outcome.status}\nBLIND_CAPSULE_CREATED=NO\nV3_EXECUTED=NO\nGOLDEN_ADMISSION=NO\nSANITIZED_EVIDENCE_ZIP_PATH=${result.zipPath}\nSANITIZED_EVIDENCE_ZIP_SHA256=${result.zipSha256}\n`);
         return;
@@ -848,11 +895,16 @@ async function repairExport(context, requestedSessionId) {
         const field = Number(correction[2]);
         const entry = state.alternatives[index];
         const draft = draftFromSavedPublicData(entry.publicData);
-        await editDraftField(rl, draft, field, { manual: context.manual, observedOrder: entry.publicData.originalOrder, repositoryRoot: context.repositoryRoot });
+        await editDraftField(rl, draft, field, { manual: activeContext.manual, observedOrder: entry.publicData.originalOrder, repositoryRoot: activeContext.repositoryRoot });
         showSavedPublicSummary(draft, index + 1, entry.publicData.originalOrder);
         const confirm = (await rl.question("Scrivi APPLICA per confermare questa singola correzione, oppure ANNULLA: ")).trim().toUpperCase();
         if (confirm !== "APPLICA") {
           output.write("Correzione annullata; lo stato salvato non è cambiato.\n");
+          continue;
+        }
+        const payment = activeContext.manual.validateManualMarketPaymentDecompositionV3(draft.totalPriceMinorUnits, draft.payNowMinorUnits, draft.payAtPropertyMinorUnits);
+        if (!payment.valid) {
+          output.write("Correzione respinta: la scomposizione del pagamento non coincide con il totale. Lo stato salvato non è cambiato.\n");
           continue;
         }
         entry.publicData = repairedPublicData(entry.publicData, draft);
@@ -902,9 +954,20 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
       return false;
     }
     if (action === "SALVA") {
-      if (privateIdentityPairValid(state.manualModule, draft.realName, draft.sourceUrl)) break;
-      output.write("Usa CORREGGI 1 per il nome o CORREGGI 2 per l'URL.\n");
-      continue;
+      if (!privateIdentityPairValid(state.manualModule, draft.realName, draft.sourceUrl)) {
+        output.write("Usa CORREGGI 1 per il nome o CORREGGI 2 per l'URL.\n");
+        continue;
+      }
+      const payment = state.manualModule.validateManualMarketPaymentDecompositionV3(draft.totalPriceMinorUnits, draft.payNowMinorUnits, draft.payAtPropertyMinorUnits);
+      if (!payment.valid) {
+        output.write("Il totale non coincide con pagamento subito + pagamento in struttura. Correggi i campi 9, 10 o 11; usa UNKNOWN se una componente non è visibile. Nessun dato è stato salvato.\n");
+        continue;
+      }
+      if (draft.selectedFile === null) {
+        output.write("La prova privata è obbligatoria per il collector successivo: usa CORREGGI 17. Nessun dato è stato salvato.\n");
+        continue;
+      }
+      break;
     }
     const correction = /^CORREGGI\s+(1[0-7]|[1-9])$/.exec(action);
     if (correction) {
@@ -918,7 +981,7 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
   const privateEvidence = {
     realName: capturePrivate(store, state, "PROPERTY_NAME", realName),
     sourceUrl: capturePrivate(store, state, "SOURCE_URL", sourceUrl),
-    screenshot: selectedFile === null ? null : capturePrivate(store, state, "SCREENSHOT", `BASE64:${readFileSync(selectedFile).toString("base64")}`),
+    screenshot: capturePrivate(store, state, "SCREENSHOT", `BASE64:${readFileSync(selectedFile).toString("base64")}`),
   };
   const missingness = [];
   const priceMissingness = [];
@@ -959,16 +1022,21 @@ async function collectAlternative(rl, state, store, repositoryRoot, observedOrde
 }
 
 async function interactive(context) {
-  if (SESSION_ID === PREVIOUS_ABORTED_SESSION_ID) fail("MANUAL_CAPTURE_ABORTED_SESSION_REUSE_PROHIBITED");
-  const { repositoryRoot, privateRoot, store } = context;
-  const sessionRoot = resolve(privateRoot, SESSION_ID);
-  mkdirSync(sessionRoot, { recursive: true });
-  const statePath = join(sessionRoot, "session-state.json");
-    let state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, "utf8")) : initialState();
-    Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
+  const { repositoryRoot, store, sessionId, sessionPaths } = context;
+  const { statePath } = sessionPaths;
+  let state;
+  if (existsSync(statePath)) {
+    state = JSON.parse(readFileSync(statePath, "utf8"));
+    if (state.stateVersion !== STATE_VERSION || state.sessionId !== sessionId) fail("MANUAL_CAPTURE_SUCCESSOR_STATE_INVALID");
+    readAndVerifyPrivateManifestV2(sessionPaths, state);
+  } else {
+    state = initialState(sessionId);
+    persistState(statePath, state);
+  }
+  Object.defineProperty(state, "manualModule", { value: context.manual, enumerable: false });
   const rl = createInterface({ input, output });
   try {
-    output.write(`MANUAL_CAPTURE_READY=YES\nSESSION_ID=${SESSION_ID}\nPREVIOUS_SESSION_REUSED=NO\nAUTOMATED_HTTP_REQUESTS=0\nOPEN_BOOKING_IN_INCOGNITO=YES\nSESSION_ALTERNATIVES_REQUIRED=5\n\n`);
+    output.write(`MANUAL_CAPTURE_READY=YES\nSESSION_ID=${sessionId}\nLEGACY_DIAGNOSTIC_SESSION_REUSED=NO\nAUTOMATED_HTTP_REQUESTS=0\nOPEN_BOOKING_IN_INCOGNITO=YES\nSESSION_ALTERNATIVES_REQUIRED=5\n\n`);
     output.write("Scenario congelato: Firenze, 15–18 ottobre 2026, 3 notti, 2 adulti, 1 camera, EUR, budget totale 600 EUR, profilo BALANCED.\n");
     output.write("Apri personalmente Booking.com in una finestra anonima, senza login/Genius, e inserisci esattamente questo scenario.\n");
     output.write("Usa sempre gli stessi filtri. Considera in ordine i primi risultati organici idonei; i dati vengono salvati dopo ogni hotel.\n");
@@ -995,16 +1063,27 @@ async function interactive(context) {
       output.write(`Alternativa salvata e prova privata cifrata. Progresso: ${state.alternatives.length}/${EXPECTED_ALTERNATIVES}.\n`);
     }
     for (;;) {
-      const action = (await rl.question("\nScrivi FINALIZZA oppure CORREGGI 1..5: ")).trim().toUpperCase();
+      const action = (await rl.question("\nScrivi FINALIZZA oppure CORREGGI <alternativa 1..5> <campo 3..16>: ")).trim().toUpperCase();
       if (action === "FINALIZZA") break;
-      const match = /^CORREGGI\s+([1-5])$/.exec(action);
+      const match = /^CORREGGI\s+([1-5])\s+(1[0-6]|[3-9])$/.exec(action);
       if (match) {
         const index = Number(match[1]) - 1;
-        const saved = await collectAlternative(rl, state, store, repositoryRoot, state.alternatives[index].publicData.originalOrder, index);
-        if (saved) {
+        const field = Number(match[2]);
+        const entry = state.alternatives[index];
+        const draft = draftFromSavedPublicData(entry.publicData);
+        await editDraftField(rl, draft, field, { manual: context.manual, observedOrder: entry.publicData.originalOrder, repositoryRoot });
+        showSavedPublicSummary(draft, index + 1, entry.publicData.originalOrder);
+        const confirm = (await rl.question("Scrivi APPLICA per confermare questa singola correzione, oppure ANNULLA: ")).trim().toUpperCase();
+        if (confirm === "APPLICA") {
+          const payment = context.manual.validateManualMarketPaymentDecompositionV3(draft.totalPriceMinorUnits, draft.payNowMinorUnits, draft.payAtPropertyMinorUnits);
+          if (!payment.valid) {
+            output.write("Correzione respinta: la scomposizione del pagamento non coincide con il totale. Nessun dato è stato salvato.\n");
+            continue;
+          }
+          entry.publicData = repairedPublicData(entry.publicData, draft);
           persistState(statePath, state);
-          output.write(`Alternativa ${index + 1} corretta e salvata.\n`);
-        }
+          output.write(`Alternativa ${index + 1}, campo ${field}, corretta. Le tre prove private restano invariate.\n`);
+        } else output.write("Correzione annullata; lo stato salvato non è cambiato.\n");
       } else output.write("Comando non riconosciuto.\n");
     }
     const downloads = resolve(process.env.USERPROFILE ?? fail("MANUAL_CAPTURE_USERPROFILE_REQUIRED"), "Downloads");
@@ -1019,6 +1098,7 @@ async function interactive(context) {
     output.write(`SANITIZED_EVIDENCE_ZIP_SHA256=${result.zipSha256}\n`);
     output.write(`INTERNAL_CHECKSUMS=${result.internalChecksums}\n`);
     output.write("DECISION_GOLDEN_ADMITTED=NO\nLIVE_BOOKABLE_GOLDEN_ADMITTED=NO\n");
+    output.write(`POSTFINALIZATION_USER_FILESYSTEM_VERIFICATION_REQUIRED=YES\nPOSTFINALIZATION_SESSION_ID=${sessionId}\n`);
   } finally {
     rl.close();
   }
@@ -1063,21 +1143,25 @@ async function dryRun(context) {
   mkdirSync(root, { recursive: false });
   mkdirSync(zipRoot, { recursive: false });
   const quarantine = context.quarantine;
-  const store = createProviderRawQuarantineStoreV3({ repositoryRoot: context.repositoryRoot, root: join(root, "private"), quarantineModule: quarantine });
-  const dryContext = { ...context, privateRoot: root, store };
-  const state = initialState();
-  const statePath = join(root, "session-state.json");
+  const dryContext = createSessionContext({ ...context, privateRoot: root }, SYNTHETIC_SESSION_ID, { syntheticFixture: true });
+  const { store, sessionPaths } = dryContext;
+  const state = initialState(SYNTHETIC_SESSION_ID);
+  const { statePath } = sessionPaths;
   try {
+    persistState(statePath, state);
     for (let index = 0; index < EXPECTED_ALTERNATIVES; index += 1) {
       state.alternatives.push(syntheticEntry(store, state, index));
       persistState(statePath, state);
     }
     const resumed = JSON.parse(readFileSync(statePath, "utf8"));
+    Object.defineProperty(resumed, "manualModule", { value: context.manual, enumerable: false });
     if (resumed.alternatives.length !== EXPECTED_ALTERNATIVES) fail("MANUAL_CAPTURE_DRY_RUN_RESUME_FAILED");
+    readAndVerifyPrivateManifestV2(sessionPaths, resumed);
     const firstEnvelope = JSON.parse(readFileSync(resumed.alternatives[0].privateEvidence.realName.path, "utf8"));
     const tampered = { ...firstEnvelope, ciphertextBase64: `${firstEnvelope.ciphertextBase64.slice(0, -2)}AA` };
     if (quarantine.validateProviderRawQuarantineEnvelopeV3(tampered).valid) fail("MANUAL_CAPTURE_DRY_RUN_TAMPER_NOT_DETECTED");
     const result = await finalize(resumed, dryContext, zipRoot);
+    persistState(statePath, resumed);
     if (!result.validation.valid || result.outcome.status !== "ELIGIBLE_FOR_BLIND_JUDGMENT") fail("MANUAL_CAPTURE_DRY_RUN_VALIDATION_FAILED");
     if (!existsSync(result.zipPath)) fail("MANUAL_CAPTURE_DRY_RUN_ZIP_MISSING");
     return {
@@ -1089,9 +1173,16 @@ async function dryRun(context) {
       encryptedPrivateEvidence: true,
       tamperDetection: true,
       providerNeutralSnapshot: true,
-      blindCapsule: true,
+      blindCapsule: false,
       sanitizedEvidence: true,
       plaintextPrivateEvidenceAtRest: false,
+      sessionScopedCustody: true,
+      atomicVersionedState: true,
+      privateManifest: true,
+      fileByFileFingerprintBinding: true,
+      finalizedSessionReopened: readAndVerifyPrivateManifestV2(sessionPaths, JSON.parse(readFileSync(statePath, "utf8"))).manifest.alternativeBindings.length === EXPECTED_ALTERNATIVES,
+      powerShell51PostfinalizationVerifierAvailable: existsSync(resolve(context.repositoryRoot, "scripts/test-v3-17t5b-postfinalization-user-filesystem.ps1")),
+      syntheticFixtureEligibleAsRealProof: false,
       automatedHttpRequests: 0,
       credentialsLoaded: false,
       syntheticArtifactsDeleted: true,
@@ -1107,9 +1198,9 @@ async function repairDryRun(context) {
   const zipRoot = resolve(tmpdir(), `StayOpti-V3-17T5B-RepairDryRunZip-${randomBytes(8).toString("hex")}`);
   mkdirSync(root, { recursive: false });
   mkdirSync(zipRoot, { recursive: false });
-  const store = createProviderRawQuarantineStoreV3({ repositoryRoot: context.repositoryRoot, root: join(root, "private"), quarantineModule: context.quarantine });
-  const dryContext = { ...context, privateRoot: root, store };
-  const state = initialState();
+  const dryContext = createSessionContext({ ...context, privateRoot: root }, "V3_17T5C_SYNTHETIC_REPAIR_001", { syntheticFixture: true });
+  const { store, sessionPaths } = dryContext;
+  const state = initialState(dryContext.sessionId);
   try {
     for (let index = 0; index < EXPECTED_ALTERNATIVES; index += 1) state.alternatives.push(syntheticEntry(store, state, index));
     state.alternatives[3].publicData.mealPlanEvidence = "unknown";
@@ -1131,7 +1222,9 @@ async function repairDryRun(context) {
     fifth.payAtPropertyMinorUnits = 10;
     fifth.refundabilityEvidence = "REFUNDABLE UNTIL SYNTHETIC DAY";
     state.alternatives[4].publicData = repairedPublicData(state.alternatives[4].publicData, fifth);
+    persistState(sessionPaths.statePath, state);
     const result = await finalize(state, dryContext, zipRoot, { allowBlindCapsule: false });
+    persistState(sessionPaths.statePath, state);
     if (!result.validation.valid || !existsSync(result.zipPath)) fail("MANUAL_CAPTURE_REPAIR_DRY_RUN_EXPORT_FAILED");
     if (result.capsule !== null || JSON.stringify(state.alternatives.map((entry) => entry.privateEvidence)) !== handlesBefore) fail("MANUAL_CAPTURE_REPAIR_DRY_RUN_BOUNDARY_FAILED");
     return {
@@ -1162,13 +1255,11 @@ const manualPath = resolve(compiledRoot, "src/engine-v3/evaluation/manualPublicM
 const quarantinePath = resolve(compiledRoot, "src/engine-v3/evaluation/providerRawQuarantineV3.js");
 const manual = await import(pathToFileURL(manualPath).href);
 const quarantine = await import(pathToFileURL(quarantinePath).href);
-mkdirSync(privateRoot, { recursive: true });
-const store = createProviderRawQuarantineStoreV3({ repositoryRoot, root: join(privateRoot, "encrypted"), quarantineModule: quarantine, keyProtector: createWindowsCurrentUserDpapiProtectorV3() });
-const context = { repositoryRoot, compiledRoot, privateRoot, manual, quarantine, store };
+const context = { repositoryRoot, compiledRoot, privateRoot, manual, quarantine };
 const mode = option("mode") ?? "preflight";
 
 if (mode === "preflight") {
-  process.stdout.write(`${JSON.stringify({ status: "PASS", sessionId: SESSION_ID, previousAbortedSessionId: PREVIOUS_ABORTED_SESSION_ID, previousSessionReuse: false, interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, interruptPartialPersistence: false, fieldCorrectionDuringEntry: true, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, textualConditionAmountGuard: true, localNameUrlConsistencyCheck: true, currentAlternativeCancellationPreservesSession: true, correctionSupported: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
+  process.stdout.write(`${JSON.stringify({ status: "PASS", successorSessionIdRequired: true, retiredDiagnosticSessionId: RETIRED_DIAGNOSTIC_SESSION_ID, legacySessionRepairAllowed: false, stateVersion: STATE_VERSION, sessionScopedCustody: true, atomicVersionedState: true, privateManifestRequired: true, threeEnvelopesPerAlternativeRequired: true, fileByFileFingerprintBindingRequired: true, userFilesystemPostfinalizationVerificationRequired: true, syntheticFixtureEligibleAsRealProof: false, interfaceLanguage: "it-IT", jsonEditingRequired: false, progressiveSave: true, partialAlternativeAutoSave: false, interruptPartialPersistence: false, fieldCorrectionDuringEntry: true, fieldCorrectionBeforeSave: true, summaryConfirmationBeforeSave: true, textualConditionAmountGuard: true, paymentDecompositionImmediateGuard: true, localNameUrlConsistencyCheck: true, currentAlternativeCancellationPreservesSession: true, correctionSupportedAfterFinalization: true, privateFileSelection: true, automatedHttpRequests: 0, credentialsLoaded: false })}\n`);
 } else if (mode === "dry-run") {
   process.stdout.write(`${JSON.stringify(await dryRun(context))}\n`);
 } else if (mode === "repair-dry-run") {
@@ -1178,7 +1269,7 @@ if (mode === "preflight") {
   process.stdout.write(`${JSON.stringify(inspection.diagnostic)}\n`);
   if (inspection.diagnostic.failureClassification !== "NONE") fail(inspection.diagnostic.failureClassification);
 } else if (mode === "interactive") {
-  await interactive(context);
+  await interactive(createSessionContext(context, validateSuccessorSessionIdV2(option("session-id"))));
 } else if (mode === "repair-export") {
   await repairExport(context, option("session-id"));
 } else {
