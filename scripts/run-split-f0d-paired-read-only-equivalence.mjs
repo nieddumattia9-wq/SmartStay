@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -431,8 +432,13 @@ export async function validateSplitF0dRunPlan(matrix, runPlan) {
   if (runPlan?.sourceScenarioMatrixPath !== "tests/engine-v3/fixtures/split-f0-scenario-matrix-v1.json") {
     issues.push("source-matrix-path-invalid");
   }
-  const matrixBytes = await fs.readFile(
-    path.join(SPLIT_F0D_REPOSITORY_ROOT, runPlan.sourceScenarioMatrixPath)
+  const matrixBytes = execFileSync(
+    "git",
+    ["show", "HEAD:tests/engine-v3/fixtures/split-f0-scenario-matrix-v1.json"],
+    {
+      cwd: SPLIT_F0D_REPOSITORY_ROOT,
+      windowsHide: true,
+    }
   );
   if (sha256SplitF0(matrixBytes) !== runPlan.sourceScenarioMatrixSha256) {
     issues.push("source-matrix-sha256-mismatch");

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function read(relativePath) {
-  return readFile(relativePath, "utf8");
+  return (await readFile(relativePath, "utf8")).replace(/\r\n/g, "\n");
 }
 
 function readRule(source, selector) {

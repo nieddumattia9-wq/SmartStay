@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import {
+  execFileSync,
+} from "node:child_process";
+import {
   readFileSync,
 } from "node:fs";
 import {
@@ -66,6 +69,18 @@ function readImportManifestText(): string {
 
 function readImportManifest(): TestImportManifest {
   return JSON.parse(readImportManifestText()) as TestImportManifest;
+}
+
+function readCommittedText(relativePath: string): string {
+  return execFileSync(
+    "git",
+    ["show", `HEAD:${relativePath}`],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      windowsHide: true,
+    }
+  );
 }
 
 function resolveAssetPath(canonicalPath: string): string {
@@ -1068,9 +1083,8 @@ test("the frozen v1.1 registry subset loads as opaque registry-only data", async
 });
 
 test("manifest paths and fingerprint are deterministic on Windows and POSIX", async () => {
-  const releaseAttributes = readFileSync(
-    resolve(REGISTRY_ROOT, ".gitattributes"),
-    "utf8"
+  const releaseAttributes = readCommittedText(
+    "data/engine-v3/decision-science-library/v1.1/.gitattributes"
   );
   assert.match(
     releaseAttributes,

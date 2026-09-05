@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import {
-  readFileSync,
-} from "node:fs";
-import {
-  resolve,
-} from "node:path";
+  execFileSync,
+} from "node:child_process";
 import test from "node:test";
 
 import {
@@ -127,22 +124,26 @@ interface DiagnosticFixture {
     DiagnosticFixtureCase[];
 }
 
+function readCommittedText(relativePath: string) {
+  return execFileSync(
+    "git",
+    ["show", `HEAD:${relativePath}`],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      windowsHide: true,
+    }
+  );
+}
+
 function loadFixture() {
   const fixtureJsonText =
-    readFileSync(
-      resolve(
-        process.cwd(),
-        "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.json"
-      ),
-      "utf8"
+    readCommittedText(
+      "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.json"
     );
   const manifestJsonText =
-    readFileSync(
-      resolve(
-        process.cwd(),
-        "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.quarantine.json"
-      ),
-      "utf8"
+    readCommittedText(
+      "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.quarantine.json"
     );
   const admitted =
     admitLegacyDiagnosticFixtureV3(

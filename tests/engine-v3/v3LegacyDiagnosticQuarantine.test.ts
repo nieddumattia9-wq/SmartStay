@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import {
+  execFileSync,
+} from "node:child_process";
+import {
   createHash,
 } from "node:crypto";
 import {
@@ -17,28 +20,27 @@ import {
   admitLegacyDiagnosticFixtureV3,
 } from "../../src/engine-v3/evaluation/legacyDiagnosticQuarantineV3";
 
-const fixturePath =
-  resolve(
-    process.cwd(),
-    "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.json"
+function readCommittedText(relativePath: string) {
+  return execFileSync(
+    "git",
+    ["show", `HEAD:${relativePath}`],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      windowsHide: true,
+    }
   );
-const manifestPath =
-  resolve(
-    process.cwd(),
-    "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.quarantine.json"
-  );
+}
 
 function loadTexts() {
   return {
     fixture:
-      readFileSync(
-        fixturePath,
-        "utf8"
+      readCommittedText(
+        "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.json"
       ),
     manifest:
-      readFileSync(
-        manifestPath,
-        "utf8"
+      readCommittedText(
+        "tests/engine-v3/fixtures/v3-12a-diagnostic-judgments.quarantine.json"
       ),
   };
 }

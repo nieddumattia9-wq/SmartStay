@@ -5649,14 +5649,23 @@ export function buildSplitR1DryRunPlan(matrix) {
   };
 }
 
-function ensureServerEnvBinding(execArgv) {
+export function assertSplitR1EnvFileBinding(execArgv, requiredEnvPath) {
+  if (!Array.isArray(execArgv) || typeof requiredEnvPath !== "string" || requiredEnvPath.length === 0) {
+    throw new Error("split-r1-live-requires-server-env-native-binding");
+  }
+  const expectedPath = path.resolve(requiredEnvPath);
   const bindings = execArgv
     .filter((argument) => argument.startsWith("--env-file="))
     .map((argument) => argument.slice("--env-file=".length))
     .map((value) => path.resolve(value));
-  if (bindings.length !== 1 || bindings[0].toLowerCase() !== SPLIT_R1_SERVER_ENV_PATH.toLowerCase()) {
+  if (bindings.length !== 1 || bindings[0].toLowerCase() !== expectedPath.toLowerCase()) {
     throw new Error("split-r1-live-requires-server-env-native-binding");
   }
+  return expectedPath;
+}
+
+function ensureServerEnvBinding(execArgv) {
+  assertSplitR1EnvFileBinding(execArgv, SPLIT_R1_SERVER_ENV_PATH);
 }
 
 function resolveProductionConfiguration(environment, execArgv) {

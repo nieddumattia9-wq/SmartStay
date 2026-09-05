@@ -18,7 +18,7 @@ $ExpectedBranch = 'main'
 $ExpectedManifestHash = 'e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88'
 $ExpectedRunnerBundleHash =
   # HANDOFF_BUNDLE_HASH_START
-  'e8f81dd4778aa6b15ace287d03bb2ebb908454a349b840357f7a8ac5df19e476'
+  '3f2e27c8f5bb557bd388d89e73b62e6ced9016c6b43ac768faab19fa19b0af6b'
   # HANDOFF_BUNDLE_HASH_END
 $ExpectedCanarySession = 'SERP_PILOT_01_FLORENCE_COUPLE_BALANCED'
 $ExpectedCanaryIndex = 0
@@ -56,69 +56,6 @@ $PlainKey = $null
 $ObservedHead = 'NOT_OBSERVED'
 $ObservedBundleHash = 'NOT_OBSERVED'
 $DiagnosticLogPath = $null
-
-$ExpectedDirty = @{
-  'src/engine-v3/index.ts' = @{ Status = ' M'; Sha256 = 'f0fa3161f0e0aefba4ce09db9289094353ed0550537eb36a49d4527d5357b772' }
-  '.codex-remote-attachments/01a0101e-d030-75f3-8d0a-f3c56dff8ce8/787761a2-8b1d-46ff-b461-9cd5f5310cee/1-Photo-1.jpg' = @{ Status = '??'; Sha256 = '0b73878c9c97b6a050d6fce02196caa954295cf23641e8a2063ffe289def196d' }
-  '.codex-remote-attachments/01a0101e-d030-75f3-8d0a-f3c56dff8ce8/787761a2-8b1d-46ff-b461-9cd5f5310cee/2-Photo-2.jpg' = @{ Status = '??'; Sha256 = 'e974d0d6774e0434621ceee9f7009d161b9d67ccc53c58335726ab4e326d3978' }
-  '.codex-remote-attachments/01a0101e-d030-75f3-8d0a-f3c56dff8ce8/787761a2-8b1d-46ff-b461-9cd5f5310cee/3-Photo-3.jpg' = @{ Status = '??'; Sha256 = 'b14697c3ae052488dd9d706e42e5d33e420934cf49fff467c6b11b52ed561966' }
-  'src/engine-v3/evaluation/realMeasurementCapturePilotV3.ts' = @{ Status = '??'; Sha256 = 'faf457951c1a2a2b92fa02f4718f1d2f4a49fc678d131f14f5a940bd18eeecf8' }
-  'tests/engine-v3/fixtures/v3-17-real-measurement-capture-pilot-001-source-v1.json' = @{ Status = '??'; Sha256 = 'a132db53db47f1c7008ba96b4963c143a8c70f916f9d4edd69fb38d9589c55d3' }
-  'tests/engine-v3/v3RealMeasurementCapturePilot.test.ts' = @{ Status = '??'; Sha256 = 'b70bd31ab5d279685672bc2162d8e9342bd4317f92ea2c4524ddd5b225bb1041' }
-}
-
-$ProtectedFileHashes = @{
-  'server/.env' = '4d34e8b42f1114a28e71b7407ea4256a5bf2a4a6ade928d97354789ccdb82855'
-  'package.json' = 'be8465d3ab65240ee82173109a99c7269b70047ec1119bd2c5d59eae2c64c8bf'
-  'package-lock.json' = '992da4b3d00c590bd48c4c1d955953938b053c73bf1b7243f189ebb1b3df6613'
-}
-
-$DevelopmentPaths = @(
-  'scripts/invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1',
-  'scripts/invoke-v3-17t2-serpapi-google-hotels-pilot.ps1',
-  'scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs',
-  'scripts/provider-raw-quarantine-store.mjs',
-  'scripts/protect-v3-provider-raw-key-dpapi.ps1',
-  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts',
-  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts',
-  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotEvidenceV3.ts',
-  'src/engine-v3/evaluation/serpApiGoogleHotelsPilotStageV3.ts',
-  'src/engine-v3/evaluation/providerRawQuarantineV3.ts',
-  'src/engine-v3/evaluation/serpApiGoogleHotelsPrivateReplayV3.ts',
-  'src/engine-v3/evaluation/externalHotelChoiceContractV3.ts',
-  'src/engine-v3/evaluation/externalHotelChoiceReplayV3.ts',
-  'src/engine-v3/evaluation/serpApiGoogleHotelsExternalAdapterV3.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsCanaryHandoff.test.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsPilotEvidence.test.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsPilotGate.test.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsQualification.test.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsStagedPilot.test.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsCanaryEvidenceRepair.test.ts',
-  'tests/engine-v3/v3ProviderRawQuarantineReplay.test.ts',
-  'tests/engine-v3/v3SerpApiGoogleHotelsMax2ReauthorizationGate.test.ts',
-  'tests/engine-v3/v3SerpApiExecutionHeadBindingPreflight.test.ts',
-  'docs/engine-v3/v3-17-serpapi-google-hotels-canary-evidence-repair.md',
-  'docs/engine-v3/v3-17-serpapi-private-raw-quarantine-replay.md',
-  'docs/engine-v3/v3-17-serpapi-property-detail-max2-reauthorization-gate.md',
-  'docs/engine-v3/v3-17-serpapi-execution-head-binding-preflight.md',
-  'docs/stayopti/CURRENT_STATE.md',
-  'docs/stayopti/DECISION_LOG.md',
-  'docs/stayopti/decisions/0014-v3-17t2ab-canary-abort-repair.md',
-  'docs/stayopti/decisions/0015-provider-raw-private-quarantine.md',
-  'docs/stayopti/decisions/0016-v3-17t2b-max2-reauthorization-gate.md',
-  'docs/stayopti/decisions/0017-v3-17t2c-execution-head-binding.md'
-)
-
-function Get-StayOptiSha256 {
-  param([Parameter(Mandatory = $true)][string]$LiteralPath)
-  $stream = [IO.File]::OpenRead($LiteralPath)
-  try {
-    $algorithm = [Security.Cryptography.SHA256]::Create()
-    try { return ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
-    finally { $algorithm.Dispose() }
-  }
-  finally { $stream.Dispose() }
-}
 
 function Set-StayOptiStep {
   param([Parameter(Mandatory = $true)][string]$Step)
@@ -213,7 +150,6 @@ try {
   if ($LASTEXITCODE -ne 0 -or $gateParent -ne $SourceSha) { throw 'STAYOPTI_T2C_SOURCE_GATE_CHAIN_MISMATCH' }
   & git merge-base --is-ancestor $GateCommitSha $ObservedHead
   if ($LASTEXITCODE -ne 0) { throw 'STAYOPTI_T2C_EXECUTION_HEAD_NOT_DESCENDED_FROM_GATE' }
-  $developmentCheckpoint = $OfflineTestMode -and $ObservedHead -eq $GateCommitSha
   $ExpectedNewCanaryLiteral = "AUTHORIZE_V3_17T2C_MAX2_SOURCE_SHA_${SourceSha}_EXECUTION_HEAD_${ObservedHead}_MANIFEST_${ExpectedManifestHash}_RUNNER_${ExpectedRunnerBundleHash}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO"
   Invoke-StayOptiInjectedFailure 'HEAD' 'STAYOPTI_T1C_HEAD_MISMATCH'
   if (@(& git diff --cached --name-only).Count -ne 0) { throw 'STAYOPTI_T1C_STAGED_NOT_ZERO' }
@@ -224,32 +160,17 @@ try {
   Complete-StayOptiStep
 
   Set-StayOptiStep 'DIRTY_PATH_INTEGRITY'
-  $observedDirty = @{}
-  foreach ($line in @(& git status --porcelain=v1 --untracked-files=all)) {
-    if ($line.Length -lt 4) { throw 'STAYOPTI_T1C_DIRTY_SET_MISMATCH' }
-    $status = $line.Substring(0, 2)
-    $relativePath = $line.Substring(3).Replace('\', '/')
-    if ($developmentCheckpoint -and $DevelopmentPaths -contains $relativePath) { continue }
-    $observedDirty[$relativePath] = $status
-  }
-  if ($observedDirty.Count -ne $ExpectedDirty.Count) { throw 'STAYOPTI_T1C_DIRTY_SET_MISMATCH' }
-  foreach ($relativePath in $ExpectedDirty.Keys) {
-    if (-not $observedDirty.ContainsKey($relativePath) -or $observedDirty[$relativePath] -ne $ExpectedDirty[$relativePath].Status) {
-      throw 'STAYOPTI_T1C_DIRTY_SET_MISMATCH'
-    }
-    $absolutePath = Join-Path $RepositoryRoot $relativePath.Replace('/', '\')
-    if ((Get-StayOptiSha256 -LiteralPath $absolutePath) -ne $ExpectedDirty[$relativePath].Sha256) {
-      throw 'STAYOPTI_T1C_DIRTY_CONTENT_MISMATCH'
-    }
-  }
+  $observedDirty = @(& git status --porcelain=v1 --untracked-files=all)
+  if ($observedDirty.Count -ne 0) { throw 'STAYOPTI_T1C_DIRTY_SET_MISMATCH' }
   Invoke-StayOptiInjectedFailure 'DIRTY' 'STAYOPTI_T1C_DIRTY_CONTENT_MISMATCH'
   Complete-StayOptiStep
 
   Set-StayOptiStep 'PROTECTED_FILE_INTEGRITY'
-  foreach ($relativePath in $ProtectedFileHashes.Keys) {
-    $absolutePath = Join-Path $RepositoryRoot $relativePath.Replace('/', '\')
-    if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf) -or
-        (Get-StayOptiSha256 -LiteralPath $absolutePath) -ne $ProtectedFileHashes[$relativePath]) {
+  foreach ($relativePath in @('package.json', 'package-lock.json')) {
+    & git ls-files --error-unmatch -- $relativePath *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'STAYOPTI_T1C_PROTECTED_FILE_MISMATCH' }
+    & git diff --quiet HEAD -- $relativePath
+    if ($LASTEXITCODE -ne 0) {
       throw 'STAYOPTI_T1C_PROTECTED_FILE_MISMATCH'
     }
   }

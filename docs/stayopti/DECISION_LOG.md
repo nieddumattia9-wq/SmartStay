@@ -36,6 +36,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0030 | 2026-09-04 | Require repair lookup proof through the actual PowerShell-to-Node runtime and one shared resolver; distinguish missing, unreadable, malformed and mismatched private states. | Accepted offline diagnostic repair; operationally supersedes D-0029's incomplete proof | `decisions/0030-runtime-identical-manual-repair-preflight.md` |
 | D-0031 | 2026-09-04 | Close the legacy `_002` manual canary as diagnostic-only and require session-scoped, versioned, file-by-file verifiable private custody for every successor capture. | Accepted forward-only custody repair; operationally supersedes D-0029/D-0030 state-existence claims | `decisions/0031-manual-capture-custody-incident-and-successor-hardening.md` |
 | D-0032 | 2026-09-05 | Require separate Linux-universal and real Windows PowerShell 5.1 CI gates before any release manifest or artifact can be created. | Accepted | `decisions/0032-os-split-release-gate.md` |
+| D-0033 | 2026-09-05 | Require release proof from a clean commit candidate with no ignored or developer-dirty dependency; use synthetic env fixtures and immutable Git blobs for canonical byte evidence. | Proposed; implemented offline, uncommitted | `decisions/0033-clean-commit-release-proof.md` |
 
 ## Required fields for a new decision
 

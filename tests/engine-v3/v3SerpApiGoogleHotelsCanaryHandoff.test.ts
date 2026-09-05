@@ -130,10 +130,15 @@ test("T2B 23 repaired MAX2 remains hard-bound", () => { assert.match(handoffSour
 test("T1C 24 evaluation boundary remains provider-neutral", () => { const core = readFileSync(resolve(REPOSITORY, "src/engine-v3/index.ts"), "utf8"); assert.doesNotMatch(core, /serpApiGoogleHotelsPilotCollectorV3|canary-handoff/); });
 test("T1C 25 old canary literal is revoked and bundle changes", () => { assert.ok(STAYOPTI_SERPAPI_REVOKED_CANARY_AUTHORIZATION_LITERALS_V3.includes(`AUTHORIZE_V3_17T2_CANARY_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01_RETENTION_V2_MAX4`)); assert.notEqual(STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3, "c41204302c80bfd2a0433056ddced79facdf2bcc1197e2ec13dc6556a26d9f01"); });
 test("T1C 26 launcher has deterministic preflight-only mode", () => { assert.match(launcherSource, /HandoffPreflightOnly/); assert.match(launcherSource, /READY_FOR_SECURE_KEY_PROMPT=YES/); });
-test("T1C 27 launcher and handoff use .NET SHA-256 instead of cmdlet autoload", () => { assert.doesNotMatch(`${handoffSource}\n${launcherSource}`, /Get-FileHash/); assert.match(handoffSource, /Security\.Cryptography\.SHA256/); });
+test("T1C 27 launcher uses .NET SHA-256 and handoff uses Git integrity checks instead of cmdlet autoload", () => { assert.doesNotMatch(`${handoffSource}\n${launcherSource}`, /Get-FileHash/); assert.match(launcherSource, /Security\.Cryptography\.SHA256/); assert.match(handoffSource, /git diff --quiet HEAD/); });
 test("T1C 28 process-scoped execution-policy repair is explicit", () => { assert.match(handoffSource, /-ExecutionPolicy Bypass -File \$PilotLauncher/); });
 test("T1C 29 manifest remains immutable", () => { assert.equal(STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3, "e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88"); });
 test("T2B 30 new literal binds checkpoint and every MAX2 guard", () => {
   assert.match(CURRENT_CANARY_LITERAL, /^AUTHORIZE_V3_17T2C_MAX2_SOURCE_SHA_[0-9a-f]{40}_EXECUTION_HEAD_[0-9a-f]{40}_MANIFEST_[0-9a-f]{64}_RUNNER_[0-9a-f]{64}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$/);
   assert.doesNotMatch(CURRENT_CANARY_LITERAL, /MAX48|REMAINING_11/);
+});
+test("D0033 31 handoff requires a clean committed snapshot and has no ignored or developer-dirty dependency", () => {
+  assert.match(handoffSource, /git status --porcelain=v1 --untracked-files=all/);
+  assert.match(handoffSource, /observedDirty\.Count -ne 0/);
+  assert.doesNotMatch(handoffSource, /ExpectedDirty|DevelopmentPaths|server\/\.env|realMeasurementCapturePilot|\.codex-remote-attachments/);
 });

@@ -887,3 +887,47 @@ future real session satisfied the custody contract.
   authorized one atomic corrective commit and a conditional fast-forward push;
   terminal GitHub validation of the revised job topology remains mandatory
   after publication.
+
+## D-0033 clean-commit release proof — prepared, uncommitted
+
+- GitHub Actions run 82 established that the D-0032 job split was necessary
+  but insufficient: the Linux lifecycle test still opened ignored
+  `server/.env`, and a clean Windows checkout exposed ten failures hidden by
+  machine-specific checkout or dirty-worktree state.
+- The seven preserved developer paths are not proven unrelated to validation.
+  The untracked real-measurement test contributes ten additional V3 tests, and
+  the T1C handoff encoded the names and hashes of all seven as a required dirty
+  set. They remain untouched user work but are excluded from release proof.
+- Split R1 env binding now receives a unique synthetic temporary fixture in
+  the test, with explicit path, before/after SHA-256 and deterministic cleanup.
+  Neither test nor handoff opens the real ignored env file.
+- T1C requires a clean committed snapshot and no longer depends on ignored or
+  developer-dirty files. Its new bundle hash is
+  `3f2e27c8f5bb557bd388d89e73b62e6ced9016c6b43ac768faab19fa19b0af6b`;
+  no call authorization is created or consumed.
+- Four legacy failures share one LF-versus-CRLF checkout cause. Frozen hashes
+  remain unchanged; canonical byte checks now read the Git blob. The Decision
+  Science `.gitattributes` check and Split R1/F0D probe digests use the same
+  immutable-blob boundary. A stricter CRLF candidate exposed four additional
+  Split F0D symptoms with one source-matrix byte cause; its frozen hash also
+  remains unchanged. Two release-harness marker checks discovered by the same
+  CRLF candidate normalize line endings before semantic inspection.
+- Validation authority is an isolated candidate derived from
+  `f54025aaaf1969859d71e86d105216f6b375d72b` plus only D-0033, with no ignored
+  source files, no copied untracked files and no `server/.env`. The main dirty
+  worktree is not accepted as commit-proof evidence.
+
+No provider call, credential access, real collection, `_002` mutation,
+private Evidence mutation, commit, push, fetch or GitHub rerun is authorized
+or performed by this checkpoint.
+
+Offline validation completed on 2026-09-05 in the isolated CRLF checkout:
+targeted D-0033 151/151; Engine V3 1505/1505; Engine V2 196/196; lifecycle
+530/530 with 17 canonical skips; security 29/29; release 101/101; analytics
+31/31; capacity 9/9; beta 4/4; TypeScript typecheck and build PASS; Windows
+PowerShell 5.1 parsing 9/9; secret/private-artifact and Git whitespace scans
+PASS. The clean source candidate contained no ignored or untracked file and no
+`server/.env` before dependencies and again after tool/build cleanup. Native
+Linux release CI is `NOT_EXECUTABLE_LOCALLY` because neither installed WSL
+Ubuntu distribution has a native Linux Node executable; no simulation is
+reported as PASS.

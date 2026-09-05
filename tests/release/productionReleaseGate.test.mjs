@@ -865,7 +865,7 @@ test(
           "release-gate.yml"
         ),
         "utf8"
-      );
+      ).replace(/\r\n/g, "\n");
 
     assert.match(
       workflow,
@@ -910,7 +910,7 @@ test(
           "release-gate.yml"
         ),
         "utf8"
-      );
+      ).replace(/\r\n/g, "\n");
 
     const jobBlock =
       (jobName) => {

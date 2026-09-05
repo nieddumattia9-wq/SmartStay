@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
@@ -115,6 +117,7 @@ import {
   SPLIT_R1_TARGETED_RESULT_LABEL,
   SPLIT_R1_TARGETED_RUN_STATUS,
   assertSplitR1OurpriceClassificationExclusiveV1,
+  assertSplitR1EnvFileBinding,
   assertSplitR1OurpriceProbeInitialSearchAllowed,
   assertSplitR1OurpriceProbeV2SearchAllowed,
   assertSplitR1EndpointAllowed,
@@ -213,6 +216,13 @@ import {
 } from "../../scripts/run-split-f0-read-only-collector.mjs";
 
 const TEST_KEY = Buffer.alloc(32, 7);
+
+function readCommittedFile(relativePath) {
+  return execFileSync("git", ["show", `HEAD:${relativePath}`], {
+    cwd: SPLIT_R1_REPOSITORY_ROOT,
+    windowsHide: true,
+  });
+}
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -1484,12 +1494,32 @@ test("sandbox base URL is structurally inspected but no routestack subdomain is 
 });
 
 test("sandbox binding reads dedicated variables only, never falls back and cannot reach fetch while allowlist is held", async () => {
-  const serverEnvPath = path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env");
+  const fixtureRoot = await fs.mkdtemp(path.join(os.tmpdir(), "stayopti-d0033-split-r1-env-"));
+  const syntheticEnvPath = path.join(fixtureRoot, ".env");
+  await fs.writeFile(
+    syntheticEnvPath,
+    [
+      "ROUTESTACK_SANDBOX_BASE_URL=https://evolvemcp.routestack.ai",
+      "ROUTESTACK_SANDBOX_API_KEY=synthetic-sandbox-key",
+      "ROUTESTACK_SANDBOX_API_SECRET=synthetic-sandbox-secret",
+      "",
+    ].join("\n"),
+    "utf8"
+  );
   const beforeEnvHash = crypto
     .createHash("sha256")
-    .update(await fs.readFile(serverEnvPath))
+    .update(await fs.readFile(syntheticEnvPath))
     .digest("hex");
-  const environment = {
+  try {
+    assert.equal(
+      assertSplitR1EnvFileBinding([`--env-file=${syntheticEnvPath}`], syntheticEnvPath),
+      path.resolve(syntheticEnvPath)
+    );
+    assert.throws(
+      () => assertSplitR1EnvFileBinding([`--env-file=${syntheticEnvPath}`], path.join(fixtureRoot, "other.env")),
+      /split-r1-live-requires-server-env-native-binding/
+    );
+    const environment = {
     [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.baseUrl]: "https://evolvemcp.routestack.ai",
     [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiKey]: "synthetic-sandbox-key",
     [SPLIT_R1_SANDBOX_ENVIRONMENT_NAMES.apiSecret]: "synthetic-sandbox-secret",
@@ -1516,7 +1546,7 @@ test("sandbox binding reads dedicated variables only, never falls back and canno
   const bindingJson = JSON.stringify(binding);
   assert.doesNotMatch(bindingJson, /synthetic-(?:sandbox|production)/);
 
-  const envFileArg = `--env-file=${serverEnvPath}`;
+    const envFileArg = `--env-file=${path.join(SPLIT_R1_REPOSITORY_ROOT, "server", ".env")}`;
   const sandboxOnlyProxy = new Proxy(environment, {
     get(target, property, receiver) {
       if (["ROUTESTACK_BASE_URL", "ROUTESTACK_API_KEY", "ROUTESTACK_API_SECRET"].includes(property)) {
@@ -1558,11 +1588,14 @@ test("sandbox binding reads dedicated variables only, never falls back and canno
     /sandbox-live-not-authorized-host-allowlist-hold/
   );
   assert.equal(fetchCalls, 0);
-  const afterEnvHash = crypto
-    .createHash("sha256")
-    .update(await fs.readFile(serverEnvPath))
-    .digest("hex");
-  assert.equal(afterEnvHash, beforeEnvHash);
+  } finally {
+    const afterEnvHash = crypto
+      .createHash("sha256")
+      .update(await fs.readFile(syntheticEnvPath))
+      .digest("hex");
+    assert.equal(afterEnvHash, beforeEnvHash);
+    await fs.rm(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test("bounded live mode is the only Sandbox path that can pass the exact 43/41/0 preflight", async () => {
@@ -4037,14 +4070,9 @@ test("ourprice probe fixture rejects any increase to its frozen 3/5 budget", asy
 });
 
 test("ourprice probe v1 fixture and zero-continuation boundary remain byte-identical", async () => {
-  const fixturePath = path.join(
-    SPLIT_R1_REPOSITORY_ROOT,
-    "tests",
-    "engine-v3",
-    "fixtures",
-    "split-r1-ourprice-semantics-probe-v1.json"
+  const bytes = readCommittedFile(
+    "tests/engine-v3/fixtures/split-r1-ourprice-semantics-probe-v1.json"
   );
-  const bytes = await fs.readFile(fixturePath);
   assert.equal(
     crypto.createHash("sha256").update(bytes).digest("hex"),
     "c9f9643f967d9d39383998268685ad7af5cfd7ab898d7f253d3fc9e1d8da92d1"
