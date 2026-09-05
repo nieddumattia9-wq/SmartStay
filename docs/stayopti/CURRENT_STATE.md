@@ -962,3 +962,32 @@ production audits, secret/private-artifact scans and Git checks passed.
 Commit, validation-branch publication and terminal pull-request workflow
 results remain pending. `main`, the legacy `_002` session and all private
 evidence remain untouched.
+
+## D-0035 Browserslist security resolution — locally validated
+
+- Pull-request run 84 passed TypeScript, the complete test program, analytics
+  and build, then failed only in the exact `npm run audit:security` boundary.
+  The root all-dependency audit found one high-severity advisory in transitive
+  `browserslist` 4.28.4; the server production audit remained clean.
+- D-0034's root `npm audit --omit=dev` result was correct but narrower than the
+  release gate. It is not accepted as equivalent CI evidence.
+- npm refreshed root transitive `browserslist` to 4.28.9 together only with
+  its browser-data family: `baseline-browser-mapping`, `caniuse-lite`,
+  `electron-to-chromium`, `node-releases` and `update-browserslist-db`.
+  Neither package manifest nor the server lockfile changes; `fast-uri` 3.1.7
+  and server `qs` 6.16.0 remain fixed.
+- Future pre-push proof must execute the exact commands
+  `npm run audit:security` and `npm run release:ci`. Partial commands or audit
+  scopes must retain their precise names and cannot be reported as CI-
+  equivalent.
+
+An isolated clean detached candidate passed root all-dependency and server
+production audits with zero vulnerabilities, the exact `npm run
+audit:security` command, and the exact full `npm run release:ci` command.
+Explicit reruns passed Engine V3 1509/1509, Engine V2 196/196, TypeScript,
+build and Windows PowerShell 5.1 parsing 9/9. Secret/private-artifact and Git
+whitespace scans passed. Release candidate creation and manifest verification
+passed against the same explicit candidate SHA and the temporary output was
+removed. Commit, validation-branch publication and terminal pull-request
+workflow results remain pending. `main`, `_002`, private Evidence and the
+seven preserved developer paths remain untouched.

@@ -38,6 +38,7 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0032 | 2026-09-05 | Require separate Linux-universal and real Windows PowerShell 5.1 CI gates before any release manifest or artifact can be created. | Accepted | `decisions/0032-os-split-release-gate.md` |
 | D-0033 | 2026-09-05 | Require release proof from a clean commit candidate with no ignored or developer-dirty dependency; use synthetic env fixtures and immutable Git blobs for canonical byte evidence. | Accepted on validation branch; pull request unmerged | `decisions/0033-clean-commit-release-proof.md` |
 | D-0034 | 2026-09-05 | Permit detached HEAD only for explicitly synthetic/offline preflight modes, prove the boundary in real detached worktrees and repair only the two vulnerable transitive lock resolutions. | Accepted; validated locally, pull-request update pending | `decisions/0034-detached-head-ci-and-dependency-audits.md` |
+| D-0035 | 2026-09-05 | Require exact release-command proof and refresh only the vulnerable transitive Browserslist family in the root lockfile. | Accepted; validated locally, pull-request update pending | `decisions/0035-browserslist-security-resolution-and-exact-ci-proof.md` |
 
 ## Required fields for a new decision
 
