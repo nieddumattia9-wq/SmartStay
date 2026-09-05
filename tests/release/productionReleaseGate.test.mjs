@@ -883,3 +883,221 @@ test(
     );
   }
 );
+
+test(
+  "release artifacts require both the universal Linux gate and real Windows PowerShell 5.1 gate",
+  () => {
+    const repositoryRoot =
+      path.resolve(
+        path.dirname(
+          new URL(
+            import.meta.url
+          ).pathname
+            .replace(
+              /^\/([A-Za-z]:)/,
+              "$1"
+            )
+        ),
+        "../.."
+      );
+
+    const workflow =
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          ".github",
+          "workflows",
+          "release-gate.yml"
+        ),
+        "utf8"
+      );
+
+    const jobBlock =
+      (jobName) => {
+        const marker =
+          `\n  ${jobName}:\n`;
+        const start =
+          workflow.indexOf(
+            marker
+          );
+
+        assert.notEqual(
+          start,
+          -1,
+          `Required workflow job ${jobName} is missing.`
+        );
+
+        const bodyStart =
+          start + marker.length;
+        const remainder =
+          workflow.slice(
+            bodyStart
+          );
+        const nextJob =
+          remainder.match(
+            /\n  [a-z0-9-]+:\n/i
+          );
+
+        return remainder.slice(
+          0,
+          nextJob?.index ?? remainder.length
+        );
+      };
+
+    const linuxGate =
+      jobBlock(
+        "linux-release-gate"
+      );
+    const windowsGate =
+      jobBlock(
+        "windows-powershell-51-gate"
+      );
+    const releaseGate =
+      jobBlock(
+        "release-gate"
+      );
+
+    assert.match(
+      linuxGate,
+      /runs-on:\s*ubuntu-latest/
+    );
+    assert.match(
+      linuxGate,
+      /npm run release:ci/
+    );
+    assert.doesNotMatch(
+      linuxGate,
+      /Create immutable release candidate manifest|actions\/upload-artifact/
+    );
+
+    assert.match(
+      windowsGate,
+      /runs-on:\s*windows-latest/
+    );
+    assert.match(
+      windowsGate,
+      /shell:\s*powershell/
+    );
+    assert.match(
+      windowsGate,
+      /PSEdition\s+-ne\s+'Desktop'/
+    );
+    assert.match(
+      windowsGate,
+      /PSVersion\.Major\s+-ne\s+5/
+    );
+    assert.match(
+      windowsGate,
+      /PSVersion\.Minor\s+-ne\s+1/
+    );
+    assert.match(
+      windowsGate,
+      /C:\\Windows\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/
+    );
+    assert.match(
+      windowsGate,
+      /npm\.cmd run test:engine-v3/
+    );
+    assert.doesNotMatch(
+      windowsGate,
+      /\bpwsh\b|continue-on-error|Create immutable release candidate manifest|actions\/upload-artifact/i
+    );
+
+    assert.match(
+      releaseGate,
+      /needs:\s*\n\s+- linux-release-gate\s*\n\s+- windows-powershell-51-gate/
+    );
+    assert.match(
+      releaseGate,
+      /needs\.linux-release-gate\.result == 'success'/
+    );
+    assert.match(
+      releaseGate,
+      /needs\.windows-powershell-51-gate\.result == 'success'/
+    );
+    assert.match(
+      releaseGate,
+      /Create immutable release candidate manifest/
+    );
+    assert.match(
+      releaseGate,
+      /actions\/upload-artifact@[0-9a-f]{40}/i
+    );
+    assert.doesNotMatch(
+      releaseGate,
+      /continue-on-error/
+    );
+
+    const handoffTests =
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          "tests",
+          "engine-v3",
+          "v3SerpApiGoogleHotelsCanaryHandoff.test.ts"
+        ),
+        "utf8"
+      );
+    const evidenceTests =
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          "tests",
+          "engine-v3",
+          "v3SerpApiGoogleHotelsPilotEvidence.test.ts"
+        ),
+        "utf8"
+      );
+    const manualCaptureTests =
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          "tests",
+          "engine-v3",
+          "v3ManualPublicMarketDecisionGoldenCaptureCanary.test.ts"
+        ),
+        "utf8"
+      );
+    const quarantineTests =
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          "tests",
+          "engine-v3",
+          "v3ProviderRawQuarantineReplay.test.ts"
+        ),
+        "utf8"
+      );
+
+    for (
+      const source of
+      [
+        handoffTests,
+        evidenceTests,
+        manualCaptureTests,
+        quarantineTests,
+      ]
+    ) {
+      assert.match(
+        source,
+        /requires real Windows PowerShell 5\.1; enforced by the required windows-latest release job/
+      );
+      assert.match(
+        source,
+        /powershell\.exe failed to start/
+      );
+      assert.match(
+        source,
+        /powershell\.exe returned status=null/
+      );
+      assert.match(
+        source,
+        /powershell\.exe stdout is unavailable/
+      );
+      assert.match(
+        source,
+        /powershell\.exe stderr is unavailable/
+      );
+    }
+  }
+);

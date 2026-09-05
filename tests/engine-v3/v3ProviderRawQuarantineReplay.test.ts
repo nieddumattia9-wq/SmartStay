@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -28,6 +28,18 @@ import {
 } from "../../src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3";
 
 const CAPTURED_AT = "2026-09-01T10:00:00.000Z";
+const PS51 = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+const WINDOWS_POWERSHELL_51_REQUIRED = process.platform === "win32"
+  ? false
+  : "requires real Windows PowerShell 5.1; enforced by the required windows-latest release job";
+
+function assertPowerShell51Started(result: SpawnSyncReturns<string>, label: string) {
+  assert.equal(result.error, undefined, `${label}: powershell.exe failed to start`);
+  assert.notEqual(result.status, null, `${label}: powershell.exe returned status=null`);
+  assert.equal(typeof result.stdout, "string", `${label}: powershell.exe stdout is unavailable`);
+  assert.equal(typeof result.stderr, "string", `${label}: powershell.exe stderr is unavailable`);
+}
+
 const RAW = JSON.stringify({
   search_metadata: { status: "Success", created_at: CAPTURED_AT },
   search_parameters: {
@@ -239,9 +251,10 @@ test("T2A-R0 21 unknown schema fields are reported without raw values", () => {
   assert.doesNotMatch(JSON.stringify(result), /"private":"value"/);
 });
 
-test("T2A-R0 22 Windows PowerShell 5.1 DPAPI bridge parses and is CurrentUser-scoped", { skip: process.platform !== "win32" }, () => {
+test("T2A-R0 22 Windows PowerShell 5.1 DPAPI bridge parses and is CurrentUser-scoped", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   const script = resolve(process.cwd(), "scripts/protect-v3-provider-raw-key-dpapi.ps1");
-  const parse = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$e=$null;$t=$null;[Management.Automation.Language.Parser]::ParseFile($env:STAYOPTI_DPAPI_SCRIPT,[ref]$t,[ref]$e)|Out-Null;if($e.Count){exit 1}"], { encoding: "utf8", windowsHide: true, env: { ...process.env, STAYOPTI_DPAPI_SCRIPT: script } });
+  const parse = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$e=$null;$t=$null;[Management.Automation.Language.Parser]::ParseFile($env:STAYOPTI_DPAPI_SCRIPT,[ref]$t,[ref]$e)|Out-Null;if($e.Count){exit 1}"], { encoding: "utf8", windowsHide: true, env: { ...process.env, STAYOPTI_DPAPI_SCRIPT: script } });
+  assertPowerShell51Started(parse, "T2A-R0 DPAPI bridge parse");
   assert.equal(parse.status, 0);
   const source = readFileSync(script, "utf8");
   assert.match(source, /DataProtectionScope\]::CurrentUser/);

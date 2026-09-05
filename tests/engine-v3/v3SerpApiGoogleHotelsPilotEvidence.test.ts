@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -36,6 +36,17 @@ import {
 
 const TEST_KEY = "SYNTHETIC_TEST_KEY_NOT_REAL";
 const EXECUTION_HEAD = "1".repeat(40);
+const PS51 = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+const WINDOWS_POWERSHELL_51_REQUIRED = process.platform === "win32"
+  ? false
+  : "requires real Windows PowerShell 5.1; enforced by the required windows-latest release job";
+
+function assertPowerShell51Started(result: SpawnSyncReturns<string>, label: string) {
+  assert.equal(result.error, undefined, `${label}: powershell.exe failed to start`);
+  assert.notEqual(result.status, null, `${label}: powershell.exe returned status=null`);
+  assert.equal(typeof result.stdout, "string", `${label}: powershell.exe stdout is unavailable`);
+  assert.equal(typeof result.stderr, "string", `${label}: powershell.exe stderr is unavailable`);
+}
 
 function mainResponse(index = 0): SerpApiGoogleHotelsResponseV3 {
   const session = STAYOPTI_SERPAPI_PILOT_MANIFEST_V3.sessions[index]!;
@@ -233,7 +244,9 @@ test("T1A 39 checksum mismatch is rejected", async () => { const run = await com
 test("T1A 40 old authorization literal is revoked", async () => { const run = await execute({ literal: STAYOPTI_SERPAPI_REVOKED_AUTHORIZATION_LITERAL_V3 }); assert.equal(run.calls, 0); assert.match(String(run.error), /AUTHORIZATION_LITERAL_MISMATCH/); });
 test("T1A 41 repaired authorization is source-and-execution-head-bound MAX2 and not granted", () => { assert.match(createSerpApiT2CRequiredAuthorizationLiteralV3(EXECUTION_HEAD), new RegExp(`^AUTHORIZE_V3_17T2C_MAX2_SOURCE_SHA_[0-9a-f]{40}_EXECUTION_HEAD_${EXECUTION_HEAD}_MANIFEST_${STAYOPTI_SERPAPI_PILOT_MANIFEST_HASH_V3}_RUNNER_${STAYOPTI_SERPAPI_PILOT_RUNNER_BUNDLE_HASH_V3}_MAIN1_DETAIL1_SESSIONS1_CONCURRENCY1_RETRIES0_PAGINATION0_QUARANTINE_AES256GCM_DPAPI_CURRENTUSER_AUTOSTOP_REMAINING_NO$`)); const gate = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotGateV3.ts"), "utf8"); assert.match(gate, /explicitCallAuthorizationGranted:\s*false/); assert.equal(STAYOPTI_SERPAPI_PILOT_RETENTION_POLICY_VERSION_V3, "stayopti.v3.serpapi-google-hotels-retention@2"); });
 test("T1A 42 tests use a fail-closed fake transport and no network", () => { const collector = readFileSync(resolve(process.cwd(), "src/engine-v3/evaluation/serpApiGoogleHotelsPilotCollectorV3.ts"), "utf8"); assert.doesNotMatch(collector, /\bfetch\s*\(|process\.env/); });
-test("T1A 43 Evidence ZIP performs an actual PowerShell 5.1 roundtrip", async () => {
+// T1A 01-42 are universal. T1A 43-44 require the real Windows PowerShell 5.1
+// archive boundary and are enforced by the required windows-latest release job.
+test("T1A 43 Evidence ZIP performs an actual PowerShell 5.1 roundtrip", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, async () => {
   const run = await complete();
   const root = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T1A-ZipTest-"));
   const staging = join(root, "staging"); const extracted = join(root, "extracted"); const zip = join(root, "evidence.zip");
@@ -243,15 +256,21 @@ test("T1A 43 Evidence ZIP performs an actual PowerShell 5.1 roundtrip", async ()
       const path = join(staging, ...entry.name.split("/")); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, entry.content, "utf8");
     }
     execFileSync(process.execPath, [resolve(process.cwd(), "scripts/run-v3-17t2-serpapi-google-hotels-pilot.mjs"), `--compiled-root=${resolve(__dirname, "../..")}`, `--finalize-evidence=${staging}`], { stdio: "ignore" });
-    execFileSync("powershell.exe", ["-NoProfile", "-Command", "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:STAYOPTI_ZIP_STAGE,$env:STAYOPTI_ZIP_PATH,[IO.Compression.CompressionLevel]::Optimal,$false); [IO.Directory]::CreateDirectory($env:STAYOPTI_ZIP_EXTRACT)|Out-Null; [IO.Compression.ZipFile]::ExtractToDirectory($env:STAYOPTI_ZIP_PATH,$env:STAYOPTI_ZIP_EXTRACT)"], { stdio: "ignore", env: { ...process.env, STAYOPTI_ZIP_STAGE: staging, STAYOPTI_ZIP_PATH: zip, STAYOPTI_ZIP_EXTRACT: extracted } });
+    const roundtrip = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:STAYOPTI_ZIP_STAGE,$env:STAYOPTI_ZIP_PATH,[IO.Compression.CompressionLevel]::Optimal,$false); [IO.Directory]::CreateDirectory($env:STAYOPTI_ZIP_EXTRACT)|Out-Null; [IO.Compression.ZipFile]::ExtractToDirectory($env:STAYOPTI_ZIP_PATH,$env:STAYOPTI_ZIP_EXTRACT)"], { encoding: "utf8", env: { ...process.env, STAYOPTI_ZIP_STAGE: staging, STAYOPTI_ZIP_PATH: zip, STAYOPTI_ZIP_EXTRACT: extracted } });
+    assertPowerShell51Started(roundtrip, "T1A 43 ZIP roundtrip");
+    assert.equal(roundtrip.status, 0, `T1A 43 ZIP roundtrip failed: ${roundtrip.stderr}`);
     const entries = expected.map((entry) => ({ name: entry.name, content: readFileSync(join(extracted, ...entry.name.split("/")), "utf8") }));
     assert.equal(validateSerpApiEvidenceArchiveEntriesV3(entries).valid, true);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
-test("T1A 44 a corrupted ZIP container is rejected", () => {
+test("T1A 44 a corrupted ZIP container is rejected by the ZIP parser", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   const root = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T1A-CorruptZip-")); const zip = join(root, "corrupt.zip");
   try {
     writeFileSync(zip, "not-a-zip", "utf8");
-    assert.throws(() => execFileSync("powershell.exe", ["-NoProfile", "-Command", "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:STAYOPTI_ZIP_PATH); $z.Dispose()"], { stdio: "ignore", env: { ...process.env, STAYOPTI_ZIP_PATH: zip } }));
+    const corruptionProbe = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "try { Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:STAYOPTI_ZIP_PATH); $z.Dispose(); Write-Output 'CORRUPT_ZIP_UNEXPECTEDLY_OPENED'; exit 0 } catch { Write-Output 'CORRUPT_ZIP_REJECTED_BY_DOTNET'; exit 23 }"], { encoding: "utf8", env: { ...process.env, STAYOPTI_ZIP_PATH: zip } });
+    assertPowerShell51Started(corruptionProbe, "T1A 44 corrupted ZIP probe");
+    assert.equal(corruptionProbe.status, 23);
+    assert.match(corruptionProbe.stdout, /CORRUPT_ZIP_REJECTED_BY_DOTNET/);
+    assert.doesNotMatch(corruptionProbe.stdout, /CORRUPT_ZIP_UNEXPECTEDLY_OPENED/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

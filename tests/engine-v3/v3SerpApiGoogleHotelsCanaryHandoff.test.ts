@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import test from "node:test";
 import {
   createSerpApiT2CRequiredAuthorizationLiteralV3,
@@ -21,8 +21,18 @@ const launcherSource = readFileSync(LAUNCHER, "utf8");
 const runnerSource = readFileSync(RUNNER, "utf8");
 const CURRENT_EXECUTION_HEAD = spawnSync("git", ["rev-parse", "HEAD"], { cwd: REPOSITORY, encoding: "utf8" }).stdout.trim();
 const CURRENT_CANARY_LITERAL = createSerpApiT2CRequiredAuthorizationLiteralV3(CURRENT_EXECUTION_HEAD);
+const WINDOWS_POWERSHELL_51_REQUIRED = process.platform === "win32"
+  ? false
+  : "requires real Windows PowerShell 5.1; enforced by the required windows-latest release job";
 
 function psQuote(value: string) { return `'${value.replaceAll("'", "''")}'`; }
+
+function assertPowerShell51Started(result: SpawnSyncReturns<string>, label: string) {
+  assert.equal(result.error, undefined, `${label}: powershell.exe failed to start`);
+  assert.notEqual(result.status, null, `${label}: powershell.exe returned status=null`);
+  assert.equal(typeof result.stdout, "string", `${label}: powershell.exe stdout is unavailable`);
+  assert.equal(typeof result.stderr, "string", `${label}: powershell.exe stderr is unavailable`);
+}
 
 function runHandoff(input: { failure?: string; preflight?: boolean } = {}) {
   const diagnosticRoot = mkdtempSync(join(tmpdir(), "StayOpti-T1C-Test-"));
@@ -44,23 +54,29 @@ function runHandoff(input: { failure?: string; preflight?: boolean } = {}) {
     env: { ...process.env, SERPAPI_API_KEY: "" },
     timeout: 120_000,
   });
+  assertPowerShell51Started(result, `T1C ${failure} handoff`);
   const logs = readdirSync(diagnosticRoot).map((name) => readFileSync(join(diagnosticRoot, name), "utf8"));
+  assert.equal(logs.length, 1, `T1C ${failure} handoff must write exactly one diagnostic log`);
+  assert.ok(logs[0]!.trim().length > 0, `T1C ${failure} diagnostic log must not be empty`);
   rmSync(diagnosticRoot, { recursive: true, force: true });
   return { ...result, combined: `${result.stdout}\n${result.stderr}`, logs };
 }
 
-test("T1C 01 reproduces the original pre-key PowerShell execution-policy boundary", () => {
+// T1C 01-15 and 17-19 exercise the real Windows PowerShell 5.1 process.
+// T1C 16 and 20-30 are universal static/domain checks and run on every OS.
+test("T1C 01 reproduces the original pre-key PowerShell execution-policy boundary deterministically", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   const root = mkdtempSync(join(tmpdir(), "StayOpti-T1C-Policy-"));
   const harmless = join(root, "probe.ps1");
   writeFileSync(harmless, "Write-Output 'SCRIPT_BODY_REACHED'\r\n", "utf8");
-  const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-File", harmless], { encoding: "utf8" });
+  const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Restricted", "-File", harmless], { encoding: "utf8" });
+  assertPowerShell51Started(result, "T1C explicit Restricted policy probe");
   rmSync(root, { recursive: true, force: true });
   assert.notEqual(result.status, 0);
   assert.doesNotMatch(result.stdout, /SCRIPT_BODY_REACHED/);
   assert.match(`${result.stdout}\n${result.stderr}`, /UnauthorizedAccess|esecuzione di script.*disabilitata/i);
 });
 
-test("T1C 02 handoff preflight reaches immediately before the secure key prompt", () => {
+test("T1C 02 handoff preflight reaches immediately before the secure key prompt", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   const result = runHandoff({ preflight: true });
   assert.equal(result.status, 0);
   assert.match(result.combined, /READY_FOR_SECURE_KEY_PROMPT=YES/);
@@ -68,12 +84,12 @@ test("T1C 02 handoff preflight reaches immediately before the secure key prompt"
   assert.match(result.combined, /PARENT_SENTINEL=REACHED/);
 });
 
-test("T1C 03 preflight uses zero credentials", () => { const result = runHandoff(); assert.match(result.combined, /CREDENTIALS_LOADED=NO/); assert.match(result.combined, /API_KEY_PROMPT_REACHED=NO/); });
-test("T1C 04 preflight uses zero network", () => { const result = runHandoff(); assert.match(result.combined, /SERPAPI_CALLS_CONFIRMED_BY_RUNNER=0/); });
-test("T1C 05 preflight does not consume authorization", () => { const result = runHandoff(); assert.match(result.combined, /AUTHORIZATION_CONSUMED=NO/); });
+test("T1C 03 preflight uses zero credentials", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => { const result = runHandoff(); assert.match(result.combined, /CREDENTIALS_LOADED=NO/); assert.match(result.combined, /API_KEY_PROMPT_REACHED=NO/); });
+test("T1C 04 preflight uses zero network", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => { const result = runHandoff(); assert.match(result.combined, /SERPAPI_CALLS_CONFIRMED_BY_RUNNER=0/); });
+test("T1C 05 preflight does not consume authorization", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => { const result = runHandoff(); assert.match(result.combined, /AUTHORIZATION_CONSUMED=NO/); });
 
 for (const [index, failure] of ["HEAD", "DIRTY", "BUNDLE", "COMPILE", "MANIFEST", "LITERAL", "RUNNER_PREFLIGHT", "LAUNCHER_PREFLIGHT"].entries()) {
-  test(`T1C ${String(index + 6).padStart(2, "0")} ${failure} failure returns to the parent sentinel`, () => {
+  test(`T1C ${String(index + 6).padStart(2, "0")} ${failure} failure returns to the parent sentinel`, { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
     const result = runHandoff({ failure });
     assert.equal(result.status, 0);
     assert.match(result.combined, /HANDOFF_RESULT=FAIL/);
@@ -83,7 +99,7 @@ for (const [index, failure] of ["HEAD", "DIRTY", "BUNDLE", "COMPILE", "MANIFEST"
   });
 }
 
-test("T1C 14 empty key is fail-closed without transport and returns to parent", () => {
+test("T1C 14 empty key is fail-closed without transport and returns to parent", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   const result = runHandoff({ failure: "EMPTY_KEY", preflight: false });
   assert.equal(result.status, 0);
   assert.match(result.combined, /STAYOPTI_T1C_API_KEY_MISSING/);
@@ -91,7 +107,7 @@ test("T1C 14 empty key is fail-closed without transport and returns to parent", 
   assert.match(result.combined, /SERPAPI_CALLS_CONFIRMED_BY_RUNNER=0/);
 });
 
-test("T1C 15 every pre-network failure writes one atomic sanitized diagnostic log", () => {
+test("T1C 15 every pre-network failure writes one atomic sanitized diagnostic log", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   const result = runHandoff({ failure: "LITERAL" });
   assert.equal(result.logs.length, 1);
   assert.match(result.logs[0]!, /FAILURE_CLASSIFICATION=STAYOPTI_T1C_LITERAL_MISMATCH/);
@@ -104,9 +120,9 @@ test("T1C 16 collector and launcher retain abort Evidence behavior", () => {
   assert.match(runnerSource, /writeExecutionEvidence/);
 });
 
-test("T1C 17 diagnostic allowlist excludes secrets", () => { const result = runHandoff({ failure: "HEAD" }); assert.doesNotMatch(result.logs.join("\n"), /api_key=|bearer|securestring|bstr/i); });
-test("T1C 18 diagnostic allowlist excludes property tokens", () => { const result = runHandoff({ failure: "HEAD" }); assert.doesNotMatch(result.logs.join("\n"), /property_token/i); });
-test("T1C 19 diagnostic allowlist excludes request URLs and payloads", () => { const result = runHandoff({ failure: "HEAD" }); assert.doesNotMatch(result.logs.join("\n"), /https?:\/\/|rawPayload|rawResponse|<html/i); });
+test("T1C 17 diagnostic allowlist excludes secrets", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => { const result = runHandoff({ failure: "HEAD" }); assert.equal(result.logs.length, 1); assert.ok(result.logs[0]!.trim().length > 0); assert.doesNotMatch(result.logs.join("\n"), /api_key=|bearer|securestring|bstr/i); });
+test("T1C 18 diagnostic allowlist excludes property tokens", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => { const result = runHandoff({ failure: "HEAD" }); assert.equal(result.logs.length, 1); assert.ok(result.logs[0]!.trim().length > 0); assert.doesNotMatch(result.logs.join("\n"), /property_token/i); });
+test("T1C 19 diagnostic allowlist excludes request URLs and payloads", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => { const result = runHandoff({ failure: "HEAD" }); assert.equal(result.logs.length, 1); assert.ok(result.logs[0]!.trim().length > 0); assert.doesNotMatch(result.logs.join("\n"), /https?:\/\/|rawPayload|rawResponse|<html/i); });
 test("T1C 20 handoff contains no PowerShell exit statement", () => { assert.doesNotMatch(handoffSource, /(^|[;{}\s])exit(?:\s|$)/im); assert.doesNotMatch(launcherSource, /(^|[;{}\s])exit(?:\s|$)/im); });
 test("T1C 21 final pause is in the unconditional cleanup path", () => { assert.match(handoffSource, /finally\s*\{[\s\S]*Read-Host 'Premi Invio dopo aver copiato il risultato'/); });
 test("T1C 22 canary session remains the only Stage A session", () => { assert.match(handoffSource, /SERP_PILOT_01_FLORENCE_COUPLE_BALANCED/); assert.match(handoffSource, /ExpectedCanaryIndex = 0/); });

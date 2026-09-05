@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release-gate:
+  linux-release-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -47,6 +47,82 @@ jobs:
 
       - name: Run release CI gate
         run: npm run release:ci
+
+  windows-powershell-51-gate:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend and test dependencies
+        run: npm ci
+
+      - name: Verify Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSEdition -ne 'Desktop' -or $PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1) {
+            throw "Windows PowerShell 5.1 is required."
+          }
+          $expected = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+          if (-not (Test-Path -LiteralPath $expected -PathType Leaf)) {
+            throw "Windows PowerShell 5.1 executable is missing."
+          }
+
+      - name: Run full Engine V3 suite with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          & npm.cmd run test:engine-v3
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+  release-gate:
+    needs:
+      - linux-release-gate
+      - windows-powershell-51-gate
+    if: >-
+      ${{ needs.linux-release-gate.result == 'success' &&
+          needs.windows-powershell-51-gate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      VITE_API_URL: /api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend and test dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm ci --prefix server
+
+      - name: Rebuild release payload after both required gates
+        run: npm run typecheck && npm run build
 
       - name: Create immutable release candidate manifest
         run: >-

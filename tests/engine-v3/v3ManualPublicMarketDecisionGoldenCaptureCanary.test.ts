@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import {
@@ -27,6 +27,17 @@ const picker = readFileSync(pickerPath, "utf8");
 const zipper = readFileSync(zipPath, "utf8");
 const custody = readFileSync(custodyPath, "utf8");
 const postfinalization = readFileSync(postfinalizationPath, "utf8");
+const PS51 = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+const WINDOWS_POWERSHELL_51_REQUIRED = process.platform === "win32"
+  ? false
+  : "requires real Windows PowerShell 5.1; enforced by the required windows-latest release job";
+
+function assertPowerShell51Started(result: SpawnSyncReturns<string>, label: string) {
+  assert.equal(result.error, undefined, `${label}: powershell.exe failed to start`);
+  assert.notEqual(result.status, null, `${label}: powershell.exe returned status=null`);
+  assert.equal(typeof result.stdout, "string", `${label}: powershell.exe stdout is unavailable`);
+  assert.equal(typeof result.stderr, "string", `${label}: powershell.exe stderr is unavailable`);
+}
 
 test("T5B 01 interface is a guided Italian flow and not a JSON editor", () => {
   assert.match(host, /Scenario congelato: Firenze/);
@@ -107,16 +118,18 @@ test("T5B 14 PowerShell launcher binds an explicit execution HEAD before startup
   assert.match(launcher, /git diff --cached --name-only/);
 });
 
-test("T5B 15 PowerShell 5.1 scripts parse", { skip: process.platform !== "win32" }, () => {
+test("T5B 15 PowerShell 5.1 scripts parse", { skip: WINDOWS_POWERSHELL_51_REQUIRED }, () => {
   for (const path of [launcherPath, pickerPath, zipPath, postfinalizationPath]) {
-    const parse = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$e=$null;$t=$null;[Management.Automation.Language.Parser]::ParseFile($env:STAYOPTI_PS,[ref]$t,[ref]$e)|Out-Null;if($e.Count){exit 1}"], { encoding: "utf8", windowsHide: true, env: { ...process.env, STAYOPTI_PS: path } });
+    const parse = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$e=$null;$t=$null;[Management.Automation.Language.Parser]::ParseFile($env:STAYOPTI_PS,[ref]$t,[ref]$e)|Out-Null;if($e.Count){exit 1}"], { encoding: "utf8", windowsHide: true, env: { ...process.env, STAYOPTI_PS: path } });
+    assertPowerShell51Started(parse, `T5B PowerShell parse ${path}`);
     assert.equal(parse.status, 0, parse.stderr);
   }
 });
 
-test("T5B 16 synthetic dry run covers save, resume, encryption, snapshot, capsule and Evidence", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 16 synthetic dry run covers save, resume, encryption, snapshot, capsule and Evidence", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
   const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-  const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  assertPowerShell51Started(run, "T5B synthetic dry run");
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
   const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
   assert.deepEqual(receipt, {
@@ -245,9 +258,10 @@ test("T5B 30 repair applies only after explicit single-field confirmation", () =
   assert.match(host, /Correzione annullata; lo stato salvato non è cambiato/);
 });
 
-test("T5B 31 synthetic repair reuses five alternatives, preserves private handles and exports without blind work", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 31 synthetic repair reuses five alternatives, preserves private handles and exports without blind work", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
   const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-  const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "repair-dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "repair-dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  assertPowerShell51Started(run, "T5B synthetic repair dry run");
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
   const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
   assert.deepEqual(receipt, {
@@ -267,7 +281,7 @@ test("T5B 31 synthetic repair reuses five alternatives, preserves private handle
   });
 });
 
-test("T5B 32 retired diagnostic session cannot enter repair lookup", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 32 retired diagnostic session cannot enter repair lookup", { timeout: 120_000 }, () => {
   const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-Retired-"));
   try {
     const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`, "--session-id=V3_17T5B_FLORENCE_20261015_002"], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000 });
@@ -276,7 +290,7 @@ test("T5B 32 retired diagnostic session cannot enter repair lookup", { skip: pro
   } finally { rmSync(privateRoot, { recursive: true, force: true }); }
 });
 
-test("T5B 33 repair lookup fails closed when no explicit session identity is supplied", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 33 repair lookup fails closed when no explicit session identity is supplied", { timeout: 120_000 }, () => {
   const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairLookupMissing-"));
   try {
     const run = spawnSync("node", [hostPath, "--mode=repair-export", `--repository-root=${root}`, `--compiled-root=${compiledRoot}`, `--private-root=${privateRoot}`], {
@@ -295,9 +309,10 @@ test("T5B 33 repair lookup fails closed when no explicit session identity is sup
   }
 });
 
-test("T5B 34 true PowerShell launcher finalizes then reopens hardened synthetic custody", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 34 true PowerShell launcher finalizes then reopens hardened synthetic custody", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
   const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-  const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+  assertPowerShell51Started(run, "T5B finalized custody launcher");
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
   const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
   assert.equal(receipt.powerShell51PostfinalizationVerifierAvailable, true);
@@ -305,7 +320,7 @@ test("T5B 34 true PowerShell launcher finalizes then reopens hardened synthetic 
   assert.equal(receipt.syntheticFixtureEligibleAsRealProof, false);
 });
 
-test("T5B 35 repair preflight distinguishes parse failure from a missing state file", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 35 repair preflight distinguishes parse failure from a missing state file", { timeout: 120_000 }, () => {
   const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairParse-"));
   const sessionId = "V3_17T5B_SYNTHETIC_PARSE_010";
   const sessionRoot = join(privateRoot, sessionId);
@@ -333,7 +348,7 @@ test("T5B 35 repair preflight distinguishes parse failure from a missing state f
   }
 });
 
-test("T5B 36 repair-export emits the sanitized shared diagnostic before a fail-closed lookup error", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 36 repair-export emits the sanitized shared diagnostic before a fail-closed lookup error", { timeout: 120_000 }, () => {
   const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-RepairMissing-"));
   const sessionId = "V3_17T5B_SYNTHETIC_MISSING_011";
   try {
@@ -399,7 +414,7 @@ test("T5B 42 implausible dates and case-insensitive unknown remain fail-closed",
   assert.equal(validateManualMarketTextConditionV3("unknown").reasonCode, "MANUAL_CAPTURE_TEXT_CONDITION_UNKNOWN");
 });
 
-test("T5B 43 PowerShell 5.1 postfinalization verifier checks a synthetic session file by file and refuses real-proof promotion", { skip: process.platform !== "win32", timeout: 120_000 }, () => {
+test("T5B 43 PowerShell 5.1 postfinalization verifier checks a synthetic session file by file and refuses real-proof promotion", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
   const privateRoot = mkdtempSync(join(tmpdir(), "StayOpti-V3-17T5B-Postfinalization-"));
   const sessionId = "V3_17T5C_SYNTHETIC_POSTFINALIZATION_001";
   const sessionRoot = join(privateRoot, sessionId);
@@ -439,7 +454,8 @@ test("T5B 43 PowerShell 5.1 postfinalization verifier checks a synthetic session
   writeFileSync(join(sessionRoot, "session-state.recovery.json"), stateSerialized, "utf8");
   writeFileSync(join(historyRoot, "session-state-r000002-synthetic.json"), stateSerialized, "utf8");
   try {
-    const run = spawnSync("powershell.exe", ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", postfinalizationPath, "-SessionId", sessionId, "-DiagnosticPrivateRoot", privateRoot, "-SyntheticFixture"], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000 });
+    const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", postfinalizationPath, "-SessionId", sessionId, "-DiagnosticPrivateRoot", privateRoot, "-SyntheticFixture"], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000 });
+    assertPowerShell51Started(run, "T5B postfinalization verifier");
     assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
     const receipt = JSON.parse(run.stdout.trim());
     assert.equal(receipt.status, "PASS");

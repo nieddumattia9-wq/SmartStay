@@ -852,3 +852,38 @@ mutation, commit, push or fetch occurred. The implementation is ready for a
 separately authorized successor capture; only a post-finalization verification
 run against the user's canonical CurrentUser filesystem may establish that a
 future real session satisfied the custody contract.
+
+## D-0032 OS-split release gate hardening — accepted
+
+- GitHub Actions run 81 failed after the valid 52-commit fast-forward through
+  `1d6ae61007d2a07d7ec67130a5df2620f9e7725a`. The failure was reproduced on
+  Linux and is attributable to the single `ubuntu-latest` release job invoking
+  integration tests that require Windows PowerShell 5.1. The published history
+  remains valid and is not rewritten.
+- The corrective workflow has a universal `linux-release-gate`, a required
+  `windows-powershell-51-gate` on `windows-latest`, and a final
+  `release-gate`. Release manifest creation and artifact upload occur only in
+  the final job after both operating-system gates report success.
+- Windows-specific tests now skip on non-Windows only with an explicit stable
+  reason and are executed by the mandatory Windows job. Missing executable,
+  `status=null`, absent stdout/stderr and missing diagnostic logs fail closed.
+  T1A 44 accepts only the controlled result of a corrupt-ZIP rejection. T1C
+  17–19 can no longer pass on empty logs, and T1C 01 supplies an explicit
+  execution policy. Four Node-only T5B checks previously guarded as Windows
+  tests are now correctly universal.
+- Offline validation on 2026-09-05 passed: affected Windows suites 142/142;
+  Engine V3 on Windows 1514/1514; controlled Linux-platform execution 1488
+  pass, 26 explicit Windows-only skips and zero failures; Engine V2 196/196;
+  lifecycle 530 pass plus 17 canonical skips; security 29/29; release 101/101;
+  analytics 31/31; capacity 9/9; beta 4/4; TypeScript typecheck and build;
+  and parsing of all nine tracked PowerShell scripts under Windows PowerShell
+  5.1. A native WSL run was not possible offline because neither installed
+  Ubuntu distribution contains a native Linux `node` executable (an `npm`
+  command is visible through host interop but cannot provide that runtime);
+  the platform-gating branch was exercised deterministically without replacing
+  PowerShell 5.1 with `pwsh`.
+- No provider call, HTTP request, credential access, real collection, `_002`
+  mutation or private-artifact mutation occurred during preparation. The user
+  authorized one atomic corrective commit and a conditional fast-forward push;
+  terminal GitHub validation of the revised job topology remains mandatory
+  after publication.
