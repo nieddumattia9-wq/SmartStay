@@ -18,7 +18,7 @@ $ExpectedBranch = 'main'
 $ExpectedManifestHash = 'e0981d4540194e3c918a3eeb0669063e8697dd849abbbd6dcbfd3cfb9658cd88'
 $ExpectedRunnerBundleHash =
   # HANDOFF_BUNDLE_HASH_START
-  '3f2e27c8f5bb557bd388d89e73b62e6ced9016c6b43ac768faab19fa19b0af6b'
+  '752aa7902a9fb4375e78ec923626f845996921e3b83f3f973cc2471f2938994c'
   # HANDOFF_BUNDLE_HASH_END
 $ExpectedCanarySession = 'SERP_PILOT_01_FLORENCE_COUPLE_BALANCED'
 $ExpectedCanaryIndex = 0
@@ -141,10 +141,22 @@ try {
   }
   Set-StayOptiStep 'REPOSITORY_CHECKPOINT'
   Set-Location -LiteralPath $RepositoryRoot
-  $ObservedHead = (& git rev-parse HEAD).Trim()
-  if ($LASTEXITCODE -ne 0) { throw 'STAYOPTI_T1C_HEAD_UNAVAILABLE' }
-  $observedBranch = (& git branch --show-current).Trim()
-  if ($LASTEXITCODE -ne 0 -or $observedBranch -ne $ExpectedBranch) { throw 'STAYOPTI_T1C_BRANCH_MISMATCH' }
+  $headOutput = @(& git rev-parse HEAD)
+  $headExitCode = $LASTEXITCODE
+  if ($headExitCode -ne 0 -or $headOutput.Count -ne 1 -or $null -eq $headOutput[0] -or [string]::IsNullOrWhiteSpace([string]$headOutput[0])) {
+    throw 'STAYOPTI_T1C_HEAD_UNAVAILABLE'
+  }
+  $ObservedHead = ([string]$headOutput[0]).Trim()
+
+  $branchOutput = @(& git branch --show-current)
+  $branchExitCode = $LASTEXITCODE
+  $observedBranch = if ($branchOutput.Count -eq 1 -and $null -ne $branchOutput[0]) { ([string]$branchOutput[0]).Trim() } else { '' }
+  if ($branchExitCode -ne 0) { throw 'STAYOPTI_T1C_BRANCH_UNAVAILABLE' }
+  $isDetachedHead = [string]::IsNullOrWhiteSpace($observedBranch)
+  $detachedOfflinePreflightAllowed = $isDetachedHead -and $OfflineTestMode -and $HandoffPreflightOnly
+  if (($isDetachedHead -and -not $detachedOfflinePreflightAllowed) -or (-not $isDetachedHead -and $observedBranch -ne $ExpectedBranch)) {
+    throw 'STAYOPTI_T1C_BRANCH_MISMATCH'
+  }
   $parent = (& git rev-parse "$ObservedHead^").Trim()
   $gateParent = (& git rev-parse "$GateCommitSha^").Trim()
   if ($LASTEXITCODE -ne 0 -or $gateParent -ne $SourceSha) { throw 'STAYOPTI_T2C_SOURCE_GATE_CHAIN_MISMATCH' }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, rmdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
@@ -34,32 +34,88 @@ function assertPowerShell51Started(result: SpawnSyncReturns<string>, label: stri
   assert.equal(typeof result.stderr, "string", `${label}: powershell.exe stderr is unavailable`);
 }
 
-function runHandoff(input: { failure?: string; preflight?: boolean } = {}) {
-  const diagnosticRoot = mkdtempSync(join(tmpdir(), "StayOpti-T1C-Test-"));
-  const failure = input.failure ?? "NONE";
-  const preflight = input.preflight ?? failure !== "EMPTY_KEY";
-  const command = [
-    `& ${psQuote(HANDOFF)}`,
-    preflight ? "-HandoffPreflightOnly" : "",
-    "-OfflineTestMode",
-    `-InjectedFailure ${psQuote(failure)}`,
-    `-DiagnosticDirectory ${psQuote(diagnosticRoot)}`,
-    "-SkipFinalPause",
-    failure === "EMPTY_KEY" ? `-AuthorizationLiteral ${psQuote(CURRENT_CANARY_LITERAL)}` : "",
-    "; Write-Output 'PARENT_SENTINEL=REACHED'",
-  ].filter(Boolean).join(" ");
-  const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], {
+function withDetachedWorktree<T>(run: (checkout: string, head: string) => T): T {
+  const container = mkdtempSync(join(tmpdir(), "StayOpti-D0034-T1C-Detached-"));
+  const checkout = join(container, "checkout");
+  const add = spawnSync("git", ["worktree", "add", "--detach", checkout, "HEAD"], {
     cwd: REPOSITORY,
     encoding: "utf8",
-    env: { ...process.env, SERPAPI_API_KEY: "" },
-    timeout: 120_000,
+    windowsHide: true,
   });
-  assertPowerShell51Started(result, `T1C ${failure} handoff`);
-  const logs = readdirSync(diagnosticRoot).map((name) => readFileSync(join(diagnosticRoot, name), "utf8"));
-  assert.equal(logs.length, 1, `T1C ${failure} handoff must write exactly one diagnostic log`);
-  assert.ok(logs[0]!.trim().length > 0, `T1C ${failure} diagnostic log must not be empty`);
-  rmSync(diagnosticRoot, { recursive: true, force: true });
-  return { ...result, combined: `${result.stdout}\n${result.stderr}`, logs };
+  assert.equal(add.status, 0, `${add.stdout}\n${add.stderr}`);
+  const nodeModules = join(checkout, "node_modules");
+  symlinkSync(resolve(REPOSITORY, "node_modules"), nodeModules, "junction");
+  const branch = spawnSync("git", ["branch", "--show-current"], { cwd: checkout, encoding: "utf8", windowsHide: true });
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8", windowsHide: true });
+  assert.equal(branch.status, 0);
+  assert.equal(branch.stdout, "");
+  assert.equal(head.status, 0);
+  try {
+    return run(checkout, head.stdout.trim());
+  } finally {
+    rmdirSync(nodeModules);
+    const remove = spawnSync("git", ["worktree", "remove", "--force", checkout], { cwd: REPOSITORY, encoding: "utf8", windowsHide: true });
+    assert.equal(remove.status, 0, `${remove.stdout}\n${remove.stderr}`);
+    rmSync(container, { recursive: true, force: true });
+  }
+}
+
+function withAttachedMainClone<T>(run: (checkout: string, head: string) => T): T {
+  const container = mkdtempSync(join(tmpdir(), "StayOpti-D0034-T1C-Main-"));
+  const checkout = join(container, "checkout");
+  const sourceHead = spawnSync("git", ["rev-parse", "HEAD"], { cwd: REPOSITORY, encoding: "utf8", windowsHide: true });
+  assert.equal(sourceHead.status, 0);
+  const head = sourceHead.stdout.trim();
+  const clone = spawnSync("git", ["clone", "--no-hardlinks", "--no-checkout", "--quiet", REPOSITORY, checkout], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert.equal(clone.status, 0, `${clone.stdout}\n${clone.stderr}`);
+  const attach = spawnSync("git", ["checkout", "--quiet", "-B", "main", head], { cwd: checkout, encoding: "utf8", windowsHide: true });
+  assert.equal(attach.status, 0, `${attach.stdout}\n${attach.stderr}`);
+  const nodeModules = join(checkout, "node_modules");
+  symlinkSync(resolve(REPOSITORY, "node_modules"), nodeModules, "junction");
+  const branch = spawnSync("git", ["branch", "--show-current"], { cwd: checkout, encoding: "utf8", windowsHide: true });
+  assert.equal(branch.status, 0);
+  assert.equal(branch.stdout.trim(), "main");
+  try {
+    return run(checkout, head);
+  } finally {
+    rmdirSync(nodeModules);
+    rmSync(container, { recursive: true, force: true });
+  }
+}
+
+function runHandoff(input: { failure?: string; preflight?: boolean } = {}) {
+  const failure = input.failure ?? "NONE";
+  const preflight = input.preflight ?? failure !== "EMPTY_KEY";
+  const withCheckout = preflight ? withDetachedWorktree : withAttachedMainClone;
+  return withCheckout((checkout) => {
+    const diagnosticRoot = mkdtempSync(join(tmpdir(), "StayOpti-T1C-Test-"));
+    const checkoutHandoff = resolve(checkout, "scripts/invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1");
+    const command = [
+      `& ${psQuote(checkoutHandoff)}`,
+      preflight ? "-HandoffPreflightOnly" : "",
+      "-OfflineTestMode",
+      `-InjectedFailure ${psQuote(failure)}`,
+      `-DiagnosticDirectory ${psQuote(diagnosticRoot)}`,
+      "-SkipFinalPause",
+      failure === "EMPTY_KEY" ? `-AuthorizationLiteral ${psQuote(CURRENT_CANARY_LITERAL)}` : "",
+      "; Write-Output 'PARENT_SENTINEL=REACHED'",
+    ].filter(Boolean).join(" ");
+    const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], {
+      cwd: checkout,
+      encoding: "utf8",
+      env: { ...process.env, SERPAPI_API_KEY: "" },
+      timeout: 120_000,
+    });
+    assertPowerShell51Started(result, `T1C ${failure} isolated handoff`);
+    const logs = readdirSync(diagnosticRoot).map((name) => readFileSync(join(diagnosticRoot, name), "utf8"));
+    assert.equal(logs.length, 1, `T1C ${failure} handoff must write exactly one diagnostic log`);
+    assert.ok(logs[0]!.trim().length > 0, `T1C ${failure} diagnostic log must not be empty`);
+    rmSync(diagnosticRoot, { recursive: true, force: true });
+    return { ...result, combined: `${result.stdout}\n${result.stderr}`, logs };
+  });
 }
 
 // T1C 01-15 and 17-19 exercise the real Windows PowerShell 5.1 process.
@@ -141,4 +197,35 @@ test("D0033 31 handoff requires a clean committed snapshot and has no ignored or
   assert.match(handoffSource, /git status --porcelain=v1 --untracked-files=all/);
   assert.match(handoffSource, /observedDirty\.Count -ne 0/);
   assert.doesNotMatch(handoffSource, /ExpectedDirty|DevelopmentPaths|server\/\.env|realMeasurementCapturePilot|\.codex-remote-attachments/);
+});
+
+test("D0034 32 non-offline handoff fails closed in a true detached worktree before credentials", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
+  withDetachedWorktree((checkout) => {
+    const detachedHandoff = resolve(checkout, "scripts/invoke-v3-17t2-serpapi-google-hotels-canary-handoff.ps1");
+    const isolatedProfile = mkdtempSync(join(tmpdir(), "StayOpti-D0034-T1C-Profile-"));
+    try {
+      const result = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", detachedHandoff], {
+        cwd: checkout,
+        encoding: "utf8",
+        env: { ...process.env, USERPROFILE: isolatedProfile, SERPAPI_API_KEY: "" },
+        input: "\n",
+        timeout: 120_000,
+      });
+      assertPowerShell51Started(result, "T1C detached non-offline rejection");
+      assert.equal(result.status, 0);
+      const combined = `${result.stdout}\n${result.stderr}`;
+      assert.match(combined, /FAILURE_CLASSIFICATION=STAYOPTI_T1C_BRANCH_MISMATCH/);
+      assert.match(combined, /API_KEY_PROMPT_REACHED=NO/);
+      assert.match(combined, /SERPAPI_CALLS_CONFIRMED_BY_RUNNER=0/);
+      assert.doesNotMatch(combined, /null-valued expression/i);
+    } finally {
+      rmSync(isolatedProfile, { recursive: true, force: true });
+    }
+  });
+});
+
+test("D0034 33 detached allowance is limited to offline preflight while main remains the real branch", () => {
+  assert.match(handoffSource, /detachedOfflinePreflightAllowed = \$isDetachedHead -and \$OfflineTestMode -and \$HandoffPreflightOnly/);
+  assert.match(handoffSource, /-not \$isDetachedHead -and \$observedBranch -ne \$ExpectedBranch/);
+  assert.doesNotMatch(handoffSource, /GITHUB_(?:HEAD_REF|BASE_REF|REF|SHA)/);
 });

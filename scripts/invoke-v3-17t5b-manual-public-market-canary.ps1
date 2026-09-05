@@ -19,6 +19,7 @@ $IsRepairExport = $Mode -ieq 'repair-export'
 $IsRepairPreflight = $Mode -ieq 'repair-preflight'
 $IsRepairMode = $IsRepairExport -or $IsRepairPreflight
 $IsInteractive = $Mode -ieq 'interactive'
+$DetachedSyntheticModeAllowed = $Mode -ieq 'dry-run' -or $Mode -ieq 'repair-dry-run'
 if ($IsRepairMode -or $IsInteractive) {
   if ([string]::IsNullOrWhiteSpace($SessionId) -or $SessionId -cnotmatch '^V3_17T5[A-Z0-9_]+$') {
     throw 'MANUAL_CAPTURE_SUCCESSOR_SESSION_ID_REQUIRED'
@@ -42,10 +43,25 @@ if (-not [string]::IsNullOrWhiteSpace($DiagnosticPrivateRoot)) {
 try {
   Push-Location -LiteralPath $RepositoryRoot
   try {
-    $ObservedBranch = (& git branch --show-current).Trim()
-    if ($LASTEXITCODE -ne 0 -or $ObservedBranch -cne 'main') { throw 'MANUAL_CAPTURE_BRANCH_MISMATCH' }
-    $ObservedHead = (& git rev-parse HEAD).Trim()
-    if ($LASTEXITCODE -ne 0 -or $ObservedHead -cne $ExpectedExecutionHead) { throw 'MANUAL_CAPTURE_HEAD_MISMATCH' }
+    $BranchOutput = @(& git branch --show-current)
+    $BranchExitCode = $LASTEXITCODE
+    $ObservedBranch = if ($BranchOutput.Count -eq 1 -and $null -ne $BranchOutput[0]) { ([string]$BranchOutput[0]).Trim() } else { '' }
+    if ($BranchExitCode -ne 0) { throw 'MANUAL_CAPTURE_BRANCH_UNAVAILABLE' }
+
+    $HeadOutput = @(& git rev-parse HEAD)
+    $HeadExitCode = $LASTEXITCODE
+    if ($HeadExitCode -ne 0 -or $HeadOutput.Count -ne 1 -or $null -eq $HeadOutput[0] -or [string]::IsNullOrWhiteSpace([string]$HeadOutput[0])) {
+      throw 'MANUAL_CAPTURE_HEAD_UNAVAILABLE'
+    }
+    $ObservedHead = ([string]$HeadOutput[0]).Trim()
+    if ($ObservedHead -cne $ExpectedExecutionHead) { throw 'MANUAL_CAPTURE_HEAD_MISMATCH' }
+
+    $IsDetachedHead = [string]::IsNullOrWhiteSpace($ObservedBranch)
+    if ($IsDetachedHead) {
+      if (-not $DetachedSyntheticModeAllowed) { throw 'MANUAL_CAPTURE_DETACHED_HEAD_REAL_MODE_PROHIBITED' }
+    } elseif ($ObservedBranch -cne 'main') {
+      throw 'MANUAL_CAPTURE_BRANCH_MISMATCH'
+    }
     $Staged = @(& git diff --cached --name-only)
     if ($LASTEXITCODE -ne 0 -or $Staged.Count -ne 0) { throw 'MANUAL_CAPTURE_STAGED_STATE_REJECTED' }
 

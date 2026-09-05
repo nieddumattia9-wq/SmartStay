@@ -931,3 +931,34 @@ PASS. The clean source candidate contained no ignored or untracked file and no
 Linux release CI is `NOT_EXECUTABLE_LOCALLY` because neither installed WSL
 Ubuntu distribution has a native Linux Node executable; no simulation is
 reported as PASS.
+
+## D-0034 detached-head CI and dependency audit repair — validated locally
+
+- The D-0033 pull-request run exposed eight Windows integration failures from
+  `.Trim()` being invoked on the null output of `git branch --show-current` in
+  detached HEAD. T5B now permits detached execution only for synthetic dry
+  runs; T1C permits it only for the combined offline/preflight mode. Every real
+  custody or handoff path retains the `main` branch requirement.
+- Regression proof uses genuine temporary detached Git worktrees and rejects
+  detached real modes before credentials, provider calls or evidence access.
+  No `GITHUB_*` variable is accepted as authorization.
+- The T1C bundle seal is refreshed to
+  `752aa7902a9fb4375e78ec923626f845996921e3b83f3f973cc2471f2938994c`
+  because the sealed launcher changed. No call authorization is created or
+  consumed.
+- npm-generated lock changes update only root transitive `fast-uri` 3.1.5 to
+  3.1.7 and server transitive `qs` 6.15.3 to 6.16.0. Package manifests and
+  direct dependencies remain unchanged; both production audits report zero
+  vulnerabilities after the bounded update.
+
+An isolated D-0033 plus D-0034 candidate passed the two affected suites 78/78
+and all eight prior failures. Engine V3 passed 1509/1509 both on attached
+`main` and from a genuine detached candidate worktree; Engine V2 passed
+196/196. Lifecycle passed 530 with 17 canonical skips; security 29/29,
+release 101/101, analytics 31/31, capacity 9/9 and beta 4/4 passed. TypeScript,
+build, PowerShell 5.1 parsing 9/9, both clean installs, zero-vulnerability
+production audits, secret/private-artifact scans and Git checks passed.
+
+Commit, validation-branch publication and terminal pull-request workflow
+results remain pending. `main`, the legacy `_002` session and all private
+evidence remain untouched.

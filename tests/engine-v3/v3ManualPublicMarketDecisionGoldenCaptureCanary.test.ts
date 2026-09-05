@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, rmdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
@@ -37,6 +37,32 @@ function assertPowerShell51Started(result: SpawnSyncReturns<string>, label: stri
   assert.notEqual(result.status, null, `${label}: powershell.exe returned status=null`);
   assert.equal(typeof result.stdout, "string", `${label}: powershell.exe stdout is unavailable`);
   assert.equal(typeof result.stderr, "string", `${label}: powershell.exe stderr is unavailable`);
+}
+
+function withDetachedWorktree<T>(run: (checkout: string, head: string) => T): T {
+  const container = mkdtempSync(join(tmpdir(), "StayOpti-D0034-T5B-Detached-"));
+  const checkout = join(container, "checkout");
+  const add = spawnSync("git", ["worktree", "add", "--detach", checkout, "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert.equal(add.status, 0, `${add.stdout}\n${add.stderr}`);
+  const nodeModules = join(checkout, "node_modules");
+  symlinkSync(resolve(root, "node_modules"), nodeModules, "junction");
+  const branch = spawnSync("git", ["branch", "--show-current"], { cwd: checkout, encoding: "utf8", windowsHide: true });
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8", windowsHide: true });
+  assert.equal(branch.status, 0);
+  assert.equal(branch.stdout, "");
+  assert.equal(head.status, 0);
+  try {
+    return run(checkout, head.stdout.trim());
+  } finally {
+    rmdirSync(nodeModules);
+    const remove = spawnSync("git", ["worktree", "remove", "--force", checkout], { cwd: root, encoding: "utf8", windowsHide: true });
+    assert.equal(remove.status, 0, `${remove.stdout}\n${remove.stderr}`);
+    rmSync(container, { recursive: true, force: true });
+  }
 }
 
 test("T5B 01 interface is a guided Italian flow and not a JSON editor", () => {
@@ -127,12 +153,13 @@ test("T5B 15 PowerShell 5.1 scripts parse", { skip: WINDOWS_POWERSHELL_51_REQUIR
 });
 
 test("T5B 16 synthetic dry run covers save, resume, encryption, snapshot, capsule and Evidence", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
-  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-  const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
-  assertPowerShell51Started(run, "T5B synthetic dry run");
-  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-  const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
-  assert.deepEqual(receipt, {
+  withDetachedWorktree((checkout, head) => {
+    const detachedLauncher = resolve(checkout, "scripts/invoke-v3-17t5b-manual-public-market-canary.ps1");
+    const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", detachedLauncher, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: checkout, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+    assertPowerShell51Started(run, "T5B synthetic detached dry run");
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
+    assert.deepEqual(receipt, {
     status: "PASS",
     alternatives: 5,
     progressiveSave: true,
@@ -154,6 +181,7 @@ test("T5B 16 synthetic dry run covers save, resume, encryption, snapshot, capsul
     automatedHttpRequests: 0,
     credentialsLoaded: false,
     syntheticArtifactsDeleted: true,
+    });
   });
 });
 
@@ -259,12 +287,13 @@ test("T5B 30 repair applies only after explicit single-field confirmation", () =
 });
 
 test("T5B 31 synthetic repair reuses five alternatives, preserves private handles and exports without blind work", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
-  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-  const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "repair-dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
-  assertPowerShell51Started(run, "T5B synthetic repair dry run");
-  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-  const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
-  assert.deepEqual(receipt, {
+  withDetachedWorktree((checkout, head) => {
+    const detachedLauncher = resolve(checkout, "scripts/invoke-v3-17t5b-manual-public-market-canary.ps1");
+    const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", detachedLauncher, "-Mode", "repair-dry-run", "-ExpectedExecutionHead", head], { cwd: checkout, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+    assertPowerShell51Started(run, "T5B synthetic detached repair dry run");
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
+    assert.deepEqual(receipt, {
     status: "PASS",
     existingAlternativesReused: 5,
     targetedFieldsRepaired: true,
@@ -278,6 +307,7 @@ test("T5B 31 synthetic repair reuses five alternatives, preserves private handle
     goldenAdmission: false,
     automatedHttpRequests: 0,
     syntheticArtifactsDeleted: true,
+    });
   });
 });
 
@@ -310,14 +340,41 @@ test("T5B 33 repair lookup fails closed when no explicit session identity is sup
 });
 
 test("T5B 34 true PowerShell launcher finalizes then reopens hardened synthetic custody", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
-  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
-  const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
-  assertPowerShell51Started(run, "T5B finalized custody launcher");
-  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-  const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
-  assert.equal(receipt.powerShell51PostfinalizationVerifierAvailable, true);
-  assert.equal(receipt.finalizedSessionReopened, true);
-  assert.equal(receipt.syntheticFixtureEligibleAsRealProof, false);
+  withDetachedWorktree((checkout, head) => {
+    const detachedLauncher = resolve(checkout, "scripts/invoke-v3-17t5b-manual-public-market-canary.ps1");
+    const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", detachedLauncher, "-Mode", "dry-run", "-ExpectedExecutionHead", head], { cwd: checkout, encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+    assertPowerShell51Started(run, "T5B finalized detached custody launcher");
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    const receipt = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)!);
+    assert.equal(receipt.powerShell51PostfinalizationVerifierAvailable, true);
+    assert.equal(receipt.finalizedSessionReopened, true);
+    assert.equal(receipt.syntheticFixtureEligibleAsRealProof, false);
+  });
+});
+
+test("D0034 T5B real custody modes fail closed in a true detached worktree", { skip: WINDOWS_POWERSHELL_51_REQUIRED, timeout: 120_000 }, () => {
+  withDetachedWorktree((checkout, head) => {
+    const detachedLauncher = resolve(checkout, "scripts/invoke-v3-17t5b-manual-public-market-canary.ps1");
+    const run = spawnSync(PS51, ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", detachedLauncher, "-Mode", "interactive", "-ExpectedExecutionHead", head, "-SessionId", "V3_17T5C_SYNTHETIC_DETACHED_REAL_001"], {
+      cwd: checkout,
+      encoding: "utf8",
+      windowsHide: true,
+      input: "\n",
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    assertPowerShell51Started(run, "T5B detached real-mode rejection");
+    assert.notEqual(run.status, 0);
+    assert.match(`${run.stdout}\n${run.stderr}`, /MANUAL_CAPTURE_DETACHED_HEAD_REAL_MODE_PROHIBITED/);
+    assert.doesNotMatch(`${run.stdout}\n${run.stderr}`, /null-valued expression/i);
+  });
+});
+
+test("D0034 T5B detached allowance is synthetic-only and the real branch remains main", () => {
+  assert.match(launcher, /DetachedSyntheticModeAllowed = \$Mode -ieq 'dry-run' -or \$Mode -ieq 'repair-dry-run'/);
+  assert.match(launcher, /ObservedBranch -cne 'main'/);
+  assert.doesNotMatch(launcher, /\(& git branch --show-current\)\.Trim\(\)/);
+  assert.doesNotMatch(launcher, /GITHUB_(?:HEAD_REF|BASE_REF|REF|SHA)/);
 });
 
 test("T5B 35 repair preflight distinguishes parse failure from a missing state file", { timeout: 120_000 }, () => {
