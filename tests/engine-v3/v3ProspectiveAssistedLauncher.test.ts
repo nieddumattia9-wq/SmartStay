@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -15,12 +15,12 @@ const WINDOWS_ONLY = process.platform === "win32" ? false
 const hash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 type Running = { process: ChildProcessWithoutNullStreams; origin: string; csrf: string; ended: Promise<{ code: number | null; stderr: string }> };
-type CodeBinding = { path: string; sha256: string };
+type CodeBinding = { path: string; sha256: string; branch: string };
 type DisplayedCase = { caseId: string; revision: number; contentFingerprint: string };
 
 function argumentsFor(mode: string, root: string, head: string, code: CodeBinding) {
   return ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", LAUNCHER,
-    "-Mode", mode, "-DataRoot", root, "-ExpectedHead", head,
+    "-Mode", mode, "-DataRoot", root, "-ExpectedHead", head, "-ExpectedBranch", code.branch,
     "-CodeInventoryPath", code.path, "-CodeInventorySha256", code.sha256];
 }
 function finiteCommand(mode: string, root: string, head: string, code: CodeBinding) {
@@ -136,20 +136,57 @@ function cleanup(root: string) {
   rmSync(full, { recursive: true, force: true });
 }
 
+function treeInventory(root: string): { path: string; sha256: string }[] {
+  return readdirSync(root).sort().flatMap(name => {
+    const full = join(root, name); const stat = lstatSync(full);
+    assert.equal(stat.isSymbolicLink(), false);
+    return stat.isDirectory() ? treeInventory(full).map(f => ({ ...f, path: `${name}/${f.path}` }))
+      : [{ path: name, sha256: hash(readFileSync(full)) }];
+  });
+}
+function sourceFingerprint() {
+  const files = ["src", "scripts"].flatMap(dir => treeInventory(join(ROOT, dir)).map(f => ({ path: `${dir}/${f.path}`, sha256: f.sha256 })));
+  for (const path of ["tsconfig.tests.json", "package.json", "package-lock.json"]) files.push({ path, sha256: hash(readFileSync(join(ROOT, path))) });
+  return hash(Buffer.from(JSON.stringify(files)));
+}
+function reject(mode: string, root: string, head: string, code: CodeBinding, error: RegExp) {
+  const before = treeInventory(root);
+  const result = spawnSync(PS51, argumentsFor(mode, root, head, code), { cwd: ROOT, encoding: "utf8", windowsHide: true, timeout: 30000 });
+  assert.equal(result.error, undefined); assert.notEqual(result.status, null); assert.notEqual(result.status, 0);
+  assert.equal(typeof result.stderr, "string"); assert.match(result.stderr, error);
+  assert.deepEqual(treeInventory(root), before, "rejection cannot change progress, compiled bytes or locks");
+}
+
 test("real PS5.1 synthetic launcher: two-client stale API rejection, review/edit, diagnostic judgment and reopen", { skip: WINDOWS_ONLY, timeout: 420000 }, async () => {
   const git = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8", windowsHide: true });
   assert.equal(git.status, 0); const head = git.stdout.trim(); assert.match(head, /^[a-f0-9]{40}$/);
+  const observedBranch = spawnSync("git", ["branch", "--show-current"], { cwd: ROOT, encoding: "utf8", windowsHide: true });
+  assert.equal(observedBranch.status, 0);
+  // Authorize a NEW synthetic fixture explicitly. Never rebind saved progress.
+  const branch = observedBranch.stdout.trim() || "DETACHED";
   const root = mkdtempSync(join(tmpdir(), "StayOpti-Synthetic-Review-Launcher-Test-"));
   // Keep the code-binding input outside DataRoot: a new preparation must see
   // an empty root and must traverse both real launcher hash parameters.
   const inventoryRoot = mkdtempSync(join(tmpdir(), "StayOpti-Synthetic-Review-Launcher-Test-Inventory-"));
   const inventoryPath = join(inventoryRoot, "synthetic-code-inventory.json");
   const paths = ["scripts/run-prospective-assisted-evaluation-demo.mjs", "scripts/invoke-prospective-assisted-evaluation-demo.ps1"];
-  const inventoryBytes = Buffer.from(`${JSON.stringify({ syntheticOnly: true, codeFiles: paths.map(path => ({ path, sha256: hash(readFileSync(join(ROOT, path))) })) })}\n`);
+  const inventory = { version: "stayopti.synthetic.demo-code-inventory@2", expectedBranch: branch, expectedHead: head,
+    sourceFingerprint: sourceFingerprint(), syntheticOnly: true, codeFiles: paths.map(path => ({ path, sha256: hash(readFileSync(join(ROOT, path))) })) };
+  const inventoryBytes = Buffer.from(`${JSON.stringify(inventory)}\n`);
   writeFileSync(inventoryPath, inventoryBytes, { flag: "wx" });
-  const code = { path: inventoryPath, sha256: hash(inventoryBytes) };
+  const code = { path: inventoryPath, sha256: hash(inventoryBytes), branch };
   let running: Running | undefined;
   try {
+    reject("PrepareOnly", root, "0".repeat(40), code, /DEMO_REPOSITORY_CHECKPOINT_CHANGED/);
+    reject("PrepareOnly", root, head, { ...code, branch: "wrong/unauthorized-checkpoint" }, /DEMO_REPOSITORY_CHECKPOINT_CHANGED/);
+    reject("PrepareOnly", root, head, { ...code, branch: "" }, /DEMO_EXPLICIT_CHECKPOINT_REQUIRED/);
+    const tampered = join(inventoryRoot, "tampered.json");
+    writeFileSync(tampered, JSON.stringify({ ...inventory, expectedHead: "0".repeat(40) }));
+    reject("PrepareOnly", root, head, { ...code, path: tampered, sha256: hash(readFileSync(tampered)) }, /DEMO_INVENTORY_CHECKPOINT_MISMATCH/);
+    writeFileSync(tampered, JSON.stringify({ ...inventory, codeFiles: [{ path: paths[0], sha256: "0".repeat(64) }] }));
+    reject("PrepareOnly", root, head, { ...code, path: tampered, sha256: hash(readFileSync(tampered)) }, /DEMO_EXECUTABLE_CHANGED/);
+    writeFileSync(tampered, JSON.stringify({ ...inventory, sourceFingerprint: "0".repeat(64) }));
+    reject("PrepareOnly", root, head, { ...code, path: tampered, sha256: hash(readFileSync(tampered)) }, /DEMO_EXECUTABLE_CHANGED/);
     const wrongHash = spawnSync(PS51, argumentsFor("PrepareOnly", root, head, { ...code, sha256: "0".repeat(64) }), {
       cwd: ROOT, encoding: "utf8", windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024,
     });
@@ -163,6 +200,19 @@ test("real PS5.1 synthetic launcher: two-client stale API rejection, review/edit
     assert.equal(prepared.status, "PASS_SYNTHETIC_ONLY"); assert.equal(prepared.cases, 2);
     assert.equal(prepared.externalHttpRequests, 0); assert.equal(prepared.realCustodyCertified, false);
     const before = custodyInventory(root);
+    const configPath = join(root, "demo.json"), configBytes = readFileSync(configPath), config = JSON.parse(configBytes.toString());
+    assert.deepEqual(config.checkpoint, { branch, head, inventorySha256: code.sha256 });
+    writeFileSync(tampered, Buffer.concat([inventoryBytes, Buffer.from("\n")]));
+    reject("Inspect", root, head, { ...code, path: tampered, sha256: hash(readFileSync(tampered)) }, /DEMO_CONFIG_CHANGED/);
+    writeFileSync(configPath, JSON.stringify({ ...config, sourceFingerprint: "0".repeat(64) }));
+    reject("Inspect", root, head, code, /DEMO_SOURCE_CHANGED_SINCE_PREPARATION/);
+    writeFileSync(configPath, JSON.stringify({ ...config, version: "stayopti.synthetic.assisted-demo@1" }));
+    reject("Inspect", root, head, code, /DEMO_CONFIG_CHANGED/);
+    writeFileSync(configPath, configBytes);
+    const compiledPath = join(config.compiled, config.compiledFiles[0].path), compiledBytes = readFileSync(compiledPath);
+    writeFileSync(compiledPath, Buffer.concat([compiledBytes, Buffer.from("\n")]));
+    reject("Inspect", root, head, code, /DEMO_COMPILED_BYTES_CHANGED/);
+    writeFileSync(compiledPath, compiledBytes);
     running = await start(root, head, code);
     let current = await state(running);
     assert.equal(current.synthetic, true); assert.deepEqual(current.cases.map((item: any) => item.alternatives.length), [5, 8]);
@@ -190,6 +240,13 @@ test("real PS5.1 synthetic launcher: two-client stale API rejection, review/edit
     const clientB = await state(running);
     assert.deepEqual(displayedBinding(clientA.cases[0]), displayedBinding(clientB.cases[0]));
     const beforeAnyEvent = eventInventory(root, id);
+    writeFileSync(inventoryPath, Buffer.concat([inventoryBytes, Buffer.from("\n")]));
+    const changedCodeAction = await localOnly(running, "/api/action", { type: "REVIEW_FIELD", caseId: id,
+      alternativeId: first, fieldKey: "rating", reviewStatus: "CORRECT", ...displayedBinding(clientA.cases[0]) });
+    assert.equal(changedCodeAction.status, 400);
+    assert.equal(JSON.parse(changedCodeAction.bytes.toString()).error, "DEMO_CODE_INVENTORY_CHANGED");
+    assert.deepEqual(eventInventory(root, id), beforeAnyEvent);
+    writeFileSync(inventoryPath, inventoryBytes);
     const missingBinding = await localOnly(running, "/api/action", { type: "REVIEW_FIELD", caseId: id,
       alternativeId: first, fieldKey: "rating", reviewStatus: "CORRECT" });
     assert.equal(missingBinding.status, 400);
@@ -340,4 +397,23 @@ test("real PS5.1 synthetic launcher: two-client stale API rejection, review/edit
     cleanup(root);
     cleanup(inventoryRoot);
   }
+});
+
+test("PS5.1 rejects actual staged changes in a separate synthetic repository before progress creation", { skip: WINDOWS_ONLY }, () => {
+  const root = mkdtempSync(join(tmpdir(), "StayOpti-Synthetic-Review-Launcher-Test-Staged-"));
+  try {
+    const repo = join(root, "repo"), data = join(root, "progress"); mkdirSync(repo); mkdirSync(data);
+    cpSync(join(ROOT, "scripts"), join(repo, "scripts"), { recursive: true });
+    writeFileSync(join(repo, "package.json"), '{"type":"module"}');
+    const runGit = (args: string[]) => { const r = spawnSync("git", args, { cwd: repo, encoding: "utf8", windowsHide: true }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+    runGit(["init", "-b", "synthetic/checkpoint"]);
+    runGit(["-c", "user.name=Synthetic", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "Synthetic checkpoint"]);
+    runGit(["add", "package.json"]);
+    const args = argumentsFor("PrepareOnly", data, runGit(["rev-parse", "HEAD"]), { branch: "synthetic/checkpoint", path: join(root, "not-read.json"), sha256: "0".repeat(64) });
+    args[args.indexOf(LAUNCHER)] = join(repo, "scripts/invoke-prospective-assisted-evaluation-demo.ps1");
+    const result = spawnSync(PS51, args, { cwd: repo, encoding: "utf8", windowsHide: true, timeout: 30000 });
+    assert.equal(result.error, undefined); assert.notEqual(result.status, null); assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /DEMO_REPOSITORY_CHECKPOINT_CHANGED/); assert.deepEqual(readdirSync(data), []);
+    assert.equal(runGit(["diff", "--cached", "--name-only"]), "package.json");
+  } finally { cleanup(root); }
 });

@@ -1,5 +1,22 @@
 # StayOpti Current State
 
+## D-0044 — Evaluation intent/role-policy candidate (publication blocked)
+
+Source 93743a0f43b330c908a75fae3f74f5a0d12d7419. The F3 synthetic failure was
+reproduced before repair; all candidates now reuse the offer evaluated by V2.
+A separate evaluation-only bridge connects existing intent/profile resolution
+and dimensions to V3-15, including explicit distance semantics and evidence
+eligibility. Legacy output remains diagnostic. Full robustness/regret are not
+claimed. Targeted synthetic tests: 41/41; final clean CurrentUser V3:
+1760 PASS, 1 FAIL (unchanged D-0038 branch prerequisite); V2: 196/196.
+Other offline test groups, typecheck and build pass; see delivery for counts.
+No branch rename, test skip or inherited full-suite PASS. No work-branch commit
+or push: required V3 gate blocks publication. Remote work branch still equals
+source HEAD; zero existing commits pending, eleven phase files uncommitted.
+See D-0044 for mapping and limits; no public integration or real
+Bologna execution is authorized. Seven excluded paths and seventeen D-0037
+sealed files remain protected.
+
 ## D-0043 - Independent recommendation eligibility
 
 On source c525afacfac3138516e49497175eae61158ca272, the offline V3 adapter now

@@ -72,3 +72,5 @@ consolidation report supplies observed validation and final remote state.
 Material decisions include product promise, ranking semantics, recommendation roles, profile behavior, data contracts, safety gates, provider/commercial separation, public rollout, and changes to this Constitution.
 
 | D-0043 | 2026-09-08 | Assess canonical feasibility and explicit hard constraints before independent V3 selection; retain diagnostic utility and distinguish missing evidence from proven violations without changing weights, public behavior or Golden gates. | Accepted offline repair; work-branch commit/push authorized, exact validations and remote state in delivery evidence | `decisions/0043-independent-recommendation-eligibility.md` |
+
+| D-0044 | 2026-09-08 | Bind every V3 candidate to the offer actually evaluated by V2; connect existing budget/profile intent to the evaluation-only V3-15 role policy with explicit contextual admissibility and distance semantics, without inheriting legacy robustness claims. | Implementation/synthetic verification; publication conditional on required gates, exact state in delivery | `decisions/0044-evaluation-intent-role-policy-bridge.md` |

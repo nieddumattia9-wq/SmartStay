@@ -9,10 +9,10 @@ import {
 } from "../decision/decisionTieProjectionV3";
 
 export const STAYOPTI_PERSONAL_UTILITY_ROLE_POLICY_VERSION_V3 =
-  "3.0.0-personal-utility-role-policy.1" as const;
+  "3.0.0-personal-utility-role-policy.2" as const;
 
 export const STAYOPTI_PERSONAL_UTILITY_ROLE_POLICY_SCHEMA_VERSION_V3 =
-  "3.0.0-personal-utility-role-policy-schema.1" as const;
+  "3.0.0-personal-utility-role-policy-schema.2" as const;
 
 export const STAYOPTI_ROLE_POLICY_PROFILES_V3 = [
   "maximum-comfort",
@@ -62,6 +62,12 @@ export interface StayOptiRolePolicySolutionInputV3 {
   currency: string;
   hardConstraintsSatisfied: boolean | null;
   offerIntegrity: "verified" | "partial" | "invalid";
+  /** Optional, versioned evaluation boundary gate; never a quality score. */
+  contextualEligibility?: {
+    version: 'stayopti.intent-context-eligibility@1';
+    status: 'eligible' | 'ineligible' | 'incomplete';
+    reasonCodes: string[];
+  };
   dimensions: Record<
     StayOptiRolePolicyExperienceDimensionV3,
     StayOptiRolePolicyDimensionInputV3
@@ -396,6 +402,7 @@ function canonicalInput(
             currency: left.currency,
             hardConstraintsSatisfied: left.hardConstraintsSatisfied,
             offerIntegrity: left.offerIntegrity,
+            contextualEligibility: left.contextualEligibility ?? null,
             dimensions: Object.fromEntries(
               STAYOPTI_ROLE_POLICY_EXPERIENCE_DIMENSIONS_V3.map((dimension) => [
                 dimension,
@@ -409,6 +416,7 @@ function canonicalInput(
             currency: right.currency,
             hardConstraintsSatisfied: right.hardConstraintsSatisfied,
             offerIntegrity: right.offerIntegrity,
+            contextualEligibility: right.contextualEligibility ?? null,
             dimensions: Object.fromEntries(
               STAYOPTI_ROLE_POLICY_EXPERIENCE_DIMENSIONS_V3.map((dimension) => [
                 dimension,
@@ -446,6 +454,12 @@ function assertInput(
 
   const ids = new Set<string>();
   for (const solution of input.solutions) {
+    if (solution.contextualEligibility && (
+      solution.contextualEligibility.version !== 'stayopti.intent-context-eligibility@1' ||
+      !['eligible', 'ineligible', 'incomplete'].includes(solution.contextualEligibility.status) ||
+      !Array.isArray(solution.contextualEligibility.reasonCodes) ||
+      solution.contextualEligibility.reasonCodes.some(code => typeof code !== 'string' || !code.startsWith('intent:'))
+    )) throw new Error('Invalid contextual eligibility.');
     if (
       solution.solutionId.trim().length === 0 ||
       ids.has(solution.solutionId) ||
@@ -578,6 +592,7 @@ function evaluateCandidate(
       : round(experienceScore - opportunityCostPoints);
 
   const reasonCodes: string[] = [];
+  reasonCodes.push(...(solution.contextualEligibility?.reasonCodes ?? []));
   if (solution.solutionType === "split-stay") reasonCodes.push("policy:split-disabled");
   if (solution.hardConstraintsSatisfied !== true) reasonCodes.push("policy:hard-constraint-unresolved");
   if (solution.offerIntegrity !== "verified") reasonCodes.push("policy:offer-not-verified");
@@ -597,6 +612,7 @@ function evaluateCandidate(
   if (solution.solutionType === "split-stay") {
     status = "split-disabled";
   } else if (
+    solution.contextualEligibility?.status === 'ineligible' ||
     solution.hardConstraintsSatisfied === false ||
     solution.offerIntegrity === "invalid" ||
     budgetStatus === "over-ceiling" ||
@@ -605,6 +621,7 @@ function evaluateCandidate(
   ) {
     status = "ineligible";
   } else if (
+    solution.contextualEligibility?.status === 'incomplete' ||
     solution.hardConstraintsSatisfied === null ||
     solution.offerIntegrity === "partial" ||
     solution.totalCost === null ||

@@ -21,12 +21,17 @@ const command = args => {
   return r.stdout.trim();
 };
 function verifyCode(o) {
-  if (command(['rev-parse','HEAD']) !== o.ExpectedHead || command(['branch','--show-current']) !== 'ci/d0033-clean-commit-proof' || command(['diff','--cached','--name-only']) !== '') fail('DEMO_REPOSITORY_CHECKPOINT_CHANGED');
-  if (o.CodeInventoryPath || o.CodeInventorySha256) {
+  if (!o.ExpectedBranch || !/^[a-f0-9]{40}$/.test(o.ExpectedHead??'') || !o.CodeInventoryPath || !/^[a-f0-9]{64}$/.test(o.CodeInventorySha256??'')) fail('DEMO_EXPLICIT_CHECKPOINT_REQUIRED');
+  // DETACHED is an explicit checkpoint value for clean CI checkouts, never an
+  // inferred fallback. Existing progress retains its original binding.
+  const branch=command(['branch','--show-current'])||'DETACHED';
+  if (command(['rev-parse','HEAD']) !== o.ExpectedHead || branch !== o.ExpectedBranch || command(['diff','--cached','--name-only']) !== '') fail('DEMO_REPOSITORY_CHECKPOINT_CHANGED');
     if (demoSha256(readFileSync(o.CodeInventoryPath)) !== o.CodeInventorySha256) fail('DEMO_CODE_INVENTORY_CHANGED');
     const inventory = read(o.CodeInventoryPath);
+  if(inventory.version!=='stayopti.synthetic.demo-code-inventory@2'||inventory.expectedBranch!==o.ExpectedBranch||inventory.expectedHead!==o.ExpectedHead||!Array.isArray(inventory.codeFiles)||!inventory.codeFiles.length)fail('DEMO_INVENTORY_CHECKPOINT_MISMATCH');
   for (const file of inventory.codeFiles) if (demoSha256(readFileSync(child(ROOT,join(ROOT,file.path)))) !== file.sha256) fail('DEMO_EXECUTABLE_CHANGED');
-  }
+  if(inventory.sourceFingerprint!==runtimeSourceFingerprint())fail('DEMO_EXECUTABLE_CHANGED');
+  return {branch:o.ExpectedBranch,head:o.ExpectedHead,inventorySha256:o.CodeInventorySha256};
 }
 function compile(root) {
   const output = join(root, 'compiled');
@@ -162,8 +167,16 @@ function applyAction(item,action,domain) {
 export async function runProspectiveAssistedDemo(options) {
   if(!/^5\.1\./.test(options.PowerShellVersion??'')) fail('DEMO_PS51_LAUNCHER_REQUIRED');
   if(!['Start','PrepareOnly','Inspect'].includes(options.Mode))fail('DEMO_MODE_REQUIRED');
-  verifyCode(options); const root=assertSyntheticDemoRoot(options.DataRoot);
+  const checkpoint=verifyCode(options); const root=assertSyntheticDemoRoot(options.DataRoot);
   const sourceFingerprint=runtimeSourceFingerprint();
+  const validateConfig=config=>{
+    if(config.version!=='stayopti.synthetic.assisted-demo@2'||config.synthetic!==true||JSON.stringify(config.checkpoint)!==JSON.stringify(checkpoint)||config.head!==options.ExpectedHead)fail('DEMO_CONFIG_CHANGED');
+    if(config.sourceFingerprint!==sourceFingerprint)fail('DEMO_SOURCE_CHANGED_SINCE_PREPARATION');
+    if(resolve(config.compiled)!==join(root,'compiled'))fail('DEMO_COMPILED_PATH_INVALID');
+    verifySyntheticCompiledTree(config.compiled,config.compiledFiles);
+  };
+  // Rejection precedes mkdir, process-lock recovery and every progress write.
+  if(existsSync(join(root,'demo.json')))validateConfig(read(join(root,'demo.json')));
   if(!existsSync(root)){if(options.Mode==='Inspect')fail('DEMO_NOT_FOUND');mkdirSync(root);}
   const lock=join(root,'active-process.json');
   if(existsSync(lock)){
@@ -184,13 +197,11 @@ export async function runProspectiveAssistedDemo(options) {
       verifySyntheticCompiledTree(compiled,compiledFiles);
       const domain=moduleFrom(compiled); const caseIds=[buildCase(root,domain,5),buildCase(root,domain,8)];
       if(runtimeSourceFingerprint()!==sourceFingerprint)fail('DEMO_SOURCE_CHANGED_DURING_PREPARATION');
-      config={version:'stayopti.synthetic.assisted-demo@1',synthetic:true,compiled,compiledFiles,caseIds,head:options.ExpectedHead,sourceFingerprint};
+      verifyCode(options);
+      config={version:'stayopti.synthetic.assisted-demo@2',synthetic:true,compiled,compiledFiles,caseIds,head:options.ExpectedHead,checkpoint,sourceFingerprint};
       writeDemoExclusive(join(root,'demo.json'),config);
     }else config=read(join(root,'demo.json'));
-    if(config.synthetic!==true||config.head!==options.ExpectedHead)fail('DEMO_CONFIG_CHANGED');
-    if(config.sourceFingerprint!==sourceFingerprint)fail('DEMO_SOURCE_CHANGED_SINCE_PREPARATION');
-    if(resolve(config.compiled)!==join(root,'compiled'))fail('DEMO_COMPILED_PATH_INVALID');
-    verifySyntheticCompiledTree(config.compiled,config.compiledFiles);
+    validateConfig(config);
     const domain=moduleFrom(config.compiled);
     const state=()=>({cases:config.caseIds.map(id=>viewCase(caseState(root,domain,id),domain)),selectedCaseId:config.caseIds[0],synthetic:true});
     state();
@@ -215,6 +226,7 @@ export async function runProspectiveAssistedDemo(options) {
         if(req.method==='POST'&&req.url==='/api/action'){
           if(req.headers.origin!==`http://127.0.0.1:${server.address().port}`||req.headers['content-type']!=='application/json'||req.headers['x-demo-csrf']!==csrf)return send(403,{error:'DEMO_SAME_ORIGIN_REQUIRED'});
           let body='';for await(const chunk of req){body+=chunk;if(body.length>64000)fail('DEMO_REQUEST_TOO_LARGE');}
+          verifyCode(options);validateConfig(config);
           const action=JSON.parse(body);applyAction(caseState(root,domain,action.caseId),action,domain);return send(200,state());
         }
         return send(404,{error:'DEMO_ROUTE_NOT_FOUND'});
@@ -229,6 +241,6 @@ export async function runProspectiveAssistedDemo(options) {
   }finally{if(existsSync(lock)&&read(lock).pid===process.pid)unlinkSync(lock);}
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const options={}; for(const arg of process.argv.slice(2)){const m=/^--([A-Za-z][A-Za-z0-9]*)=(.*)$/.exec(arg);if(!m||!['Mode','DataRoot','ExpectedHead','PowerShellVersion','CodeInventoryPath','CodeInventorySha256'].includes(m[1])||Object.hasOwn(options,m[1]))fail('DEMO_ARGUMENT_INVALID');options[m[1]]=m[2];}
+  const options={}; for(const arg of process.argv.slice(2)){const m=/^--([A-Za-z][A-Za-z0-9]*)=(.*)$/.exec(arg);if(!m||!['Mode','DataRoot','ExpectedBranch','ExpectedHead','PowerShellVersion','CodeInventoryPath','CodeInventorySha256'].includes(m[1])||Object.hasOwn(options,m[1]))fail('DEMO_ARGUMENT_INVALID');options[m[1]]=m[2];}
   runProspectiveAssistedDemo(options).then(r=>console.log(JSON.stringify(r))).catch(e=>{console.error(/^[A-Z0-9_]+$/.test(e.message)?e.message:'DEMO_CONTROLLED_FAILURE');process.exitCode=1;});
 }

@@ -3,9 +3,9 @@ import type {
 } from "../../types/hotel";
 
 import {
-  selectIntentAwareHotelOfferV2,
   type SmartStaySelectedOfferV2,
 } from "../../engine-v2/offers/intentAwareOfferSelectionV2";
+import { resolveEvaluatedOfferV3 } from "./evaluatedOfferBindingV3";
 
 import type {
   SmartStayEngineV2SearchInput,
@@ -644,24 +644,6 @@ function getRoleReasonCode(
   return "role:split-saver";
 }
 
-function resolveSelectedOffer(
-  pick:
-    SmartStayRecommendationPickV2,
-  evaluation:
-    SmartStayEvaluationV2,
-  preferenceId:
-    string
-) {
-  return pick.metrics
-    .selectedOffer ??
-    selectIntentAwareHotelOfferV2(
-      evaluation.hotel,
-      {
-        preferenceId,
-      }
-    ).selectedOffer;
-}
-
 function findSourceOffer(
   evaluation:
     SmartStayEvaluationV2,
@@ -1235,12 +1217,7 @@ export function adaptV2SearchResultToDecisionV3(
     )
   ) {
     const selectedOffer =
-      selectIntentAwareHotelOfferV2(
-        evaluation.hotel,
-        {
-          preferenceId,
-        }
-      ).selectedOffer;
+      resolveEvaluatedOfferV3(input.result, evaluation.hotel.id);
 
     if (
       selectedOffer !==
@@ -1298,11 +1275,7 @@ export function adaptV2SearchResultToDecisionV3(
     }
 
     const selectedOffer =
-      resolveSelectedOffer(
-        pick,
-        evaluation,
-        preferenceId
-      );
+      resolveEvaluatedOfferV3(input.result, evaluation.hotel.id);
 
     if (
       selectedOffer ===
