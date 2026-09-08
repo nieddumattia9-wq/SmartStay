@@ -56,6 +56,8 @@ consolidation report supplies observed validation and final remote state.
 
 ## Required fields for a new decision
 
+| D-0042 | 2026-09-08 | Replace inferred execution blockers with measured synthetic V3 capability evidence; retain unknowns, separate partial Best Choice coverage, and document unmapped soft distance plus feasibility-layer discrepancies without changing policies. | Evaluation-only; work-branch commit/push authorized, final validation and remote state in delivery evidence | `decisions/0042-diagnostic-v3-capability-proof.md` |
+
 - context and problem;
 - decision and scope;
 - product rationale;

@@ -1,5 +1,16 @@
 # StayOpti Current State
 
+## D-0042 — 2026-09-08 diagnostic capability checkpoint
+
+On source `ca27f05255d50da1e890fcb4a6b40facb40bbefb`, synthetic execution
+distinguishes incomplete-price computability from independent-output feasibility,
+and missing rating scale from universal input rejection. See D-0042 for observed
+rules, distance boundary gaps and Best Choice-only scope. D-0041 remains a real
+input preparation, not an executable real comparison. No real engine run,
+Golden promotion, policy or public runtime change. Original review/history and
+D-0037 bindings remain untouched. Authorized publication is work-branch-only;
+the delivery report records verified final SHA/push and commits still local.
+
 Updated: 2026-08-17  
 Status: last reported evidence-backed checkpoint, not a substitute for inspecting the repository
 
