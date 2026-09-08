@@ -7,7 +7,7 @@ import { validateStayOptiDecisionV3 } from '../contract/stayOptiDecisionV3';
 import { createIndependentV3ComparableDecisionV3 } from '../orchestrator/independentDecisionEngineV3';
 import { runPersonalUtilityRolePolicyV3, validatePersonalUtilityRolePolicyV3, type RunStayOptiPersonalUtilityRolePolicyInputV3 } from '../policy/personalUtilityRolePolicyV3';
 
-export const DIAGNOSTIC_CAPABILITY_VARIANTS = ['COMPLETE', 'TOTAL_UNKNOWN', 'RATING_SCALE_UNKNOWN', 'BOTH_UNKNOWN', 'ONE_TOTAL_UNKNOWN', 'NOT_BOOKABLE'] as const;
+export const DIAGNOSTIC_CAPABILITY_VARIANTS = ['COMPLETE', 'TOTAL_UNKNOWN', 'RATING_SCALE_UNKNOWN', 'BOTH_UNKNOWN', 'ONE_TOTAL_UNKNOWN', 'NOT_BOOKABLE', 'DISTANCE_LEADER_OUTSIDE', 'ALL_DISTANCE_OUTSIDE', 'DISTANCE_UNVERIFIED'] as const;
 export type DiagnosticCapabilityVariant = typeof DIAGNOSTIC_CAPABILITY_VARIANTS[number];
 
 export function createSyntheticCapabilityInput(variant: DiagnosticCapabilityVariant, maximumDistanceKm: number | null = null): SmartStayEngineV2SearchInput {
@@ -30,7 +30,15 @@ export function createSyntheticCapabilityInput(variant: DiagnosticCapabilityVari
       amenities:['Hotel room','Private bathroom','WiFi','Air conditioning','Breakfast','Reception','Elevator'],facilities:['Front desk','Daily housekeeping'],
     };
   });
-  return {hotels,preferenceId:'balanced',preferenceSource:'manual',totalBudget:450,maximumDistanceKm,selectedLocation:{latitude:0,longitude:0,confidence:1},nights:3,adults:2,children:0,rooms:1,checkIn:'2099-10-10',checkOut:'2099-10-13',currency:'EUR',capturedAt:'2099-09-01T12:00:00Z',bookingReferenceAt:'2099-09-01T12:00:00Z'};
+  if (variant === 'DISTANCE_LEADER_OUTSIDE') {
+    // A highly rated, cheaper option is outside the explicit cap. Its attractive
+    // diagnostic utility must never license a hard-constraint violation.
+    hotels.forEach((h,i)=>{h.distance=i===0?4:0.5;h.latitude=i===0?0.036:0.0045;h.stars=i===0?5:2;h.reviewScore=i===0?9.8:7;});
+  }
+  if (variant === 'ALL_DISTANCE_OUTSIDE') hotels.forEach(h=>{h.distance=4;h.latitude=0.036;});
+  if (variant === 'DISTANCE_UNVERIFIED') hotels.forEach(h=>{h.latitude=null;h.longitude=null;h.distance=null;h.availableData.hasDistance=false;h.availableData.hasCoordinates=false;});
+  const cap=variant.startsWith('DISTANCE_')||variant==='ALL_DISTANCE_OUTSIDE'?maximumDistanceKm??1:maximumDistanceKm;
+  return {hotels,preferenceId:'balanced',preferenceSource:'manual',totalBudget:450,maximumDistanceKm:cap,selectedLocation:{latitude:0,longitude:0,confidence:1},nights:3,adults:2,children:0,rooms:1,checkIn:'2099-10-10',checkOut:'2099-10-13',currency:'EUR',capturedAt:'2099-09-01T12:00:00Z',bookingReferenceAt:'2099-09-01T12:00:00Z'};
 }
 
 export function runSyntheticCapabilityProbe(variant: DiagnosticCapabilityVariant, maximumDistanceKm: number | null = null) {
@@ -43,9 +51,9 @@ export function runSyntheticCapabilityProbe(variant: DiagnosticCapabilityVariant
   catch (error) { independentError = error instanceof Error ? error.message : 'UNEXPECTED_SYNTHETIC_ERROR'; }
   return {
     proofScope:'SYNTHETIC_ONLY_NOT_REAL_FEEDBACK_EXECUTION' as const,
-    variant, maximumDistanceKm,
+    variant, maximumDistanceKm:input.maximumDistanceKm,
     sourceUnknowns:{completeTotal:variant.includes('TOTAL')||variant==='BOTH_UNKNOWN',ratingScale:variant==='RATING_SCALE_UNKNOWN'||variant==='BOTH_UNKNOWN'},
-    sourceRatingObservations:input.hotels.map((h,i)=>({alternativeId:h.id,observedValue:[8.9,8.2,8.5][i],sourceScale:h.reviewScore===null?{status:'UNKNOWN',value:null,reason:'Synthetic source does not document the scale'}:{status:'KNOWN',value:10,reason:'Explicit synthetic control fact'},usedAsCanonicalScore:h.reviewScore!==null})),
+    sourceRatingObservations:input.hotels.map((h,i)=>({alternativeId:h.id,observedValue:h.reviewScore??[8.9,8.2,8.5][i],sourceScale:h.reviewScore===null?{status:'UNKNOWN',value:null,reason:'Synthetic source does not document the scale'}:{status:'KNOWN',value:10,reason:'Explicit synthetic control fact'},usedAsCanonicalScore:h.reviewScore!==null})),
     ratingHandling:'UNKNOWN_SOURCE_SCALE_OMITS_CANONICAL_SCORE; OBSERVATION_NOT_RESCALED',
     input, result, decision, validation:validateStayOptiDecisionV3(decision),
     independentOutput, independentError,

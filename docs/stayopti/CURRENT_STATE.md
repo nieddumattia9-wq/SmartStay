@@ -1,5 +1,18 @@
 # StayOpti Current State
 
+## D-0043 - Independent recommendation eligibility
+
+On source c525afacfac3138516e49497175eae61158ca272, the offline V3 adapter now
+assesses solution feasibility and explicit hard constraints before geometry and
+robustness selection. Incomplete data remains diagnostically computable;
+all-incomplete sets abstain without an unhandled recommendation error. Missing
+distance and proven maximum-distance violations retain distinct reasons.
+See D-0043 and delivery evidence for synthetic validation and conditional
+D-0038 launcher branch prerequisites. No public behavior/configuration, V2,
+weights, thresholds, D-0037 bindings or real Bologna execution changed.
+Publication is work-branch-only; delivery records actual SHA, push and pending
+commits. The older D-0042 results below are historical.
+
 ## D-0042 — 2026-09-08 diagnostic capability checkpoint
 
 On source `ca27f05255d50da1e890fcb4a6b40facb40bbefb`, synthetic execution

@@ -70,3 +70,5 @@ consolidation report supplies observed validation and final remote state.
 - supersedes / superseded by.
 
 Material decisions include product promise, ranking semantics, recommendation roles, profile behavior, data contracts, safety gates, provider/commercial separation, public rollout, and changes to this Constitution.
+
+| D-0043 | 2026-09-08 | Assess canonical feasibility and explicit hard constraints before independent V3 selection; retain diagnostic utility and distinguish missing evidence from proven violations without changing weights, public behavior or Golden gates. | Accepted offline repair; work-branch commit/push authorized, exact validations and remote state in delivery evidence | `decisions/0043-independent-recommendation-eligibility.md` |

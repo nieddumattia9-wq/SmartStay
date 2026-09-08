@@ -99,6 +99,7 @@ import {
 
 import {
   evaluateDecisionRobustnessV3,
+  type EvaluateStayOptiRobustnessCandidateV3,
 } from "../robustness/decisionRobustnessV3";
 
 import {
@@ -856,6 +857,38 @@ function createSingleSolution(
     totalCost:
       cost,
     evidenceIds,
+  };
+}
+
+// One eligibility assessment feeds geometry AND robustness. Utility remains
+// diagnostic for excluded/incomplete solutions; source rankBand is not copied.
+function assessRecommendationEligibility(
+  evaluation: SmartStayEvaluationV2,
+  selectedOffer: SmartStaySelectedOfferV2 | null,
+  solution: StaySolutionV3 | null
+): NonNullable<EvaluateStayOptiRobustnessCandidateV3["recommendationEligibility"]> {
+  const missing: SmartStayReasonCodeV3[] = [];
+  const violations: SmartStayReasonCodeV3[] = [];
+  if (!evaluation.reliabilityGate.eligible || selectedOffer?.bookable !== true)
+    violations.push("eligibility:source-ineligible");
+  if (solution === null || solution.feasibility === "incomplete")
+    missing.push("eligibility:solution-incomplete");
+  else if (solution.feasibility !== "feasible")
+    violations.push("eligibility:solution-infeasible");
+  // Only explicit hard constraints: budget/profile trade-offs and V2 rank
+  // exclusions are deliberately NOT imported as a blanket veto.
+  for (const constraint of evaluation.constraints) {
+    if (constraint.code === "maximum-distance") {
+      if (constraint.status === "exceeded") violations.push("eligibility:maximum-distance-exceeded");
+      if (constraint.status === "unknown") missing.push("eligibility:maximum-distance-unverified");
+    } else if (constraint.code === "mandatory-accommodation-requirements") {
+      if (constraint.status === "exceeded") violations.push("eligibility:mandatory-requirement-exceeded");
+      if (constraint.status === "unknown") missing.push("eligibility:mandatory-requirement-unverified");
+    }
+  }
+  return {
+    status: violations.length ? "ineligible" : missing.length ? "incomplete" : "eligible",
+    reasonCodes: uniqueReasonCodesV3([...violations, ...missing]),
   };
 }
 
@@ -1887,6 +1920,16 @@ export function adaptV2SearchResultToDecisionV3(
     }
   }
 
+  const recommendationEligibilityByHotelId = new Map(sortedEvaluations.map(evaluation => {
+    const id = evaluation.hotel.id;
+    const solutionId = solutionIdByHotelId.get(id);
+    return [id, assessRecommendationEligibility(
+      evaluation,
+      selectedOfferByHotelId.get(id) ?? null,
+      solutions.find(solution => solution.solutionId === solutionId) ?? null
+    )] as const;
+  }));
+
   const decisionGeometry =
     evaluateDecisionGeometryV3(
       sortedEvaluations.map(
@@ -1937,13 +1980,7 @@ export function adaptV2SearchResultToDecisionV3(
                 hotelId
               ) ??
               null,
-            eligible:
-              evaluation
-                .reliabilityGate
-                .eligible &&
-              selectedOffer
-                ?.bookable ===
-                true,
+            eligible: recommendationEligibilityByHotelId.get(hotelId)!.status === "eligible",
             totalCost:
               integritySnapshot
                 ?.cost
@@ -2051,13 +2088,8 @@ export function adaptV2SearchResultToDecisionV3(
                   hotelId
                 ) ??
                 null,
-              eligible:
-                evaluation
-                  .reliabilityGate
-                  .eligible &&
-                selectedOffer
-                  ?.bookable ===
-                  true,
+              eligible: recommendationEligibilityByHotelId.get(hotelId)!.status === "eligible",
+              recommendationEligibility: recommendationEligibilityByHotelId.get(hotelId)!,
               utility,
               geometry,
               offerSnapshot:

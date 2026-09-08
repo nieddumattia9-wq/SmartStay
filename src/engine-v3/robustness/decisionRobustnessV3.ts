@@ -84,6 +84,12 @@ export interface EvaluateStayOptiRobustnessCandidateV3 {
   hotelId: string;
   solutionId: string | null;
   eligible: boolean;
+  // Optional for standalone diagnostic callers. The canonical-solution adapter
+  // supplies this before geometry/cohort selection, never after choosing a winner.
+  recommendationEligibility?: {
+    status: "eligible" | "incomplete" | "ineligible";
+    reasonCodes: SmartStayReasonCodeV3[];
+  };
   utility: StayOptiPersonalUtilityEvaluationV3;
   geometry: StayOptiGeometryCandidateEvaluationV3;
   offerSnapshot: StayOfferIntegritySnapshotV3 | null;
@@ -481,7 +487,14 @@ function createCandidateEvaluation(
     candidate.offerSnapshot.cost.integrityStatus !== "conflicting" &&
     candidate.offerSnapshot.bookability.status !== "sold-out";
 
-  const status: StayOptiRobustnessCandidateStatusV3 = !candidate.eligible
+  const eligibility = candidate.recommendationEligibility;
+  if (eligibility && (
+    !["eligible", "incomplete", "ineligible"].includes(eligibility.status) ||
+    candidate.eligible !== (eligibility.status === "eligible")
+  )) throw new Error("Inconsistent V3 recommendation eligibility.");
+  const status: StayOptiRobustnessCandidateStatusV3 = eligibility?.status === "incomplete"
+    ? "incomplete"
+    : !candidate.eligible
     ? "ineligible"
     : utilityScore === null || candidate.utility.status !== "usable" || !snapshotUsable
       ? "incomplete"
@@ -513,6 +526,7 @@ function createCandidateEvaluation(
     riskSignals: signals,
     reasonCodes: uniqueReasonCodesV3([
       "risk:shadow-only",
+      ...(eligibility?.reasonCodes ?? []),
       ...(status === "usable" ? ["risk:evaluated" as const] : ["risk:insufficient-evidence" as const]),
       ...(sourceRiskScore !== null ? ["risk:source-score-used" as const] : []),
       ...(canonicalFloor > 0 ? ["risk:canonical-floor-applied" as const] : []),
@@ -1069,7 +1083,10 @@ export function evaluateDecisionRobustnessV3(input: {
   const baseline = scenarios.find((scenario) => scenario.scenarioId === "baseline");
   const nearTie = detectNearTie(baseline, candidateRegret, options);
   const noGoodOption = detectNoGoodOption(robustChoiceEvaluation, options);
-  const resolvedAbstentionCode = resolveAbstention(
+  const resolvedAbstentionCode = candidateRegret.length === 0 &&
+    candidates.some(candidate => candidate.status === "incomplete")
+    ? "insufficient-evidence"
+    : resolveAbstention(
     cohort.anchorHotelId,
     robustChoice,
     candidateRegret,
@@ -1101,6 +1118,8 @@ export function evaluateDecisionRobustnessV3(input: {
   const reasonCodes = uniqueReasonCodesV3([
     "risk:shadow-only",
     "robustness:shadow-only",
+    // Explain missing evidence separately from established constraint failures.
+    ...candidates.flatMap(candidate => candidate.reasonCodes.filter(code => code.startsWith("eligibility:"))),
     ...(usableCount > 0 ? ["risk:evaluated" as const, "robustness:evaluated" as const, "regret:evaluated" as const] : []),
     ...(nearTie.status === "detected" ? ["robustness:near-tie" as const] : []),
     ...(effectiveTieClassification === "DECISIONALLY_EQUIVALENT"
