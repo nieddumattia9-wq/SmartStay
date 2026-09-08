@@ -1,5 +1,23 @@
 # StayOpti Current State
 
+## D-0046 — Bounded same-policy intent diagnostics
+
+Source e2ba339041c5320fecdc0f9478a61fe57b4be90e on
+`codex/evaluation-d0036-d0041`. D-0044 and the D-0045 explicit launcher
+checkpoint repair are already consolidated; the old blocked D-0044 entry below
+is historical. A separate synthetic evaluation module now recalculates the
+actual intent/eligibility/role policy across a frozen finite multi-axis grid.
+Equivalence sets, null loss for non-comparable cases, denominators and separate
+Saving/Upgrade coherence are explicit. No inherited legacy robustness or
+cardinal regret, no policy winner replacement, public integration or real case.
+Targeted verification: 34/34 plus D-0044 41/41. The first fixture-reference
+failure is retained in the report. Final complete gates, candidate tree, commit,
+remote SHA, push status and pending commits must be read from delivery evidence;
+they are not inferred from this pre-commit note. All out-of-scope files, seven
+excluded paths and seventeen sealed D-0037 files remain byte-protected.
+See D-0046 for limits, including near-tie changes and manual Balanced/shared-room
+behavior. Every completed software phase reports actual push/pending state.
+
 ## D-0044 — Evaluation intent/role-policy candidate (publication blocked)
 
 Source 93743a0f43b330c908a75fae3f74f5a0d12d7419. The F3 synthetic failure was
