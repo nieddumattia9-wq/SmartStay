@@ -255,3 +255,121 @@ state, recovery/history, private manifest and all fifteen encrypted files
 without decryption. Synthetic or `%TEMP%` runs are labeled non-promotable and
 cannot establish real collection proof. Collection finalization does not create
 a blind capsule or admit Golden evidence.
+
+## Browser-assisted multi-screenshot dossier intake
+
+Browser-assisted dossiers use the separate
+`stayopti.v3.browser-assisted-dossier@1` descriptor and
+`stayopti.v3.manual-market-dossier-custody@3`. They do not change the direct
+manual capture or custody-v2 formats. Assisted interaction must be disclosed;
+it must not be recorded as `browserAutomation=false`. Logged-out, incognito
+and absence of personalization are separate evidence states and remain
+`UNKNOWN` when not verified.
+
+The descriptor lists every archive artifact and every screenshot reference.
+Each screenshot is bound to exactly one local alternative and to a declared
+capture instant plus the document that supports that timestamp. Artifact
+counts are variable: the implementation does not encode the preliminary
+pilot's 26 files, 25 checksums or 15 screenshots as format constants.
+
+Import is a new custody event. It verifies archive and file hashes, safe paths,
+references and timestamp consistency, encrypts every original artifact into a
+new non-colliding session-scoped custody, reopens it for byte verification and
+only then finalizes. Original manifests, capture logs, provenance documents
+and all screenshots are retained individually; no collage or representative
+image is substituted. Interrupted imports cannot be presented as finalized.
+
+An observed statement such as `Include tasse e costi` and an unknown itemized
+tax/fee breakdown are stored separately using canonical known/unknown
+wrappers. The statement alone does not prove fiscal completeness, exact
+checkout price, bookability or final budget fit.
+
+Successful intake means only `custodyIntegrityEligible=true`. The result is
+still `DIAGNOSTIC_ONLY`, with automatic blind judgment, V3 replay and Golden
+admission all false. A later real import requires an explicit descriptor,
+expected archive hash, a new session ID and a separate authorization; it must
+not touch the legacy `_002` custody.
+
+### Supported offline dossier handoff (D-0037)
+
+Use `scripts/invoke-browser-assisted-dossier-handoff.ps1` from actual Windows
+PowerShell 5.1. This is separate from manual capture and does not invoke any
+browser/provider or read credentials. The preparatory descriptor may remain
+`NOT_REVIEWED`, but `Preflight` and `Import` require a real reviewed version,
+a reviewed data map and a matching human receipt. No review is inferred from
+archive checks, agent transcription or an earlier dossier review.
+
+This handoff is the only supported entry for a future real dossier import.
+The internal custody library also supports synthetic tests and legacy reads;
+calling that API directly is not an authorized alternative to the review gate.
+Reopen is bound to the same code manifest and HEAD as import; a later software
+version requires a separately reviewed compatibility path, not a hash bypass.
+
+The modes and exact parameters are:
+
+- `CodeManifest -ExpectedHead <sha> -OutputPath <new-private-json>`: record
+  current branch/HEAD, executable closure and runtime hashes. Includes dirty
+  code bytes, not merely Git HEAD. Output parent must exist, outside the repo.
+- `Preflight -ExpectedHead <sha> -CodeManifestPath <path>
+  -CodeManifestSha256 <sha> -ArchivePath <path> -ArchiveSha256 <sha>
+  -DescriptorPath <path> -DescriptorSha256 <sha> -DataMapPath <path>
+  -DataMapSha256 <sha> -ReviewReceiptPath <path> -ReviewReceiptSha256 <sha>
+  -SessionId <fresh-id> -PrivateRoot <root>`: validate approvals, exact bytes,
+  archive checksums/references/timestamps and destination without custody.
+  Returns a literal for a future separately authorized import, not permission.
+- `Import`: same parameters plus `-AuthorizationLiteral <exact-literal>`.
+  Only after actual user authorization. Do not use a generic proceed message.
+- `Reopen -ExpectedHead <sha> -CodeManifestPath <path>
+  -CodeManifestSha256 <sha> -SessionId <id> -PrivateRoot <root>`: verify all
+  encrypted originals and all four review materials, without export or mutation.
+
+The real root is exactly
+`%LOCALAPPDATA%\StayOpti\private-evidence\browser-assisted-dossiers`.
+`-SyntheticFixture` is exclusively for synthetic IDs/materials below `%TEMP%`;
+its receipt must be `SYNTHETIC_TEST_ONLY` and its descriptor remains
+`NOT_REVIEWED`. A synthetic PASS never certifies the user's real filesystem.
+Never point this path at `_002`, the manual legacy custody or existing sessions.
+
+The data map is JSON with `dossierId`, `descriptorSha256`,
+`status=HUMAN_REVIEWED`, and `rows` of unique `field` plus canonical `evidence`
+wrappers (`status`, `value`, `reliability`, `evidenceRefs`, `unknownReason`).
+Every reference must exist in the descriptor. Missing values stay `UNKNOWN`.
+
+The review receipt schema is `stayopti.v3.dossier-transcription-review@1`:
+`reviewStatus=HUMAN_REVIEWED`, `reviewerClass=HUMAN`, a local
+`REVIEWER_*` pseudonym, `separateFromCollector=true`, `reviewProtocolVersion`,
+`reviewedAtBucket`, `dossierId`, `sessionId`, `archiveSha256`,
+`descriptorFileSha256`, `descriptorFingerprint`, `dataMapFileSha256`,
+`dataMapFingerprint`, `dataUseScope=PRIVATE_DIAGNOSTIC_CUSTODY_ONLY`, and
+`retentionAcknowledged={successRetentionDays:14,
+start:COLLECTOR_CUSTODY_START,purge:EXPLICIT_ONLY}`. Human review must match
+the descriptor's review protocol/date. Fingerprints are SHA-256 of recursive
+key-sorted JSON (arrays preserve order); file SHA-256 instead covers original
+UTF-8 bytes including formatting. Receipt identity is an explicit declaration,
+not independent cryptographic verification of the person.
+
+Descriptor, map, receipt and code manifest are preserved as original bytes
+inside four individual AES-256-GCM/CurrentUser DPAPI envelopes in the same
+transaction. A review-material failure aborts finalization. Reopen verifies
+file hashes, canonical fingerprints, approval bindings and diagnostic state.
+Only controlled booleans/counts and technical IDs/paths are emitted. No shared
+Evidence ZIP, blind capsule, decision replay or Golden admission is produced.
+
+Checksum entry names are relative to their document directory. Root-level
+documents use the archive root; nested documents use that one nested base.
+Legacy ZIP backslashes normalize at indexing; aliases/collisions/traversal,
+ADS and reserved Windows names are rejected. Original checksum files, image
+bytes and archive structure are not rewritten.
+
+Retention is 14 days from collector custody start for originals and review
+materials, not from the claimed capture. Expiry does not automatically delete
+files or block decryption: deletion requires the existing explicit purge API.
+This handoff exposes no purge/extension command. Agree retention and operator
+purge scheduling before real import; do not assume permanent custody.
+
+The preliminary one-alternative pilot remains `DIAGNOSTIC_ONLY`. Its earlier
+preparation is unchanged and still PENDING, not a ready-to-run approved
+descriptor. After human review, use new material versions and a new code
+manifest rather than overwriting that preparation. Run the future actual
+import and reopen directly in the user's PowerShell, inspect file-per-file
+checks there, and keep that real proof distinct from the synthetic tests.

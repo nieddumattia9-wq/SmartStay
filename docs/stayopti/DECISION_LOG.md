@@ -39,6 +39,20 @@ This is an append-only index. Full records live in `decisions/`. Do not erase or
 | D-0033 | 2026-09-05 | Require release proof from a clean commit candidate with no ignored or developer-dirty dependency; use synthetic env fixtures and immutable Git blobs for canonical byte evidence. | Accepted on validation branch; pull request unmerged | `decisions/0033-clean-commit-release-proof.md` |
 | D-0034 | 2026-09-05 | Permit detached HEAD only for explicitly synthetic/offline preflight modes, prove the boundary in real detached worktrees and repair only the two vulnerable transitive lock resolutions. | Accepted; validated locally, pull-request update pending | `decisions/0034-detached-head-ci-and-dependency-audits.md` |
 | D-0035 | 2026-09-05 | Require exact release-command proof and refresh only the vulnerable transitive Browserslist family in the root lockfile. | Accepted; validated locally, pull-request update pending | `decisions/0035-browserslist-security-resolution-and-exact-ci-proof.md` |
+| D-0036 | 2026-09-05 | Preserve every artifact in browser-assisted dossiers through a separate lossless custody-v3 import while keeping integrity, provenance and decision eligibility distinct. | Accepted; implemented offline with synthetic evidence only, uncommitted | `decisions/0036-browser-assisted-dossier-multi-evidence-custody.md` |
+| D-0037 | 2026-09-06 | Resolve nested checksums relative to their document and require hash-bound human review plus explicit authorization for diagnostic dossier custody and complete review-material reopening. | Accepted offline repair; real review/import pending, uncommitted | `decisions/0037-relative-checksums-and-reviewed-dossier-handoff.md` |
+
+| D-0038 | 2026-09-06 | Bind prospective synthetic evaluation and private review to visible revisions, preserve UI continuity and distinguish trade-off rejection from hard-constraint failure. | Accepted; software consolidation authorized 2026-09-08 | `decisions/0038-prospective-assisted-synthetic-evaluation-bridge.md` |
+| D-0039 | 2026-09-07 | Separate diagnostic transcription review from synthetic decision evaluation and preserve explicit unknown values. | Accepted; software consolidation authorized 2026-09-08 | `decisions/0039-diagnostic-transcription-review-boundary.md` |
+| D-0040 | 2026-09-07 | Permit explicit confirmation only for displayed evidence-sharing field groups, with stale-client rejection and append-only history. | Accepted; software consolidation authorized 2026-09-08 | `decisions/0040-diagnostic-visible-group-review.md` |
+| D-0041 | 2026-09-08 | Prepare post-observation diagnostic role feedback separately from engine input/output and prohibit automatic blind/Golden interpretation. | Accepted; software consolidation authorized 2026-09-08 | `decisions/0041-diagnostic-role-feedback-preparation.md` |
+
+Consolidation authorization (2026-09-08): publish the explicitly audited software
+D-0036–D-0041, including subsequent repairs, on a dedicated work branch only.
+Preserve private material and D-0037 bindings. Every completed software phase
+must report push status and any commits still local, as now required by
+EXECUTION_GUARDRAILS. Historical status entries remain historical; the separate
+consolidation report supplies observed validation and final remote state.
 
 ## Required fields for a new decision
 

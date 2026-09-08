@@ -54,6 +54,17 @@ Before accepting a checkpoint:
 
 Prefer direct work by Codex in the connected repository. If Mattia must run a package, minimize manual steps: one artifact, one tested command, built-in integrity check, preflight before patch, predictable naming, and a single Evidence artifact. Explain exactly what will and will not happen.
 
-## 7. Stop criteria
+## 7. Software checkpoint synchronization
+
+Every completed software phase must report its local branch and commit, push
+status (not authorized, pending, failed, or verified), the observed remote
+commit and the number/list of commits still local. A local PASS is not remote
+synchronization. Verify the intended remote ref explicitly after an authorized
+push; never infer synchronization from a stale remote-tracking ref. Commit and
+push still require explicit authorization, and private evidence never belongs
+in the software commit. Existing custody manifests are not regenerated merely
+because software has been consolidated under a new HEAD.
+
+## 8. Stop criteria
 
 Stop and report `BLOCKED` when root cause is unproven, repository state is unexpected, the invocation method is assumed, the new method repeats a known failure, evidence is incomplete, or authority for a consequential action is missing.
