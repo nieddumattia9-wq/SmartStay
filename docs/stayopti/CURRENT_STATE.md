@@ -1,5 +1,28 @@
 # StayOpti Current State
 
+## D-0047 R1 — Negated privacy evidence repair
+
+Source `627f2fd8f07d9f8a744b8634d0508cd450e6f745`, same work branch.
+The exact new bridge regression demonstrated PRIVATE bath / hard=true / eligible /
+selected for `Private room without a private bathroom`. The initial full input,
+output and failing log are retained. Suitability @2 / bridge @3 now produce
+NOT_PRIVATE bath / hard=false / ineligible / not selected, without changing unit
+privacy, Balanced or numerical policy. Explicit unknown/conflict blocks property
+fallback. NOT_PRIVATE does not manufacture a shared-room type.
+
+The initial 33-test R1 program passed after repair; a final all-role/context guard
+brings the suite to 34 tests. D-0047 30/30, D-0046 34/34 and D-0044 41/41 passed.
+All 29 historical D-0047 semantic decisions and the 187 D-0046 reports (apart from
+versions/fingerprints) match their pre-R1 results. Frozen fixture bytes are intact.
+Full final gates, immutable commit proof, exact two-commit work-branch push result
+and any pending commits are reported in R1 delivery evidence, not presumed here.
+The older D-0047 @1 parser claims below are historical, not sufficient negation proof.
+
+Seven excluded paths, seventeen D-0037 sealed files and private progress remain
+untouched. No real execution, provider, public runtime, main, Golden, weights,
+distance, Maximum Comfort or Upgrade change. See D-0047 R1 for bounded-language
+limitations and the preserved initial test-fixture identity-grammar correction.
+
 ## D-0047 — Contextual suitability in the evaluation intent bridge
 
 Source `62fe765e9423bc8b9134c3eb16e94b72cfa46d62`, work branch

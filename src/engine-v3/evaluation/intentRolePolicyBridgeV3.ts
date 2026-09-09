@@ -10,7 +10,7 @@ import { runPersonalUtilityRolePolicyV3, validatePersonalUtilityRolePolicyV3,
   type RunStayOptiPersonalUtilityRolePolicyInputV3, type StayOptiRolePolicySolutionInputV3,
 } from '../policy/personalUtilityRolePolicyV3';
 
-export const INTENT_ROLE_BRIDGE_VERSION = 'stayopti.evaluation.intent-role-bridge@2' as const;
+export const INTENT_ROLE_BRIDGE_VERSION = 'stayopti.evaluation.intent-role-bridge@3' as const;
 export interface IntentRoleBridgeInputV3 {
   caseId: string;
   search: SmartStayEngineV2SearchInput;
@@ -98,6 +98,11 @@ function prepare(input: IntentRoleBridgeInputV3) {
     const mandatory={...comfort.mandatoryRequirements,
       unmetFeatureCodes:[...comfort.mandatoryRequirements.unmetFeatureCodes],
       unverifiedFeatureCodes:[...comfort.mandatoryRequirements.unverifiedFeatureCodes]};
+    // A known nonprivate offer violates a required private unit, but does not
+    // identify any specific shared unit type. Unknown/conflicting remains unverified.
+    const requiredUnits=search.comfortPreferences?.requiredUnitTypes??[];
+    if(suitability.facts.unitState==='NOT_PRIVATE'&&requiredUnits.length&&!requiredUnits.includes('shared-room'))
+      mandatory.requiredUnitTypeStatus='unmet';
     if(search.comfortPreferences?.requiredFeatureCodes?.includes('private-bathroom')){
       mandatory.unmetFeatureCodes=mandatory.unmetFeatureCodes.filter(c=>c!=='private-bathroom');
       mandatory.unverifiedFeatureCodes=mandatory.unverifiedFeatureCodes.filter(c=>c!=='private-bathroom');

@@ -5,34 +5,73 @@ import type {SmartStayEngineV2SearchInput} from '../../engine-v2/orchestrator/sm
 import type {SmartStayUnitType} from '../../engine-v2/model/smartStayEvaluationV2';
 import type {Hotel} from '../../types/hotel';
 
-export const STAY_SUITABILITY_VERSION='stayopti.evaluation.stay-suitability@1' as const;
+export const STAY_SUITABILITY_VERSION='stayopti.evaluation.stay-suitability@2' as const;
 type PrivacyState='PRIVATE'|'SHARED'|'NOT_PRIVATE'|'UNKNOWN'|'CONFLICTING';
 function normalize(value:string){return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
 
-// Reuse canonical unit types/rules, excluding brand/category inference. Only the
-// evaluated offer's room text, then explicit features, may support its privacy.
-// A few bounded room adjectives are accepted; this is not an unrestricted NLP parser.
+// Bounded lexical evidence, not NLP or a room inspection. Polarity is attached
+// to each feature occurrence BEFORE the canonical classifier sees any phrase.
+// Clause/feature boundaries stop "no breakfast" or "without a private bathroom"
+// from negating an independently affirmative private room. Unsupported/conditional
+// claims remain unknown; absence of a shared feature never proves privacy.
+const PRIVATE_UNIT='private (?:double |superior |single |twin |standard |deluxe ){0,3}room|camera privata|stanza privata';
+const OTHER_PRIVATE_UNIT='hotel room|camera hotel|camera d hotel|entire place|entire apartment|entire home|entire house|whole apartment|whole house|intero appartamento|intera casa|alloggio intero';
+const SHARED_UNIT='shared room|shared dormitory|dormitory room|dorm room|posto letto|camera condivisa';
+const PRIVATE_BATH='private bathroom|bagno privato|en suite bathroom|ensuite bathroom';
+const SHARED_BATH='shared bathroom|communal bathroom|bagno condiviso';
+function privacyEvidence(texts:string[],feature:'unit'|'bath') {
+  let positive=false,negative=false,shared=false,uncertain=false,mentioned=false;
+  const affirmativeUnits:string[]=[];
+  const terms=new RegExp(`\\b(?:${PRIVATE_UNIT}|${OTHER_PRIVATE_UNIT}|${SHARED_UNIT}|${PRIVATE_BATH}|${SHARED_BATH})\\b`,'g');
+  for(const raw of texts)for(const clause of raw.split(/[.,;:|\n]+/)){
+    const text=normalize(clause),matches=[...text.matchAll(terms)];
+    mentioned ||= (feature==='bath'?/\b(bathroom|bagno|en suite|ensuite)\b/:
+      /\b(room|camera|stanza|dormitory|dorm|apartment|appartamento|place|house|home|casa|alloggio|posto letto)\b/).test(text);
+    for(let i=0;i<matches.length;i++){
+      const match=matches[i],phrase=match[0];
+      const bath=new RegExp(`^(?:${PRIVATE_BATH}|${SHARED_BATH})$`).test(phrase);
+      if(bath!==(feature==='bath'))continue;
+      const isShared=new RegExp(`^(?:${feature==='bath'?SHARED_BATH:SHARED_UNIT})$`).test(phrase);
+      const before=text.slice(i?matches[i-1].index!+matches[i-1][0].length:0,match.index);
+      const after=text.slice(match.index!+phrase.length,matches[i+1]?.index??text.length);
+      const conditional=/\b(maybe|possibly|perhaps|possible|potential|forse|eventuale)\s+(?:(?:a|an|the|un|una|il|la)\s+)?$/.test(before)||
+        /^\s*(?:(?:is|are|e)\s+)?(?:(?:not|non)\s+(?:guaranteed|confirmed|documented|verified|garantito|documentato)|(?:availability\s+)?unknown|on request|su richiesta|subject to availability)/.test(after)||
+        /\bor\b/.test(text)||clause.includes('?');
+      const negated=/\b(no|not|without|non|senza|nessun|nessuna)\s+(?:(?:a|an|the|un|una|il|la|un|uno)\s+)?$/.test(before)||
+        /^\s*(?:(?:is|are|e)\s+)?(?:not|non)\s+(?:available|provided|included|present|disponibile|incluso|presente)\b/.test(after)||
+        /^\s*(?:isn t|aren t)\s+(?:available|provided|included)\b/.test(after);
+      // Unrecognized trailing negation is not affirmative evidence either.
+      const ambiguous=conditional||(!negated&&/^\s*(?:(?:is|are|e)\s+)?(?:not|non|isn t|aren t)\b/.test(after));
+      if(ambiguous){uncertain=true;continue;}
+      if(negated){
+        // No hotel room/entire apartment does not prove no private accommodation.
+        if(!isShared&&(feature==='bath'||new RegExp(`^(?:${PRIVATE_UNIT})$`).test(phrase)))negative=true;
+        continue;
+      }
+      if(isShared)shared=true;else positive=true;
+      if(feature==='unit')affirmativeUnits.push(phrase.replace(new RegExp(`^(?:${PRIVATE_UNIT})$`),'private room'));
+    }
+  }
+  const state:PrivacyState=positive&&(negative||shared)?'CONFLICTING':uncertain?'UNKNOWN':
+    shared?'SHARED':negative?'NOT_PRIVATE':positive?'PRIVATE':'UNKNOWN';
+  return {state,mentioned,affirmativeUnits};
+}
+
+// Only the evaluated offer, then documented property features where the offer
+// is silent, can support privacy. Explicit unknown/negative/conflicting offer
+// evidence blocks fallback as well as an affirmative offer assertion does.
 export function resolveOfferPrivacyV3(hotel:Hotel,roomName:string|null|undefined,offerId:string|null) {
   const classify=(values:string[])=>classifyAccommodationV2({hotel:{id:hotel.id,name:'',provider:hotel.provider,
-    amenities:values.map(t=>normalize(t).replace(/\bprivate (?:double |superior |single |twin |standard |deluxe ){1,3}room\b/g,'private room')),
+    amenities:values,
     facilities:[]},explicitCategory:'unknown'});
-  const offered=classify(roomName?[roomName]:[]),features=classify([...hotel.amenities,...hotel.facilities]);
-  // Conflicting explicit offer evidence cannot fall back to a reassuring property feature.
-  const conflict=offered.evidence.some(e=>e.availability==='conflicting');
-  const fromOffer=conflict||offered.profile.unitType!=='unknown';
-  const chosen=fromOffer?offered:features;
-  const unit:SmartStayUnitType=chosen.profile.unitType;
-  const unitState:PrivacyState=chosen.evidence.some(e=>e.availability==='conflicting')?'CONFLICTING':
-    unit==='unknown'?'UNKNOWN':unit==='shared-room'?'SHARED':'PRIVATE';
-  const bathroom=(texts:string[]):PrivacyState=>{
-    const t=texts.map(normalize).join(' | ');
-    const shared=/\b(shared bathroom|communal bathroom|bagno condiviso)\b/.test(t);
-    const negative=/\b(no private bathroom|without private bathroom|senza bagno privato)\b/.test(t);
-    const positive=/\b(private bathroom|bagno privato|en suite bathroom)\b/.test(t.replace(/\b(no private bathroom|without private bathroom|senza bagno privato)\b/g,''));
-    return positive&&(negative||shared)?'CONFLICTING':shared?'SHARED':negative?'NOT_PRIVATE':positive?'PRIVATE':'UNKNOWN';
-  };
-  const offerBath=bathroom(roomName?[roomName]:[]),bathFromOffer=offerBath!=='UNKNOWN';
-  const bath=bathFromOffer?offerBath:bathroom([...hotel.amenities,...hotel.facilities]);
+  const offerText=roomName?[roomName]:[],features=[...hotel.amenities,...hotel.facilities];
+  const offerUnit=privacyEvidence(offerText,'unit'),fromOffer=offerUnit.mentioned;
+  const unitFacts=fromOffer?offerUnit:privacyEvidence(features,'unit');
+  const chosen=classify(unitFacts.affirmativeUnits);
+  const unitState:PrivacyState=chosen.evidence.some(e=>e.availability==='conflicting')&&unitFacts.state==='PRIVATE'?'CONFLICTING':unitFacts.state;
+  const unit:SmartStayUnitType=['PRIVATE','SHARED'].includes(unitState)?chosen.profile.unitType:'unknown';
+  const offerBath=privacyEvidence(offerText,'bath'),bathFromOffer=offerBath.mentioned;
+  const bath=(bathFromOffer?offerBath:privacyEvidence(features,'bath')).state;
   return {version:STAY_SUITABILITY_VERSION,unitType:unit,unitState,bathroomState:bath,
     unitSource:fromOffer?'EVALUATED_OFFER_ROOM_TEXT':'DOCUMENTED_FEATURES_OR_UNKNOWN',
     bathroomSource:bathFromOffer?'EVALUATED_OFFER_ROOM_TEXT':'DOCUMENTED_FEATURES_OR_UNKNOWN',
@@ -87,6 +126,10 @@ export function resolveStayExpectationV3(search:SmartStayEngineV2SearchInput,int
 export function evaluateStaySuitabilityV3(expectation:ReturnType<typeof resolveStayExpectationV3>,facts:ReturnType<typeof resolveOfferPrivacyV3>) {
   const missing:string[]=[],mismatch:string[]=[];
   if(['UNKNOWN','CONFLICTING'].includes(facts.unitState))missing.push('suitability:unit-privacy-unverified');
+  else if(facts.unitState==='NOT_PRIVATE'){
+    if(expectation.unitExpectation==='EXPLICIT_SHARED_UNIT_ALLOWED')missing.push('suitability:shared-unit-type-unverified');
+    else mismatch.push('suitability:known-nonprivate-unit-outside-context-not-human-hard-violation');
+  }
   else if(facts.unitState==='SHARED'&&expectation.unitExpectation!=='EXPLICIT_SHARED_UNIT_ALLOWED')
     mismatch.push('suitability:known-shared-unit-outside-context-not-human-hard-violation');
   if(expectation.privateBathroomRelevant){
