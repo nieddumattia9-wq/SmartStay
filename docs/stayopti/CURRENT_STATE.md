@@ -1,5 +1,25 @@
 # StayOpti Current State
 
+## D-0047 — Contextual suitability in the evaluation intent bridge
+
+Source `62fe765e9423bc8b9134c3eb16e94b72cfa46d62`, work branch
+`codex/evaluation-d0036-d0041`. Bridge @2 / suitability @1 retain manual
+Balanced and existing numerical weights while separately checking bound-offer
+privacy, contextual expectations and actual human requirements before selection.
+The frozen Balanced dorm control changes 90→650 EUR; equivalent adequate private
+stays still favor lower cost, a modest private 360 beats expensive premium, and
+explicit shared preference can still select 90. Insufficient market evidence
+does not imply luxury; unknown pertinent privacy is incomplete, not low quality.
+
+29 frozen synthetic cases; targeted 30/30, D-0046 34/34, D-0044 41/41 PASS.
+Unchanged D-0046 inputs: five choice-set changes across 187 scenarios. Historical
+evidence and assertions are preserved. The Maximum Comfort 50m→100 EUR sensitivity
+and zero positive Upgrade assignments remain explicit separate limitations.
+Complete clean-checkout gates, exact tree, selective commit/push and pending
+commit count are recorded in delivery evidence; they are not assumed here.
+No public behavior, real case, custody, Golden gate or D-0037 seal change.
+See D-0047; the older Balanced/shared-unit behavior below is historical.
+
 ## D-0046 — Bounded same-policy intent diagnostics
 
 Source e2ba339041c5320fecdc0f9478a61fe57b4be90e on

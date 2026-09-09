@@ -5,11 +5,12 @@ import { evaluateComfortFlexibilityV2 } from '../../engine-v2/comfort/comfortFle
 import { adaptV2SearchResultToDecisionV3 } from '../adapter/v2CompatibilityAdapterV3';
 import { resolveEvaluatedOfferV3 } from '../adapter/evaluatedOfferBindingV3';
 import { createStableHashV3 } from '../contract/stableHashV3';
+import {resolveStayExpectationV3,resolveOfferPrivacyV3,evaluateStaySuitabilityV3} from './staySuitabilityContextV3';
 import { runPersonalUtilityRolePolicyV3, validatePersonalUtilityRolePolicyV3,
   type RunStayOptiPersonalUtilityRolePolicyInputV3, type StayOptiRolePolicySolutionInputV3,
 } from '../policy/personalUtilityRolePolicyV3';
 
-export const INTENT_ROLE_BRIDGE_VERSION = 'stayopti.evaluation.intent-role-bridge@1' as const;
+export const INTENT_ROLE_BRIDGE_VERSION = 'stayopti.evaluation.intent-role-bridge@2' as const;
 export interface IntentRoleBridgeInputV3 {
   caseId: string;
   search: SmartStayEngineV2SearchInput;
@@ -78,16 +79,38 @@ function prepare(input: IntentRoleBridgeInputV3) {
   const {search, result, resolution} = resolveSource(input);
   const legacy = adaptV2SearchResultToDecisionV3({searchInput: search, result});
   const intent = result.budgetIntent;
+  const stayExpectation=resolveStayExpectationV3(search,intent);
   const candidates = result.evaluations.map(e => {
     const selected = resolveEvaluatedOfferV3(result, e.hotel.id);
+    const suitability=evaluateStaySuitabilityV3(stayExpectation,resolveOfferPrivacyV3(e.hotel,selected?.roomName,selected?.offerId??null));
     const solution = legacy.solutions.find(s => s.kind === 'single' && s.segments[0].hotelId === e.hotel.id);
     const snapshot = legacy.integrity.offerSnapshots.find(s => s.hotelId === e.hotel.id && s.offerId === selected?.offerId);
-    const comfort = evaluateComfortFlexibilityV2({targetHotelId: e.hotel.id, accommodation: e.accommodation,
+    // Offer privacy can differ from a property's inventory (e.g. a private room
+    // in a hostel). Preserve the existing hotel/private room fit equivalence
+    // for hotel inventory; never borrow a shared inventory fit for a private offer.
+    const boundUnit=suitability.facts.unitType==='private-room'&&e.accommodation.unitType==='hotel-room'?
+      'hotel-room':suitability.facts.unitType;
+    const comfort = evaluateComfortFlexibilityV2({targetHotelId: e.hotel.id,
+      accommodation:{...e.accommodation,unitType:boundUnit,evidenceIds:suitability.facts.unitEvidenceIds},
       evidence: e.evidence, reliabilityGate: e.reliabilityGate,
       stayContext: {nights: search.nights, adults: search.adults, children: search.children, rooms: search.rooms, tripProfile: search.tripProfile},
       preferences: search.comfortPreferences});
-    const applicable = e.constraints.filter(c => c.code === 'mandatory-accommodation-requirements' ||
-      (c.code === 'maximum-distance' && input.distance.semantics === 'mandatory-cap'));
+    const mandatory={...comfort.mandatoryRequirements,
+      unmetFeatureCodes:[...comfort.mandatoryRequirements.unmetFeatureCodes],
+      unverifiedFeatureCodes:[...comfort.mandatoryRequirements.unverifiedFeatureCodes]};
+    if(search.comfortPreferences?.requiredFeatureCodes?.includes('private-bathroom')){
+      mandatory.unmetFeatureCodes=mandatory.unmetFeatureCodes.filter(c=>c!=='private-bathroom');
+      mandatory.unverifiedFeatureCodes=mandatory.unverifiedFeatureCodes.filter(c=>c!=='private-bathroom');
+      if(['UNKNOWN','CONFLICTING'].includes(suitability.facts.bathroomState))mandatory.unverifiedFeatureCodes.push('private-bathroom');
+      else if(suitability.facts.bathroomState!=='PRIVATE')mandatory.unmetFeatureCodes.push('private-bathroom');
+    }
+    const mandatoryStatus=mandatory.unmetFeatureCodes.length||mandatory.requiredUnitTypeStatus==='unmet'?'exceeded':
+      mandatory.unverifiedFeatureCodes.length||mandatory.requiredUnitTypeStatus==='unverified'?'unknown':'satisfied';
+    mandatory.satisfied=mandatoryStatus==='satisfied';
+    const applicable=e.constraints.filter(c=>c.code==='mandatory-accommodation-requirements'||
+      (c.code==='maximum-distance'&&input.distance.semantics==='mandatory-cap')).map(c=>
+      c.code==='mandatory-accommodation-requirements'&&c.status!=='not-set'?{...c,status:mandatoryStatus,actualValue:mandatory.satisfied,
+        evidenceIds:[...c.evidenceIds,...suitability.facts.evidenceReferences]}:c);
     const missing = applicable.filter(c => c.status === 'unknown').map(c => `intent:unverified:${c.code}`);
     const violated = applicable.filter(c => c.status === 'exceeded').map(c => `intent:violated:${c.code}`);
     // Not true by default: constraint evaluations must exist, even when not-set.
@@ -104,6 +127,12 @@ function prepare(input: IntentRoleBridgeInputV3) {
         contextStatus = 'ineligible'; reasons.push('intent:experience-target-not-met');
       } else reasons.push('intent:experience-target-met');
     }
+    // Known privacy facts do not disappear when the V2 leisure/mixed fit is null.
+    // This is contextual eligibility, NOT a fabricated human hard requirement or
+    // a numeric quality penalty. Existing costs, profile weights and F3 stay intact.
+    reasons.push(...suitability.reasonCodes.map(code=>`intent:${code}`));
+    if(suitability.status==='ineligible')contextStatus='ineligible';
+    else if(suitability.status==='incomplete'&&contextStatus!=='ineligible')contextStatus='incomplete';
     const dim = (key: 'quality' | 'comfort' | 'location' | 'flexibility') => ({score: e.scores[key].score, evidenceIds: [...e.scores[key].evidenceIds]});
     const policy: StayOptiRolePolicySolutionInputV3 = {
       solutionId: solution?.solutionId ?? `intent-unresolved:${e.hotel.id}`, solutionType: 'single-stay',
@@ -118,8 +147,8 @@ function prepare(input: IntentRoleBridgeInputV3) {
       evidenceIds: e.evidence.map(f => f.id),
     };
     if (solution?.totalCost.currency && solution.totalCost.currency !== search.currency) throw new Error('INTENT_CURRENCY_MISMATCH');
-    return {hotelId: e.hotel.id, policy, selectedOffer: selected, snapshot: snapshot ?? null,
-      accommodation: e.accommodation, mandatoryRequirements: comfort.mandatoryRequirements,
+    return {hotelId: e.hotel.id, policy, selectedOffer: selected, snapshot: snapshot ?? null,suitability,
+      accommodation: e.accommodation, mandatoryRequirements: mandatory,applicableConstraints:applicable,
       target: target ?? null, constraints: e.constraints,
       distance: e.constraints.find(c => c.code === 'maximum-distance') ?? null,
       mapping: {categoryFit: 'CLASSIFICATION_CONFIDENCE_AUDIT_ONLY', room: 'V2_CONTEXTUAL_UNIT_TYPE_FIT_NOT_ROOM_LUXURY',
@@ -154,7 +183,7 @@ function prepare(input: IntentRoleBridgeInputV3) {
         'intent:in-range-comparable-alternative-available' : 'intent:distance-exception-not-authorized');
     }
   }
-  return {search, result, resolution, candidates, policyInput, legacy};
+  return {search, result, resolution, candidates, policyInput, legacy,stayExpectation};
 }
 
 export function runIntentRolePolicyBridgeV3(input: IntentRoleBridgeInputV3) {
@@ -181,6 +210,7 @@ export function runIntentRolePolicyBridgeV3(input: IntentRoleBridgeInputV3) {
     version: INTENT_ROLE_BRIDGE_VERSION, scope: 'OFFLINE_EVALUATION_ONLY' as const,
     inputFingerprint: createStableHashV3(input, INTENT_ROLE_BRIDGE_VERSION),
     profile: prepared.resolution,
+    stayExpectation:prepared.stayExpectation,
     intent: {budgetBasis: 'PER_ROOM_NIGHT' as const, totalBudget: prepared.search.totalBudget,
       nights: prepared.search.nights, rooms: prepared.search.rooms, budgetPerRoomNight: prepared.result.budgetIntent.budgetPerRoomNight,
       market: prepared.result.budgetIntent.market, targetExperienceFloor: prepared.result.budgetIntent.targetExperienceFloor,
