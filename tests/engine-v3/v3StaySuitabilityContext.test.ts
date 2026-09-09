@@ -107,9 +107,9 @@ test('SC18 F3 privacy is bound to the same evaluated offer as cost/cancellation'
   const r=result('preserve-same-day-F3-baseline'),c=r.candidates.find(c=>c.selectedOffer?.offerId==='offer-2')!;
   assert.equal(c.suitability.facts.offerId,'offer-2');assert.equal(c.policy.totalCost,420);assert.equal(c.snapshot?.cancellation.status,'non-refundable');
 });
-test('SC19 separate Maximum Comfort 50m sensitivity retained, not tuned here',()=>{
+test('SC19 D0048 applies existing Maximum Comfort band; original D0047 failure stays historical',()=>{
   const r=result('preserve-equal-experience-distance-small');assert.equal(r.profile.effectivePreferenceId,'maximum-comfort');
-  assert.equal(selected('preserve-equal-experience-distance-small')[0].policy.totalCost,400);
+  assert.equal(selected('preserve-equal-experience-distance-small')[0].policy.totalCost,300);
 });
 test('SC20 every result still equals the unchanged numerical role policy; no public/Golden activation',()=>{
   for(const c of cases){const r=result(c.id);assert.deepEqual(r.decision,runPersonalUtilityRolePolicyV3(r.policyInput));

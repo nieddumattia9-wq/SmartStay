@@ -9,10 +9,10 @@ import {
 } from "../decision/decisionTieProjectionV3";
 
 export const STAYOPTI_PERSONAL_UTILITY_ROLE_POLICY_VERSION_V3 =
-  "3.0.0-personal-utility-role-policy.2" as const;
+  "3.0.0-personal-utility-role-policy.3" as const;
 
 export const STAYOPTI_PERSONAL_UTILITY_ROLE_POLICY_SCHEMA_VERSION_V3 =
-  "3.0.0-personal-utility-role-policy-schema.2" as const;
+  "3.0.0-personal-utility-role-policy-schema.3" as const;
 
 export const STAYOPTI_ROLE_POLICY_PROFILES_V3 = [
   "maximum-comfort",
@@ -155,6 +155,34 @@ export interface StayOptiRolePolicyExplanationV3 {
   choiceChangingCounterfactual: string;
   evidenceIds: string[];
   uncertaintyCodes: string[];
+  /** A preference band is NOT an equivalence class or an evidence-quality claim. */
+  experienceBandComparison?: StayOptiMaximumComfortBandComparisonV3;
+}
+
+export interface StayOptiMaximumComfortBandComparisonV3 {
+  version: "maximum-comfort-anchored-experience-band@1";
+  scope: "eligible-nondominated-only";
+  maximumExperience: number;
+  experienceLossTolerance: number;
+  minimumBandExperience: number;
+  selectedExperienceLoss: number;
+  eligibleCount: number;
+  bandCount: number;
+  bandIsEquivalenceClass: false;
+  comparisons: Array<{
+    solutionId: string;
+    totalCost: number;
+    experienceScore: number;
+    lossFromMaximum: number;
+    withinBand: boolean;
+    additionalCostVsSelection: number;
+    experienceGainVsSelection: number;
+    dimensions: Array<{
+      dimension: StayOptiRolePolicyExperienceDimensionV3;
+      scoreDeltaVsSelection: number | null;
+      evidenceIds: string[];
+    }>;
+  }>;
 }
 
 export interface StayOptiRolePolicySelectionV3 {
@@ -769,8 +797,8 @@ function chooseBestChoice(
     right: StayOptiRolePolicyCandidateEvaluationV3
   ) => {
     if (profile === "maximum-comfort") {
-      return compareNumberDescending(left.experienceScore, right.experienceScore) ||
-        compareNumberAscending(left.totalCost, right.totalCost);
+      return compareNumberAscending(left.totalCost, right.totalCost) ||
+        compareNumberDescending(left.experienceScore, right.experienceScore);
     }
 
     if (profile === "comfort") {
@@ -790,7 +818,9 @@ function chooseBestChoice(
   };
 
   if (profile === "maximum-comfort") {
-    return resolveDecisionTieV3(eligible, compare, candidatePresentationProjection);
+    // Anchor once to the whole eligible frontier, never approximate pairwise ties.
+    const band = maximumComfortBand(eligible, settings.choiceExperienceLossTolerance);
+    return resolveDecisionTieV3(band.members, compare, candidatePresentationProjection);
   }
 
   if (profile === "comfort") {
@@ -814,6 +844,46 @@ function chooseBestChoice(
   }
 
   return resolveDecisionTieV3(eligible, compare, candidatePresentationProjection);
+}
+
+function maximumComfortBand(
+  eligible: StayOptiRolePolicyCandidateEvaluationV3[], tolerance: number
+) {
+  const maximumExperience = Math.max(...eligible.map(c => c.experienceScore as number));
+  // Scores already use the policy's existing six-decimal precision. Subtract at
+  // that precision, not with a new epsilon, distance rounding or policy threshold.
+  const minimumBandExperience = round(maximumExperience - tolerance);
+  return {maximumExperience, minimumBandExperience,
+    members: eligible.filter(c => c.experienceScore !== null && c.experienceScore >= minimumBandExperience)};
+}
+
+function maximumComfortComparison(
+  candidates: StayOptiRolePolicyCandidateEvaluationV3[],
+  choice: StayOptiRolePolicyCandidateEvaluationV3,
+  settings: StayOptiRolePolicyProfileSettingsV3
+): StayOptiMaximumComfortBandComparisonV3 {
+  const eligible = candidates.filter(c => c.status === "comparable" && c.dominatedBySolutionIds.length === 0);
+  const band = maximumComfortBand(eligible, settings.choiceExperienceLossTolerance);
+  return {
+    version: "maximum-comfort-anchored-experience-band@1", scope: "eligible-nondominated-only",
+    maximumExperience: band.maximumExperience, experienceLossTolerance: settings.choiceExperienceLossTolerance,
+    minimumBandExperience: band.minimumBandExperience,
+    selectedExperienceLoss: round(band.maximumExperience - (choice.experienceScore as number)),
+    eligibleCount: eligible.length, bandCount: band.members.length, bandIsEquivalenceClass: false,
+    comparisons: [...eligible].sort((a,b) => compareDecisionTieProjectionV3(candidatePresentationProjection(a),candidatePresentationProjection(b)))
+      .map(candidate => ({solutionId:candidate.solutionId,totalCost:candidate.totalCost as number,
+        experienceScore:candidate.experienceScore as number,
+        lossFromMaximum:round(band.maximumExperience - (candidate.experienceScore as number)),
+        withinBand:band.members.includes(candidate),
+        additionalCostVsSelection:round((candidate.totalCost as number) - (choice.totalCost as number)),
+        experienceGainVsSelection:round((candidate.experienceScore as number) - (choice.experienceScore as number)),
+        dimensions:candidate.contributions.filter(c=>c.configuredWeight>0).map(c=>{
+          const selected=choice.contributions.find(s=>s.dimension===c.dimension)!;
+          return {dimension:c.dimension,
+            scoreDeltaVsSelection:c.sourceScore===null||selected.sourceScore===null?null:round(c.sourceScore-selected.sourceScore),
+            evidenceIds:uniqueSorted([...c.evidenceIds,...selected.evidenceIds])};
+        })})),
+  };
 }
 
 function emptyMetrics(): StayOptiRolePolicyMetricsV3 {
@@ -904,6 +974,8 @@ function choiceRole(
   settings: StayOptiRolePolicyProfileSettingsV3
 ): StayOptiRolePolicySelectionV3 {
   const choice = choiceResolution.presentationRepresentative ?? choiceResolution.leaders[0];
+  const experienceBandComparison = input.profile === "maximum-comfort"
+    ? maximumComfortComparison(alternatives, choice, settings) : undefined;
   if (choiceResolution.classification === "DECISIONALLY_EQUIVALENT") {
     return {
       role: "best-choice",
@@ -924,6 +996,7 @@ function choiceRole(
           "counterfactual:material-decision-evidence-breaks-equivalence",
         evidenceIds: [],
         uncertaintyCodes: ["decision:decisionally-equivalent"],
+        ...(experienceBandComparison ? {experienceBandComparison} : {}),
       },
       reasonCodes: ["decision:decisionally-equivalent"],
     };
@@ -967,19 +1040,30 @@ function choiceRole(
       experienceScore: choice.experienceScore,
       qualityScore: choice.qualityScore,
       opportunityCostPoints: choice.opportunityCostPoints,
+      ...(experienceBandComparison ? {
+        experienceLoss: experienceBandComparison.selectedExperienceLoss,
+        experienceLossTolerance: experienceBandComparison.experienceLossTolerance,
+      } : {}),
     },
     explanation: {
       headlineKey: `best-choice:${input.profile}`,
-      mainSacrifice,
+      mainSacrifice: experienceBandComparison && experienceBandComparison.selectedExperienceLoss > 0
+        ? `experience-loss-within-profile-band:${experienceBandComparison.selectedExperienceLoss}` : mainSacrifice,
       decisiveVariable:
-        input.profile === "maximum-savings" ? "total-cost" : decisive ?? "experience-fit",
+        experienceBandComparison ? "total-cost-after-maximum-experience-band" :
+          input.profile === "maximum-savings" ? "total-cost" : decisive ?? "experience-fit",
       choiceChangingCounterfactual:
+        experienceBandComparison ? "counterfactual:experience-loss-exceeds-band-or-eligibility-changes" :
         settings.budgetTreatment === "hard-ceiling-experience-first"
           ? "counterfactual:experience-or-hard-budget-ceiling-changes"
           : "counterfactual:marginal-value-balance-changes",
-      evidenceIds: evidenceFor(input, choice.solutionId, decisive ?? undefined),
+      evidenceIds: experienceBandComparison
+        ? uniqueSorted(experienceBandComparison.comparisons.flatMap(c=>[
+          ...evidenceFor(input,c.solutionId),...c.dimensions.flatMap(d=>d.evidenceIds)]))
+        : evidenceFor(input, choice.solutionId, decisive ?? undefined),
       uncertaintyCodes:
         choice.evidenceCoverage < 1 ? ["uncertainty:missing-evidence"] : [],
+      ...(experienceBandComparison ? {experienceBandComparison} : {}),
     },
     reasonCodes: uniqueSorted([
       "role:best-choice-independent",
@@ -987,6 +1071,7 @@ function choiceRole(
         ? "budget:ceiling-before-choice"
         : "budget:profile-opportunity-cost",
       "quality:identity-premium-preserving",
+      ...(experienceBandComparison ? ["choice:minimum-complete-cost-in-anchored-experience-band"] : []),
     ]),
   };
 }
@@ -1380,6 +1465,42 @@ export function validatePersonalUtilityRolePolicyV3(
     }
   } else if (choice.status !== "abstained" || choice.solutionId !== null) {
     add("choice-invalid", result.caseId, "Abstained policy cannot expose a Best Choice.");
+  }
+
+  if (result.profile === "maximum-comfort") {
+    const settings = cloneSettings(result.profile, result.profileSettings.dimensionWeights["long-stays"] > 0 ? 7 : 1);
+    if (createStableHashV3(settings) !== createStableHashV3(result.profileSettings)) {
+      add("schema-invalid", result.caseId, "Maximum Comfort settings must retain the frozen numeric configuration.");
+    }
+    const expected = chooseBestChoice(result.candidates, result.profile, settings);
+    const expectedIds = uniqueSorted(expected?.leaders.map(c=>c.solutionId) ?? []);
+    if (createStableHashV3(expectedIds) !== createStableHashV3(choice.equivalentSolutionIds) ||
+      (expected && (choice.decisionTieClassification !== expected.classification ||
+        (expected.classification === "DECISIONALLY_DISTINCT" && choice.solutionId !== expected.leaders[0].solutionId))) ||
+      (!expected && choice.status !== "abstained")) {
+      add("choice-invalid", result.caseId, "Choice must be selected within the globally anchored eligible experience band.");
+    }
+    const reference = expected?.presentationRepresentative ?? expected?.leaders[0];
+    if (reference) {
+      const comparison = maximumComfortComparison(result.candidates, reference, settings);
+      if (!choice.explanation.experienceBandComparison ||
+        createStableHashV3(comparison) !== createStableHashV3(choice.explanation.experienceBandComparison)) {
+        add("choice-invalid", result.caseId, "Band explanation must bind the actual cost, experience, tolerance and dimension evidence.");
+      }
+      if (expected?.classification === "DECISIONALLY_DISTINCT" &&
+        (choice.metrics.totalCost !== reference.totalCost || choice.metrics.experienceScore !== reference.experienceScore ||
+          choice.metrics.experienceLoss !== comparison.selectedExperienceLoss ||
+          choice.metrics.experienceLossTolerance !== comparison.experienceLossTolerance ||
+          choice.explanation.decisiveVariable !== "total-cost-after-maximum-experience-band" ||
+          (comparison.selectedExperienceLoss > 0 && choice.explanation.mainSacrifice !==
+            `experience-loss-within-profile-band:${comparison.selectedExperienceLoss}`))) {
+        add("choice-invalid", result.caseId, "The selected band compromise must remain explicit, not claimed as quality superiority.");
+      }
+    } else if (choice.explanation.experienceBandComparison) {
+      add("choice-invalid", result.caseId, "An abstention cannot invent a comparison band.");
+    }
+  } else if (choice.explanation.experienceBandComparison) {
+    add("choice-invalid", result.caseId, "Maximum Comfort band explanation cannot be applied to another profile.");
   }
 
   const saving = result.portfolio.bestSensibleSaving;

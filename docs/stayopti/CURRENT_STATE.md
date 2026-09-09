@@ -1,5 +1,21 @@
 # StayOpti Current State
 
+## D-0048 — Maximum Comfort anchored-band candidate (2026-09-09)
+
+Source `35d70a650867bcf87c594eaa7e42531bf1470a01`, work branch only.
+The existing 0.5 tolerance now bounds choice after eligibility/dominance;
+inside the global band use minimum complete cost, then higher experience.
+Policy/schema .3, explicit compromise/evidence trace and validator; numerical
+settings, public V2/runtime and other profiles unchanged. No history migration.
+Initial failing MC01 retained; targeted 26/26 and R1 34/34, D47 30/30,
+D46 34/34, D44 41/41 pass. The same 187 frozen inputs produce two changed
+choices (400->300 and 192->180 EUR), two removed Saving roles, no Upgrade
+change; candidate metrics/input unchanged and one contextual non-execution
+retained. Full gate and exact local/remote SHA evidence are in D-0048 delivery;
+publication is conditional on those gates, not on targeted results alone.
+No full robustness or scientific tolerance calibration claim; Upgrade coverage
+remains separate. See D-0048 decision and phase document. Main remains untouched.
+
 ## D-0047 R1 — Negated privacy evidence repair
 
 Source `627f2fd8f07d9f8a744b8634d0508cd450e6f745`, same work branch.
