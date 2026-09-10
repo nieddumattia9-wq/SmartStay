@@ -1,5 +1,28 @@
 # StayOpti Current State
 
+## D-0051 — Evidence-scoped diagnostic requirements
+
+Source `26d561e5baa51839c6baabb63705f2b8b365652f`. A forward-only
+evaluation contract now computes common-source geographic comparability, scoped
+availability, units/capacity/sleeping places, child admission/pricing and requested
+privacy. Its reviewed successor revalidates D-0050 and preserves original fields,
+UNKNOWNs, scenario and confirmed journal; D-0050 remains byte-identical.
+Complete supported synthetic input reaches the existing intent bridge unchanged.
+Unknown bookability/source-point conversion remains explicitly blocked; those
+evidence gaps are not turned into false quality scores or invented inputs.
+The authorized private requirements evaluation creates no real decision, abstention,
+review event, custody or Golden admission. Original human feedback remains separate.
+See D-0051 for the exact software/evidence boundary and remaining work. Final
+isolated gates, seven excluded/seventeen sealed file preservation and actual
+work-branch push/pending state are reported in delivery evidence, not inferred
+from this pre-commit entry. Public policy and main are unchanged.
+
+Offline clean-candidate validation: targeted 65/65 (34 new plus 31 retained),
+V3 1972/1972, V2 196/196; lifecycle 530 PASS/17 pre-existing SKIP; security 29,
+release 101, analytics 31, capacity 9 and beta 4 PASS. TypeScript, build,
+analytics-beta, local-loopback smoke and actual PowerShell 5.1 parsing PASS.
+This does not claim registry audit, production release environment or GitHub CI.
+
 ## D-0050 — Faithful reviewed-input boundary
 
 Source `6056f31fee26df468dac8d8d81b37a889afec77c`. A separate evaluation
