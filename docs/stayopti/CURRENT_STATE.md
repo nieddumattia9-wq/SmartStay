@@ -1,5 +1,25 @@
 # StayOpti Current State
 
+## D-0049 Upgrade bridge coverage — 2026-09-10
+
+Source `2dbedcff702420a23a84b6138521f7a82245b9e5` on
+`codex/evaluation-d0036-d0041`. New raw synthetic proof passes 40/40 targeted
+checks without an engine/policy change. A 200 EUR Choice gains a valid Upgrade
+at 400 and 500 EUR; 510 remains comparable but fails marginal value (1.979337
+versus existing threshold 2). Maximum Comfort chooses the stronger experience
+as primary and does not force another role. Missing and violated requirements,
+evaluated-offer F3 and provider/ID/order equivalence remain distinct.
+
+38 frozen inputs comprise 14 base/control variants and 24 identity permutations,
+not independent real cases. All eight historical D-0048 proof input/output files
+remain byte-identical, including all 187 D-0046 scenarios: 186 executed and one
+unsupported-context non-execution; zero changed decisions. Full isolated gates,
+actual PowerShell command, publication inventory, final local/remote SHAs and
+pending commit count are recorded in the D-0049 delivery. Publication is
+conditional on those gates; this document alone does not assert synchronization.
+No real execution, full robustness, Golden, public-runtime change or main push.
+Seven excluded paths and seventeen D-0037 sealed files remain preserved.
+
 ## D-0048 — Maximum Comfort anchored-band candidate (2026-09-09)
 
 Source `35d70a650867bcf87c594eaa7e42531bf1470a01`, work branch only.
