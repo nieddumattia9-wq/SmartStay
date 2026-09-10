@@ -1,6 +1,6 @@
 // Evaluation-only, pure and deterministic. No engine execution, I/O or custody.
 // A supported conversion is not a recommendation, blind judgment or Golden gate.
-export const DIAGNOSTIC_REQUIREMENTS_VERSION = 'stayopti.diagnostic-offer-requirements@1';
+export const DIAGNOSTIC_REQUIREMENTS_VERSION = 'stayopti.diagnostic-offer-requirements@1.1';
 const copy = x => structuredClone(x);
 const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
 const fail = code => { throw Error(`REQUIREMENTS_${code}`); };
@@ -13,6 +13,19 @@ const known = c => c.state === 'KNOWN' ? c.value : null;
 const refs = cs => copy(cs.flatMap(c=>c.links));
 const result = (status,reason,claims,details={}) => ({status,reason,links:refs(claims),...details});
 const insufficient = (cs,reason) => result(cs.some(c=>c.state==='CONFLICTING')?'CONFLICTING':'INSUFFICIENT_INFORMATION',reason,cs);
+
+// R1: observation truth and applicability are different axes. A property-wide
+// total is never the selected tariff's complete total. Spatial/rating facts may
+// apply across its rooms only with an explicit evidenced property/offer link.
+function usable(c,kind,offer){
+  if(c.state!=='KNOWN')return false;
+  if(c.applicability==='OFFER_SCOPED')return true;
+  if(c.applicability!=='PROPERTY_WIDE'||!['reference','distance','rating'].includes(kind))return false;
+  const b=c.propertyBinding;
+  return Boolean(offer&&b&&b.alternativeId===offer.alternativeId&&same(b.scope,{roomKey:offer.scope.roomKey,rateKey:offer.scope.rateKey})&&
+    text(b.reason)&&Array.isArray(b.links)&&b.links.length&&b.links.every(l=>text(l.field)&&Array.isArray(l.evidence)&&l.evidence.length&&
+      l.evidence.every(e=>text(e.ref)&&/^[a-f0-9]{64}$/.test(e.sha256))));
+}
 
 // Claim format: {state:KNOWN|UNKNOWN|CONFLICTING,value,reason,observedAt,
 // timeSource,scope:{roomKey,rateKey}|null,links:[{field,evidence:[{ref,sha256}]}]}.
@@ -81,14 +94,15 @@ export function validateDiagnosticOfferRequirements(input){
   return true;
 }
 
-export function evaluateGeographicReference(common,offerReference,distance,contexts){
+export function evaluateGeographicReference(common,offerReference,distance,contexts,offer){
   const cs=[common,offerReference,distance];
   let state,reason;
   if(cs.some(c=>c.state==='CONFLICTING')){state='CONFLICTING';reason='REFERENCE_OR_DISTANCE_CONFLICT';}
-  else if(common.state!=='KNOWN'||offerReference.state!=='KNOWN'||common.applicability!=='SET_DOCUMENTED'||offerReference.applicability!=='OFFER_SCOPED'){state='REFERENCE_UNVERIFIED';reason='COMMON_REFERENCE_NOT_DOCUMENTED';}
+  else if(common.state!=='KNOWN'||common.applicability!=='SET_DOCUMENTED'||!usable(offerReference,'reference',offer)){state='REFERENCE_UNVERIFIED';reason='COMMON_REFERENCE_NOT_DOCUMENTED';}
   else if(common.value.kind!==offerReference.value.kind||common.value.id!==offerReference.value.id){state='NON_COMPARABLE';reason='REFERENCE_IDENTITY_MISMATCH';}
   else if(!same(common.value.point,offerReference.value.point)){state='CONFLICTING';reason='SAME_ID_DIFFERENT_POINT';}
   else if(distance.state!=='KNOWN'){state='DISTANCE_UNKNOWN';reason='REPORTED_DISTANCE_MISSING';}
+  else if(!usable(distance,'distance',offer)){state='DISTANCE_UNVERIFIED';reason='DISTANCE_APPLICABILITY_UNVERIFIED';}
   else {state=common.value.kind==='SOURCE_CENTRE'?'COMPARABLE_SOURCE_DECLARED':'COMPARABLE_SELECTED_LOCATION';reason='SAME_DOCUMENTED_REFERENCE';}
   const comparable=state.startsWith('COMPARABLE_');
   return {state,reason,links:refs(cs),reference:copy(known(offerReference)),reportedKilometers:known(distance),
@@ -154,17 +168,20 @@ export function evaluateAccommodation(p,o){
 export function evaluateDiagnosticOfferRequirements(input){
   validateDiagnosticOfferRequirements(input);
   const offers=input.offers.map(o=>{
-    const geography=evaluateGeographicReference(input.geography.commonReference,o.reference,o.distanceKm,input.geography.contexts);
+    const geography=evaluateGeographicReference(input.geography.commonReference,o.reference,o.distanceKm,input.geography.contexts,o);
     const availability=evaluateAvailability(o.availability),accommodation=evaluateAccommodation(input.party,o);
+    const completeTotalUsable=usable(o.completeTotal,'completeTotal',o);
     const conversionBlockers=[...(availability.conversionBlocker?[availability.conversionBlocker]:[]),
-      ...(geography.state!=='COMPARABLE_SELECTED_LOCATION'?['SOURCE_REFERENCE_DIAGNOSABLE_NOT_SELECTED_LOCATION_INPUT']:[]),
+      ...(o.completeTotal.state==='KNOWN'&&!completeTotalUsable?['COMPLETE_TOTAL_APPLICABILITY_UNVERIFIED']:[]),
+      ...(geography.state==='DISTANCE_UNVERIFIED'?['DISTANCE_APPLICABILITY_UNVERIFIED']:[]),
+      ...(geography.state!=='COMPARABLE_SELECTED_LOCATION'?[geography.state==='COMPARABLE_SOURCE_DECLARED'?'SOURCE_REFERENCE_DIAGNOSABLE_NOT_SELECTED_LOCATION_INPUT':'GEOGRAPHIC_INPUT_'+geography.reason]:[]),
       ...(accommodation.status!=='SATISFIED'?[`ACCOMMODATION_${accommodation.status}`]:[])];
-    const recommendationBlockers=[...(o.completeTotal.state!=='KNOWN'?['COMPLETE_TOTAL_UNVERIFIED']:[]),
+    const recommendationBlockers=[...(!completeTotalUsable?[o.completeTotal.state==='KNOWN'?'COMPLETE_TOTAL_APPLICABILITY_UNVERIFIED':'COMPLETE_TOTAL_UNVERIFIED']:[]),
       ...(availability.state!=='VERIFIED_BOOKABLE'?['BOOKABILITY_NOT_VERIFIED']:[]),
       ...(accommodation.status!=='SATISFIED'?[`ACCOMMODATION_${accommodation.status}`]:[])];
     return {alternativeId:o.alternativeId,scope:copy(o.scope),geography,availability,accommodation,conversionBlockers,recommendationBlockers,
-      price:{completeTotal:copy(o.completeTotal),observedPromotedToComplete:false},
-      rating:{observation:copy(o.ratingObserved),scale:copy(o.ratingScale),normalizable:o.ratingObserved.state==='KNOWN'&&o.ratingScale.state==='KNOWN',
+      price:{completeTotal:copy(o.completeTotal),completeTotalUsable,observedPromotedToComplete:false},
+      rating:{observation:copy(o.ratingObserved),scale:copy(o.ratingScale),normalizable:usable(o.ratingObserved,'rating',o)&&usable(o.ratingScale,'rating',o),
         missingScaleEffect:'OMIT_NORMALIZED_RATING_RETAIN_OBSERVATION_NOT_GLOBAL_INPUT_REJECTION'},
       engineResult:null};
   });
@@ -204,6 +221,7 @@ export function prepareSupportedIntentBridgeInput(requirements,bridgeInput){
     if(o.distanceKm.state==='KNOWN'&&h.distance!==o.distanceKm.value)fail('BRIDGE_DISTANCE_MISMATCH');
     if(o.completeTotal.state!=='KNOWN'?(rate.totalKnownCost!=null||h.totalKnownCost!=null||rate.taxesIncluded===true||h.taxesIncluded===true):rate.totalKnownCost!==o.completeTotal.value)fail('BRIDGE_COMPLETE_TOTAL_PROMOTION_OR_MISMATCH');
     if(o.ratingScale.state!=='KNOWN'&&h.reviewScore!=null)fail('BRIDGE_RATING_SCALE_INVENTED');
+    if(!a.rating.normalizable&&h.reviewScore!=null)fail('BRIDGE_RATING_APPLICABILITY_UNVERIFIED');
     if(o.ratingScale.state==='KNOWN'&&o.ratingObserved.state==='KNOWN'&&h.reviewScore!=null&&
       Math.abs(h.reviewScore-o.ratingObserved.value/o.ratingScale.value*10)>1e-9)fail('BRIDGE_RATING_NORMALIZATION_MISMATCH');
   }

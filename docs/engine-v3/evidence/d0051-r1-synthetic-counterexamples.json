@@ -1,0 +1,138 @@
+{
+  "phase": "D-0051 R1",
+  "sourceSha": "4efd81d1b82f950555bb35d74394cf1a6015aae4",
+  "fullInitialSyntheticRecordSha256": "a64c232fcdea8c214c8d56d8cac3c52ae7d5710c3dbc75de780680cab4b3aab5",
+  "initialFocusedRun": {
+    "tests": 87,
+    "pass": 67,
+    "fail": 20,
+    "skip": 0,
+    "includesVersionAndNeighborGuards": true
+  },
+  "counterexamples": [
+    {
+      "id": "essential-requirements-disabled",
+      "synthetic": true,
+      "initialObserved": "SATISFIED",
+      "initialExpected": "REJECT_OR_EXPLICIT_UNEVALUATED_ESSENTIAL",
+      "initialInputSha256": "0aec9c36e51b064bcadf512ab6c5e82fee74fdf940682f2e3f35d99246452817",
+      "initialOutputSha256": "48158c2e976c1a3c04ede2820aee9fd1d2fec54c87075a13508951ff482ca0bb",
+      "after": {
+        "status": "REJECTED",
+        "error": "REVIEWED_REQUIREMENTS_ESSENTIAL_REQUIREMENT_COVERAGE",
+        "engineExecuted": false
+      },
+      "versionTransition": "Explicit synthetic clone updated to @1.1 only; all facts, original scenario, journal, claim links and hashes unchanged; no stored document migrated"
+    },
+    {
+      "id": "completeTotal-UNVERIFIED",
+      "synthetic": true,
+      "initialObserved": "SUPPORTED_DIAGNOSTIC_INPUT/usable",
+      "initialExpected": "NON_EXECUTABLE_UNSUPPORTED_APPLICABILITY",
+      "initialInputSha256": "3ef93e64ce0b024ca36b6e73417ea28b16cee5793b63b546f6fb998ba31ae21b",
+      "initialOutputSha256": "ca188837d37fecaaf7af32b63d73723c8c92b4ffb658b9900711bb34d6706783",
+      "after": {
+        "status": "NON_EXECUTABLE",
+        "blockers": [
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "code": "COMPLETE_TOTAL_APPLICABILITY_UNVERIFIED"
+          }
+        ],
+        "engineExecuted": false
+      },
+      "versionTransition": "Explicit synthetic clone updated to @1.1 only; all facts, original scenario, journal, claim links and hashes unchanged; no stored document migrated",
+      "initialBestChoiceStatus": "selected",
+      "initialBestChoiceSolutionId": "solution:single:SYNTHETIC_CAPABILITY_0:offer-1"
+    },
+    {
+      "id": "completeTotal-PROPERTY_WIDE",
+      "synthetic": true,
+      "initialObserved": "SUPPORTED_DIAGNOSTIC_INPUT/usable",
+      "initialExpected": "NON_EXECUTABLE_UNSUPPORTED_APPLICABILITY",
+      "initialInputSha256": "e09df890c2ae982451d1816d18fea9ceab08e8c7ca47ae5022bdad8e2aae1b83",
+      "initialOutputSha256": "f92e3b66b56bb77b79f93157087dd097949a0f8fd980c914ce2dbce30b43dfc9",
+      "after": {
+        "status": "NON_EXECUTABLE",
+        "blockers": [
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "code": "COMPLETE_TOTAL_APPLICABILITY_UNVERIFIED"
+          }
+        ],
+        "engineExecuted": false
+      },
+      "versionTransition": "Explicit synthetic clone updated to @1.1 only; all facts, original scenario, journal, claim links and hashes unchanged; no stored document migrated",
+      "initialBestChoiceStatus": "selected",
+      "initialBestChoiceSolutionId": "solution:single:SYNTHETIC_CAPABILITY_0:offer-1"
+    },
+    {
+      "id": "distanceKm-UNVERIFIED",
+      "synthetic": true,
+      "initialObserved": "SUPPORTED_DIAGNOSTIC_INPUT/usable",
+      "initialExpected": "NON_EXECUTABLE_UNSUPPORTED_APPLICABILITY",
+      "initialInputSha256": "1551573a4ed420947a6d2a5bf29074752c66c006019531b4448d7266a34007c7",
+      "initialOutputSha256": "1978f599ae2a1655f1f0138e9d0ea13a82b890bfb7b295275965520962f9b8f1",
+      "after": {
+        "status": "NON_EXECUTABLE",
+        "blockers": [
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "code": "DISTANCE_APPLICABILITY_UNVERIFIED"
+          },
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "code": "GEOGRAPHIC_INPUT_DISTANCE_APPLICABILITY_UNVERIFIED"
+          }
+        ],
+        "engineExecuted": false
+      },
+      "versionTransition": "Explicit synthetic clone updated to @1.1 only; all facts, original scenario, journal, claim links and hashes unchanged; no stored document migrated",
+      "initialBestChoiceStatus": "selected",
+      "initialBestChoiceSolutionId": "solution:single:SYNTHETIC_CAPABILITY_0:offer-1"
+    },
+    {
+      "id": "distanceKm-UNVERIFIED-no-hotel-coordinates",
+      "synthetic": true,
+      "initialObserved": "SUPPORTED_DIAGNOSTIC_INPUT/usable",
+      "initialExpected": "NON_EXECUTABLE_UNSUPPORTED_APPLICABILITY",
+      "initialInputSha256": "998c885ba0bf1ea79754aa38fca1580f565846e298013e3fcb510e1394339bc3",
+      "initialOutputSha256": "5fb46e442652d07801c299021a3fda61bb191b3c181a3756e6239b85d03602ee",
+      "after": {
+        "status": "NON_EXECUTABLE",
+        "blockers": [
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "code": "DISTANCE_APPLICABILITY_UNVERIFIED"
+          },
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "code": "GEOGRAPHIC_INPUT_DISTANCE_APPLICABILITY_UNVERIFIED"
+          }
+        ],
+        "engineExecuted": false
+      },
+      "versionTransition": "Explicit synthetic clone updated to @1.1 only; all facts, original scenario, journal, claim links and hashes unchanged; no stored document migrated",
+      "initialBestChoiceStatus": "selected",
+      "initialBestChoiceSolutionId": "solution:single:SYNTHETIC_CAPABILITY_0:offer-1"
+    },
+    {
+      "id": "capacity-two-guests-to-zero",
+      "synthetic": true,
+      "initialObserved": "DOCUMENTED_VIOLATION",
+      "initialExpected": "REJECT_INCOMPATIBLE_NORMALIZATION",
+      "initialInputSha256": "8838bb6e050006f661372dc6eff548ce4258a0f40ced8a50a82e74f51e63f0c4",
+      "initialOutputSha256": "6b222d1cf25d95c8c5899e7ba1ffbba3b39bbc040959fa38875f0f544b94e3ab",
+      "after": {
+        "status": "REJECTED",
+        "error": "REVIEWED_REQUIREMENTS_CAPACITY_NORMALIZATION_CHANGED",
+        "engineExecuted": false
+      },
+      "versionTransition": "Explicit synthetic clone updated to @1.1 only; all facts, original scenario, journal, claim links and hashes unchanged; no stored document migrated"
+    }
+  ],
+  "finalRequirementsVersion": "stayopti.diagnostic-offer-requirements@1.1",
+  "finalReviewedVersion": "stayopti.reviewed-intent-input-assessment@2.1",
+  "privateDataIncluded": false,
+  "realEngineCalls": 0
+}

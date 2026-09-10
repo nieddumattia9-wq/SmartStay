@@ -1,5 +1,31 @@
 # StayOpti Current State
 
+## D-0051 R1 — Requirement coverage and evidence applicability repair
+
+Source `4efd81d1b82f950555bb35d74394cf1a6015aae4`, work branch only.
+The three audited gaps were reproduced with the original synthetic fixtures:
+missing essential checks accepted, inapplicable price/distance reaching an actual
+usable decision, and two-guest capacity changed to a false zero-capacity violation.
+Runtime @1.1 / reviewed @2.1 now derive original-need coverage, apply field-specific
+applicability and verify bounded source-to-capacity/unit/child transformations.
+Unrepresented essential needs remain blockers; unsupported facts stay unknown.
+No implicit migration, unrequested privacy or public policy change is allowed.
+
+Targeted validation: 92/92 PASS (34 retained D-0051, 27 R1, 12 D-0050,
+19 D-0041). The initial six counterexamples and 67 PASS/20 FAIL run are retained;
+the historical D-0051 claims below are not R1 proof. Final clean-tree gates and
+actual selective work-branch commit/push, remote SHA and pending commits are in
+delivery evidence. Seven excluded paths and seventeen sealed files are protected.
+No private Bologna inputs, journals, custody or decisions are accessed or changed.
+See D-0051 R1 for source-language limits and still-unmapped executable boundaries.
+
+Local isolated Windows gates: V3 1999/1999, V2 196/196, lifecycle 530 PASS/
+17 canonical SKIP; security 29, release 101, analytics 31, capacity 9, beta 4;
+TypeScript, build, analytics-beta, loopback smoke and PowerShell 5.1 parsing PASS.
+No registry-network audit or new GitHub CI result is claimed. The sandbox-owned
+candidate was not used for CurrentUser proof; a fresh CurrentUser clone resolved
+Git's ownership refusal without a global safety exception.
+
 ## D-0051 — Evidence-scoped diagnostic requirements
 
 Source `26d561e5baa51839c6baabb63705f2b8b365652f`. A forward-only
