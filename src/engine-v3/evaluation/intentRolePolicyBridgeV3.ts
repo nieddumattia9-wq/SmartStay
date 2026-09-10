@@ -1,3 +1,4 @@
+import {applyStrongDistancePreferenceV3} from './strongDistancePreferenceV3';
 // Evaluation-only bridge. No public registry/export, transport, or real-data runner.
 import { evaluateSmartStaySearchV2, type SmartStayEngineV2SearchInput } from '../../engine-v2/orchestrator/smartStayEngineV2';
 import { resolveMarketRelativeAutomaticPreferenceV2 } from '../../engine-v2/intent/marketRelativePreferenceV2';
@@ -162,32 +163,7 @@ function prepare(input: IntentRoleBridgeInputV3) {
   });
   const policyInput: RunStayOptiPersonalUtilityRolePolicyInputV3 = {caseId: input.caseId, profile: resolution.effectivePreferenceId,
     totalBudget: search.totalBudget!, currency: search.currency!, nights: search.nights!, solutions: candidates.map(c => c.policy)};
-  const unrestricted = runPersonalUtilityRolePolicyV3(policyInput);
-  if (input.distance.semantics === 'strong-preference') {
-    const comparable = new Set(unrestricted.candidates.filter(c => c.status === 'comparable').map(c => c.solutionId));
-    const inRange = candidates.filter(c => c.distance?.status === 'satisfied' && comparable.has(c.policy.solutionId));
-    const exception = input.distanceException;
-    let acceptedException: string | null = null;
-    if (exception) {
-      const out = candidates.find(c => c.hotelId === exception.hotelId), base = inRange.find(c => c.hotelId === exception.comparedWithHotelId);
-      if (exception.reason !== 'EXPLICIT_EXPERIENCE_GAIN_ACCEPTED' || !['quality', 'comfort', 'room'].includes(exception.dimension) ||
-          !out || !base || out.distance?.status !== 'exceeded' || !comparable.has(out.policy.solutionId) ||
-          !exception.evidenceIds.length || exception.evidenceIds.some(id => ![...out.policy.dimensions[exception.dimension].evidenceIds, ...base.policy.dimensions[exception.dimension].evidenceIds].includes(id)) ||
-          out.policy.dimensions[exception.dimension].score === null || base.policy.dimensions[exception.dimension].score === null ||
-          out.policy.dimensions[exception.dimension].score! <= base.policy.dimensions[exception.dimension].score!) throw new Error('DISTANCE_EXCEPTION_UNSUPPORTED');
-      acceptedException = out.hotelId;
-    }
-    for (const c of candidates) {
-      const gate = c.policy.contextualEligibility!;
-      if (c.distance?.status === 'satisfied') continue;
-      if (c.hotelId === acceptedException) { gate.reasonCodes.push('intent:explicit-distance-exception-with-evidence'); continue; }
-      // No implicit permission when all are outside; request a contextual exception.
-      const unknown = c.distance?.status !== 'exceeded';
-      if (gate.status !== 'ineligible') gate.status = unknown ? 'incomplete' : 'ineligible';
-      gate.reasonCodes.push(unknown ? 'intent:preferred-distance-unverified' : inRange.length ?
-        'intent:in-range-comparable-alternative-available' : 'intent:distance-exception-not-authorized');
-    }
-  }
+  if (input.distance.semantics === 'strong-preference') applyStrongDistancePreferenceV3(candidates,policyInput,input.distanceException);
   return {search, result, resolution, candidates, policyInput, legacy,stayExpectation};
 }
 

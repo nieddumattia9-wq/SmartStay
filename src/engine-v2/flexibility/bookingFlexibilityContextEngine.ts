@@ -1,7 +1,18 @@
-import type {
-  Hotel,
-  HotelOffer,
-} from "../../types/hotel";
+// Narrow factual dependency. Existing Hotel inputs remain structurally valid;
+// observed diagnostic rates may explicitly lack a bookability verification.
+interface HotelOffer {
+  bookable:boolean|null;
+  refundable?:boolean|null;
+  freeCancellationUntil?:string|null;
+}
+interface Hotel {
+  id:string;
+  distance:number|null;
+  stars:number|null;
+  accommodationCategory?:string|null;
+  providerHotelTypeName?:string|null;
+  offers:readonly HotelOffer[];
+}
 
 export type SmartStayBookingLeadTimeBandV2 =
   | "same-day"
@@ -402,7 +413,7 @@ function resolveCohort(
   const categoryStarBand =
     sameCategory.filter(
       (hotel) =>
-        target.stars >
+        target.stars !== null && hotel.stars !== null && target.stars >
           0 &&
         hotel.stars >
           0 &&

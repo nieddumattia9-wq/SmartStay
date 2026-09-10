@@ -579,7 +579,8 @@ function createReviewReferences(
       SmartStayQualityCandidateV2
     >,
   minimumEvidenceConfidence:
-    number
+    number,
+  observationOnly = false
 ) {
   const references:
     ReviewReference[] = [];
@@ -607,9 +608,9 @@ function createReviewReferences(
 
     if (
       !candidate ||
-      !isEligiblePeerReference(
+      (!observationOnly && !isEligiblePeerReference(
         candidate
-      )
+      ))
     ) {
       continue;
     }
@@ -780,13 +781,15 @@ function createReviewPrior(
   minimumPeerReferenceCount:
     number,
   defaultPriorReviewScore:
-    number
+    number,
+  observationOnly = false
 ): SmartStayReviewPriorV2 {
   const references =
     createReviewReferences(
       input,
       candidatesById,
-      minimumEvidenceConfidence
+      minimumEvidenceConfidence,
+      observationOnly
     );
 
   if (
@@ -1421,11 +1424,12 @@ function createInvalidEvaluation(
   };
 }
 
-export function evaluateQualityV2(
+function evaluateQualityComputationV2(
   input:
     SmartStayQualityInputV2,
   options:
-    SmartStayQualityOptionsV2 = {}
+    SmartStayQualityOptionsV2 = {},
+  observationOnly = false
 ): SmartStayQualityEvaluationV2 {
   validateCandidateIds(
     input.candidates
@@ -1481,7 +1485,7 @@ export function evaluateQualityV2(
   }
 
   if (
-    target
+    !observationOnly && target
       .reliabilityGate
       .status === "invalid"
   ) {
@@ -1559,7 +1563,8 @@ export function evaluateQualityV2(
       candidatesById,
       minimumEvidenceConfidence,
       minimumPeerReferenceCount,
-      defaultPriorReviewScore
+      defaultPriorReviewScore,
+      observationOnly
     );
 
   const reviewQuality =
@@ -1752,4 +1757,16 @@ export function evaluateQualityV2(
           .evidenceIds,
       ]),
   };
+}
+
+// The public path retains its original recommendation gate, defaults and formulas.
+export function evaluateQualityV2(input: SmartStayQualityInputV2, options: SmartStayQualityOptionsV2 = {}) {
+  return evaluateQualityComputationV2(input, options);
+}
+
+// Evaluation-only callers can measure published quality facts without claiming
+// that an observed offer is bookable. The actual gate is not replaced or forged.
+export function evaluateQualityObservationsV2(input: SmartStayQualityInputV2) {
+  return {...evaluateQualityComputationV2(input, {}, true), eligibleForPrimaryRanking: false,
+    calculationScope: 'OBSERVED_FACTS_NOT_RECOMMENDATION_ELIGIBILITY' as const};
 }

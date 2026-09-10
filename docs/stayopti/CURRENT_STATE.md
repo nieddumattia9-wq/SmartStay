@@ -1,5 +1,33 @@
 # StayOpti Current State
 
+## D-0052 — Executable observed-offer diagnostics
+
+Source `e3c6985cd5024d919a9d7af93bf421de6a85040b`, work branch only.
+The new evaluation entry consumes the complete D-0051 R1 assessment and original
+essential-need coverage. Canonical observed facts reach existing dimension
+calculations and the actual intent/role policy without a fabricated Hotel DTO,
+coordinates, complete totals, booking booleans or satisfied requirements.
+All candidates and their incomplete/conflicting/violated requirements survive.
+Unrepresented essential needs mean no policy execution; a represented incomplete
+set can instead produce an actual validated policy abstention. These are distinct.
+Shared wrappers preserve default public V2 behavior; no weights, thresholds,
+Golden gates or runtime activation change. Source-centre scoring retains its
+documented reference and the existing strong-preference exception rules.
+
+The bounded reviewed-language successor is @2.2; no journal or earlier preparation
+is migrated. The authorized private evaluation is kept outside Git, with separate
+code/input binding and no feedback-driven selection. Complete canonical Windows
+gate results and observed work-branch synchronization are recorded at delivery;
+no GitHub CI or full robustness/regret is inferred. Seven excluded paths and
+seventeen D-0037 sealed files remain protected. See D-0052 report and tests.
+
+Clean isolated CurrentUser validation: targeted 123/123 (31 new plus 92 retained),
+V3 2030/2030, V2 196/196; lifecycle 530 PASS/17 pre-existing SKIP; security 29,
+release 101, analytics 31, capacity 9 and beta 4 PASS. TypeScript, build,
+analytics-beta, loopback smoke and PowerShell 5.1 parsing 13/13 PASS. The automatic
+profile control exposed and corrected a market-peer sample mismatch while
+preserving the separate offer/strong-preference gates. No new CI is claimed.
+
 ## D-0051 R1 — Requirement coverage and evidence applicability repair
 
 Source `4efd81d1b82f950555bb35d74394cf1a6015aae4`, work branch only.

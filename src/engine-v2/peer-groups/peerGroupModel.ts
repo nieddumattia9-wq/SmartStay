@@ -51,7 +51,7 @@ type ComparableCandidate = {
   candidate:
     SmartStayPeerGroupCandidateV2;
 
-  costFact:
+  referenceFact:
     SmartStayEvidenceFactV2;
 };
 
@@ -310,13 +310,14 @@ function getKnownComparableCostFact(
   evidence:
     SmartStayEvidenceFactV2[],
   minimumConfidence:
-    number
+    number,
+  observationOnly = false
 ) {
   return evidence
     .filter(
       (fact) =>
         fact.code ===
-          "stay.cost.total" &&
+          (observationOnly ? "review.score" : "stay.cost.total") &&
         fact.availability ===
           "known" &&
         typeof fact.value ===
@@ -371,7 +372,8 @@ function createComparableCandidates(
   candidates:
     SmartStayPeerGroupCandidateV2[],
   minimumPriceConfidence:
-    number
+    number,
+  observationOnly = false
 ) {
   const comparable:
     ComparableCandidate[] = [];
@@ -381,26 +383,27 @@ function createComparableCandidates(
     of candidates
   ) {
     if (
-      !isEligibleForPeerBaseline(
+      !observationOnly && !isEligibleForPeerBaseline(
         candidate.reliabilityGate
       )
     ) {
       continue;
     }
 
-    const costFact =
+    const referenceFact =
       getKnownComparableCostFact(
         candidate.evidence,
-        minimumPriceConfidence
+        minimumPriceConfidence,
+        observationOnly
       );
 
-    if (!costFact) {
+    if (!referenceFact) {
       continue;
     }
 
     comparable.push({
       candidate,
-      costFact,
+      referenceFact,
     });
   }
 
@@ -506,8 +509,8 @@ function calculateGroupConfidence(
 
   const priceCoverage =
     members.filter(
-      ({ costFact }) =>
-        costFact.availability ===
+      ({ referenceFact }) =>
+        referenceFact.availability ===
         "known"
     ).length /
     members.length;
@@ -561,13 +564,13 @@ function createEvidenceIds(
     members.flatMap(
       ({
         candidate,
-        costFact,
+        referenceFact,
       }) => [
         ...candidate
           .accommodation
           .evidenceIds,
 
-        costFact.id,
+        referenceFact.id,
 
         ...candidate
           .reliabilityGate
@@ -657,8 +660,8 @@ function createAssignment(
 
       referencePriceCount:
         members.filter(
-          ({ costFact }) =>
-            costFact.availability ===
+          ({ referenceFact }) =>
+            referenceFact.availability ===
             "known"
         ).length,
 
@@ -720,11 +723,12 @@ function validateCandidateIds(
   }
 }
 
-export function buildPeerGroupsV2(
+function buildPeerGroupsComputationV2(
   candidates:
     SmartStayPeerGroupCandidateV2[],
   options:
-    SmartStayPeerGroupOptionsV2 = {}
+    SmartStayPeerGroupOptionsV2 = {},
+  observationOnly = false
 ): SmartStayPeerGroupAssignmentV2[] {
   validateCandidateIds(
     candidates
@@ -757,7 +761,8 @@ export function buildPeerGroupsV2(
   const comparableCandidates =
     createComparableCandidates(
       candidates,
-      minimumPriceConfidence
+      minimumPriceConfidence,
+      observationOnly
     );
 
   const sortedCandidates =
@@ -895,4 +900,14 @@ export function buildPeerGroupsV2(
       );
     }
   );
+}
+
+export function buildPeerGroupsV2(candidates:SmartStayPeerGroupCandidateV2[],options:SmartStayPeerGroupOptionsV2={}) {
+  return buildPeerGroupsComputationV2(candidates,options);
+}
+// Same category/unit/sample rules and arithmetic, but membership is review
+// evidence, not price/bookability. Never used as a price baseline.
+export function buildQualityObservationGroupsV2(candidates:SmartStayPeerGroupCandidateV2[]) {
+  return buildPeerGroupsComputationV2(candidates,{},true).map(g=>({...g,
+    peerGroup:{...g.peerGroup,referencePriceCount:0},calculationScope:'OBSERVED_REVIEW_PEERS_NOT_PRICE_BASELINE' as const}));
 }

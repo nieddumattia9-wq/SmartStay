@@ -10,6 +10,7 @@ export type SmartStayLocationStatusV2 =
   | "strong-data";
 
 export type SmartStayDistanceSourceV2 =
+  | "documented-reference"
   | "reconciled"
   | "calculated"
   | "provider-selected-location"
@@ -1009,7 +1010,7 @@ function createDistanceConstraint(
   };
 }
 
-function calculateDistanceFitScore(
+export function calculateDistanceFitScore(
   distanceKm:
     number,
   maximumDistanceKm:

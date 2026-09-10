@@ -2434,11 +2434,12 @@ function createInvalidEvaluation(
   };
 }
 
-export function evaluateComfortFlexibilityV2(
+function evaluateComfortComputationV2(
   input:
     SmartStayComfortInputV2,
   options:
-    SmartStayComfortOptionsV2 = {}
+    SmartStayComfortOptionsV2 = {},
+  observationOnly = false
 ): SmartStayComfortFlexibilityEvaluationV2 {
   if (
     !input.targetHotelId.trim()
@@ -2490,7 +2491,7 @@ export function evaluateComfortFlexibilityV2(
     );
 
   if (
-    input
+    !observationOnly && input
       .reliabilityGate
       .status === "invalid"
   ) {
@@ -2966,4 +2967,14 @@ export function evaluateComfortFlexibilityV2(
           .evidenceIds,
       ]),
   };
+}
+
+export function evaluateComfortFlexibilityV2(input: SmartStayComfortInputV2, options: SmartStayComfortOptionsV2 = {}) {
+  return evaluateComfortComputationV2(input, options);
+}
+
+// Same formulas, actual evidence and actual reliability; no invented availability.
+export function evaluateComfortObservationsV2(input: SmartStayComfortInputV2) {
+  return {...evaluateComfortComputationV2(input, {}, true), eligibleForPrimaryRanking: false,
+    calculationScope: 'OBSERVED_FACTS_NOT_RECOMMENDATION_ELIGIBILITY' as const};
 }

@@ -5,7 +5,7 @@ import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
 // Forward-only successor: v1 and all original review events remain unchanged.
 // The explicit normalization document is evidence-linked, NOT a human review,
 // engine input, source-independent certification or permission to execute V3.
-export const REVIEWED_REQUIREMENTS_VERSION='stayopti.reviewed-intent-input-assessment@2.1';
+export const REVIEWED_REQUIREMENTS_VERSION='stayopti.reviewed-intent-input-assessment@2.2';
 const hash=x=>sha256(json(x));
 const same=(a,b)=>json(a)===json(b);
 const fail=code=>{throw Error('REVIEWED_REQUIREMENTS_'+code);};
@@ -24,35 +24,49 @@ const supportedNeeds=new Map([
   ['exclusive use',['exclusiveUse']],['uso esclusivo',['exclusiveUse']],
 ]);
 function essentialCoverage(basis){
+  const interpret=text=>{
+    if(typeof text!=='string')return [];
+    const t=text.trim().toLowerCase();
+    return supportedNeeds.get(t)??(/^(?:configurazione|sistemazione) e posti letto (?:coerenti con|adeguati per) tutti gli ospiti$/.test(t)?
+      ['sleepingPlaces','capacity']:[]);
+  };
   const needs=basis.flatMap((n,index)=>n.essential===true?[{index,requirement:n.requirement,
-    checks:typeof n.requirement==='string'?supportedNeeds.get(n.requirement.trim().toLowerCase())??[]:[]}]:[]);
+    checks:interpret(n.requirement)}]:[]);
   const unresolved=needs.filter(n=>!n.checks.length);
   return {status:unresolved.length?'UNREPRESENTED_ESSENTIAL_NEEDS':'ESSENTIAL_COVERAGE_DEFINED',needs,unrepresentedNeedIndexes:unresolved.map(n=>n.index),
-    interpretationVersion:'bounded-original-need-coverage@1',callerMappingIsNotAuthority:true};
+    interpretationVersion:'bounded-original-need-coverage@1.1',callerMappingIsNotAuthority:true};
 }
 const countWords={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,un:1,una:1,uno:1,due:2,tre:3,quattro:4,cinque:5,sei:6,sette:7,otto:8};
 const countToken=t=>/^\d+$/.test(t)?Number(t):countWords[t]??null;
-function normalizedCount(v,kind){
+export function normalizedCount(v,kind){
   if(Number.isSafeInteger(v)&&v>=0)return v;
   if(typeof v!=='string')return null;
-  const t=v.trim().toLowerCase();
+  const t=v.trim().toLowerCase().replace(/\.$/,'');
+  // Explicit published capacity + family-use annotation, not an age/pricing
+  // conversion. Conflicting stated totals are not interpreted as a known count.
+  const annotated=kind==='capacity'?/^(\d+) (?:persone|adulti); ideale per (\d+) adulti e (\d+) bambini$/.exec(t):null;
+  if(annotated)return Number(annotated[1])===Number(annotated[2])+Number(annotated[3])?Number(annotated[1]):null;
   const suffix=kind==='capacity'?'(?:guests?|ospiti)':kind==='units'?'(?:units?|unità)':'(?:internal rooms?|locali interni)';
   const match=new RegExp('^(?:(?:capacity|capienza):\\s*)?([a-z]+|[0-9]+) '+suffix+'$').exec(t);
   if(match)return countToken(match[1]);
   const family=kind==='capacity'?/^(\d+) adulti (?:e|\+) (\d+) bambini$/.exec(t):null;
   return family?Number(family[1])+Number(family[2]):null;
 }
-function suiteCounts(v){
+export function suiteCounts(v){
   if(typeof v!=='string')return null;
-  const t=v.trim().toLowerCase();
+  const t=v.trim().toLowerCase().replace(/\.$/,'');
   const m=/^suite with ([a-z]+|\d+) internal rooms, ([a-z]+|\d+) units?$/.exec(t)??/^suite con ([a-z]+|\d+) locali interni, ([a-z]+|\d+) unità$/.exec(t);
-  return m&&countToken(m[1])!==null&&countToken(m[2])!==null?{internalRooms:countToken(m[1]),unitsOffered:countToken(m[2])}:null;
+  if(m&&countToken(m[1])!==null&&countToken(m[2])!==null)return {internalRooms:countToken(m[1]),unitsOffered:countToken(m[2])};
+  const described=/^(una|\d+) suite privat[ae] con ([a-z]+|\d+) camere interne, (?:un|[a-z]+|\d+) matrimoniale e (?:[a-z]+|\d+) singoli; capienza ([a-z]+|\d+) dichiarata$/.exec(t);
+  return described&&countToken(described[1])!==null&&countToken(described[2])!==null&&countToken(described[3])!==null?
+    {unitsOffered:countToken(described[1]),internalRooms:countToken(described[2])}:null;
 }
-function childFacts(v){
+export function childFacts(v){
   if(typeof v!=='string')return null;
   const facts={admitted:null,minimumAge:null,adultPricingFromAge:null,extraBedsAvailable:null};
+  let admissionQualified=false;
   const set=(key,value)=>{if(facts[key]!==null&&facts[key]!==value)return false;facts[key]=value;return true;};
-  for(const part of v.trim().split(/\s*;\s*/)){
+  for(const part of v.trim().replace(/\.$/,'').split(/\s*;\s*/)){
     if(/^(?:children of all ages admitted|bambini di tutte le età ammessi)$/i.test(part)){if(!set('admitted',true)||!set('minimumAge',0))return null;}
     else if(/^(?:children not admitted|bambini non ammessi)$/i.test(part)){if(!set('admitted',false))return null;}
     else {const minimum=/^(?:minimum child age|età minima bambini): (\d+)$/i.exec(part);
@@ -60,10 +74,14 @@ function childFacts(v){
       if(minimum){if(!set('minimumAge',Number(minimum[1])))return null;}
       else if(price){if(!set('adultPricingFromAge',Number(price[1]??price[2])))return null;}
       else if(/^(?:extra beds available|letti supplementari disponibili)$/i.test(part)){if(!set('extraBedsAvailable',true))return null;}
-      else if(/^(?:extra beds not available|letti supplementari non disponibili)$/i.test(part)){if(!set('extraBedsAvailable',false))return null;}
+      else if(/^(?:extra beds not available|letti supplementari non disponibili|nessun letto supplementare(?: disponibile)?)$/i.test(part)){if(!set('extraBedsAvailable',false))return null;}
+      // A qualification preserves uncertainty about admission and selected-rate
+      // application; it is not discarded to certify admission from a price rule.
+      else if(/^per minori selezionare tariffa con condizioni esplicite$/i.test(part)){admissionQualified=true;}
       else return null;
     }
   }
+  if(admissionQualified){facts.admitted=null;facts.minimumAge=null;}
   return facts;
 }
 function verifyScalar(c,value,field,code){
@@ -125,11 +143,13 @@ export function assessReviewedIntentRequirements(args,normalization){
     const beds=normalizeItalianBedInventory(fieldValue('beds'));
     if(o.sleeping.state==='KNOWN'&&(!beds||!same(o.sleeping.value,beds)))fail('SLEEPING_NORMALIZATION_CHANGED');
     verifyScalar(o.capacityGuests,normalizedCount(fieldValue('roomCapacity'),'capacity'),'roomCapacity','CAPACITY');
-    const suite=suiteCounts(fieldValue('unitConfiguration'));
+    const explicitSuite=suiteCounts(fieldValue('unitConfiguration')),sourceSuite=suiteCounts(fieldValue('scenarioNeeds'));
+    if(explicitSuite&&sourceSuite&&!same(explicitSuite,sourceSuite))fail('UNITS_SOURCE_CONFLICT');
+    const suite=explicitSuite??sourceSuite,suiteField=explicitSuite?'unitConfiguration':'scenarioNeeds';
     for(const [key,kind,code]of [['unitsOffered','units','UNITS'],['internalRooms','internal','INTERNAL_ROOMS']]){
       const direct=normalizedCount(fieldValue(key),kind);
       if(o[key].state==='KNOWN'&&direct!==null&&suite&&direct!==suite[key])fail(code+'_SOURCE_CONFLICT');
-      verifyScalar(o[key],direct??suite?.[key]??null,direct!==null?key:'unitConfiguration',code);
+      verifyScalar(o[key],direct??suite?.[key]??null,direct!==null?key:suiteField,code);
     }
     const children=childFacts(fieldValue('childrenPolicy'));
     for(const [key,code]of [['admitted','CHILD_ADMISSION'],['minimumAge','CHILD_MINIMUM_AGE'],['adultPricingFromAge','CHILD_PRICING'],['extraBedsAvailable','CHILD_EXTRA_BEDS']])

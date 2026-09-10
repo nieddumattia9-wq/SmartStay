@@ -60,7 +60,7 @@ function privacyEvidence(texts:string[],feature:'unit'|'bath') {
 // Only the evaluated offer, then documented property features where the offer
 // is silent, can support privacy. Explicit unknown/negative/conflicting offer
 // evidence blocks fallback as well as an affirmative offer assertion does.
-export function resolveOfferPrivacyV3(hotel:Hotel,roomName:string|null|undefined,offerId:string|null) {
+export function resolveOfferPrivacyV3(hotel:Pick<Hotel,'id'|'provider'|'amenities'|'facilities'>,roomName:string|null|undefined,offerId:string|null) {
   const classify=(values:string[])=>classifyAccommodationV2({hotel:{id:hotel.id,name:'',provider:hotel.provider,
     amenities:values,
     facilities:[]},explicitCategory:'unknown'});
@@ -82,7 +82,7 @@ export function resolveOfferPrivacyV3(hotel:Hotel,roomName:string|null|undefined
       'Property category and name do not certify room or bathroom privacy']};
 }
 
-export function resolveStayExpectationV3(search:SmartStayEngineV2SearchInput,intent:SmartStayBudgetIntentEvaluationV2) {
+export function resolveStayExpectationV3(search:Omit<SmartStayEngineV2SearchInput,'hotels'>,intent:SmartStayBudgetIntentEvaluationV2) {
   const p=search.comfortPreferences??{};
   // Same reliability boundary as the existing market-relative resolver. Strong
   // here describes the available comparable sample, never the entire market.

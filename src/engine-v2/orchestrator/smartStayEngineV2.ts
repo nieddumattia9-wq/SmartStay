@@ -626,7 +626,7 @@ function createDimension(
 
 function createCategoryFitDimension(
   candidate:
-    FoundationCandidate
+    Pick<FoundationCandidate, 'accommodation'>
 ) {
   const accommodation =
     candidate
@@ -948,10 +948,10 @@ function createReliabilityDimension(
   );
 }
 
-function createScoreBreakdown(
+export function createScoreBreakdown(
   candidate: {
     foundation:
-      FoundationCandidate;
+      Pick<FoundationCandidate, 'accommodation' | 'reliabilityGate'>;
 
     priceValue:
       SmartStayPriceValueEvaluationV2;
