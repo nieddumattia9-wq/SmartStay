@@ -1,5 +1,19 @@
 # StayOpti Current State
 
+## D-0050 — Faithful reviewed-input boundary
+
+Source `6056f31fee26df468dac8d8d81b37a889afec77c`. A separate evaluation
+pre-adapter verifies confirmed transcription/preparation bindings and preserves
+field-level evidence, UNKNOWN, exact rate selection and human-feedback separation.
+The authorized real input remains NON_EXECUTABLE: selected-location reference,
+unknown bookability and age/sleeping-place scope are not represented faithfully
+by the current executable boundary. No real engine abstention or human agreement
+is inferred. Existing strong-preference policy works for its supported reference;
+complete-total/rating gaps are separately classified, not generic parse blockers.
+See D-0050 for minimal next work. No public policy, weights, custody or Golden
+change. Final clean-tree validation and actual work-branch push/pending state are
+reported in delivery evidence; this pre-commit entry alone is not a PASS receipt.
+
 ## D-0049 Upgrade bridge coverage — 2026-09-10
 
 Source `2dbedcff702420a23a84b6138521f7a82245b9e5` on
