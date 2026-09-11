@@ -1,4 +1,4 @@
-// D-0052 R1: property fallback never overwrites an offer-specific limitation.
+// D-0052 R2: only consumed applicable claims participate in scoped fact fusion.
 import {privacyEvidence,resolveOfferPrivacyV3,type PrivacyState} from './staySuitabilityContextV3';
 export interface ScopedObservationV3 {
  sourceField:string;scope:'PROPERTY'|'OFFER';offerScope:{roomKey:string;rateKey:string};
@@ -16,6 +16,32 @@ function merge(states:PrivacyState[]):PrivacyState {
  if(states.includes('UNKNOWN'))return 'UNKNOWN';
  return states.includes('SHARED')?'SHARED':states.includes('NOT_PRIVATE')?'NOT_PRIVATE':states.includes('PRIVATE')?'PRIVATE':'UNKNOWN';
 }
+// Only this bounded room-name grammar is neutral, not affirmative privacy,
+// capacity, unit type or comfort evidence. Unsupported/conditional descriptions
+// retain the existing UNKNOWN behavior. Other source fields are not filtered.
+function scopedTextEvidence(texts:string[],dimension:'unit'|'bath',roomName=false){
+ const neutralDenominations:string[]=[];
+ const clauses=texts.flatMap(t=>t.split(/[.,;:|\n]+/)).filter(clause=>{
+  const text=clause.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
+  const neutral=roomName&&dimension==='unit'&&(
+   /^(?:standard )?(?:(?:single|double|twin|triple|quadruple) )?room(?: standard)?$/.test(text)||
+   /^(?:camera|stanza)(?: (?:singola|doppia|tripla|quadrupla))?(?: standard)?$/.test(text));
+  if(neutral)neutralDenominations.push(clause);
+  return !neutral;
+ });
+ const parsed=privacyEvidence(clauses,dimension,true);
+ // Removing a neutral noun must not orphan a qualifier referring back to it.
+ // These fragments are uncertainty, not a newly inferred positive/negative fact.
+ // A bathroom-specific qualifier must not negate independent unit privacy.
+ const unresolvedPrivacyQualifiers=neutralDenominations.length?clauses.filter(clause=>{
+  if(privacyEvidence([clause],'unit',true).mentioned||privacyEvidence([clause],'bath',true).mentioned)return false;
+  const text=clause.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  return /\b(?:privacy|private|privata|privato|exclusive|esclusivo|esclusiva|shared|condiviso|condivisa|unknown|sconosciuta)\b/.test(text)||
+   /^(?:on request|su richiesta|subject to availability|non disponibile|not available)$/.test(text);
+ }):[];
+ return {...parsed,...(unresolvedPrivacyQualifiers.length?{mentioned:true,state:parsed.state==='CONFLICTING'?'CONFLICTING' as const:'UNKNOWN' as const}:{}),
+  neutralDenominations,unresolvedPrivacyQualifiers};
+}
 export function resolveObservedOfferPrivacyV3(input:{id:string;roomKey:string;rateKey:string;roomText:string|null;features:string[];
  scopedObservations:ScopedObservationV3[]|null;privacyClaims:{privateBathroom:ObservedPrivacyClaimV3;exclusiveUse:ObservedPrivacyClaimV3}}){
  const {id,roomKey,rateKey}=input;
@@ -30,7 +56,10 @@ export function resolveObservedOfferPrivacyV3(input:{id:string;roomKey:string;ra
     claim.value===true?'PRIVATE':'NOT_PRIVATE':'UNKNOWN';
   // UNKNOWN default claim is not evidence that an independently documented
   // text fact is false. Explicit field UNKNOWN/conditional text still survives.
-  const activeClaim=claim.state!=='UNKNOWN';
+  const activeClaim=claim.state!=='UNKNOWN'&&supportedClaim;
+  // An inapplicable claim cannot erase OFFER facts. It still prevents using
+  // its generic source as a fallback certificate when no scoped fact exists.
+  const blockPropertyFallback=claim.state!=='UNKNOWN';
   const interpreted=records?.map(r=>{
    const values=r.original.status==='KNOWN'?(Array.isArray(r.original.value)?r.original.value:
     typeof r.original.value==='string'?[r.original.value]:[]):[];
@@ -40,7 +69,7 @@ export function resolveObservedOfferPrivacyV3(input:{id:string;roomKey:string;ra
    const texts=values.filter((v):v is string=>typeof v==='string').flatMap(v=>v.split(/[;,\n|]+/)).map(v=>
     v.replace(/\bsuite privata\b/gi,'Private room').replace(/\bbagno in camera\b/gi,'Private bathroom')
      .replace(/\bdormitorio condiviso\b/gi,'Shared dormitory'));
-   const parsed=privacyEvidence(texts,dimension,true);
+   const parsed=scopedTextEvidence(texts,dimension,r.sourceField==='roomName');
    if(r.sourceField===key&&r.structuredPrivacy)return {...r,parsed:{mentioned:true,affirmativeUnits:[],
     state:(r.structuredPrivacy.state==='POSITIVE'?'PRIVATE':r.structuredPrivacy.state==='NEGATIVE'?'NOT_PRIVATE':
      r.structuredPrivacy.state==='CONFLICTING'?'CONFLICTING':'UNKNOWN') as PrivacyState}};
@@ -53,20 +82,25 @@ export function resolveObservedOfferPrivacyV3(input:{id:string;roomKey:string;ra
   });
   const mentioned=interpreted?.filter(r=>r.parsed.mentioned)??[];
   const offer=mentioned.filter(r=>r.scope==='OFFER');
-  const selected=offer.length||activeClaim?offer:mentioned;
+  const selected=offer.length||blockPropertyFallback?offer:mentioned;
   let states=selected.map(r=>r.parsed.state),unitPhrases=selected.flatMap(r=>r.parsed.affirmativeUnits);
+  let propertyFallbackUsed=selected.some(r=>r.scope==='PROPERTY');
+  let roomNameInterpretation:ReturnType<typeof scopedTextEvidence>|null=null;
   if(!records){
-   const fromOffer=privacyEvidence(input.roomText?[input.roomText]:[],dimension,true);
+   const fromOffer=scopedTextEvidence(input.roomText?[input.roomText]:[],dimension,true);
+   roomNameInterpretation=fromOffer;
    const fromProperty=privacyEvidence(input.features,dimension,true);
-   const parsed=fromOffer.mentioned?fromOffer:activeClaim?null:fromProperty;
+   const parsed=fromOffer.mentioned?fromOffer:blockPropertyFallback?null:fromProperty;
+   propertyFallbackUsed=parsed===fromProperty&&fromProperty.mentioned;
    states=parsed?.mentioned?[parsed.state]:[];unitPhrases=parsed?.affirmativeUnits??[];
   }
   if(activeClaim)states.push(claimState);
   const state=merge(states);
   const presentUnsupported=selected.some(r=>r.original.status==='KNOWN'&&r.parsed.state==='UNKNOWN');
-  return {dimension,state,unitPhrases,selected,observations:interpreted??[],claim,claimConsumed:activeClaim&&supportedClaim,
+  return {dimension,state,unitPhrases,selected,observations:interpreted??[],roomNameInterpretation,claim,claimConsumed:activeClaim,
+   claimNonConsumptionReason:activeClaim?null:!supportedClaim?'CLAIM_NOT_OFFER_APPLICABLE':'CLAIM_UNKNOWN_NO_ADDITIONAL_FACT',
    reason:state==='CONFLICTING'?'DATA_PRESENT_CONFLICTING':presentUnsupported?'DATA_PRESENT_GRAMMAR_UNSUPPORTED_OR_CONDITIONAL':
-    state==='UNKNOWN'?'DATA_ABSENT_OR_APPLICABILITY_UNVERIFIED':'DOCUMENTED_SUPPORTED',propertyFallbackUsed:!offer.length&&!activeClaim,
+    state==='UNKNOWN'?'DATA_ABSENT_OR_APPLICABILITY_UNVERIFIED':'DOCUMENTED_SUPPORTED',propertyFallbackUsed,
    applicabilityVerified:supportedClaim};
  });
  const [unit,bath]=dimensions;
@@ -74,7 +108,7 @@ export function resolveObservedOfferPrivacyV3(input:{id:string;roomKey:string;ra
  // An exclusive-use boolean establishes privacy, not category, size or comfort.
  const classified=resolveOfferPrivacyV3({id,provider:'',amenities:unit.unitPhrases,facilities:[]},null,rateKey);
  const typed=['PRIVATE','SHARED'].includes(unit.state)?classified.unitType:'unknown';
- return {...legacy,scopedVersion:'stayopti.evaluation.observed-privacy@1',unitState:unit.state,bathroomState:bath.state,
+ return {...legacy,scopedVersion:'stayopti.evaluation.observed-privacy@1.1',unitState:unit.state,bathroomState:bath.state,
   unitType:typed,unitEvidenceIds:typed==='unknown'?[]:classified.unitEvidenceIds,
   unitSource:'SCOPED_TEXT_AND_STRUCTURED_CLAIMS',bathroomSource:'SCOPED_TEXT_AND_STRUCTURED_CLAIMS',
   evidenceReferences:[...new Set(dimensions.flatMap(d=>[...d.selected.flatMap(r=>r.links),...(d.claimConsumed?d.claim.links:[])])

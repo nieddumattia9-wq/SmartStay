@@ -1,0 +1,747 @@
+{
+  "sourceSha": "fca75449ca90d914bd3896e6bc7fc88437e6c8a0",
+  "syntheticOnly": true,
+  "entry": "executeObservedOfferDiagnostic",
+  "fixtures": [
+    "reviewedPrivacy",
+    "privacyControl"
+  ],
+  "initialTestSha256": "666594f7e463ca3c54a90703b9cbce8c1d8179dca5d2dac33554648f974a7391",
+  "initialExitCode": 1,
+  "initialSummary": [
+    "ℹ tests 5",
+    "ℹ pass 0",
+    "ℹ fail 5",
+    "ℹ skipped 0",
+    "ℹ duration_ms 315.066"
+  ],
+  "cases": [
+    {
+      "synthetic": true,
+      "r2Counterexample": "A",
+      "input": {
+        "roomKey": "Unità A",
+        "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535",
+        "roomText": "Unità A",
+        "scopedObservations": [
+          {
+            "sourceField": "roomName",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Unità A",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "roomName",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          },
+          {
+            "sourceField": "amenities",
+            "scope": "PROPERTY",
+            "offerScope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Bagno privato",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "amenities",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          },
+          {
+            "sourceField": "roomAmenities",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Camera privata; Bagno condiviso",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "roomAmenities",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          }
+        ],
+        "privacyClaims": {
+          "privateBathroom": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "applicability": "PROPERTY_WIDE",
+            "links": [
+              {
+                "field": "amenities",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "exclusiveUse": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "actual": {
+        "unit": "PRIVATE",
+        "bath": "UNKNOWN",
+        "unitType": "private-room",
+        "decision": "abstained",
+        "bathClaimConsumed": false,
+        "selectedBathStates": [
+          "SHARED"
+        ]
+      },
+      "expected": {
+        "bath": "SHARED",
+        "claimConsumed": false
+      },
+      "allSyntheticPeersReceiveSamePrivacyVariant": true
+    },
+    {
+      "synthetic": true,
+      "r2Counterexample": "B",
+      "input": {
+        "roomKey": "Unità A",
+        "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535",
+        "roomText": "Unità A",
+        "scopedObservations": [
+          {
+            "sourceField": "roomName",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Unità A",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "roomName",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          },
+          {
+            "sourceField": "amenities",
+            "scope": "PROPERTY",
+            "offerScope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Bagno condiviso",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "amenities",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          },
+          {
+            "sourceField": "roomAmenities",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Camera privata; Bagno privato",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "roomAmenities",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          }
+        ],
+        "privacyClaims": {
+          "privateBathroom": {
+            "state": "KNOWN",
+            "value": false,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "applicability": "PROPERTY_WIDE",
+            "links": [
+              {
+                "field": "amenities",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "exclusiveUse": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Unità A",
+              "rateKey": "REVIEWED_RATE_fdb36581919e3e7e0da13aa5b0a89af6f7603e93a7291e5fae1a2214df47d535"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "actual": {
+        "unit": "PRIVATE",
+        "bath": "UNKNOWN",
+        "unitType": "private-room",
+        "decision": "abstained",
+        "bathClaimConsumed": false,
+        "selectedBathStates": [
+          "PRIVATE"
+        ]
+      },
+      "expected": {
+        "bath": "PRIVATE",
+        "claimConsumed": false
+      },
+      "allSyntheticPeersReceiveSamePrivacyVariant": true
+    },
+    {
+      "synthetic": true,
+      "r2Counterexample": "Standard Quadruple Room",
+      "input": {
+        "roomKey": "Standard Quadruple Room",
+        "rateKey": "REVIEWED_RATE_6c854d212d4ae52ebfa13d7b3dd6ddeb03208a08bfb759187ca8752b27daf743",
+        "roomText": "Standard Quadruple Room",
+        "scopedObservations": [
+          {
+            "sourceField": "roomName",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Standard Quadruple Room",
+              "rateKey": "REVIEWED_RATE_6c854d212d4ae52ebfa13d7b3dd6ddeb03208a08bfb759187ca8752b27daf743"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Standard Quadruple Room",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "roomName",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          },
+          {
+            "sourceField": "privateBathroom",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Standard Quadruple Room",
+              "rateKey": "REVIEWED_RATE_6c854d212d4ae52ebfa13d7b3dd6ddeb03208a08bfb759187ca8752b27daf743"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": true,
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "privateBathroom",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": {
+              "state": "POSITIVE"
+            }
+          },
+          {
+            "sourceField": "exclusiveUse",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Standard Quadruple Room",
+              "rateKey": "REVIEWED_RATE_6c854d212d4ae52ebfa13d7b3dd6ddeb03208a08bfb759187ca8752b27daf743"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": true,
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "exclusiveUse",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": {
+              "state": "POSITIVE"
+            }
+          }
+        ],
+        "privacyClaims": {
+          "privateBathroom": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Standard Quadruple Room",
+              "rateKey": "REVIEWED_RATE_6c854d212d4ae52ebfa13d7b3dd6ddeb03208a08bfb759187ca8752b27daf743"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "privateBathroom",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "exclusiveUse": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Standard Quadruple Room",
+              "rateKey": "REVIEWED_RATE_6c854d212d4ae52ebfa13d7b3dd6ddeb03208a08bfb759187ca8752b27daf743"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "exclusiveUse",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "actual": {
+        "unit": "UNKNOWN",
+        "bath": "PRIVATE",
+        "unitType": "unknown",
+        "decision": "abstained",
+        "bathClaimConsumed": true,
+        "selectedBathStates": [
+          "PRIVATE"
+        ]
+      },
+      "expected": {
+        "unit": "PRIVATE",
+        "bath": "PRIVATE",
+        "unitType": "unknown"
+      },
+      "allSyntheticPeersReceiveSamePrivacyVariant": true
+    },
+    {
+      "synthetic": true,
+      "r2Counterexample": "Camera Quadrupla Standard",
+      "input": {
+        "roomKey": "Camera Quadrupla Standard",
+        "rateKey": "REVIEWED_RATE_e0f61431509f2a25f609eb3f9714e1b6a8aa0e0b1e9dd7bb0c9f941832426867",
+        "roomText": "Camera Quadrupla Standard",
+        "scopedObservations": [
+          {
+            "sourceField": "roomName",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "REVIEWED_RATE_e0f61431509f2a25f609eb3f9714e1b6a8aa0e0b1e9dd7bb0c9f941832426867"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": "Camera Quadrupla Standard",
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "roomName",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": null
+          },
+          {
+            "sourceField": "privateBathroom",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "REVIEWED_RATE_e0f61431509f2a25f609eb3f9714e1b6a8aa0e0b1e9dd7bb0c9f941832426867"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": true,
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "privateBathroom",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": {
+              "state": "POSITIVE"
+            }
+          },
+          {
+            "sourceField": "exclusiveUse",
+            "scope": "OFFER",
+            "offerScope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "REVIEWED_RATE_e0f61431509f2a25f609eb3f9714e1b6a8aa0e0b1e9dd7bb0c9f941832426867"
+            },
+            "original": {
+              "status": "KNOWN",
+              "value": true,
+              "reliability": "LOW",
+              "reason": null,
+              "evidenceRefs": [
+                "SYNTHETIC_PROOF"
+              ]
+            },
+            "links": [
+              {
+                "field": "exclusiveUse",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ],
+            "structuredPrivacy": {
+              "state": "POSITIVE"
+            }
+          }
+        ],
+        "privacyClaims": {
+          "privateBathroom": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "REVIEWED_RATE_e0f61431509f2a25f609eb3f9714e1b6a8aa0e0b1e9dd7bb0c9f941832426867"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "privateBathroom",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "exclusiveUse": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "REVIEWED_RATE_e0f61431509f2a25f609eb3f9714e1b6a8aa0e0b1e9dd7bb0c9f941832426867"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "exclusiveUse",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "actual": {
+        "unit": "UNKNOWN",
+        "bath": "PRIVATE",
+        "unitType": "unknown",
+        "decision": "abstained",
+        "bathClaimConsumed": true,
+        "selectedBathStates": [
+          "PRIVATE"
+        ]
+      },
+      "expected": {
+        "unit": "PRIVATE",
+        "bath": "PRIVATE",
+        "unitType": "unknown"
+      },
+      "allSyntheticPeersReceiveSamePrivacyVariant": true
+    },
+    {
+      "synthetic": true,
+      "r2Counterexample": "business neutral contrast",
+      "input": {
+        "roomKey": "Camera Quadrupla Standard",
+        "rateKey": "offer-1",
+        "roomText": "Camera Quadrupla Standard",
+        "scopedObservations": null,
+        "privacyClaims": {
+          "privateBathroom": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "offer-1"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "invented",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "exclusiveUse": {
+            "state": "KNOWN",
+            "value": true,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Camera Quadrupla Standard",
+              "rateKey": "offer-1"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "invented",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "actual": {
+        "unit": "UNKNOWN",
+        "bath": "PRIVATE",
+        "unitType": "unknown",
+        "decision": "abstained",
+        "bathClaimConsumed": true,
+        "selectedBathStates": []
+      },
+      "expected": {
+        "decision": "usable",
+        "unit": "PRIVATE",
+        "bath": "PRIVATE",
+        "unitType": "unknown"
+      },
+      "allSyntheticPeersReceiveSamePrivacyVariant": true
+    }
+  ]
+}

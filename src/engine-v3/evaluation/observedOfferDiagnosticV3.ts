@@ -24,7 +24,7 @@ import {runPersonalUtilityRolePolicyV3,validatePersonalUtilityRolePolicyV3,type 
 import type {SmartStayEvidenceFactV2} from '../../engine-v2/model/smartStayEvaluationV2';
 import {createStableHashV3} from '../contract/stableHashV3';
 
-export const OBSERVED_DIAGNOSTIC_VERSION='stayopti.observed-offer-diagnostic@1.1' as const;
+export const OBSERVED_DIAGNOSTIC_VERSION='stayopti.observed-offer-diagnostic@1.2' as const;
 export interface ObservedDiagnosticComputationInputV3 {
   version:typeof OBSERVED_DIAGNOSTIC_VERSION; caseId:string; sourceFingerprint:string;
   essentialCoverage:'ESSENTIAL_COVERAGE_DEFINED'|'UNREPRESENTED_ESSENTIAL_NEEDS';

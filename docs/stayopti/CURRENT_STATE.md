@@ -1,5 +1,30 @@
 # StayOpti Current State
 
+## D-0052 R2 — Applicable privacy claims and neutral denominations
+
+Source `fca75449ca90d914bd3896e6bc7fc88437e6c8a0`, work branch only.
+Five supported-entry assertions failed before repair: four reviewed privacy
+counterexamples and the complete neutral-name business contrast. Initial inputs
+and outcomes are retained. Observed diagnostic @1.2 / scoped privacy @1.1 now
+exclude unconsumed inapplicable claims from fact fusion and distinguish bounded
+neutral room denominations from authentic privacy uncertainty. Missing scoped
+proof still cannot become a generic rate certificate. Source transformation and
+legacy parser checks remain unchanged; exclusive use creates no unit-type fact.
+
+Targeted validation: 45 new tests, 213/213 including 168 retained controls.
+Final isolated canonical gates and actual work-branch synchronization are recorded
+in the R2 report and delivery. No historical private measure is rerun or relabelled.
+Seven excluded and seventeen D-0037 sealed files, public behavior, numerical
+policy and Golden gates remain protected. No implicit progress migration.
+
+Final isolated Windows code validation: V3 2120/2120, V2 196/196, targeted
+213/213; lifecycle 530 PASS/17 pre-existing SKIP; security 29, release 101,
+analytics 31, capacity 9, beta 4 PASS. TypeScript, build, analytics-beta, loopback
+smoke and actual PowerShell 5.1 parsing 13/13 PASS. Scoped scans and Git checks
+PASS. The post-test report-only update is separately resealed against unchanged
+tested code. Work-branch push/pending state is verified at delivery, not inferred;
+no registry-network audit, new CI, main promotion or private execution is claimed.
+
 ## D-0052 R1 — Scoped privacy and service integrity
 
 Source `b158284fd6d15064f778a0ad70cc5dd71da2b9d0`, work branch only.

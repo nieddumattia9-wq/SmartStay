@@ -3,7 +3,7 @@ import {evaluateDiagnosticOfferRequirements} from './diagnostic-offer-requiremen
 import {assessReviewedIntentRequirements} from './reviewed-intent-input-assessment-v2.mjs';
 import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
 import {reviewedScopedObservations,resolveScopedService,serviceCodes} from './diagnostic-scoped-signals-v1.mjs';
-export const OBSERVED_EXECUTION_VERSION='stayopti.observed-offer-diagnostic@1.1';
+export const OBSERVED_EXECUTION_VERSION='stayopti.observed-offer-diagnostic@1.2';
 const hash=x=>sha256(json(x));
 const fail=c=>{throw Error('OBSERVED_EXECUTION_'+c);};
 const copy=x=>structuredClone(x);
