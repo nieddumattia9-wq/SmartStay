@@ -6,7 +6,7 @@ import type {SmartStayUnitType} from '../../engine-v2/model/smartStayEvaluationV
 import type {Hotel} from '../../types/hotel';
 
 export const STAY_SUITABILITY_VERSION='stayopti.evaluation.stay-suitability@2' as const;
-type PrivacyState='PRIVATE'|'SHARED'|'NOT_PRIVATE'|'UNKNOWN'|'CONFLICTING';
+export type PrivacyState='PRIVATE'|'SHARED'|'NOT_PRIVATE'|'UNKNOWN'|'CONFLICTING';
 function normalize(value:string){return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
 
 // Bounded lexical evidence, not NLP or a room inspection. Polarity is attached
@@ -19,7 +19,7 @@ const OTHER_PRIVATE_UNIT='hotel room|camera hotel|camera d hotel|entire place|en
 const SHARED_UNIT='shared room|shared dormitory|dormitory room|dorm room|posto letto|camera condivisa';
 const PRIVATE_BATH='private bathroom|bagno privato|en suite bathroom|ensuite bathroom';
 const SHARED_BATH='shared bathroom|communal bathroom|bagno condiviso';
-function privacyEvidence(texts:string[],feature:'unit'|'bath') {
+export function privacyEvidence(texts:string[],feature:'unit'|'bath',strictScoped=false) {
   let positive=false,negative=false,shared=false,uncertain=false,mentioned=false;
   const affirmativeUnits:string[]=[];
   const terms=new RegExp(`\\b(?:${PRIVATE_UNIT}|${OTHER_PRIVATE_UNIT}|${SHARED_UNIT}|${PRIVATE_BATH}|${SHARED_BATH})\\b`,'g');
@@ -41,7 +41,12 @@ function privacyEvidence(texts:string[],feature:'unit'|'bath') {
         /^\s*(?:(?:is|are|e)\s+)?(?:not|non)\s+(?:available|provided|included|present|disponibile|incluso|presente)\b/.test(after)||
         /^\s*(?:isn t|aren t)\s+(?:available|provided|included)\b/.test(after);
       // Unrecognized trailing negation is not affirmative evidence either.
-      const ambiguous=conditional||(!negated&&/^\s*(?:(?:is|are|e)\s+)?(?:not|non|isn t|aren t)\b/.test(after));
+      // New observed-offer boundary opts into a conservative full-clause tail.
+      // Legacy callers retain their already versioned lexical behavior.
+      const unsupportedTail=strictScoped&&!negated&&i===matches.length-1&&
+        !/^(?:(?:is|e) )?(?:available|disponibile|included|incluso)?$/.test(after.trim())&&after.trim()!=='';
+      const unsupportedPrefix=strictScoped&&!negated&&!/^(?:(?:with|and|a|an|the|con|e|un|una|il|la)\s*)*$/.test(before.trim());
+      const ambiguous=conditional||unsupportedTail||unsupportedPrefix||(!negated&&/^\s*(?:(?:is|are|e)\s+)?(?:not|non|isn t|aren t)\b/.test(after));
       if(ambiguous){uncertain=true;continue;}
       if(negated){
         // No hotel room/entire apartment does not prove no private accommodation.

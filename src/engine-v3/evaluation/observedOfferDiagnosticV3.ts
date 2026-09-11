@@ -17,13 +17,14 @@ import {evaluateBudgetIntentV2} from '../../engine-v2/intent/budgetIntentEngine'
 import {evaluateMarketContextV2} from '../../engine-v2/market-context/marketContextEngine';
 import {evaluateBookingFlexibilityContextV2} from '../../engine-v2/flexibility/bookingFlexibilityContextEngine';
 import {resolveMarketRelativeAutomaticPreferenceV2} from '../../engine-v2/intent/marketRelativePreferenceV2';
-import {resolveOfferPrivacyV3,resolveStayExpectationV3,evaluateStaySuitabilityV3} from './staySuitabilityContextV3';
+import {resolveStayExpectationV3,evaluateStaySuitabilityV3} from './staySuitabilityContextV3';
+import {resolveObservedOfferPrivacyV3,type ScopedObservationV3,type ObservedPrivacyClaimV3} from './observedOfferPrivacyV3';
 import {applyStrongDistancePreferenceV3,type DiagnosticDistanceExceptionV3} from './strongDistancePreferenceV3';
 import {runPersonalUtilityRolePolicyV3,validatePersonalUtilityRolePolicyV3,type StayOptiRolePolicySolutionInputV3} from '../policy/personalUtilityRolePolicyV3';
 import type {SmartStayEvidenceFactV2} from '../../engine-v2/model/smartStayEvaluationV2';
 import {createStableHashV3} from '../contract/stableHashV3';
 
-export const OBSERVED_DIAGNOSTIC_VERSION='stayopti.observed-offer-diagnostic@1' as const;
+export const OBSERVED_DIAGNOSTIC_VERSION='stayopti.observed-offer-diagnostic@1.1' as const;
 export interface ObservedDiagnosticComputationInputV3 {
   version:typeof OBSERVED_DIAGNOSTIC_VERSION; caseId:string; sourceFingerprint:string;
   essentialCoverage:'ESSENTIAL_COVERAGE_DEFINED'|'UNREPRESENTED_ESSENTIAL_NEEDS';
@@ -34,7 +35,10 @@ export interface ObservedDiagnosticComputationInputV3 {
   context:{id:string;kilometers:number;reference:unknown;semantics:'strong-preference';distanceException?:DiagnosticDistanceExceptionV3};
   candidates:{alternativeId:string;roomKey:string;rateKey:string;
     facts:SmartStayEvidenceFactV2[];category:string|null;roomText:string|null;features:string[];
+    scopedObservations:ScopedObservationV3[]|null;privacyClaims:{privateBathroom:ObservedPrivacyClaimV3;exclusiveUse:ObservedPrivacyClaimV3};
+    serviceInterpretations:unknown[];
     assessment:{availability:string;accommodation:string;recommendationBlockers:string[];
+      privacyRequirements:{privateBathroom:boolean;exclusiveUse:boolean};
       distanceState:string;distanceKm:number|null;completeTotal:number|null;ratingOmitted:boolean};
     observations:unknown;provenance:unknown}[];
 }
@@ -51,11 +55,24 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
   const foundations=input.candidates.map(c=>{
     // All facts have already been mapped with source/proof links. Metadata used
     // for lookup only; names/provider ordering are deliberately absent.
-    const evidence=c.facts.map(f=>createSmartStayEvidenceFactV2(f));
+    const privacy=resolveObservedOfferPrivacyV3({id:c.alternativeId,...c});
+    const facts=c.facts.map(f=>({...f}));
+    // Feed the SAME resolved bath fact to mandatory features/comfort, not the
+    // stale affirmative token alongside a conflicting contextual privacy result.
+    const previousBath=facts.find(f=>f.code==='feature.private-bathroom');
+    const bathValue=privacy.bathroomState==='PRIVATE'?true:['SHARED','NOT_PRIVATE'].includes(privacy.bathroomState)?false:null;
+    const availability=bathValue===null?privacy.bathroomState==='CONFLICTING'?'conflicting':'unknown':'known';
+    if(!previousBath||previousBath.value!==bathValue||previousBath.availability!==availability){
+      const resolved:SmartStayEvidenceFactV2={id:c.alternativeId+':feature.private-bathroom',code:'feature.private-bathroom',value:bathValue,
+        availability,unit:null,source:'derived',sourceProvider:null,sourceField:'resolved-scoped-private-bathroom',confidence:bathValue===null?0:.84,
+        severity:bathValue===null?'warning':'information',missingReasonCode:bathValue===null?privacy.bathroomState:null,capturedAt:null,
+        derivedFromEvidenceIds:privacy.evidenceReferences};
+      if(previousBath)facts.splice(facts.indexOf(previousBath),1,resolved);else facts.push(resolved);
+    }
+    const evidence=facts.map(f=>createSmartStayEvidenceFactV2(f));
     const reliabilityGate=evaluateReliabilityGateV2({evidence});
     const accommodation=classifyAccommodationV2({hotel:{id:c.alternativeId,name:'',provider:'',amenities:c.features,facilities:[]},
       explicitCategory:c.category??undefined});
-    const privacy=resolveOfferPrivacyV3({id:c.alternativeId,provider:'',amenities:c.features,facilities:[]},c.roomText,c.rateKey);
     return {hotelId:c.alternativeId,c,evidence,reliabilityGate,accommodation,privacy};
   });
   const peerCandidates=foundations.map(f=>({...f,accommodation:f.accommodation.profile}));
@@ -123,8 +140,16 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
       }else reasons.push('intent:experience-target-met');
     }
     const mandatory=c.comfortFlexibility.mandatoryRequirements;
-    const violation=a.accommodation==='DOCUMENTED_VIOLATION'||mandatory.requiredUnitTypeStatus==='unmet'||mandatory.unmetFeatureCodes.length>0;
-    const missing=a.accommodation!=='SATISFIED'||mandatory.requiredUnitTypeStatus==='unverified'||mandatory.unverifiedFeatureCodes.length>0;
+    const resolvedPrivacyRequirements=Object.entries(a.privacyRequirements).map(([key,required])=>{
+      const state=key==='privateBathroom'?c.privacy.bathroomState:c.privacy.unitState;
+      return {key,required,status:!required?'NOT_REQUIRED':state==='PRIVATE'?'SATISFIED':state==='UNKNOWN'?'INSUFFICIENT_INFORMATION':
+        state==='CONFLICTING'?'CONFLICTING':'DOCUMENTED_VIOLATION',evidenceReferences:c.privacy.evidenceReferences};
+    });
+    for(const r of resolvedPrivacyRequirements)if(!['NOT_REQUIRED','SATISFIED'].includes(r.status))reasons.push('intent:resolved-privacy:'+r.key+':'+r.status);
+    const violation=a.accommodation==='DOCUMENTED_VIOLATION'||mandatory.requiredUnitTypeStatus==='unmet'||mandatory.unmetFeatureCodes.length>0||
+      resolvedPrivacyRequirements.some(r=>r.status==='DOCUMENTED_VIOLATION');
+    const missing=a.accommodation!=='SATISFIED'||mandatory.requiredUnitTypeStatus==='unverified'||mandatory.unverifiedFeatureCodes.length>0||
+      resolvedPrivacyRequirements.some(r=>['INSUFFICIENT_INFORMATION','CONFLICTING'].includes(r.status));
     const dim=(key:'quality'|'comfort'|'location'|'flexibility')=>({score:c.scores[key].score,evidenceIds:c.scores[key].evidenceIds});
     const policy:StayOptiRolePolicySolutionInputV3={solutionId:'observed:'+c.hotelId,solutionType:'single-stay',
       totalCost:a.completeTotal,currency:q.currency,hardConstraintsSatisfied:violation?false:missing?null:true,
@@ -135,7 +160,7 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
         room:{score:c.comfortFlexibility.unitType.unitType==='unknown'?null:c.comfortFlexibility.unitType.score,evidenceIds:c.comfortFlexibility.unitType.evidenceIds},
         'long-stays':{score:q.nights>=7?c.comfortFlexibility.dimensions.practicality.score:null,evidenceIds:c.comfortFlexibility.dimensions.practicality.evidenceIds}},
       evidenceIds:c.evidence.map(f=>f.id)};
-    return {hotelId:c.hotelId,policy,assessment:a,observations:c.c.observations,provenance:c.c.provenance,
+    return {hotelId:c.hotelId,policy,assessment:a,resolvedPrivacyRequirements,observations:c.c.observations,provenance:c.c.provenance,serviceInterpretations:c.c.serviceInterpretations,
       offerScope:{roomKey:c.c.roomKey,rateKey:c.c.rateKey},suitability,target,
       distance:{status:!a.distanceState.startsWith('COMPARABLE_')?'unknown':a.distanceKm!<=input.context.kilometers?'satisfied':'exceeded'},
       calculated:{quality:c.quality,comfort:c.comfortFlexibility,location:c.location,priceValue:c.priceValue,

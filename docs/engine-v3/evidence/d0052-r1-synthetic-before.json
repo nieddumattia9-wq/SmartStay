@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "b158284fd6d15064f778a0ad70cc5dd71da2b9d0",
+  "syntheticOnly": true,
+  "historicalResult": {"tests": 7, "pass": 0, "fail": 7, "exitCode": 1},
+  "entry": "executeObservedOfferDiagnostic -> computeObservedOfferDiagnosticV3",
+  "fixtures": "observedOfferRequirementsSyntheticV3.reviewedFixture / fixture; R1 observedPrivacySyntheticV3 adapters",
+  "reproductions": [
+    {"input": {"roomName": "Unità A", "amenities": "Camera privata; Bagno privato; Bagno condiviso"}, "actual": {"unit": "PRIVATE", "bath": "PRIVATE", "suitability": "eligible"}},
+    {"input": {"roomName": "Unità A", "amenities": "Camera privata; Bagno privato; Bagno privato non disponibile"}, "actual": {"unit": "PRIVATE", "bath": "PRIVATE", "suitability": "eligible"}},
+    {"input": {"roomName": "Unità A", "amenities": "Camera privata; Bagno privato; Camera condivisa"}, "actual": {"unit": "PRIVATE", "bath": "PRIVATE", "suitability": "eligible"}},
+    {"input": {"roomName": "Unità A", "amenities": "Camera privata; Bagno privato; WiFi", "roomAmenities": "Bagno privato non disponibile; WiFi non disponibile"}, "actual": {"bath": "PRIVATE", "wifi": true}},
+    {"input": {"control": "COMPLETE", "tripProfile": "business", "newEssentialPrivacyRequirements": false, "allPrivateBathroom": {"state": "CONFLICTING", "value": null}}, "actual": {"decision": "usable", "bath": "PRIVATE", "unit": "PRIVATE"}},
+    {"input": {"control": "COMPLETE", "tripProfile": "business", "newEssentialPrivacyRequirements": false, "allPrivateBathroom": {"state": "KNOWN", "value": false, "applicability": "OFFER_SCOPED"}}, "actual": {"decision": "usable", "bath": "PRIVATE", "unit": "PRIVATE"}},
+    {"input": {"control": "COMPLETE", "tripProfile": "business", "newEssentialPrivacyRequirements": false, "allPrivateBathroom": {"state": "KNOWN", "value": true}, "allExclusiveUse": {"state": "KNOWN", "value": true}, "roomText": "Unit A", "features": [], "featureAndAccommodationFacts": "removed, no textual privacy tokens"}, "actual": {"decision": "abstained", "bath": "UNKNOWN", "unit": "UNKNOWN"}}
+  ],
+  "reviewedControlsAreIncompleteRates": true,
+  "reviewedContextDoesNotRequireBathroom": true,
+  "note": "Reviewed controls expose factual corruption, not a bookable real winner. Full synthetic business controls expose actual policy behavior. No private measurement is reproduced."
+}

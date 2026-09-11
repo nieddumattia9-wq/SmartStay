@@ -1,5 +1,29 @@
 # StayOpti Current State
 
+## D-0052 R1 — Scoped privacy and service integrity
+
+Source `b158284fd6d15064f778a0ad70cc5dd71da2b9d0`, work branch only.
+Seven supported-entry counterexamples were reproduced before repair (0 PASS,
+7 FAIL): lost polarity/scope and ignored structured privacy. Diagnostic @1.1
+and reviewed @2.3 retain original source/proof/room-rate scope, verify bounded
+boolean meaning, and feed resolved privacy to contextual and essential checks.
+Exclusive use does not manufacture unit type or comfort. Existing scoring,
+roles, requirement coverage and public defaults remain unchanged.
+
+Prior D-0052 private results and measured code are historical, untouched and not
+relabelled as R1 evidence. Only synthetic inputs are executed. See the R1 decision,
+report and preserved initial counterexamples. Complete gate and synchronization
+results must be observed before selective work-branch publication; CI is separate.
+Seven excluded paths and seventeen sealed D-0037 files remain protected.
+
+R1 local isolated Windows validation: 45/45 new and 168/168 targeted; V3
+2075/2075, V2 196/196; lifecycle 530 PASS/17 pre-existing explicit SKIP;
+security 29, release 101, analytics 31, capacity 9, beta 4 PASS. TypeScript,
+build, analytics-beta gate, loopback smoke, PS 5.1 parse 13/13, scoped scans
+and Git whitespace checks PASS. No registry-network audit or new CI is claimed.
+Selective work-branch synchronization is verified and reported at delivery;
+no automatic main promotion, private reevaluation or implicit progress migration.
+
 ## D-0052 — Executable observed-offer diagnostics
 
 Source `e3c6985cd5024d919a9d7af93bf421de6a85040b`, work branch only.

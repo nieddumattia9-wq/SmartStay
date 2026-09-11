@@ -2,7 +2,8 @@
 import {evaluateDiagnosticOfferRequirements} from './diagnostic-offer-requirements-v1.mjs';
 import {assessReviewedIntentRequirements} from './reviewed-intent-input-assessment-v2.mjs';
 import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
-export const OBSERVED_EXECUTION_VERSION='stayopti.observed-offer-diagnostic@1';
+import {reviewedScopedObservations,resolveScopedService,serviceCodes} from './diagnostic-scoped-signals-v1.mjs';
+export const OBSERVED_EXECUTION_VERSION='stayopti.observed-offer-diagnostic@1.1';
 const hash=x=>sha256(json(x));
 const fail=c=>{throw Error('OBSERVED_EXECUTION_'+c);};
 const copy=x=>structuredClone(x);
@@ -19,8 +20,8 @@ function fact(id,code,value,claim,unit=null,confidence=.95){
 function sourceClaim(field){return {reason:field?.value.reason??'Reviewed source field unavailable',observedAt:null,
   links:field?[{field:field.key,evidence:field.value.evidenceRefs.map(ref=>({ref,sha256:'unresolved'}))}]:[]};}
 
-// Candidate source wrappers remain intact. Only bounded numeric values and exact
-// affirmative feature-list tokens are normalized. Unsupported prose is retained.
+// Preserve the entire observed clauses, source wrappers and property/offer scope.
+// Service facts are resolved BEFORE scoring; privacy uses the shared evaluator.
 function reviewedSignals(reviewed,r1,o){
   // Use the confirmed final values, not a stale initial packet after corrections.
   const a={fields:r1.originalMapping.filter(f=>f.alternativeId===o.alternativeId).map(f=>({key:f.field,value:f.value}))};
@@ -36,22 +37,15 @@ function reviewedSignals(reviewed,r1,o){
   // fee, refundability boolean or a certified fully flexible tariff.
   add('offer.cancellation','cancellation',v=>typeof v==='string'?v:null);
   add('offer.refundable','refundable',v=>typeof v==='boolean'?v:null);
-  const aliases=new Map([['wifi','WiFi'],['wi-fi','WiFi'],['wifi gratis','WiFi'],['aria condizionata','Air conditioning'],['air conditioning','Air conditioning'],
-    ['bagno privato','Private bathroom'],['private bathroom','Private bathroom'],['ascensore','Elevator'],['elevator','Elevator'],
-    ['cucina','Kitchen'],['kitchen','Kitchen'],['riscaldamento','Heating'],['heating','Heating'],['reception','Reception'],
-    ['suite privata','Private room'],['camera privata','Private room'],['bagno in camera','Private bathroom'],
-    ['insonorizzazione','Soundproofing'],['scrivania','Desk'],['dormitorio condiviso','Shared dormitory']]);
-  const featureCodes=new Map([['WiFi','wifi'],['Air conditioning','air-conditioning'],['Private bathroom','private-bathroom'],
-    ['Elevator','elevator'],['Kitchen','kitchen'],['Heating','heating'],['Reception','reception'],['Soundproofing','soundproofing'],['Desk','desk']]);
-  const features=[];
-  for(const key of ['amenities','roomAmenities','services','roomServices']){
-    const v=known(key),tokens=Array.isArray(v)?v:typeof v==='string'?v.split(/[;,\n|]+/):[];
-    for(const token of tokens){if(typeof token!=='string')continue;const normalized=aliases.get(token.trim().toLowerCase());
-      if(normalized&&!features.includes(normalized)){features.push(normalized);const code=featureCodes.get(normalized);
-        evidence.push(fact(o.alternativeId,code?'feature.'+code:'observation.'+normalized.replaceAll(' ','-').toLowerCase(),true,claim(key),null,.84));}}
+  const scopedObservations=reviewedScopedObservations(a.fields,reviewed.packet.proofs,{roomKey:o.scope.roomKey,rateKey:o.scope.rateKey});
+  const serviceInterpretations=serviceCodes.map(code=>resolveScopedService(scopedObservations,code));
+  const features=[]; // Raw text is never sent to the positive-substring category classifier.
+  for(const s of serviceInterpretations){if(s.state==='ABSENT')continue;
+    const f=fact(o.alternativeId,'feature.'+s.code,s.value,{reason:s.state,observedAt:null,links:s.selected.flatMap(x=>x.links)},null,.84);
+    if(s.state==='CONFLICTING')f.availability='conflicting';evidence.push(f);
   }
   const category=typeof known('category')==='string'?known('category'):null;
-  return {evidence,features,category,roomText:typeof known('roomName')==='string'?known('roomName'):null,
+  return {evidence,features,category,scopedObservations,serviceInterpretations,roomText:typeof known('roomName')==='string'?known('roomName'):null,
     provenance:{kind:'CONFIRMED_REVIEW_FIELDS',fields:copy(a.fields),unsupportedValuesRetained:true},observations:copy(a.fields)};
 }
 
@@ -107,7 +101,10 @@ export function executeObservedOfferDiagnostic(request,compute){
     }
     if(new Set(facts.map(f=>f.code)).size!==facts.length)fail('DUPLICATE_EVIDENCE_CODE');
     return {alternativeId:o.alternativeId,roomKey:o.scope.roomKey,rateKey:o.scope.rateKey,facts,category:s.category,roomText:s.roomText,features:s.features,
+      scopedObservations:s.scopedObservations??null,privacyClaims:{privateBathroom:copy(o.privateBathroom),exclusiveUse:copy(o.exclusiveUse)},
+      serviceInterpretations:s.serviceInterpretations??[],
       assessment:{availability:a.availability.state,accommodation:a.accommodation.status,recommendationBlockers:a.recommendationBlockers,
+        privacyRequirements:{privateBathroom:n.party.requirements.privateBathroom,exclusiveUse:n.party.requirements.exclusiveUse},
         distanceState:a.geography.state,distanceKm:comparable?o.distanceKm.value:null,completeTotal:total,ratingOmitted:!a.rating.normalizable},
       observations:{requirements:copy(o),other:copy(s.observations)},provenance:copy(s.provenance)};
   });

@@ -1,11 +1,12 @@
 import {assessReviewedIntentInput} from './reviewed-intent-input-assessment-v1.mjs';
 import {evaluateDiagnosticOfferRequirements,validateDiagnosticOfferRequirements,normalizeItalianBedInventory,DIAGNOSTIC_REQUIREMENTS_VERSION} from './diagnostic-offer-requirements-v1.mjs';
 import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
+import {verifyReviewedPrivacyClaim} from './diagnostic-scoped-signals-v1.mjs';
 
 // Forward-only successor: v1 and all original review events remain unchanged.
 // The explicit normalization document is evidence-linked, NOT a human review,
 // engine input, source-independent certification or permission to execute V3.
-export const REVIEWED_REQUIREMENTS_VERSION='stayopti.reviewed-intent-input-assessment@2.2';
+export const REVIEWED_REQUIREMENTS_VERSION='stayopti.reviewed-intent-input-assessment@2.3';
 const hash=x=>sha256(json(x));
 const same=(a,b)=>json(a)===json(b);
 const fail=code=>{throw Error('REVIEWED_REQUIREMENTS_'+code);};
@@ -138,6 +139,7 @@ export function assessReviewedIntentRequirements(args,normalization){
       completeTotal:o.completeTotal,ratingScale:o.ratingScale,ratingObserved:o.ratingObserved};
     for(const [target,c]of Object.entries(cs)){validateLinks(c,o.alternativeId);if(c.propertyBinding)validateLinks({...c.propertyBinding,state:'KNOWN'},o.alternativeId);maps.push({alternativeId:o.alternativeId,target,claim:structuredClone(c),offerBindingFingerprint:rateBinding});}
     const fieldValue=key=>{const f=previous.retainedObservations.find(f=>f.key===key)?.value;return f?.status==='KNOWN'?f.value:null;};
+    for(const key of ['privateBathroom','exclusiveUse'])verifyReviewedPrivacyClaim(o[key],key,previous.retainedObservations);
     // A matching proof hash is not sufficient to legitimize a changed number.
     // Recompute bounded supported transformations from the actual reviewed text.
     const beds=normalizeItalianBedInventory(fieldValue('beds'));
