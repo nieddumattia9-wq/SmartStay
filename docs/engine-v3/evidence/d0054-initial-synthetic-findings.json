@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "stayopti.d0054.initial-synthetic-findings@1",
+  "recordedAt": "2026-09-12T16:38:29Z",
+  "syntheticOnly": true,
+  "sourceHead": "137238c9bdbe2e732d9232309700c085e5e5ac35",
+  "implementationUnderReview": "Uncommitted D-0054 appendix implementation during development, not code contained in sourceHead",
+  "kernel": "The existing D-0052 R2 compiled kernel; no private input was executed",
+  "initialSourceSnapshotPreserved": false,
+  "timingLimitation": "The recordedAt timestamp is the time this evidence record was written, not a claimed independent timestamp of the earlier probe. The probe output and reproduction parameters below were observed before the conditional-fact repair.",
+  "findings": [
+    {
+      "id": "D0054-DEVELOPMENT-CONDITIONAL-PRIVACY",
+      "evidenceKind": "EXECUTED_SUPPORTED_ENTRY_BEFORE_REPAIR",
+      "toolOutputChunk": "0f9fa2",
+      "entry": "executeReviewedEvidenceAppendix REVIEWED -> computeObservedOfferDiagnosticV3",
+      "fixture": "tests/engine-v3/fixtures/observedOfferRequirementsSyntheticV3.ts:reviewedFixture",
+      "parameters": {
+        "fixtureOptions": {
+          "fields": {
+            "privateBathroom": true,
+            "exclusiveUse": true,
+            "roomName": "Unit A"
+          }
+        },
+        "normalizationChangeBeforeBaseValidation": "On offer 0 set privateBathroom state=KNOWN,value=true and link its original privateBathroom field. The original fixture contains the same true value; original REVIEWED verification passes.",
+        "field": "privateBathroom",
+        "statement": "Private bathroom on request",
+        "relation": "CORROBORATE_SAME_CONTEXT",
+        "observedAt": "2099-09-01T12:00:00Z",
+        "evaluatedAt": "2099-09-01T12:02:00Z",
+        "validUntil": null,
+        "retiredObservations": [],
+        "retiredAvailability": [],
+        "proofConstruction": "Synthetic application/json artifact bytes equal the point-evidence transcription. Hash the immutable base claim, full exact offer scope, transcript and source bytes. A SYNTHETIC_TEST point-review receipt binds all of them. No real human approval is asserted."
+      },
+      "observedBeforeRepair": {
+        "integrationStatus": "INSUFFICIENT",
+        "integrationReason": "STATEMENT_GRAMMAR_UNSUPPORTED_OR_CONDITIONAL",
+        "activePrivateBathroomClaimState": "KNOWN",
+        "activePrivateBathroomClaimValue": true,
+        "consumedFactCount": 0,
+        "kernelBathroomState": "PRIVATE",
+        "contextualSuitability": "eligible"
+      },
+      "observedAfterRepair": {
+        "toolOutputChunk": "29576d",
+        "sameReproductionParameters": true,
+        "integrationStatus": "CONFLICTING",
+        "integrationReason": "SAME_CONTEXT_FACT_CONFLICT",
+        "activePrivateBathroomClaimState": "CONFLICTING",
+        "activePrivateBathroomClaimValue": null,
+        "consumedFactCount": 1,
+        "kernelBathroomState": "CONFLICTING"
+      },
+      "expectedInvariant": "An applicable, specifically reviewed privacy condition cannot disappear before fact fusion and leave the historical unconditional positive certified. Same-context incompatible qualification remains uncertain or conflicting.",
+      "notClaimed": "This was not a defect reproduced in the committed sourceHead, a complete recommendable case, a real dossier measurement or a human judgment."
+    },
+    {
+      "id": "D0054-DEVELOPMENT-RETIREMENT-ORDER",
+      "evidenceKind": "STATIC_FINDING_REPAIRED_BEFORE_FIRST_EXECUTED_PROBE",
+      "initialFinding": "A retirement verified against the immutable base could originally be applied to a newly replaced active claim. Integration ID order could thereby erase a simultaneous new contradictory availability fact.",
+      "initialFailureExecuted": false,
+      "firstExecutedProbeAfterRepair": {
+        "toolOutputChunk": "8907c3",
+        "parameters": "Two synthetic DOCUMENTED_SUCCESSOR integrations: bookable=true retiring old observed availability, and unavailable=true retiring old bookability. Repeat after swapping the technical integration IDs.",
+        "availabilityState": "CONFLICTING",
+        "availabilityStateAfterTechnicalIdSwap": "CONFLICTING",
+        "bothNewFactsRetained": true
+      }
+    },
+    {
+      "id": "D0054-DEVELOPMENT-ENTRY-METADATA-OVERRIDE",
+      "evidenceKind": "EXECUTED_SUPPORTED_ENTRY_BEFORE_REPAIR",
+      "toolOutputChunk": "c7473c",
+      "probeCompletedAt": "2026-09-12T16:46:49.847Z",
+      "entry": "executeReviewedEvidenceAppendix REVIEWED -> computeObservedOfferDiagnosticV3",
+      "fixture": "tests/engine-v3/fixtures/reviewedEvidenceAppendixSyntheticV3.ts:appendixFixture",
+      "parameters": {
+        "fixtureSetup": "appendixFixture(); financial(0) creates complete cost and bookability as entries in the same synthetic artifact.",
+        "topLevelValidUntil": "2099-09-01T12:01:30Z",
+        "unexpectedValidUntilOnBothEntries": "2099-09-01T12:10:00Z",
+        "evaluatedAt": "2099-09-01T12:02:00Z",
+        "sourceBytesAndSyntheticPointReviewResealed": true
+      },
+      "observedBeforeRepair": {
+        "completeTotalIntegrationStatus": "APPLIED",
+        "bookabilityIntegrationStatus": "APPLIED",
+        "activeCompleteTotalState": "KNOWN",
+        "availability": "VERIFIED_BOOKABLE",
+        "decisionStatus": "usable",
+        "originalRequestUnchanged": true
+      },
+      "observedAfterRepair": {
+        "toolOutputChunk": "02c6b1",
+        "probeCompletedAt": "2026-09-12T16:48:27.733Z",
+        "sameReproductionParameters": true,
+        "completeTotalIntegrationStatus": "REJECTED",
+        "bookabilityIntegrationStatus": "REJECTED",
+        "integrationReason": "APPENDIX_POINT_ENTRY_METADATA_OVERRIDE",
+        "activeCompleteTotalState": "UNKNOWN",
+        "availability": "OBSERVED_AVAILABLE",
+        "decisionStatus": "abstained",
+        "originalRequestUnchanged": true
+      },
+      "cause": "verifyProof validated top-level metadata but spread an entries element over it when constructing consumed content; an unexpected entry-level validUntil replaced the already validated top-level expiry before verifyTemporal.",
+      "expectedInvariant": "Field entries may contain only field, statement and temporal. Consumed source/scope/time metadata must be exactly the metadata validated at the source root.",
+      "notClaimed": "The appendix was uncommitted development code; this was not a committed sourceHead defect or real data execution."
+    },
+    {
+      "id": "D0054-DEVELOPMENT-PER-ITEM-DOMAIN",
+      "evidenceKind": "STATIC_FINDING_REPAIRED_BEFORE_FIRST_EXECUTED_PROBE",
+      "initialFinding": "A decoded zero unit count or rating scale below the retained observed rating could reach the final contract validator outside per-integration rejection handling.",
+      "initialFailureExecuted": false,
+      "firstExecutedProbeAfterRepair": {
+        "toolOutputChunk": "49d50b",
+        "cases": ["unitsOffered: 0 units", "ratingScale: Rating scale: 0-1"],
+        "topLevel": "RETURNED",
+        "integrationStatus": "REJECTED",
+        "integrationReason": "APPENDIX_NORMALIZED_VALUE_INCOMPATIBLE_WITH_REQUIREMENTS_CONTRACT"
+      }
+    }
+  ],
+  "privateDataUsed": false,
+  "providerCalls": 0,
+  "goldenAdmission": false
+}

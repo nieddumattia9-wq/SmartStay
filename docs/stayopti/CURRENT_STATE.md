@@ -1,5 +1,33 @@
 # StayOpti Current State
 
+## D-0054 — Versioned supplemental evidence on immutable REVIEWED inputs
+
+Source `137238c9bdbe2e732d9232309700c085e5e5ac35`, work branch only.
+The pure evaluation appendix validates the original journal, source meaning,
+applicability and essential-needs coverage before new evidence. Exact packet,
+projection, normalization and room/rate/stay/party bindings precede bounded
+transformations and a separate point-review receipt. Historical facts remain
+unchanged; applied, rejected, insufficient and conflicting additions are traced
+through the existing kernel and policy. No SYNTHETIC bypass for reviewed data.
+
+Complete cost and bookability need joint rate-specific, time-valid evidence.
+Rating scale binds the precise original rating observation. Privacy conditions,
+negations and uncertain sleeping places do not become positive certifications.
+The previous private measure is not rerun or relabelled. Seven excluded paths,
+seventeen sealed D-0037 files and the extra pre-existing private report copy
+remain untouched and outside the candidate. Final local gates and actual push
+state are recorded after execution, not inferred from earlier phases or CI.
+
+Final isolated local gates: 76/76 new and 289/289 combined targeted; canonical V3
+2196/2196 and V2 196/196. Lifecycle 530 PASS/17 pre-existing SKIP, security 29,
+release 101, analytics 31, capacity 9, beta 4 PASS. TypeScript, build,
+analytics-beta, synthetic loopback smoke and actual PS5.1 parse 13/13 PASS.
+Scoped scans and whitespace/protected-file checks PASS. Two actual development
+failures are retained separately from fixture-authoring errors and static
+findings. The final report-only reseal preserves all tested software bytes.
+Registry-network audit, native Linux and new CI are not claimed; actual
+selective work-branch push and pending count are verified in the delivery.
+
 ## D-0052 R2 — Applicable privacy claims and neutral denominations
 
 Source `fca75449ca90d914bd3896e6bc7fc88437e6c8a0`, work branch only.

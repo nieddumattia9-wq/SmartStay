@@ -49,10 +49,36 @@ function reviewedSignals(reviewed,r1,o){
     provenance:{kind:'CONFIRMED_REVIEW_FIELDS',fields:copy(a.fields),unsupportedValuesRetained:true},observations:copy(a.fields)};
 }
 
+/** Reproject only already-validated requirement claims onto an existing
+ * candidate. This computation helper does not validate an original review or
+ * authorize an appendix; supported entry points must do both before calling it.
+ * Protected facts are always regenerated, including their source/proof metadata.
+ */
+export function reprojectObservedRequirementCandidate(candidate,o,a,n){
+  const total=a.price.completeTotalUsable?o.completeTotal.value:null;
+  const normalizedRating=a.rating.normalizable?o.ratingObserved.value/o.ratingScale.value*10:null;
+  const comparable=a.geography.state.startsWith('COMPARABLE_');
+  const protectedCodes=['stay.cost.total','stay.cost.completeness','stay.currency','offer.bookable','offer.count','review.score','location.distance','location.coordinates'];
+  const facts=candidate.facts.filter(f=>!protectedCodes.includes(f.code)).map(copy);
+  facts.push(fact(o.alternativeId,'stay.cost.total',total,o.completeTotal,n.stay.currency),
+    fact(o.alternativeId,'stay.cost.completeness',total===null?null:'reported-complete',o.completeTotal),
+    fact(o.alternativeId,'stay.currency',n.stay.currency,o.completeTotal),
+    fact(o.alternativeId,'offer.bookable',a.availability.bridgeBoolean,o.availability.bookability),
+    fact(o.alternativeId,'offer.count',1,{...o.completeTotal,reason:'Exactly one explicitly bound rate in this candidate'}),
+    fact(o.alternativeId,'review.score',normalizedRating,{...o.ratingObserved,links:[...o.ratingObserved.links,...o.ratingScale.links]},'0-10'),
+    fact(o.alternativeId,'location.distance',comparable?o.distanceKm.value:null,o.distanceKm,'km'));
+  if(new Set(facts.map(f=>f.code)).size!==facts.length)fail('DUPLICATE_EVIDENCE_CODE');
+  return {...candidate,facts,privacyClaims:{privateBathroom:copy(o.privateBathroom),exclusiveUse:copy(o.exclusiveUse)},
+    assessment:{availability:a.availability.state,accommodation:a.accommodation.status,recommendationBlockers:a.recommendationBlockers,
+      privacyRequirements:{privateBathroom:n.party.requirements.privateBathroom,exclusiveUse:n.party.requirements.exclusiveUse},
+      distanceState:a.geography.state,distanceKm:comparable?o.distanceKm.value:null,completeTotal:total,ratingOmitted:!a.rating.normalizable},
+    observations:{requirements:copy(o),other:copy(candidate.observations.other)}};
+}
+
 /** Supported entry. A reviewed document ALWAYS runs the original-journal R1
  * verifier. A precomputed assessment/coverage supplied by a caller is ignored.
- * Kernel is an explicit compiled local module, never a remote/runtime service. */
-export function executeObservedOfferDiagnostic(request,compute){
+ * Preparation does not invoke a kernel, write a journal or certify eligibility. */
+export function prepareObservedOfferDiagnostic(request){
   const n=request.normalization;
   let r1,assessment,query,coverage,signals;
   if(request.kind==='REVIEWED'){
@@ -79,34 +105,21 @@ export function executeObservedOfferDiagnostic(request,compute){
   const candidates=n.offers.map(o=>{
     const a=assessment.offers.find(a=>a.alternativeId===o.alternativeId),s=signals.find(s=>s.alternativeId===o.alternativeId);
     if(!s||!Array.isArray(s.evidence)||!Array.isArray(s.features))fail('SIGNAL_SCOPE');
-    const total=a.price.completeTotalUsable?o.completeTotal.value:null;
-    const normalizedRating=a.rating.normalizable?o.ratingObserved.value/o.ratingScale.value*10:null;
-    const comparable=a.geography.state.startsWith('COMPARABLE_');
-    const protectedCodes=['stay.cost.total','stay.cost.completeness','stay.currency','offer.bookable','offer.count','review.score','location.distance','location.coordinates'];
     // Protected facts are recomputed from R1, not caller suggestions. No invented
     // tax value, taxesIncluded, coordinates, expiry, scope or default bookability.
-    const facts=s.evidence.filter(f=>!protectedCodes.includes(f.code)).map(copy);
-    const replacements=[fact(o.alternativeId,'stay.cost.total',total,o.completeTotal,n.stay.currency),
-      fact(o.alternativeId,'stay.cost.completeness',total===null?null:'reported-complete',o.completeTotal),
-      fact(o.alternativeId,'stay.currency',n.stay.currency,o.completeTotal),
-      fact(o.alternativeId,'offer.bookable',a.availability.bridgeBoolean,o.availability.bookability),
-      fact(o.alternativeId,'offer.count',1,{...o.completeTotal,reason:'Exactly one explicitly bound rate in this candidate'}),
-      fact(o.alternativeId,'review.score',normalizedRating,{...o.ratingObserved,links:[...o.ratingObserved.links,...o.ratingScale.links]},'0-10'),
-      fact(o.alternativeId,'location.distance',comparable?o.distanceKm.value:null,o.distanceKm,'km')];
-    for(const replacement of replacements){
+    const candidate=reprojectObservedRequirementCandidate({alternativeId:o.alternativeId,roomKey:o.scope.roomKey,rateKey:o.scope.rateKey,
+      facts:s.evidence,category:s.category,roomText:s.roomText,features:s.features,
+      scopedObservations:s.scopedObservations??null,privacyClaims:null,serviceInterpretations:s.serviceInterpretations??[],
+      assessment:null,observations:{requirements:null,other:s.observations},provenance:copy(s.provenance)},o,a,n);
+    for(let i=0;request.kind==='SYNTHETIC'&&i<candidate.facts.length;i++){
       // Exact legacy evidence metadata can be retained in synthetic parity tests
       // only when its value and availability match the recomputed semantic fact.
+      const replacement=candidate.facts[i];
+      if(!['stay.cost.total','stay.cost.completeness','stay.currency','offer.bookable','offer.count','review.score','location.distance'].includes(replacement.code))continue;
       const previous=s.evidence.find(f=>f.code===replacement.code);
-      facts.push(request.kind==='SYNTHETIC'&&previous&&same(previous.value,replacement.value)&&previous.availability===replacement.availability?copy(previous):replacement);
+      if(previous&&same(previous.value,replacement.value)&&previous.availability===replacement.availability)candidate.facts[i]=copy(previous);
     }
-    if(new Set(facts.map(f=>f.code)).size!==facts.length)fail('DUPLICATE_EVIDENCE_CODE');
-    return {alternativeId:o.alternativeId,roomKey:o.scope.roomKey,rateKey:o.scope.rateKey,facts,category:s.category,roomText:s.roomText,features:s.features,
-      scopedObservations:s.scopedObservations??null,privacyClaims:{privateBathroom:copy(o.privateBathroom),exclusiveUse:copy(o.exclusiveUse)},
-      serviceInterpretations:s.serviceInterpretations??[],
-      assessment:{availability:a.availability.state,accommodation:a.accommodation.status,recommendationBlockers:a.recommendationBlockers,
-        privacyRequirements:{privateBathroom:n.party.requirements.privateBathroom,exclusiveUse:n.party.requirements.exclusiveUse},
-        distanceState:a.geography.state,distanceKm:comparable?o.distanceKm.value:null,completeTotal:total,ratingOmitted:!a.rating.normalizable},
-      observations:{requirements:copy(o),other:copy(s.observations)},provenance:copy(s.provenance)};
+    return candidate;
   });
   const input={version:OBSERVED_EXECUTION_VERSION,caseId:n.caseId,sourceFingerprint:hash({normalization:n,
     reviewedSource:r1?.sourceBinding??null,signals,query}),essentialCoverage:coverage,query,
@@ -114,9 +127,16 @@ export function executeObservedOfferDiagnostic(request,compute){
   // Reviewed R2 feedback is not imported here. A distance exception requires a
   // separate explicit evidenced engine context; no exception inferred from R2.
   if(request.kind==='SYNTHETIC'&&request.distanceException)input.context.distanceException=copy(request.distanceException);
-  const output=compute(input);
-  if(output.version!==OBSERVED_EXECUTION_VERSION||output.candidates.length!==n.offers.length)fail('COMPUTATION_OUTPUT');
-  return {input,output,r1Assessment:assessment,essentialCoverage:r1?.essentialRequirementCoverage??coverage,
+  return {input,r1Assessment:assessment,essentialCoverage:r1?.essentialRequirementCoverage??coverage,
     reviewedBinding:r1?{source:r1.sourceBinding,reviewConfirmed:r1.reviewConfirmed,humanReview:r1.humanReview,missingness:r1.missingness}:null,
     kind:request.kind,feedbackUsed:false,comparisonToHuman:'NOT_PERFORMED',goldenAdmission:false};
+}
+
+/** Kernel is an explicit compiled local module, never a remote/runtime service. */
+export function executeObservedOfferDiagnostic(request,compute){
+  const prepared=prepareObservedOfferDiagnostic(request),output=compute(prepared.input);
+  if(output.version!==OBSERVED_EXECUTION_VERSION||output.candidates.length!==request.normalization.offers.length)fail('COMPUTATION_OUTPUT');
+  return {input:prepared.input,output,r1Assessment:prepared.r1Assessment,essentialCoverage:prepared.essentialCoverage,
+    reviewedBinding:prepared.reviewedBinding,kind:prepared.kind,feedbackUsed:prepared.feedbackUsed,
+    comparisonToHuman:prepared.comparisonToHuman,goldenAdmission:prepared.goldenAdmission};
 }

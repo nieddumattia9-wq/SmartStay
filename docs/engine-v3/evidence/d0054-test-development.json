@@ -1,0 +1,57 @@
+{
+  "phase": "D-0054",
+  "scope": "ENTIRELY_SYNTHETIC_TEST_DEVELOPMENT",
+  "initialTargetedExecution": {
+    "tests": 58,
+    "pass": 55,
+    "fail": 3,
+    "resultSource": "Observed local compile and node --test tool output before fixture corrections",
+    "rawStdoutPersistedAtInitialExecution": false,
+    "failures": [
+      {
+        "test": "EA02",
+        "actual": "abstained",
+        "expected": "usable",
+        "failureDomain": "SOURCE_TEST_FIXTURE",
+        "causes": [
+          "Independent financial artifacts did not provide the same-artifact relationship required for complete cost and bookability.",
+          "The initially invented complete costs 720/800/880 exceeded the unchanged synthetic control budget 450."
+        ],
+        "initialCosts": [720, 800, 880],
+        "unchangedBudget": 450,
+        "resolution": "The positive full control uses the historical synthetic fixture's existing 360/420/390 costs and a single explicit multi-entry source record. EA49 retains rejection of independent same-id/time artifacts; EA51 preserves the initial over-budget values and asserts actual abstention. No budget, original fixture, policy or threshold changed."
+      },
+      {
+        "test": "EA34",
+        "actual": "not all integrations APPLIED",
+        "failureDomain": "SOURCE_TEST_FIXTURE",
+        "cause": "Two rooms is not the supported exact internal-room grammar.",
+        "resolution": "Use explicit source statement Two internal rooms, while retaining One unit. The parser was not broadened for this fixture."
+      },
+      {
+        "test": "EA37",
+        "actual": "KNOWN_UNAVAILABLE",
+        "expected": "DOCUMENTED_UNAVAILABLE",
+        "failureDomain": "TEST_ENUM_MISMATCH",
+        "resolution": "Assertion now uses the existing contract's KNOWN_UNAVAILABLE enumeration."
+      }
+    ]
+  },
+  "laterTestAuthoringMismatch": {
+    "test": "EA46",
+    "targetedPass": 63,
+    "targetedFail": 1,
+    "actualRejection": "APPENDIX_TRANSCRIPTION_DIFFERS_FROM_MACHINE_READABLE_SOURCE",
+    "expectedRejectionRegex": "MACHINE_SOURCE_TRANSCRIPTION_MISMATCH",
+    "resolution": "Correct the test to the actual specific rejection code. No production bypass."
+  },
+  "historicalSourcesModified": false,
+  "realMaterialUsed": false,
+  "policyTunedToTests": false,
+  "historicalFinancialPreservationControl": {
+    "test": "EA53",
+    "supportedBase": "Original reviewed complete total KNOWN and bookability UNKNOWN; a rating/unit appendix preserves both financial claims byte-for-byte.",
+    "unreachableBaseNotFabricated": "The original REVIEWED validator expressly rejects KNOWN bookability with PUBLIC_OBSERVATION_NOT_BOOKABILITY_VERIFICATION. A supposedly complete original reviewed base was not forged to test an unreachable state; the positive integrated control reaches verified bookability only through new validated evidence."
+  },
+  "finalValidation": "Reported separately from the final actual canonical execution; this document does not manufacture a raw log or CI result."
+}
