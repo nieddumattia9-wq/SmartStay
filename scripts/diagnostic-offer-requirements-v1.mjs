@@ -84,7 +84,10 @@ export function validateDiagnosticOfferRequirements(input){
     if(!o.availability||!o.children)fail('OFFER_SCHEMA');
     for(const [c,check]of [[o.reference,reference],[o.distanceKm,number],
       [o.availability.observed,v=>v==='AVAILABLE'],[o.availability.bookability,v=>typeof v==='boolean'],
-      [o.availability.unavailable,v=>v===true],[o.unitsOffered,v=>integer(v,1)],[o.internalRooms,v=>integer(v,1)],
+      // Offered inventory can factually be zero. Requested units remain >= 1;
+      // the unchanged accommodation evaluator reports the documented violation.
+      // This does not infer unavailability/bookability or alter source decoding.
+      [o.availability.unavailable,v=>v===true],[o.unitsOffered,v=>integer(v)],[o.internalRooms,v=>integer(v,1)],
       [o.capacityGuests,v=>integer(v)],[o.sleeping,bedInventory],[o.children.admitted,v=>typeof v==='boolean'],
       [o.children.minimumAge,v=>integer(v)],[o.children.adultPricingFromAge,v=>integer(v)],
       [o.children.extraBedsAvailable,v=>typeof v==='boolean'],[o.exclusiveUse,v=>typeof v==='boolean'],

@@ -1,0 +1,69 @@
+{
+  "version": "stayopti.d0054-r1-initial-synthetic-counterexamples@1",
+  "sourceCommit": "ec3e5a756ae1de824a73a38e62a6cefa1b809b99",
+  "syntheticOnly": true,
+  "actualReviewedEntryAndPolicy": true,
+  "sourceModuleSha256": "71fbfaf4fad661345d9104c1c9d652029f6c90e156a495c044b97cdb1a8a23c1",
+  "initialThreeTestSourceSha256": "4ee22e5592d10b6729a783ec2a4abf971cf4ead53adbbad5392289629ae224e5",
+  "initialTestExitCode": 1,
+  "initialTestCounts": {"tests": 3, "pass": 0, "fail": 3, "skip": 0},
+  "rawStdoutSha256": "1caf4f1542402f7695e663bd2eb0217167500dc127ae7f4e8156c7ea71bf8bda",
+  "rawStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evidenceNature": "Exact field-relevant excerpts and hashes from actual pre-repair REVIEWED/kernel execution. Complete synthetic diagnostic output and original failing TAP stdout are preserved outside the repository. These are failed safety assertions, not accepted product outcomes.",
+  "cases": [
+    {
+      "case": "HIDDEN_UNAVAILABLE",
+      "construction": "appendixFixture(); financial(0); append unavailable to the shared proof content.entries; seal(proof, content); keep only cost and bookability integrations",
+      "addedEntry": {
+        "field": "availability.unavailable",
+        "statement": "Selected rate verification: unavailable",
+        "temporal": {
+          "relation": "DOCUMENTED_SUCCESSOR",
+          "priorClaimSha256": "97d5d2bc73d670517a0294920df61f6fc149659ea0be65d930b060a0bfb19e04",
+          "retiredObservations": [],
+          "retiredAvailability": []
+        }
+      },
+      "selectedFields": ["completeTotal", "availability.bookability"],
+      "proofSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "36d09374e472aba8fef3dec4518c44584cd6ed6bd4863bc180bbaa1816425b3e",
+      "inputSha256": "85296a64a18f9ce4ab2a0e2ac60bf38c1656eb47ae32d5738c1c800979fc3273",
+      "outputSha256": "8e73fbcde39b79b0da474d8dd324c71cb4bd4c9b98cc301c49727934707036c4",
+      "observed": {"policyExecuted": true, "decisionStatus": "usable", "availability": "VERIFIED_BOOKABLE", "accommodation": "SATISFIED", "costIntegration": "APPLIED", "bookabilityIntegration": "APPLIED"},
+      "expectedSafety": "Do not allow selection of favorable entries to hide a same-proof applicable contradiction. Preserve the evidence and return a non-recommendable assessment or explicit evidence-set failure."
+    },
+    {
+      "case": "EXPIRED_SLEEPING",
+      "construction": "appendixFixture({unknown:['sleeping']}); financial(0); add sleeping statement with the exact observation and expiry below",
+      "field": "sleeping",
+      "statement": "Complete sleeping inventory: DOUBLE count 1 places each 2",
+      "observedAt": "2099-09-01T12:01:00Z",
+      "validUntil": "2099-09-01T12:01:30Z",
+      "evaluatedAt": "2099-09-01T12:02:00Z",
+      "proofSha256": "8e6b43b4b17edb519e6fcd3fedfd31f667ecf10754a5164fb8ce1ac5b9aecfc7",
+      "requestSha256": "bb675b932881d0d6959cc773ac0ee07cb36f0929266ce99bddc1389476be6b13",
+      "appendixSha256": "2b519b4652510baeccebe93b6cd93543b727bc47d1a9f8e5f494c01ac2177847",
+      "inputSha256": "ed58a9a942bdf0e9d9fab31b9c22ef46cbc51a7fc85216a058c71f633b4145ec",
+      "outputSha256": "047bda4116ea4a66be3f9bc6f8c5f67bf3b86d1e3089c54f9a5247b115b20bb9",
+      "observed": {"policyExecuted": true, "decisionStatus": "usable", "integration": "APPLIED", "sleeping": "SATISFIED", "activeSleepingState": "KNOWN"},
+      "expectedSafety": "Explicitly expired evidence cannot resolve the sleeping UNKNOWN needed for recommendation; no arbitrary TTL for static facts."
+    },
+    {
+      "case": "ZERO_UNITS",
+      "construction": "appendixFixture(); financial(0); add('unitsOffered','0 units')",
+      "field": "unitsOffered",
+      "statement": "0 units",
+      "decodedState": "KNOWN",
+      "decodedValue": 0,
+      "historicalValue": 1,
+      "proofSha256": "7da31489978eb7c5220119f80a912c95d3837a1ded2e881362f7d8ad63385820",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "197440951252180068cbaf4de452b1e654f66fd69f4e05ed436faa1ef7420819",
+      "inputSha256": "4190606c71512786f0cbe3cd75d3c9886c388d8cb403c9b1f5c0846ae7276548",
+      "outputSha256": "644d999bf92349b63309e802adc72348a7a7663f577c7643a1bbfe765b02b169",
+      "observed": {"policyExecuted": true, "decisionStatus": "usable", "integration": "REJECTED", "reason": "APPENDIX_NORMALIZED_VALUE_INCOMPATIBLE_WITH_REQUIREMENTS_CONTRACT", "activeUnits": 1, "accommodation": "SATISFIED"},
+      "expectedSafety": "A decoded, bound current absence is not malformed evidence. Do not silently retain historical accommodation suitability; preserve other independent candidates."
+    }
+  ]
+}

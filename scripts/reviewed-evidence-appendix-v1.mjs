@@ -5,7 +5,7 @@ import {normalizedCount,childFacts} from './reviewed-intent-input-assessment-v2.
 import {interpretScopedValue} from './diagnostic-scoped-signals-v1.mjs';
 import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
 
-export const APPENDIX_VERSION='stayopti.reviewed-evidence-appendix@1';
+export const APPENDIX_VERSION='stayopti.reviewed-evidence-appendix@1.1';
 export const POINT_EVIDENCE_VERSION='stayopti.appendix-point-evidence@1';
 export const POINT_REVIEW_VERSION='stayopti.appendix-point-review@1';
 const hash=x=>sha256(json(x)),copy=x=>structuredClone(x),same=(a,b)=>json(a)===json(b);
@@ -154,8 +154,12 @@ function verifyTemporal(v,integration,old,candidate,appendix){
  }
  if(new Set(rel.retiredObservations.map(x=>x.sourceField)).size!==rel.retiredObservations.length||
   new Set(rel.retiredAvailability.map(x=>x.field)).size!==rel.retiredAvailability.length)fail('DUPLICATE_RETIREMENT');
- if(financial(integration.field)&&(v.content.validUntil===null||Date.parse(v.content.validUntil)<Date.parse(appendix.evaluatedAt)))
-  return {status:'INSUFFICIENT',reason:v.content.validUntil===null?'VALIDITY_INTERVAL_UNDOCUMENTED':'SOURCE_VALIDITY_EXPIRED'};
+ // An explicit source limit applies to every fact, including static facts.
+ // Only financial facts require a limit; do not invent a lifetime for others.
+ if(v.content.validUntil!==null&&Date.parse(v.content.validUntil)<Date.parse(appendix.evaluatedAt))
+  return {status:'INSUFFICIENT',reason:'SOURCE_VALIDITY_EXPIRED'};
+ if(financial(integration.field)&&v.content.validUntil===null)
+  return {status:'INSUFFICIENT',reason:'VALIDITY_INTERVAL_UNDOCUMENTED'};
  return null;
 }
 
@@ -167,6 +171,23 @@ function materializeClaim(old,integration,v){
    reason:v.content.continuity.basis,links:[{field:'appendix/point-review',evidence:[{ref:integration.proofId,sha256:v.receiptSha256}]}]}}:{})};
 }
 
+// Each entry in this bounded proof format shares the exact offer, source and
+// observation scope. Selection must cover the document, not just favorable
+// facts. Byte/meaning/temporal checks still run below for every selected member.
+// This inspection grants no authority to the unverified JSON being inspected.
+function completeProofSelections(appendix){
+ const groups=[];
+ for(const proof of appendix.proofs){
+  let content;try{content=JSON.parse(proof?.transcription?.content);}catch{continue;}
+  if(!Array.isArray(content?.entries)||content.entries.length<2)continue;
+  const selected=appendix.integrations.filter(i=>i.proofId===proof.id);
+  if(content.entries.some(e=>!selected.some(i=>i.field===e.field&&i.alternativeId===content.scope?.alternativeId))||
+   selected.some(i=>i.alternativeId!==content.scope?.alternativeId))fail('MULTI_ENTRY_SELECTION_INCOMPLETE');
+  groups.push(selected.map(i=>i.id));
+ }
+ return groups;
+}
+
 /** The public successor accepts ONLY an immutable REVIEWED request. Original
  * source validation precedes every appendix operation, including the empty case. */
 export function executeReviewedEvidenceAppendix(request,appendix,compute){
@@ -176,6 +197,7 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
   !Array.isArray(appendix.integrations)||!Array.isArray(appendix.proofs)||
   new Set(appendix.integrations.map(i=>i.id)).size!==appendix.integrations.length||new Set(appendix.proofs.map(p=>p.id)).size!==appendix.proofs.length)fail('BASE_OR_SCHEMA_BINDING');
  if(appendix.proofs.some(p=>!appendix.integrations.some(i=>i.proofId===p.id)))fail('UNREFERENCED_PROOF');
+ const proofSelections=completeProofSelections(appendix);
  const n=copy(request.normalization),input=copy(base.input),records=[];n.evaluatedAt=appendix.evaluatedAt;
  const active=new Map();
  for(const integration of sorted(appendix.integrations)){
@@ -196,9 +218,15 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
    const check=copy(request.normalization);check.evaluatedAt=appendix.evaluatedAt;
    put(check.offers.find(o=>o.alternativeId===offer.alternativeId),integration.field,claim);
    try{validateDiagnosticOfferRequirements(check);}catch{fail('NORMALIZED_VALUE_INCOMPATIBLE_WITH_REQUIREMENTS_CONTRACT');}
+   record.status='VALIDATED'; // Internal only; finalized by fact resolution below.
    if(!active.has(key))active.set(key,[]);active.get(key).push({record,integration,v,claim,old,candidate});
   }catch(error){record.reason=String(error.message).startsWith('APPENDIX_')?error.message:'APPENDIX_INVALID_EVIDENCE_STRUCTURE';}
  }
+ // Nominal coverage with a forged/invalid negative member is not complete
+ // validation. Reject the request before any projection or policy execution;
+ // never apply the favorable subset of a multi-entry document.
+ if(proofSelections.some(ids=>records.some(r=>ids.includes(r.id)&&r.status==='REJECTED')))
+  fail('MULTI_ENTRY_VALIDATION_FAILED');
  const consumed=[],temporalGaps=[];
  for(const entries of active.values()){
   const first=entries[0],{integration,old}=first,o=n.offers.find(x=>x.alternativeId===integration.alternativeId);

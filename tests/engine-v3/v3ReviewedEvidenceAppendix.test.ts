@@ -71,7 +71,7 @@ test('EA46 internally resealed transcript cannot contradict machine-readable ori
  rejected(f.run(),/TRANSCRIPTION_DIFFERS_FROM_MACHINE_READABLE_SOURCE/);
 });
 test('EA47 a declared rating scale below the retained observation is rejected per field schema',async()=>{const f=await appendixFixture();f.add('ratingScale','Rating scale: 0-1');const r=f.run();assert.equal(r.integrations[0].status,'REJECTED');assert.equal(r.integratedRequirements.offers[0].ratingScale.state,'UNKNOWN');});
-test('EA48 zero offered units is rejected rather than an invented usable accommodation',async()=>{const f=await appendixFixture();f.add('unitsOffered','0 units');const r=f.run();assert.equal(r.integrations[0].status,'REJECTED');assert.equal(r.integratedRequirements.offers[0].unitsOffered.value,1);});
+test('EA48 R1 zero offered units is an active documented violation, not stale historical suitability',async()=>{const f=await appendixFixture();f.financial(0);f.add('unitsOffered','0 units');const r=f.run();assert.equal(r.integrations.find((i:any)=>i.field==='unitsOffered').status,'APPLIED');assert.equal(r.integratedRequirements.offers[0].unitsOffered.value,0);assert.equal(r.base.normalization.offers[0].unitsOffered.value,1);assert.equal(r.requirementsEvaluation.offers[0].accommodation.status,'DOCUMENTED_VIOLATION');assert.equal(r.output.policyExecuted,true);assert.equal(r.output.decision.status,'abstained');});
 test('EA49 distinct source artifacts cannot be fused by copying only observation IDs and timestamps',async()=>{const f=await appendixFixture();f.financial(0,false);const r=f.run();assert.equal(r.temporalGaps.length,1);assert.equal(r.output.decision.status,'abstained');});
 test('EA50 complete but genuinely over-budget offers do not become recommended merely because appendix is valid',async()=>{
  const f=await appendixFixture();f.complete();for(const p of f.appendix.proofs){const c=JSON.parse(p.transcription.content);if(!c.entries)continue;
@@ -113,9 +113,9 @@ for(const [key,value]of [
 ] as const)test('EA54 multi-entry proof cannot override validated root metadata '+key,async()=>{
  const f=await appendixFixture();f.financial(0);const proof=f.appendix.proofs[0],content=JSON.parse(proof.transcription.content);
  content.validUntil='2099-09-01T12:01:30Z';for(const entry of content.entries)entry[key]=value;
- f.seal(proof,content);const r=f.run();assert.equal(r.integrations.length,2);
- for(const record of r.integrations){assert.equal(record.status,'REJECTED');assert.equal(record.reason,'APPENDIX_POINT_ENTRY_METADATA_OVERRIDE');}
- assert.equal(r.output.decision.status,'abstained');assert.equal(r.input.candidates[0].assessment.completeTotal,null);
+ f.seal(proof,content);let calls=0;
+ assert.throws(()=>f.run(()=>{calls++;}),/APPENDIX_MULTI_ENTRY_VALIDATION_FAILED/);
+ assert.equal(calls,0); // R1 atomic proof validation: not a policy abstention.
 });
 test('EA55 valid financial source with expired root validity remains insufficient without overrides',async()=>{
  const f=await appendixFixture();f.financial(0);const proof=f.appendix.proofs[0],content=JSON.parse(proof.transcription.content);

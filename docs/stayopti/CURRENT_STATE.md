@@ -1,5 +1,35 @@
 # StayOpti Current State
 
+## D-0054 R1 — Complete proof consumption, explicit expiry and zero inventory
+
+Source `ec3e5a756ae1de824a73a38e62a6cefa1b809b99`, evaluation work branch only.
+Three actual REVIEWED/policy safety assertions failed before repair: a hidden
+same-proof unavailability assertion, expired sleeping evidence, and decoded zero
+units leaving historical suitability active. Their original synthetic evidence
+is retained separately; no historical private measurement is rerun or relabelled.
+
+Appendix `@1.1` requires complete and atomically validated multi-entry proof
+selection before policy. A missing/invalid member rejects the input; a complete
+contradictory proof reaches the existing policy with conflicting availability.
+Explicit expiry now applies to every fact, without imposing a new lifetime on
+static facts. Documented zero offered units is a nonnegative factual count and
+reaches the unchanged accommodation predicate as a violation. Requested units,
+original source transformations, scope and essential-needs checks stay intact.
+
+Final isolated local gates: 28/28 new, 317/317 combined targeted; canonical V3
+2224/2224 and V2 196/196, zero failures/skips. Lifecycle 530 PASS/17 existing
+integration SKIP; security 29, release 101, analytics 31, capacity 9, beta 4 PASS.
+TypeScript, build, analytics-beta, synthetic loopback smoke and real Windows
+PowerShell 5.1 parsing 13/13 PASS. Scoped scans and protected-byte checks PASS.
+Only the reporting documents are resealed after the tested software tree.
+Actual work-branch commit/push and pending count are verified at delivery;
+new CI, registry-network audit and native Linux are not claimed.
+The phase report distinguishes zero policy invocations from actual abstention;
+synthetic positive controls and independently complete alternatives remain usable.
+Seven excluded paths, seventeen D-0037 sealed files and the additional private
+report copy remain excluded and byte-identical. No public policy/runtime change,
+real execution, provider call, custody or Golden admission is introduced.
+
 ## D-0054 — Versioned supplemental evidence on immutable REVIEWED inputs
 
 Source `137238c9bdbe2e732d9232309700c085e5e5ac35`, work branch only.

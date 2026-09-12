@@ -1,0 +1,465 @@
+{
+  "version": "stayopti.d0054-r1-synthetic-after@1",
+  "sourceCommit": "ec3e5a756ae1de824a73a38e62a6cefa1b809b99",
+  "appendixVersion": "stayopti.reviewed-evidence-appendix@1.1",
+  "syntheticOnly": true,
+  "codeFiles": [
+    {
+      "path": "scripts/reviewed-evidence-appendix-v1.mjs",
+      "sha256": "18f25d17372ba53b8edc3c9e629ed6a666f9ce188b106d8b1e9ff13ab13e1a1b"
+    },
+    {
+      "path": "scripts/diagnostic-offer-requirements-v1.mjs",
+      "sha256": "02ee32eefe978fca246e9e81092ccc0c07d10019392197a21192c6bfd958d6bb"
+    },
+    {
+      "path": "src/engine-v3/evaluation/observedOfferDiagnosticV3.ts",
+      "sha256": "4bacee4ae688f2a4bc3c6683026d4cf13712ef7ae55b9f96d8ddf2053534a1d4"
+    }
+  ],
+  "beforeEvidence": "d0054-r1-synthetic-before.json",
+  "calls": {
+    "primary": 6,
+    "reproducibility": 6
+  },
+  "cases": [
+    {
+      "case": "HIDDEN_UNAVAILABLE",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "0897a1d28b39a6ec1b602fb0c556bc98cdf9c035569b517a77d14896fc52de2b",
+      "primaryPolicyCalls": 0,
+      "reproducibilityInvocations": 0,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "INPUT_REJECTED_BEFORE_POLICY",
+      "error": "APPENDIX_MULTI_ENTRY_SELECTION_INCOMPLETE"
+    },
+    {
+      "case": "COMPLETE_CONTRADICTION",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "3dd8213745ca650697252e26f94aab4d3740e964b14201fd8e15661130f82e46",
+      "primaryPolicyCalls": 1,
+      "reproducibilityInvocations": 1,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "POLICY_EXECUTED",
+      "error": null,
+      "inputSha256": "f35a57c7e1e661f1c80a371ba18e4f771b9e53efbe749fac6c40dcc422fee013",
+      "outputSha256": "b8e1e98d387ff1400201c8084ca23a0c6b53f0ebc61b5716e3d8d9605544587a",
+      "policyExecuted": true,
+      "decisionStatus": "abstained",
+      "candidatesRetained": 3,
+      "availability": "CONFLICTING",
+      "accommodation": "SATISFIED",
+      "sleeping": "SATISFIED",
+      "activeUnits": 1,
+      "historicalUnits": 1,
+      "activeSleepingState": "KNOWN",
+      "integrations": [
+        {
+          "field": "availability.unavailable",
+          "status": "APPLIED",
+          "reason": "Explicit invented contradictory verification",
+          "proofSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1"
+        },
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1"
+        }
+      ],
+      "consumedFacts": [
+        {
+          "field": "availability.unavailable",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 360,
+          "sourceArtifactSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "c7742192a620e5ed3d4839b247d59432dc4510549d01d12bc66a9fc502be1af1",
+          "validUntil": "2099-09-01T12:10:00Z"
+        }
+      ],
+      "feedbackUsed": false,
+      "goldenAdmission": false
+    },
+    {
+      "case": "EXPIRED_SLEEPING",
+      "requestSha256": "bb675b932881d0d6959cc773ac0ee07cb36f0929266ce99bddc1389476be6b13",
+      "appendixSha256": "10321af2b0fef39fcef7dc864f79a3243b50fce477e611d933e87bc33d2e62db",
+      "primaryPolicyCalls": 1,
+      "reproducibilityInvocations": 1,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "POLICY_EXECUTED",
+      "error": null,
+      "inputSha256": "164ef3898e77f4bd5665ce0552882fda1a8dc327d066246c7c9d83d825a2a6da",
+      "outputSha256": "e3fad5eb07c17e7ea433d6241420ea32d792ee9cf81547e10c42364e24191308",
+      "policyExecuted": true,
+      "decisionStatus": "abstained",
+      "candidatesRetained": 3,
+      "availability": "VERIFIED_BOOKABLE",
+      "accommodation": "INSUFFICIENT_INFORMATION",
+      "sleeping": "INSUFFICIENT_INFORMATION",
+      "activeUnits": 1,
+      "historicalUnits": 1,
+      "activeSleepingState": "UNKNOWN",
+      "integrations": [
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "sleeping",
+          "status": "INSUFFICIENT",
+          "reason": "SOURCE_VALIDITY_EXPIRED",
+          "proofSha256": "8e6b43b4b17edb519e6fcd3fedfd31f667ecf10754a5164fb8ce1ac5b9aecfc7"
+        }
+      ],
+      "consumedFacts": [
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 360,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        }
+      ],
+      "feedbackUsed": false,
+      "goldenAdmission": false
+    },
+    {
+      "case": "CURRENT_SLEEPING",
+      "requestSha256": "bb675b932881d0d6959cc773ac0ee07cb36f0929266ce99bddc1389476be6b13",
+      "appendixSha256": "5f34c2d68ca05b32bd3ad8d19deaff3977c0553ca33a6a083a73dad120994ad0",
+      "primaryPolicyCalls": 1,
+      "reproducibilityInvocations": 1,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "POLICY_EXECUTED",
+      "error": null,
+      "inputSha256": "47448a27c9728730d07ca25400e41189de0c7fd5d35db3c7948260b087fbdb79",
+      "outputSha256": "adefc25c8f8ba98df2dfd7e33d3a3de95be381fd9e8c445011966634aede789b",
+      "policyExecuted": true,
+      "decisionStatus": "usable",
+      "candidatesRetained": 3,
+      "availability": "VERIFIED_BOOKABLE",
+      "accommodation": "SATISFIED",
+      "sleeping": "SATISFIED",
+      "activeUnits": 1,
+      "historicalUnits": 1,
+      "activeSleepingState": "KNOWN",
+      "integrations": [
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "sleeping",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "d15b7580cdf51a754dfebc60b75c007a8634bfb7c6c9d91c505e9138bf1b8c31"
+        }
+      ],
+      "consumedFacts": [
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 360,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "sleeping",
+          "state": "KNOWN",
+          "value": {
+            "complete": true,
+            "beds": [
+              {
+                "kind": "DOUBLE",
+                "count": 1,
+                "placesPerBed": 2,
+                "placeBasis": "EXPLICIT_SOURCE_PLACES_NOT_INFERRED"
+              }
+            ]
+          },
+          "sourceArtifactSha256": "d15b7580cdf51a754dfebc60b75c007a8634bfb7c6c9d91c505e9138bf1b8c31",
+          "validUntil": "2099-09-01T12:10:00Z"
+        }
+      ],
+      "feedbackUsed": false,
+      "goldenAdmission": false
+    },
+    {
+      "case": "ZERO_UNITS",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "ab8298aeef6fb060e1c9728964b5c495d7db4f889b2761ecca91c1d57ece4a21",
+      "primaryPolicyCalls": 1,
+      "reproducibilityInvocations": 1,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "POLICY_EXECUTED",
+      "error": null,
+      "inputSha256": "d64b52997f5ac59419fd94c8db44b0a78439789dcc7b82959d4836645bc53ae8",
+      "outputSha256": "438cf43e5b8b80f624dc5038b2fdde7b9bbd1d7968bb4c3c517fe48cd996c941",
+      "policyExecuted": true,
+      "decisionStatus": "abstained",
+      "candidatesRetained": 3,
+      "availability": "VERIFIED_BOOKABLE",
+      "accommodation": "DOCUMENTED_VIOLATION",
+      "sleeping": "SATISFIED",
+      "activeUnits": 0,
+      "historicalUnits": 1,
+      "activeSleepingState": "KNOWN",
+      "integrations": [
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "unitsOffered",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "7da31489978eb7c5220119f80a912c95d3837a1ded2e881362f7d8ad63385820"
+        }
+      ],
+      "consumedFacts": [
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 360,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "unitsOffered",
+          "state": "KNOWN",
+          "value": 0,
+          "sourceArtifactSha256": "7da31489978eb7c5220119f80a912c95d3837a1ded2e881362f7d8ad63385820",
+          "validUntil": "2099-09-01T12:10:00Z"
+        }
+      ],
+      "feedbackUsed": false,
+      "goldenAdmission": false
+    },
+    {
+      "case": "ONE_UNIT",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "315f4ab80b2153b9d51edb702f03c182f74280ca01923aa50f64141bcbca8996",
+      "primaryPolicyCalls": 1,
+      "reproducibilityInvocations": 1,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "POLICY_EXECUTED",
+      "error": null,
+      "inputSha256": "5fa0f15a0753916ec597055cf0934014e98d780174fd7efbf0b86f5c8ba3ad2c",
+      "outputSha256": "a36f43e19b68d0b8720c7155cdb9725c93bab7ffbb421c8f576bec4443fd1158",
+      "policyExecuted": true,
+      "decisionStatus": "usable",
+      "candidatesRetained": 3,
+      "availability": "VERIFIED_BOOKABLE",
+      "accommodation": "SATISFIED",
+      "sleeping": "SATISFIED",
+      "activeUnits": 1,
+      "historicalUnits": 1,
+      "activeSleepingState": "KNOWN",
+      "integrations": [
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "unitsOffered",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "d5d444adc5c75fac3e95db48732976116f689f13a46cec262ed7c410764403ed"
+        }
+      ],
+      "consumedFacts": [
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 360,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "unitsOffered",
+          "state": "KNOWN",
+          "value": 1,
+          "sourceArtifactSha256": "d5d444adc5c75fac3e95db48732976116f689f13a46cec262ed7c410764403ed",
+          "validUntil": "2099-09-01T12:10:00Z"
+        }
+      ],
+      "feedbackUsed": false,
+      "goldenAdmission": false
+    },
+    {
+      "case": "ZERO_WITH_INDEPENDENT_COMPLETE_OFFER",
+      "requestSha256": "1932eb7a24c980f32583c8403bd5be35b7caaac5c692d3e94763aa4f601ac050",
+      "appendixSha256": "b081a94a8f351f8b48310533a73ca0b0b7f0373552e4301b340e9196d1978cb6",
+      "primaryPolicyCalls": 1,
+      "reproducibilityInvocations": 1,
+      "originalRequestAndAppendixUnchanged": true,
+      "status": "POLICY_EXECUTED",
+      "error": null,
+      "inputSha256": "ecf75590011437b92f1a8ae44b359f9e637f52b0d2c79ac41f0adc3407fa9eae",
+      "outputSha256": "2469244055d32d727e2d8fafc7fe919faa02d705b03eb88ba6bd85b3bf971a16",
+      "policyExecuted": true,
+      "decisionStatus": "usable",
+      "candidatesRetained": 3,
+      "availability": "VERIFIED_BOOKABLE",
+      "accommodation": "DOCUMENTED_VIOLATION",
+      "sleeping": "SATISFIED",
+      "activeUnits": 0,
+      "historicalUnits": 1,
+      "activeSleepingState": "KNOWN",
+      "integrations": [
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e"
+        },
+        {
+          "field": "unitsOffered",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "7da31489978eb7c5220119f80a912c95d3837a1ded2e881362f7d8ad63385820"
+        },
+        {
+          "field": "completeTotal",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "dc7331d38c410a9cb5515c01ee1afc2ccd6d4342f68c3d6ea552c6ff0ef487af"
+        },
+        {
+          "field": "availability.bookability",
+          "status": "APPLIED",
+          "reason": "Explicit invented appendix statement",
+          "proofSha256": "dc7331d38c410a9cb5515c01ee1afc2ccd6d4342f68c3d6ea552c6ff0ef487af"
+        }
+      ],
+      "consumedFacts": [
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 360,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "4fb2eea33552985378b3506a09f49d413f225d4693f5b30ad69e59f098a85a7e",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "unitsOffered",
+          "state": "KNOWN",
+          "value": 0,
+          "sourceArtifactSha256": "7da31489978eb7c5220119f80a912c95d3837a1ded2e881362f7d8ad63385820",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "completeTotal",
+          "state": "KNOWN",
+          "value": 420,
+          "sourceArtifactSha256": "dc7331d38c410a9cb5515c01ee1afc2ccd6d4342f68c3d6ea552c6ff0ef487af",
+          "validUntil": "2099-09-01T12:10:00Z"
+        },
+        {
+          "field": "availability.bookability",
+          "state": "KNOWN",
+          "value": true,
+          "sourceArtifactSha256": "dc7331d38c410a9cb5515c01ee1afc2ccd6d4342f68c3d6ea552c6ff0ef487af",
+          "validUntil": "2099-09-01T12:10:00Z"
+        }
+      ],
+      "feedbackUsed": false,
+      "goldenAdmission": false
+    }
+  ],
+  "realExecution": false,
+  "providerCalls": 0,
+  "externalNetwork": 0
+}
