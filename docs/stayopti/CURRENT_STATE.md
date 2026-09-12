@@ -1,5 +1,28 @@
 # StayOpti Current State
 
+## D-0056 — Explicit documented rating interval, evaluation-only
+
+Source `f3de6d6bb2583d8954385845cd99284b4ddc0dd2`. The initial unsupported 1-10
+decoder result is preserved separately from the synthetic 0-10 control.
+Appendix `@1.2` retains original statement and observed minimum/maximum separately
+from the numeric maximum, validates both bounds and prevents stale favorable
+normalization when applicable intervals conflict. The numerical formula and
+all ranking/role policies remain unchanged. Scope, exact historical observation,
+point review and temporal checks are retained; no implicit document migration.
+
+Final isolated local gates: new 41/41, combined targeted 358/358, canonical V3
+2265/2265 and V2 196/196 PASS, zero failures/skips. Lifecycle 530 PASS / 17 existing
+integration skips; security/release/analytics/capacity/beta 29/101/31/9/4 PASS.
+TypeScript, build, analytics-beta, 18-check synthetic loopback smoke and actual
+PowerShell 5.1 parse 13/13 PASS. Scoped scans and protected hashes PASS. Only
+reporting documents are resealed after the tested software tree. No new GitHub
+CI, native Linux or registry audit is claimed. Work-branch synchronization and
+pending count are verified at delivery. Private D-0055 preparation
+remains PENDING, without a new private kernel call or human receipt. D-0053 and
+other historical private results are not attributed to this corrected code.
+Seven excluded paths, seventeen sealed D-0037 files and the extra private report
+copy remain excluded and byte-identical. See the D-0056 phase report and decision.
+
 ## D-0054 R1 — Complete proof consumption, explicit expiry and zero inventory
 
 Source `ec3e5a756ae1de824a73a38e62a6cefa1b809b99`, evaluation work branch only.

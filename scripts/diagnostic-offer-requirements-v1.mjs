@@ -92,7 +92,13 @@ export function validateDiagnosticOfferRequirements(input){
       [o.children.minimumAge,v=>integer(v)],[o.children.adultPricingFromAge,v=>integer(v)],
       [o.children.extraBedsAvailable,v=>typeof v==='boolean'],[o.exclusiveUse,v=>typeof v==='boolean'],
       [o.privateBathroom,v=>typeof v==='boolean'],[o.completeTotal,number],[o.ratingScale,v=>number(v)&&v>0],[o.ratingObserved,number]])claim(c,check,sc,input.evaluatedAt);
-    if(o.ratingScale.state==='KNOWN'&&o.ratingObserved.state==='KNOWN'&&o.ratingObserved.value>o.ratingScale.value)fail('RATING_OUTSIDE_DOCUMENTED_SCALE');
+    // Optional source interval is additive metadata. Legacy maximum-only
+    // claims do not thereby acquire an invented lower bound. No formula change.
+    const interval=o.ratingScale.sourceInterval;
+    if(interval!==undefined&&(!interval||!number(interval.minimum)||!number(interval.maximum)||interval.maximum<=interval.minimum||
+      o.ratingScale.state==='KNOWN'&&interval.maximum!==o.ratingScale.value))fail('RATING_INTERVAL_SCHEMA');
+    if(o.ratingScale.state==='KNOWN'&&o.ratingObserved.state==='KNOWN'&&
+      (o.ratingObserved.value>o.ratingScale.value||interval&&o.ratingObserved.value<interval.minimum))fail('RATING_OUTSIDE_DOCUMENTED_SCALE');
   }
   return true;
 }

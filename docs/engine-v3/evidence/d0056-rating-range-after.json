@@ -1,0 +1,47 @@
+{
+  "phase": "D-0056",
+  "classification": "SYNTHETIC_LOCAL_VERIFICATION_ONLY",
+  "baseCommit": "f3de6d6bb2583d8954385845cd99284b4ddc0dd2",
+  "appendixVersion": "stayopti.reviewed-evidence-appendix@1.2",
+  "testedSoftware": [
+    {"path":"scripts/reviewed-evidence-appendix-v1.mjs","sha256":"61779ac4f19c150036201c8a2fcc6065dbbb9b45767e335fab64b1d4f5c44fa6"},
+    {"path":"scripts/diagnostic-offer-requirements-v1.mjs","sha256":"49c579809a32acccd7d0ea644e4ba20d05ea5ab787bdbd3268b38eceb7aa2752"},
+    {"path":"tests/engine-v3/v3ReviewedEvidenceRatingRange.test.ts","sha256":"fc31969c331a04211d8ff5d341d0fae12f0b5784e621f6d54a032e4b822fa128"},
+    {"path":"src/engine-v3/evaluation/observedOfferDiagnosticV3.ts","sha256":"4bacee4ae688f2a4bc3c6683026d4cf13712ef7ae55b9f96d8ddf2053534a1d4"},
+    {"path":"src/engine-v3/policy/personalUtilityRolePolicyV3.ts","sha256":"76c7239f799d27caef5e03aa4bf3d9b7e8128ee3dc76addc33e128a95697998b"}
+  ],
+  "execution": {
+    "environment":"Local Windows; installed Node and tsc; same CommonJS tsconfig.tests.json compilation as canonical V3 harness; only selected compiled test files executed",
+    "targeted":{"tests":41,"pass":41,"fail":0,"skip":0,"exitCode":0,"stdoutSha256":"b1f7d8a6e9e224953f0981783790023d5b1674b850b253c04b71c3694d7e42d4"},
+    "combinedAppendixRegressions":{"tests":145,"pass":145,"fail":0,"skip":0,"exitCode":0,"stdoutSha256":"82f89a98430385efd3a229a6fc9d0b56ec9fe3b312ba73060ada4585fef61426"},
+    "targetedKernelInvocationsPerSuiteRun":28,
+    "targetedActualPolicyInvocationsPerSuiteRun":56,
+    "policyAccounting":"Each of 28 kernel calls executes the actual policy twice: strong-distance unrestricted baseline and final constrained policy. One invalid base binding calls neither. Counts apply only to the new targeted suite, not the historical regression suites or earlier development runs.",
+    "realKernelInvocations":0,
+    "githubCiExecuted":false,
+    "networkCalls":0
+  },
+  "assertedOutcomes": [
+    {"case":"1-10 bounded decoder","state":"KNOWN","sourceInterval":{"minimum":1,"maximum":10},"numericMaximum":10},
+    {"case":"8.5 control parity","oneToTenNormalized":8.5,"zeroToTenNormalized":8.5,"qualityDeepEqual":true,"policyInputDeepEqual":true,"decisionDeepEqual":true},
+    {"case":"Complete supported offer","decision":"usable","originalReviewUnchanged":true},
+    {"case":"No stars plus valid rating scale","stars":null,"rawRating":8.5,"qualityDimensionComputed":true,"decision":"usable"},
+    {"case":"Scale alone","completeTotal":"UNKNOWN","bookability":"UNKNOWN","policyExecuted":true,"decision":"abstained"},
+    {"case":"Original observations 0, 0.5 and 10.5 with proposed 1-10","ratingPromoted":false,"historicalObservedValuesPreserved":true,"decision":"abstained"},
+    {"case":"Inclusive boundaries 1 and 10","ratingPromoted":true,"observedValuesUnchanged":true},
+    {"case":"UNVERIFIED source, historical binding mismatch, byte tampering, different room or fabricated maximum","status":"REJECTED","ratingPromoted":false,"individualRejectionStillInvokesKernel":true},
+    {"case":"Documented PROPERTY_WIDE scale","onlyPreciselyBoundHistoricalObservationPromoted":true},
+    {"case":"Historically known 0-10 for observed 0.5, then applicable 1-10","activeScale":"CONFLICTING","activeRating":null,"historicalScalePreserved":10},
+    {"case":"Inapplicable 1-10 cannot negate a valid historical 0-10","activeRating":0.5,"newIntegration":"REJECTED"},
+    {"case":"Same observation with both 0-10 and 1-10 proofs, including incompatible observed 0.5","activeScale":"CONFLICTING","activeRating":null,"decision":"abstained","orderInvariant":true},
+    {"case":"Conditional scale with no stars","activeRating":null,"qualityDimension":null,"decision":"abstained"},
+    {"case":"Repeated application","deterministic":true,"originalsUnchanged":true},
+    {"case":"Invalid original packet binding","kernelInvocations":0,"policyInvocations":0,"notPolicyAbstention":true}
+  ],
+  "realSourceRewritten":false,
+  "realPointReviewCreated":false,
+  "privateAppendixApplied":false,
+  "rankingWeightsRolesChanged":false,
+  "automaticGoldenAdmission":false,
+  "historicalRegressionArtifactsRewritten":false
+}

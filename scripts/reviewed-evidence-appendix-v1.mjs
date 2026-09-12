@@ -5,7 +5,7 @@ import {normalizedCount,childFacts} from './reviewed-intent-input-assessment-v2.
 import {interpretScopedValue} from './diagnostic-scoped-signals-v1.mjs';
 import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
 
-export const APPENDIX_VERSION='stayopti.reviewed-evidence-appendix@1.1';
+export const APPENDIX_VERSION='stayopti.reviewed-evidence-appendix@1.2';
 export const POINT_EVIDENCE_VERSION='stayopti.appendix-point-evidence@1';
 export const POINT_REVIEW_VERSION='stayopti.appendix-point-review@1';
 const hash=x=>sha256(json(x)),copy=x=>structuredClone(x),same=(a,b)=>json(a)===json(b);
@@ -76,7 +76,12 @@ export function interpretAppendixStatement(field,statement,currency){
  }else if(field.startsWith('children.')){
   const parsed=childFacts(s),value=parsed?.[field.split('.')[1]];if(value!==null&&value!==undefined)return known(value);
  }else if(field==='ratingScale'){
-  const m=/^Rating scale: 0-(\d+(?:\.\d+)?)$/.exec(s);if(m&&Number(m[1])>0&&Number.isFinite(Number(m[1])))return known(Number(m[1]));
+  // Preserve the old bounded 0-N grammar. The only new forms are 1-10
+  // and 1–10 (en dash); neither free prose nor a negated clause certifies a scale.
+  const old=/^Rating scale: 0-(\d+(?:\.\d+)?)$/.exec(s),one=/^Rating scale: 1[-–]10$/.test(s);
+  const maximum=one?10:old?Number(old[1]):null;
+  if(maximum!==null&&maximum>0&&Number.isFinite(maximum))return {...known(maximum),
+   sourceInterval:{minimum:one?1:0,maximum},sourceStatement:statement};
  }
  return {state:'UNKNOWN',value:null,reason:'STATEMENT_GRAMMAR_UNSUPPORTED_OR_CONDITIONAL'};
 }
@@ -164,7 +169,13 @@ function verifyTemporal(v,integration,old,candidate,appendix){
 }
 
 function materializeClaim(old,integration,v){
- return {...copy(old),state:v.parsed.state,value:copy(v.parsed.value),reason:integration.claim.reason,
+ const prior=copy(old);
+ // Never inherit a historical interval, or accept caller-supplied metadata as
+ // source semantics. Bounds and original wording come from the verified bytes.
+ if(integration.field==='ratingScale'){delete prior.sourceInterval;delete prior.sourceStatement;}
+ return {...prior,state:v.parsed.state,value:copy(v.parsed.value),reason:integration.claim.reason,
+  ...(integration.field==='ratingScale'&&v.parsed.sourceInterval?{
+   sourceInterval:copy(v.parsed.sourceInterval),sourceStatement:v.parsed.sourceStatement}:{}),
   applicability:v.content.applicability,observedAt:v.content.observedAt,timeSource:v.content.timeSource,
   links:[{field:'appendix/'+integration.field,evidence:[{ref:integration.proofId,sha256:v.a.sha256}]}],
   ...(v.content.applicability==='PROPERTY_WIDE'?{propertyBinding:{alternativeId:v.content.scope.alternativeId,scope:copy(old.scope),
@@ -199,7 +210,7 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
  if(appendix.proofs.some(p=>!appendix.integrations.some(i=>i.proofId===p.id)))fail('UNREFERENCED_PROOF');
  const proofSelections=completeProofSelections(appendix);
  const n=copy(request.normalization),input=copy(base.input),records=[];n.evaluatedAt=appendix.evaluatedAt;
- const active=new Map();
+ const active=new Map(),ratingContradictions=[];
  for(const integration of sorted(appendix.integrations)){
   const record={id:integration.id,alternativeId:integration.alternativeId,field:integration.field,status:'REJECTED',reason:null};
   records.push(record);
@@ -214,13 +225,31 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
     observationId:v.content.observationId,observedAt:v.content.observedAt,interpretation:copy(v.parsed)});
    if(temporal){Object.assign(record,temporal);continue;}
    if(v.parsed.state==='UNKNOWN'&&!v.parsed.qualifiesFact){Object.assign(record,{status:'INSUFFICIENT',reason:v.parsed.reason});continue;}
-   const claim=materializeClaim(old,integration,v),key=offer.alternativeId+'/'+integration.field;
+   let claim=materializeClaim(old,integration,v);const key=offer.alternativeId+'/'+integration.field;
+   if(integration.field==='ratingScale'&&claim.state==='KNOWN'&&offer.ratingObserved.state==='KNOWN'&&
+    (offer.ratingObserved.value<claim.sourceInterval.minimum||offer.ratingObserved.value>claim.sourceInterval.maximum)){
+    // The source, applicability, observation binding and temporal relation have
+    // already passed. It cannot certify this observation. With no historical
+    // scale retain the existing rejected/UNKNOWN behavior (including EA47).
+    // A previous numeric maximum must not survive this applicable contradiction.
+    claim=uncertainty(claim,'RATING_OBSERVATION_OUTSIDE_DOCUMENTED_INTERVAL','CONFLICTING');
+    if(old.state!=='KNOWN'){
+     record.reason='APPENDIX_RATING_OBSERVATION_OUTSIDE_DOCUMENTED_INTERVAL';
+     ratingContradictions.push({key,record,integration,v,claim,old,candidate});continue;
+    }
+   }
    const check=copy(request.normalization);check.evaluatedAt=appendix.evaluatedAt;
    put(check.offers.find(o=>o.alternativeId===offer.alternativeId),integration.field,claim);
    try{validateDiagnosticOfferRequirements(check);}catch{fail('NORMALIZED_VALUE_INCOMPATIBLE_WITH_REQUIREMENTS_CONTRACT');}
    record.status='VALIDATED'; // Internal only; finalized by fact resolution below.
    if(!active.has(key))active.set(key,[]);active.get(key).push({record,integration,v,claim,old,candidate});
   }catch(error){record.reason=String(error.message).startsWith('APPENDIX_')?error.message:'APPENDIX_INVALID_EVIDENCE_STRUCTURE';}
+ }
+ // A rejected range must not disappear behind another, favorable range for the
+ // same precisely bound observation. Standalone UNKNOWN/EA47 remains rejected;
+ // with any otherwise active scale the validated contradiction joins fusion.
+ for(const fact of ratingContradictions)if(active.has(fact.key)){
+  fact.record.status='VALIDATED';active.get(fact.key).push(fact);
  }
  // Nominal coverage with a forged/invalid negative member is not complete
  // validation. Reject the request before any projection or policy execution;
@@ -234,11 +263,13 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
   // Multiple assertions for one fact must actually agree on time/validity and
   // meaning. List order/id is never a latest-wins authority.
   const incompatible=entries.some(e=>!same(e.claim.value,claim.value)||e.claim.state!==claim.state||e.claim.observedAt!==claim.observedAt||
+   integration.field==='ratingScale'&&!same(e.claim.sourceInterval??null,claim.sourceInterval??null)||
    e.v.content.validUntil!==first.v.content.validUntil||e.v.content.observationId!==first.v.content.observationId||
    e.v.content.sourceRef!==first.v.content.sourceRef||financial(integration.field)&&e.v.a.sha256!==first.v.a.sha256||
    !same(e.integration.temporal,integration.temporal));
   const oldConflict=integration.temporal.relation==='CORROBORATE_SAME_CONTEXT'&&old.state!=='UNKNOWN'&&
-   (old.state==='CONFLICTING'||claim.state!==old.state||!same(claim.value,old.value));
+   (old.state==='CONFLICTING'||claim.state!==old.state||!same(claim.value,old.value)||
+    integration.field==='ratingScale'&&old.sourceInterval&&!same(claim.sourceInterval,old.sourceInterval));
   if(incompatible||oldConflict)claim=uncertainty(claim,incompatible?'APPENDIX_FACTS_OR_TIMES_CONFLICT':'SAME_CONTEXT_FACT_CONFLICT','CONFLICTING');
   claim.links=entries.flatMap(e=>e.claim.links);
   put(o,integration.field,claim);

@@ -1,0 +1,36 @@
+{
+  "phase": "D-0056",
+  "classification": "SYNTHETIC_REPRODUCTION_ONLY",
+  "sourceCommit": "f3de6d6bb2583d8954385845cd99284b4ddc0dd2",
+  "module": "scripts/reviewed-evidence-appendix-v1.mjs",
+  "moduleSha256": "18f25d17372ba53b8edc3c9e629ed6a666f9ce188b106d8b1e9ff13ab13e1a1b",
+  "execution": "Direct ESM import and interpretAppendixStatement on the unmodified source; no kernel or policy invocation",
+  "results": [
+    {
+      "statement": "Rating scale: 1-10",
+      "actual": {
+        "state": "UNKNOWN",
+        "value": null,
+        "reason": "STATEMENT_GRAMMAR_UNSUPPORTED_OR_CONDITIONAL"
+      },
+      "requiredState": "KNOWN",
+      "requiredSourceInterval": {"minimum": 1, "maximum": 10},
+      "requiredNumericMaximum": 10,
+      "safetyAssertion": "FAIL"
+    },
+    {
+      "statement": "Rating scale: 0-10",
+      "actual": {
+        "state": "KNOWN",
+        "value": 10,
+        "reason": "BOUNDED_SOURCE_MEANING_VERIFIED"
+      },
+      "controlAssertion": "PASS",
+      "notAttributedToAnyRealSource": true
+    }
+  ],
+  "kernelInvocations": 0,
+  "policyInvocations": 0,
+  "realDataUsed": false,
+  "networkCalls": 0
+}
