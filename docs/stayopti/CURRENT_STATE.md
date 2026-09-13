@@ -1,5 +1,29 @@
 # StayOpti Current State
 
+## D-0057 — Property-observation rating scale and pure appendix preparation
+
+Source `da3b0ec75544180c7d5a07e4f7213309770143e1`, evaluation work branch only.
+Appendix @1.3 introduces dedicated property-rating proof/review @1, preserving
+the old exact-rate guards for commercial/accommodation evidence. Validated
+reviewed identity and precise observation hashes replace the inappropriate
+commercial continuity requirement for this new property-scale path. Names and
+equal scores alone are not identity; new receipts attest no commercial facts.
+
+Pure preparation is shared by the executor but never invokes kernel/policy or
+returns an engine decision. Capture/acquisition clocks, original range bounds,
+conflicts, explicit expiry, human scope and derived historical-validity limits
+remain explicit. No private draft or approval is migrated or applied, and no
+historical private measure is relabelled. The before counterexample is retained.
+Observed clean-candidate local gates (2026-09-13): new tests 59/59, targeted
+417/417, canonical V3 2324/2324 (no skips), V2 196/196, lifecycle 530 PASS with
+17 existing real-Valkey skips. Security/release/analytics/capacity/beta PASS;
+TypeScript, build, analytics-beta gate, 18 local smoke checks, 13 PowerShell 5.1
+parse checks and scoped scans PASS. Forty-two measured pure preparations made
+zero kernel/policy calls. No GitHub CI, native Linux or registry-audit claim.
+Actual selective work-branch synchronization and pending commits are reported
+at delivery; no success is presumed before remote readback. Protected
+excluded/sealed files remain intact. See the D-0057 report for full evidence.
+
 ## D-0056 — Explicit documented rating interval, evaluation-only
 
 Source `f3de6d6bb2583d8954385845cd99284b4ddc0dd2`. The initial unsupported 1-10

@@ -5,9 +5,11 @@ import {normalizedCount,childFacts} from './reviewed-intent-input-assessment-v2.
 import {interpretScopedValue} from './diagnostic-scoped-signals-v1.mjs';
 import {sha256,json} from './diagnostic-transcription-review-v1.mjs';
 
-export const APPENDIX_VERSION='stayopti.reviewed-evidence-appendix@1.2';
+export const APPENDIX_VERSION='stayopti.reviewed-evidence-appendix@1.3';
 export const POINT_EVIDENCE_VERSION='stayopti.appendix-point-evidence@1';
 export const POINT_REVIEW_VERSION='stayopti.appendix-point-review@1';
+export const PROPERTY_RATING_EVIDENCE_VERSION='stayopti.appendix-property-rating-evidence@1';
+export const PROPERTY_RATING_REVIEW_VERSION='stayopti.appendix-property-rating-review@1';
 const hash=x=>sha256(json(x)),copy=x=>structuredClone(x),same=(a,b)=>json(a)===json(b);
 const fail=code=>{throw Error('APPENDIX_'+code);};
 const text=x=>typeof x==='string'&&x.trim().length>0;
@@ -35,6 +37,60 @@ function prepareBase(request){
  return prepareObservedOfferDiagnostic(request);
 }
 export function createReviewedAppendixBinding(request){return binding(request,prepareBase(request));}
+
+// Identity comes from final, validated reviewed fields, never from a caller's
+// name/value pair. Names stay in the private base; this scope uses their hashes.
+function propertyRatingScope(request,base,offer){
+ const candidate=base.input.candidates.find(c=>c.alternativeId===offer.alternativeId);
+ const sourceFields=candidate.provenance.fields;
+ const field=key=>sourceFields.find(f=>f.key===key);
+ const property=field('propertyName'),rating=field('rating');
+ if(property?.value.status!=='KNOWN'||!text(property.value.value)||rating?.value.status!=='KNOWN'||
+  offer.ratingObserved.state!=='KNOWN'||!same(rating.value.value,offer.ratingObserved.value)||
+  !utc(offer.ratingObserved.observedAt)||!text(offer.ratingObserved.timeSource)||
+  !offer.ratingObserved.links.length||offer.ratingObserved.links.some(l=>l.field!=='rating'||!l.evidence.length))
+  fail('PROPERTY_RATING_REVIEWED_IDENTITY_REQUIRED');
+ const evidence=f=>f.value.evidenceRefs.map(ref=>{
+  const p=request.reviewed.packet.proofs.find(p=>p.ref===ref);if(!p)fail('PROPERTY_RATING_SOURCE_REFERENCE');
+  return {ref,sha256:p.sha256};
+ }).sort((a,b)=>a.ref<b.ref?-1:a.ref>b.ref?1:0);
+ const identityEvidence=evidence(property),ratingEvidence=evidence(rating);
+ // The minimal supported association is a retained proof identifying both the
+ // property and its published score. Cross-document identity inference is not
+ // certified merely by a free-text basis or an equal score/name.
+ if(!identityEvidence.some(e=>ratingEvidence.some(r=>same(r,e))))fail('PROPERTY_RATING_SHARED_IDENTITY_PROOF_REQUIRED');
+ for(const l of offer.ratingObserved.links)for(const e of l.evidence)
+  if(!ratingEvidence.some(r=>same(r,e)))fail('PROPERTY_RATING_SOURCE_REFERENCE');
+ return {alternativeId:offer.alternativeId,packetHash:hash(request.reviewed.packet),
+  journalHash:hash(request.reviewed.events),projectionFingerprint:request.normalization.reviewProjectionFingerprint,
+  propertyIdentity:{field:'propertyName',fieldSha256:hash(property.value),evidence:identityEvidence},
+  ratingObservation:{field:'rating',fieldSha256:hash(rating.value),claimSha256:hash(offer.ratingObserved),
+   observedValue:offer.ratingObserved.value,capturedAt:offer.ratingObserved.observedAt,timeSource:offer.ratingObserved.timeSource,evidence:ratingEvidence}};
+}
+/** Pure binding helper; validates the complete original REVIEWED base first.
+ * Creates neither evidence nor a review receipt and does not execute a kernel. */
+export function createReviewedPropertyRatingScope(request,alternativeId){
+ const base=prepareBase(request),offer=request.normalization.offers.find(o=>o.alternativeId===alternativeId);
+ if(!offer)fail('ALTERNATIVE_NOT_IN_REVIEWED_BASE');
+ return propertyRatingScope(request,base,offer);
+}
+
+function verifyPropertyRatingLink(content,expected){
+ if(!same(content.scope,expected))fail('PROPERTY_RATING_IDENTITY_OR_OBSERVATION_BINDING');
+ if(Object.hasOwn(content,'continuity')||Object.hasOwn(content,'ratingObservationBinding'))fail('PROPERTY_RATING_TARIFF_ATTESTATION_FORBIDDEN');
+ const keys=['version','scope','sourceRef','sourceKind','observationId','observedAt','timeSource','validUntil','applicability',
+  'field','statement','temporal','entries','propertyObservationLink'];
+ if(Object.keys(content).some(k=>!keys.includes(k))||Object.hasOwn(content,'entries')&&
+  ['field','statement','temporal'].some(k=>Object.hasOwn(content,k)))fail('PROPERTY_RATING_CONTENT_SCHEMA');
+ const b=content.propertyObservationLink;
+ if(!b||b.relation!=='SCALE_OF_THIS_PROPERTY_RATING_OBSERVATION'||b.scopeSha256!==hash(expected)||
+  b.ruleSourceRef!==content.sourceRef||!text(b.basis)||
+  b.historicalValidity!=='NOT_INDEPENDENTLY_CERTIFIED'||!text(b.historicalValidityLimitations)||
+  Object.keys(b).some(k=>!['relation','scopeSha256','ruleSourceRef','basis','historicalValidity','historicalValidityLimitations'].includes(k)))
+  fail('PROPERTY_RATING_LINK_UNVERIFIED');
+ // This version deliberately preserves derived historical applicability, not
+ // an independent historical rule certificate. The two clocks are not merged.
+}
 
 /** Bounded, complete-statement decoders. No positive substring shortcuts and no
  * general language interpretation. These decode evidence, not caller claims. */
@@ -86,7 +142,7 @@ export function interpretAppendixStatement(field,statement,currency){
  return {state:'UNKNOWN',value:null,reason:'STATEMENT_GRAMMAR_UNSUPPORTED_OR_CONDITIONAL'};
 }
 
-function verifyProof(proof,request,appendix,offer,integration){
+function verifyProof(proof,request,appendix,offer,integration,base){
  const a=proof?.artifact,t=proof?.transcription,r=proof?.pointReview;
  if(!text(proof?.id)||!a||!text(a.ref)||!text(a.mediaType)||!text(a.base64)||!digest(a.sha256))fail('PROOF_SCHEMA');
  const bytes=Buffer.from(a.base64,'base64');
@@ -99,33 +155,45 @@ function verifyProof(proof,request,appendix,offer,integration){
   if(bytes.toString('utf8')!==t.content)fail('TRANSCRIPTION_DIFFERS_FROM_MACHINE_READABLE_SOURCE');
  }else if(t.method!=='POINT_TRANSCRIPTION_OF_VISUAL_SOURCE'||!text(t.sourceRegion))fail('VISUAL_SOURCE_POINT_TRANSCRIPTION_REQUIRED');
  let content;try{content=JSON.parse(t.content);}catch{fail('POINT_EVIDENCE_JSON');}
- const expectedScope={alternativeId:offer.alternativeId,offerBindingFingerprint:offer.reviewedOfferBindingFingerprint,...offer.scope};
- if(content.version!==POINT_EVIDENCE_VERSION||!same(content.scope,expectedScope))fail('ROOM_RATE_STAY_PARTY_CURRENCY_SCOPE');
+ const propertyRating=content.version===PROPERTY_RATING_EVIDENCE_VERSION;
+ if(propertyRating){
+  if(integration.field!=='ratingScale'||content.applicability!=='PROPERTY_WIDE')fail('PROPERTY_RATING_ONLY');
+  verifyPropertyRatingLink(content,propertyRatingScope(request,base,offer));
+ }else{
+  const expectedScope={alternativeId:offer.alternativeId,offerBindingFingerprint:offer.reviewedOfferBindingFingerprint,...offer.scope};
+  if(content.version!==POINT_EVIDENCE_VERSION||!same(content.scope,expectedScope))fail('ROOM_RATE_STAY_PARTY_CURRENCY_SCOPE');
+ }
  if(!text(content.sourceRef)||!['PUBLIC_OBSERVATION','RATE_VERIFICATION_RECORD','PROPERTY_DOCUMENT'].includes(content.sourceKind)||
   !text(content.observationId)||!utc(content.observedAt)||!text(content.timeSource)||Date.parse(content.observedAt)>Date.parse(appendix.evaluatedAt)||
   content.validUntil!==null&&(!utc(content.validUntil)||Date.parse(content.validUntil)<Date.parse(content.observedAt)))fail('OBSERVATION_TIME_OR_SOURCE');
+ if(propertyRating&&content.sourceKind==='RATE_VERIFICATION_RECORD')fail('PROPERTY_RATING_COMMERCIAL_SOURCE_KIND');
  const entries=content.entries??[{field:content.field,statement:content.statement,temporal:content.temporal}];
  if(!Array.isArray(entries)||!entries.length||new Set(entries.map(e=>e.field)).size!==entries.length||
   entries.some(e=>!fields.includes(e.field)||!text(e.statement)))fail('POINT_EVIDENCE_FIELD');
  if(entries.some(e=>Object.keys(e).some(k=>!['field','statement','temporal'].includes(k))))fail('POINT_ENTRY_METADATA_OVERRIDE');
  const selected=entries.find(e=>e.field===integration.field);
  if(!['OFFER_SCOPED','PROPERTY_WIDE','UNVERIFIED'].includes(content.applicability)||!selected)fail('POINT_EVIDENCE_FIELD');
- const continuity=content.continuity;
- if(!continuity||continuity.kind!=='SAME_HISTORICAL_RATE'||continuity.offerBindingFingerprint!==offer.reviewedOfferBindingFingerprint||
-  continuity.projectionFingerprint!==appendix.base.projectionFingerprint||!text(continuity.basis))fail('HISTORICAL_RATE_CONTINUITY_UNPROVEN');
+ if(!propertyRating){
+  const continuity=content.continuity;
+  if(!continuity||continuity.kind!=='SAME_HISTORICAL_RATE'||continuity.offerBindingFingerprint!==offer.reviewedOfferBindingFingerprint||
+   continuity.projectionFingerprint!==appendix.base.projectionFingerprint||!text(continuity.basis))fail('HISTORICAL_RATE_CONTINUITY_UNPROVEN');
+ }
  // A point review is a new, separately recorded source/scope verification, not
  // the old blanket transcription confirmation or an independent authenticator.
  const synthetic=request.reviewed.packet.mode==='SYNTHETIC_TEST';
- if(!r||r.version!==POINT_REVIEW_VERSION||r.actorKind!==(synthetic?'SYNTHETIC_TEST':'HUMAN')||!text(r.actorId)||
+ if(!r||r.version!==(propertyRating?PROPERTY_RATING_REVIEW_VERSION:POINT_REVIEW_VERSION)||r.actorKind!==(synthetic?'SYNTHETIC_TEST':'HUMAN')||!text(r.actorId)||
   r.artifactSha256!==a.sha256||r.transcriptionSha256!==t.sha256||r.observationFingerprint!==hash(content)||
-  r.method!=='SOURCE_CONTENT_AND_EXACT_OFFER_SCOPE_CHECK'||!utc(r.reviewedAt)||Date.parse(r.reviewedAt)<Date.parse(content.observedAt)||
+  r.method!==(propertyRating?'SOURCE_CONTENT_AND_PROPERTY_RATING_OBSERVATION_CHECK':'SOURCE_CONTENT_AND_EXACT_OFFER_SCOPE_CHECK')||!utc(r.reviewedAt)||Date.parse(r.reviewedAt)<Date.parse(content.observedAt)||
   Date.parse(r.reviewedAt)>Date.parse(appendix.evaluatedAt)||!text(r.scopeBasis)||!text(r.meaningBasis)||!text(r.limitations))fail('POINT_REVIEW_BINDING_OR_PENDING');
  const {receiptSha256,...body}=r;if(receiptSha256!==hash(body))fail('POINT_REVIEW_HASH');
+ if(propertyRating&&(!same(r.reviewedFields,['ratingScale'])||r.propertyScopeSha256!==hash(content.scope)||
+  r.propertyObservationLinkSha256!==hash(content.propertyObservationLink)||r.commercialVerificationAttested!==false||
+  Date.parse(r.reviewedAt)<Date.parse(content.scope.ratingObservation.capturedAt)))fail('PROPERTY_RATING_REVIEW_SCOPE');
  if(!same(selected.temporal,integration.temporal))fail('TEMPORAL_RELATION_NOT_IN_REVIEWED_EVIDENCE');
  const parsed=interpretAppendixStatement(integration.field,selected.statement,offer.scope.stay.currency);
  if(!integration.claim||!same({state:integration.claim.state,value:integration.claim.value},{state:parsed.state,value:parsed.value})||!text(integration.claim.reason))fail('SEMANTIC_TRANSFORMATION_MISMATCH');
  if(content.applicability!=='OFFER_SCOPED'&&!(integration.field==='ratingScale'&&content.applicability==='PROPERTY_WIDE'))fail('FIELD_APPLICABILITY_UNSUPPORTED');
- if(integration.field==='ratingScale'){
+ if(integration.field==='ratingScale'&&!propertyRating){
   const b=content.ratingObservationBinding;
   if(!b||b.claimSha256!==hash(offer.ratingObserved)||!same(b.observedValue,offer.ratingObserved.value)||
    b.relation!=='SCALE_OF_THIS_PUBLISHED_OBSERVATION'||!text(b.basis))fail('RATING_OBSERVATION_SOURCE_BINDING');
@@ -179,7 +247,10 @@ function materializeClaim(old,integration,v){
   applicability:v.content.applicability,observedAt:v.content.observedAt,timeSource:v.content.timeSource,
   links:[{field:'appendix/'+integration.field,evidence:[{ref:integration.proofId,sha256:v.a.sha256}]}],
   ...(v.content.applicability==='PROPERTY_WIDE'?{propertyBinding:{alternativeId:v.content.scope.alternativeId,scope:copy(old.scope),
-   reason:v.content.continuity.basis,links:[{field:'appendix/point-review',evidence:[{ref:integration.proofId,sha256:v.receiptSha256}]}]}}:{})};
+   reason:v.content.version===PROPERTY_RATING_EVIDENCE_VERSION?v.content.propertyObservationLink.basis:v.content.continuity.basis,
+   ...(v.content.version===PROPERTY_RATING_EVIDENCE_VERSION?{ratingObservationBinding:copy(v.content.scope),
+    ruleAcquiredAt:v.content.observedAt,ruleTimeSource:v.content.timeSource,propertyObservationLink:copy(v.content.propertyObservationLink)}:{}),
+   links:[{field:'appendix/point-review',evidence:[{ref:integration.proofId,sha256:v.receiptSha256}]}]}}:{})};
 }
 
 // Each entry in this bounded proof format shares the exact offer, source and
@@ -190,6 +261,13 @@ function completeProofSelections(appendix){
  const groups=[];
  for(const proof of appendix.proofs){
   let content;try{content=JSON.parse(proof?.transcription?.content);}catch{continue;}
+  // Reject cross-domain use as an INPUT error, even when hidden/unselected.
+  // A property-rating receipt must never authorize a commercial/room fact.
+  if(content?.version===PROPERTY_RATING_EVIDENCE_VERSION){
+   const entries=content.entries??[{field:content.field}];
+   if(!Array.isArray(entries)||entries.length!==1||entries.some(e=>e.field!=='ratingScale')||
+    content.applicability!=='PROPERTY_WIDE'||appendix.integrations.some(i=>i.proofId===proof.id&&i.field!=='ratingScale'))fail('PROPERTY_RATING_ONLY');
+  }
   if(!Array.isArray(content?.entries)||content.entries.length<2)continue;
   const selected=appendix.integrations.filter(i=>i.proofId===proof.id);
   if(content.entries.some(e=>!selected.some(i=>i.field===e.field&&i.alternativeId===content.scope?.alternativeId))||
@@ -201,7 +279,7 @@ function completeProofSelections(appendix){
 
 /** The public successor accepts ONLY an immutable REVIEWED request. Original
  * source validation precedes every appendix operation, including the empty case. */
-export function executeReviewedEvidenceAppendix(request,appendix,compute){
+export function prepareReviewedEvidenceAppendix(request,appendix){
  const base=prepareBase(request),expected=binding(request,base);
  if(!appendix||appendix.version!==APPENDIX_VERSION||appendix.classification!=='DIAGNOSTIC_ONLY'||!text(appendix.id)||
   !same(appendix.base,expected)||!utc(appendix.evaluatedAt)||Date.parse(appendix.evaluatedAt)<Date.parse(request.normalization.evaluatedAt)||
@@ -220,9 +298,11 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
    if(!offer)fail('ALTERNATIVE_NOT_IN_REVIEWED_BASE');
    const candidate=base.input.candidates.find(c=>c.alternativeId===offer.alternativeId),old=at(offer,integration.field);
    const proof=appendix.proofs.find(p=>p.id===integration.proofId);if(!proof)fail('PROOF_NOT_FOUND');
-   const v=verifyProof(proof,request,appendix,offer,integration),temporal=verifyTemporal(v,integration,old,candidate,appendix);
+   const v=verifyProof(proof,request,appendix,offer,integration,base),temporal=verifyTemporal(v,integration,old,candidate,appendix);
    Object.assign(record,{originalClaimSha256:hash(old),proofSha256:v.a.sha256,transcriptionSha256:v.t.sha256,pointReviewSha256:v.receiptSha256,
     observationId:v.content.observationId,observedAt:v.content.observedAt,interpretation:copy(v.parsed)});
+   if(v.content.version===PROPERTY_RATING_EVIDENCE_VERSION)record.propertyRatingBinding={scope:copy(v.content.scope),
+    link:copy(v.content.propertyObservationLink),ruleAcquiredAt:v.content.observedAt,ruleTimeSource:v.content.timeSource};
    if(temporal){Object.assign(record,temporal);continue;}
    if(v.parsed.state==='UNKNOWN'&&!v.parsed.qualifiesFact){Object.assign(record,{status:'INSUFFICIENT',reason:v.parsed.reason});continue;}
    let claim=materializeClaim(old,integration,v);const key=offer.alternativeId+'/'+integration.field;
@@ -327,12 +407,17 @@ export function executeReviewedEvidenceAppendix(request,appendix,compute){
   });
   input.sourceFingerprint=hash({base:base.input.sourceFingerprint,version:APPENDIX_VERSION,appendix:canonicalAppendix(appendix),evaluation});
  }
- const output=compute(input);
- if(output.version!==OBSERVED_EXECUTION_VERSION||output.candidates.length!==n.offers.length)fail('COMPUTATION_OUTPUT');
  return {version:APPENDIX_VERSION,classification:'DIAGNOSTIC_ONLY',base:{...base,normalization:copy(request.normalization)},
-  appendixFingerprint:hash(canonicalAppendix(appendix)),integratedProjectionFingerprint:hash(input),input,output,
+  appendixFingerprint:hash(canonicalAppendix(appendix)),integratedProjectionFingerprint:hash(input),input,
   integratedRequirements:n,requirementsEvaluation:evaluation,integrations:records,consumedFacts:consumed,temporalGaps,
   originalReviewUnchanged:true,newGeneralReviewCreated:false,pointReviewsIndependentOfOriginalReview:true,
   independentSourceAuthentication:false,feedbackUsed:false,humanComparisonPerformed:false,goldenAdmission:false,fullRobustness:'NOT_EXECUTED'};
+}
+/** Preparation is the identical no-I/O/no-policy path exposed above. A rejected
+ * individual integration is not a no-execution guarantee for THIS executor. */
+export function executeReviewedEvidenceAppendix(request,appendix,compute){
+ const prepared=prepareReviewedEvidenceAppendix(request,appendix),output=compute(prepared.input);
+ if(output.version!==OBSERVED_EXECUTION_VERSION||output.candidates.length!==prepared.integratedRequirements.offers.length)fail('COMPUTATION_OUTPUT');
+ return {...prepared,output};
 }
 function canonicalAppendix(a){return {...copy(a),integrations:sorted(a.integrations),proofs:sorted(a.proofs)};}

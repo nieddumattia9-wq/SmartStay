@@ -1,0 +1,4812 @@
+{
+  "phase": "D-0057-before",
+  "syntheticOnly": true,
+  "sourceSha": "da3b0ec75544180c7d5a07e4f7213309770143e1",
+  "request": {
+    "kind": "REVIEWED",
+    "reviewed": {
+      "packet": {
+        "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+        "caseId": "SYNTHETIC_INTENT_BRIDGE",
+        "mode": "SYNTHETIC_TEST",
+        "classification": "DIAGNOSTIC_ONLY",
+        "humanReview": "PENDING",
+        "custodyCreated": false,
+        "sourceArchiveSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scenario": {
+          "currency": "EUR"
+        },
+        "proofs": [
+          {
+            "ref": "SYNTHETIC_PROOF",
+            "path": "invented.png",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "alternatives": [
+          {
+            "id": "SYNTHETIC_CAPABILITY_0",
+            "proofs": [],
+            "fields": [
+              {
+                "key": "stay",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "checkIn": "2099-10-10",
+                    "checkOut": "2099-10-13"
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "occupancy",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "adults": 2,
+                    "children": 0,
+                    "childAges": [],
+                    "rooms": 1
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "currency",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "EUR",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Private room with private bathroom",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rateName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "selection",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented selected rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "displayedPrice",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "cancellation",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented conditions",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "completeTotal",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rating",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 8.9,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "ratingScale",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "distance",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "0.5 km dal centro",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "beds",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "1 letto matrimoniale",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomCapacity",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Two guests",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "availability",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Public observed rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "unitsOffered",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "internalRooms",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "category",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Hotel",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "stars",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 4,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "reviewCount",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomAmenities",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Camera privata; Bagno privato; WiFi; Aria condizionata",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "propertyName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented Meridian Property",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "SYNTHETIC_CAPABILITY_1",
+            "proofs": [],
+            "fields": [
+              {
+                "key": "stay",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "checkIn": "2099-10-10",
+                    "checkOut": "2099-10-13"
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "occupancy",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "adults": 2,
+                    "children": 0,
+                    "childAges": [],
+                    "rooms": 1
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "currency",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "EUR",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Private room with private bathroom",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rateName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "selection",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented selected rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "displayedPrice",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 420,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "cancellation",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented conditions",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "completeTotal",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rating",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 8.2,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "ratingScale",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "distance",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "2 km dal centro",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "beds",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "1 letto matrimoniale",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomCapacity",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Two guests",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "availability",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Public observed rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "unitsOffered",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "internalRooms",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "category",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Hotel",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "stars",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 4,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "reviewCount",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomAmenities",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Camera privata; Bagno privato; WiFi; Aria condizionata",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "propertyName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented Meridian Property",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "SYNTHETIC_CAPABILITY_2",
+            "proofs": [],
+            "fields": [
+              {
+                "key": "stay",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "checkIn": "2099-10-10",
+                    "checkOut": "2099-10-13"
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "occupancy",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "adults": 2,
+                    "children": 0,
+                    "childAges": [],
+                    "rooms": 1
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "currency",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "EUR",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Private room with private bathroom",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rateName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "selection",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented selected rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "displayedPrice",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 390,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "cancellation",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented conditions",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "completeTotal",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rating",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 8.5,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "ratingScale",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "UNKNOWN",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "distance",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "3.8 km dal centro",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "beds",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "1 letto matrimoniale",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomCapacity",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Two guests",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "availability",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Public observed rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "unitsOffered",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "internalRooms",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "category",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Hotel",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "stars",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 4,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "reviewCount",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomAmenities",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Camera privata; Bagno privato; WiFi; Aria condizionata",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "propertyName",
+                "critical": true,
+                "reviewStatus": "PENDING",
+                "sourceKind": "OBSERVED",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented Meridian Property",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "events": [
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 1,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": null,
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "stay",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 0,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "a3b0087140d9e9d0d2acf2ea556cfa6b9307923ed1a57798797029bcf142d1ad"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 2,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "a3b0087140d9e9d0d2acf2ea556cfa6b9307923ed1a57798797029bcf142d1ad",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "occupancy",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 1,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "ffef22b2d4d384ebef41e21b0bf83afbae70843e487ce22785ae12b4a46a6705"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 3,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "ffef22b2d4d384ebef41e21b0bf83afbae70843e487ce22785ae12b4a46a6705",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "currency",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 2,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "dde4761166cf76362123da447173dc336e910e9d1e624044d5ac420771845216"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 4,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "dde4761166cf76362123da447173dc336e910e9d1e624044d5ac420771845216",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "roomName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 3,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "b432f68d327c44924dba44395527629c7c8954878f0aab63efc979775468396b"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 5,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "b432f68d327c44924dba44395527629c7c8954878f0aab63efc979775468396b",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "rateName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 4,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "2273b821ef31685d7080e52fbb47cab4bf0b6ee7dbb73272910af50b79e6d232"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 6,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "2273b821ef31685d7080e52fbb47cab4bf0b6ee7dbb73272910af50b79e6d232",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "selection",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 5,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "26cdb37f45bc97437c5f2ae1f6cc8514192b7bd0503cd6db45020c4e5ac17542"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 7,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "26cdb37f45bc97437c5f2ae1f6cc8514192b7bd0503cd6db45020c4e5ac17542",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "displayedPrice",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 6,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "f7c88a65570fdd7489be7e08d9739768ebef5b3b271672a416445bebcf81397d"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 8,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "f7c88a65570fdd7489be7e08d9739768ebef5b3b271672a416445bebcf81397d",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "cancellation",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 7,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "8cecd7565b610dcf11723cea46f7e21962332262ae91fd6f2a2b43a2cdc1fd2e"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 9,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "8cecd7565b610dcf11723cea46f7e21962332262ae91fd6f2a2b43a2cdc1fd2e",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "completeTotal",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 8,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "e283b6276e5707708705f7bd19060976985777f9705333ff38d03edc05884e43"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 10,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "e283b6276e5707708705f7bd19060976985777f9705333ff38d03edc05884e43",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "rating",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 9,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "6d4ff1d7a8e0838aa55877d6d6ded4dacaad273e0107bb7d16c3012241a76a39"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 11,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "6d4ff1d7a8e0838aa55877d6d6ded4dacaad273e0107bb7d16c3012241a76a39",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "ratingScale",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 10,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "29cc0c0910b44863626267f4ad4c9ed4dfc7de665fb19f2ffbd9138d7d34b676"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 12,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "29cc0c0910b44863626267f4ad4c9ed4dfc7de665fb19f2ffbd9138d7d34b676",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "distance",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 11,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "95ebf49262524e15b77db46e0240f5fbf86d0bc6db7eb6b3d9b49097185b24ae"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 13,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "95ebf49262524e15b77db46e0240f5fbf86d0bc6db7eb6b3d9b49097185b24ae",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "beds",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 12,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "9e2c377825761164dc5ed41f989a1590370494d11caeff4eb8f794bb432622d2"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 14,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "9e2c377825761164dc5ed41f989a1590370494d11caeff4eb8f794bb432622d2",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "roomCapacity",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 13,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "6f935e73b6ee7ad8b05581d291a2cffff9d917e364aabcdce0107028890029f1"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 15,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "6f935e73b6ee7ad8b05581d291a2cffff9d917e364aabcdce0107028890029f1",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "availability",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 14,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "6af2d13206e65b0fbadd9f378964e6e003e6fe9e8af3bbd130f358817ff35a94"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 16,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "6af2d13206e65b0fbadd9f378964e6e003e6fe9e8af3bbd130f358817ff35a94",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "unitsOffered",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 15,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "99490c0d4bea1b338aa2cf57c687e4edba547c606211924a6a4f5a370376cf49"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 17,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "99490c0d4bea1b338aa2cf57c687e4edba547c606211924a6a4f5a370376cf49",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "internalRooms",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 16,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "b12c176505148654f530f383a9c7083fa012651b2378c8905ce656c686fd335f"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 18,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "b12c176505148654f530f383a9c7083fa012651b2378c8905ce656c686fd335f",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "category",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 17,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "328589b9989e5e38b6d533347918a85e2cd7b4c244cbb5ef1890a6d0d39cef4f"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 19,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "328589b9989e5e38b6d533347918a85e2cd7b4c244cbb5ef1890a6d0d39cef4f",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "stars",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 18,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "735b75036f1d1b875d792b13769caaa691842e07b2e7dddaf232aa62d6c8a310"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 20,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "735b75036f1d1b875d792b13769caaa691842e07b2e7dddaf232aa62d6c8a310",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "reviewCount",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 19,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "9aa086750183f33de7e6d766dd294e4ebff3407c5ca145a20746fcb5024acac5"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 21,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "9aa086750183f33de7e6d766dd294e4ebff3407c5ca145a20746fcb5024acac5",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "roomAmenities",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 20,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "974a77d4523921e393e1e4a5350e2dd3ede19f1325b87058b92403b44a347026"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 22,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "974a77d4523921e393e1e4a5350e2dd3ede19f1325b87058b92403b44a347026",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fieldKey": "propertyName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 21,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "39baf4b845919e4aeffaf28ffcd3c450bdfe7affada007eda68f2f4ff04cc5a9"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 23,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "39baf4b845919e4aeffaf28ffcd3c450bdfe7affada007eda68f2f4ff04cc5a9",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "stay",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 22,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "79215a96dd68e6e3d96ab35d47ab8c6afc62ace24b1cc0d1a967348d20da09a9"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 24,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "79215a96dd68e6e3d96ab35d47ab8c6afc62ace24b1cc0d1a967348d20da09a9",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "occupancy",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 23,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "d9ce78d6d69f802778844aa8cab3afff202ba2f38d37114b4f5f712e6511ec36"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 25,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "d9ce78d6d69f802778844aa8cab3afff202ba2f38d37114b4f5f712e6511ec36",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "currency",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 24,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "29d43de0292fa3cbb3ce8778537064a12877d125a16400eecae397944bc9139e"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 26,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "29d43de0292fa3cbb3ce8778537064a12877d125a16400eecae397944bc9139e",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "roomName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 25,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "84b7e15cdcd05160a4d9dadd62e2fc911a1e8ed5828cc96983a3bfc67b19cace"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 27,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "84b7e15cdcd05160a4d9dadd62e2fc911a1e8ed5828cc96983a3bfc67b19cace",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "rateName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 26,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "0e07ea99f7c13ed89c9b03aaa70046316b55f8ea3ebb23ce34916bf526ccf966"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 28,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "0e07ea99f7c13ed89c9b03aaa70046316b55f8ea3ebb23ce34916bf526ccf966",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "selection",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 27,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "48f89e297645690e5cf6307f0d8bfcd0ca88693141e3b4b3bf31bec4736f273e"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 29,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "48f89e297645690e5cf6307f0d8bfcd0ca88693141e3b4b3bf31bec4736f273e",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "displayedPrice",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 28,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "901aa95371db3e9381ea5637d8e9232a16670d143648bb26764f107557e44dcf"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 30,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "901aa95371db3e9381ea5637d8e9232a16670d143648bb26764f107557e44dcf",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "cancellation",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 29,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "9404c28bde68c178fe756721bfb7542728ef95c066ab48bdecaf4c1ea6ce6c4b"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 31,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "9404c28bde68c178fe756721bfb7542728ef95c066ab48bdecaf4c1ea6ce6c4b",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "completeTotal",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 30,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "ac9d3ba0f92ee2ece510cea17e27864f098fd1d232a1b584d3a685c24f28f635"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 32,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "ac9d3ba0f92ee2ece510cea17e27864f098fd1d232a1b584d3a685c24f28f635",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "rating",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 31,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "de19b7ba4ffbed9f2b62f5bf31aa2cc68ce9d0e70ae0113d4527451a2a96ca18"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 33,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "de19b7ba4ffbed9f2b62f5bf31aa2cc68ce9d0e70ae0113d4527451a2a96ca18",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "ratingScale",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 32,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "8af98607a08c8a8288bc93f39deece8dde5c9ccda4d3e177aa41cd25cfb15695"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 34,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "8af98607a08c8a8288bc93f39deece8dde5c9ccda4d3e177aa41cd25cfb15695",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "distance",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 33,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "b8e5056d8f7b2d1d307792d80aff2636dca020c1bc6ad93047ab0a61b05e33c5"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 35,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "b8e5056d8f7b2d1d307792d80aff2636dca020c1bc6ad93047ab0a61b05e33c5",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "beds",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 34,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "2661788e58eb230c0874067b58e841bf117d7401c504971a697ccc8a4b2b6d6a"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 36,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "2661788e58eb230c0874067b58e841bf117d7401c504971a697ccc8a4b2b6d6a",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "roomCapacity",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 35,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "6e234da6f3bcf2528b592f82715f09c14faa22e17c8d983ed6b6e19ee6311e6d"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 37,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "6e234da6f3bcf2528b592f82715f09c14faa22e17c8d983ed6b6e19ee6311e6d",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "availability",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 36,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "c0663430f325464b3ecf31e33e48f6e8d554dadc287310435f464abd1f0e2baa"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 38,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "c0663430f325464b3ecf31e33e48f6e8d554dadc287310435f464abd1f0e2baa",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "unitsOffered",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 37,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "f8c640166e006bd73d62547baba36734d53802d2a8bd50299e87d213a1cf3964"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 39,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "f8c640166e006bd73d62547baba36734d53802d2a8bd50299e87d213a1cf3964",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "internalRooms",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 38,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "8bc1ac89cd0b3934ba013c7d957416ae1922b929cbff57032f1c35709c6ce820"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 40,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "8bc1ac89cd0b3934ba013c7d957416ae1922b929cbff57032f1c35709c6ce820",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "category",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 39,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "c512296c35c369c866a4c09079145cc4c3cd76d56e9477580e49ee94acf852c1"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 41,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "c512296c35c369c866a4c09079145cc4c3cd76d56e9477580e49ee94acf852c1",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "stars",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 40,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "321096d826a8e57d23fe00070d47d952ba3f71d7eebb4c4220892507be57c96c"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 42,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "321096d826a8e57d23fe00070d47d952ba3f71d7eebb4c4220892507be57c96c",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "reviewCount",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 41,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "da45060b374447df118e97e40c39a539586f59db53a82a252b69f0d3389d1283"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 43,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "da45060b374447df118e97e40c39a539586f59db53a82a252b69f0d3389d1283",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "roomAmenities",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 42,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "6e56f2aa68680b24827c729b53bbd871771fd4b0e5e9c6d97acd3bc74854bad5"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 44,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "6e56f2aa68680b24827c729b53bbd871771fd4b0e5e9c6d97acd3bc74854bad5",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fieldKey": "propertyName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 43,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "8a2a66e7e187f24a3f91f4e145e3ab8925bf2a3d7cf9125ee070b70c60bc9ab6"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 45,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "8a2a66e7e187f24a3f91f4e145e3ab8925bf2a3d7cf9125ee070b70c60bc9ab6",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "stay",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 44,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "d584712843a72e2e475f64049123383c03409582d79538b9c15ebbe910753d13"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 46,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "d584712843a72e2e475f64049123383c03409582d79538b9c15ebbe910753d13",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "occupancy",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 45,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "e1c600a630b079677fd6ed73a55f45b831144ad0d0c10d059fa351e96fd23d2f"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 47,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "e1c600a630b079677fd6ed73a55f45b831144ad0d0c10d059fa351e96fd23d2f",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "currency",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 46,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "930a8d0fa6253ffb25db7d09096a6641a02dfd8f97e032684d9d6476dcb59d77"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 48,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "930a8d0fa6253ffb25db7d09096a6641a02dfd8f97e032684d9d6476dcb59d77",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "roomName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 47,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "9ee5366cae95c24f7ed384c8d41206f68bc99b6cba6c314714f25835ba956c83"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 49,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "9ee5366cae95c24f7ed384c8d41206f68bc99b6cba6c314714f25835ba956c83",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "rateName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 48,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "9d9185a7e7a0ca5996c4c09752f239603204ce3173132267e5b3c1fda31fd37c"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 50,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "9d9185a7e7a0ca5996c4c09752f239603204ce3173132267e5b3c1fda31fd37c",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "selection",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 49,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "949e5f7b8381bba126ec4b6435e1bdf56c6bd9dcb739a44f6b0597a278ee5fd1"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 51,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "949e5f7b8381bba126ec4b6435e1bdf56c6bd9dcb739a44f6b0597a278ee5fd1",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "displayedPrice",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 50,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "bf8f6d2f648b06ec90a49510c08dcf498bb93540d99bcd6d09f50ba773493dac"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 52,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "bf8f6d2f648b06ec90a49510c08dcf498bb93540d99bcd6d09f50ba773493dac",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "cancellation",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 51,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "aaf22042512f24ae99ac7da85512b7948914f634968c4191ece41f8262bfa3dd"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 53,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "aaf22042512f24ae99ac7da85512b7948914f634968c4191ece41f8262bfa3dd",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "completeTotal",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 52,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "8cdbf1f4d521492b2a096f8ccca0c11c2afb802a1ee0b23cbb1eb73fe786cdb9"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 54,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "8cdbf1f4d521492b2a096f8ccca0c11c2afb802a1ee0b23cbb1eb73fe786cdb9",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "rating",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 53,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "4cf6625c7892d78c5ae7c912652ca4c70420e1593d3431faf357d63685414116"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 55,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "4cf6625c7892d78c5ae7c912652ca4c70420e1593d3431faf357d63685414116",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "ratingScale",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 54,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "761b19da6e9e282fbe19f2b0a9df2dae2eec81b6ef0bffaf2d0888380afbdd42"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 56,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "761b19da6e9e282fbe19f2b0a9df2dae2eec81b6ef0bffaf2d0888380afbdd42",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "distance",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 55,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "ea8770fd5ab64ae5bbcc1be2f993663b569d250a4b0916bac293c34f90c1504b"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 57,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "ea8770fd5ab64ae5bbcc1be2f993663b569d250a4b0916bac293c34f90c1504b",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "beds",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 56,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "d3008d3ac8f202a940d7b4255c9134458b4d0cd07046e5da243dd85c23f81f0f"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 58,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "d3008d3ac8f202a940d7b4255c9134458b4d0cd07046e5da243dd85c23f81f0f",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "roomCapacity",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 57,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "556a37ed25c03f0c6419dcfecab0f49eced5afa2e97ac2a5869a241b44a5c0f1"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 59,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "556a37ed25c03f0c6419dcfecab0f49eced5afa2e97ac2a5869a241b44a5c0f1",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "availability",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 58,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "48a8a129826c152dcf9cf2ca08049b7eab6fdae4a68f47c2fd9c29fa8c760638"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 60,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "48a8a129826c152dcf9cf2ca08049b7eab6fdae4a68f47c2fd9c29fa8c760638",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "unitsOffered",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 59,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "cb4f1a689d68bd97faa8b50f9bc77ad533365f3a2e0e7b6d79804e81b5dab818"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 61,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "cb4f1a689d68bd97faa8b50f9bc77ad533365f3a2e0e7b6d79804e81b5dab818",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "internalRooms",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 60,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "185ccbc807ca972755498808380e797a90a583f824853f16367a0b45488c47a9"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 62,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "185ccbc807ca972755498808380e797a90a583f824853f16367a0b45488c47a9",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "category",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 61,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "7502914208b9e2862a0356f158697e3f1b747d312e7a86a662737964252bb05d"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 63,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "7502914208b9e2862a0356f158697e3f1b747d312e7a86a662737964252bb05d",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "stars",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 62,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "a252b43a8580a8174af50ca274074446b791cefa504de6a562401dc6d649e6ba"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 64,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "a252b43a8580a8174af50ca274074446b791cefa504de6a562401dc6d649e6ba",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "reviewCount",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 63,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "003d49ea1e08f93188b85d324a2f8c82ee46f1528f0b5b0e56bec0221d76bbe3"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 65,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "003d49ea1e08f93188b85d324a2f8c82ee46f1528f0b5b0e56bec0221d76bbe3",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "roomAmenities",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 64,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "31a46080b239502317261d498f72f4fb0e71a9dce79b3a2992ca207c4fedd680"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 66,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "31a46080b239502317261d498f72f4fb0e71a9dce79b3a2992ca207c4fedd680",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "REVIEW_FIELD",
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fieldKey": "propertyName",
+            "reviewStatus": "CORRECT",
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 65,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "fd2c410d324f927d9f46e6929490ec176960426c2c69e7ed4beee80afaa4061f"
+        },
+        {
+          "schemaVersion": "stayopti.diagnostic-transcription-review@1",
+          "ordinal": 67,
+          "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+          "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "previousHash": "fd2c410d324f927d9f46e6929490ec176960426c2c69e7ed4beee80afaa4061f",
+          "recordedAt": "2099-09-01T12:00:00Z",
+          "actor": "SYNTHETIC_TEST",
+          "action": {
+            "type": "CONFIRM_REVIEW",
+            "confirmed": true,
+            "caseId": "SYNTHETIC_INTENT_BRIDGE",
+            "expectedRevision": 66,
+            "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900"
+          },
+          "eventHash": "f4174c67d3162183b2fd43624eeb3858e871933f71ddc523293d5857f5cb3a8c"
+        }
+      ],
+      "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "originalManifest": {
+        "caseId": "SYNTHETIC_INTENT_BRIDGE",
+        "profile": "Balanced",
+        "scenario": {
+          "budgetTotal": 450,
+          "nights": 3,
+          "adults": 2,
+          "children": 0,
+          "childAgesAtStay": [],
+          "rooms": 1,
+          "currency": "EUR",
+          "checkIn": "2099-10-10",
+          "checkOut": "2099-10-13",
+          "needs": [
+            {
+              "requirement": "Invented adequate sleeping places and guest capacity",
+              "essential": true
+            }
+          ]
+        }
+      },
+      "originalManifestSha256": "7553fe0b6566d52e5c05a1e2d70362d2b964327476d4bbf2aeaf402e8e855782",
+      "preparedInput": {
+        "caseId": "SYNTHETIC_INTENT_BRIDGE",
+        "classification": "DIAGNOSTIC_ONLY",
+        "originalScenario": {
+          "currency": "EUR"
+        },
+        "originalScenarioManifestSha256": "7553fe0b6566d52e5c05a1e2d70362d2b964327476d4bbf2aeaf402e8e855782",
+        "alternatives": [
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_0",
+            "fields": [
+              {
+                "key": "stay",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "checkIn": "2099-10-10",
+                    "checkOut": "2099-10-13"
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "occupancy",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "adults": 2,
+                    "children": 0,
+                    "childAges": [],
+                    "rooms": 1
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "currency",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "EUR",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomName",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Private room with private bathroom",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rateName",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "selection",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented selected rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "displayedPrice",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "cancellation",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented conditions",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "completeTotal",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rating",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 8.9,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "ratingScale",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "distance",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "0.5 km dal centro",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "beds",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "1 letto matrimoniale",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomCapacity",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Two guests",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "availability",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Public observed rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "unitsOffered",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "internalRooms",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "category",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Hotel",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "stars",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 4,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "reviewCount",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomAmenities",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Camera privata; Bagno privato; WiFi; Aria condizionata",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "propertyName",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented Meridian Property",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_1",
+            "fields": [
+              {
+                "key": "stay",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "checkIn": "2099-10-10",
+                    "checkOut": "2099-10-13"
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "occupancy",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "adults": 2,
+                    "children": 0,
+                    "childAges": [],
+                    "rooms": 1
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "currency",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "EUR",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomName",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Private room with private bathroom",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rateName",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "selection",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented selected rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "displayedPrice",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 420,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "cancellation",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented conditions",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "completeTotal",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rating",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 8.2,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "ratingScale",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "distance",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "2 km dal centro",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "beds",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "1 letto matrimoniale",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomCapacity",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Two guests",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "availability",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Public observed rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "unitsOffered",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "internalRooms",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "category",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Hotel",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "stars",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 4,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "reviewCount",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomAmenities",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Camera privata; Bagno privato; WiFi; Aria condizionata",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "propertyName",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented Meridian Property",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "alternativeId": "SYNTHETIC_CAPABILITY_2",
+            "fields": [
+              {
+                "key": "stay",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "checkIn": "2099-10-10",
+                    "checkOut": "2099-10-13"
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "occupancy",
+                "value": {
+                  "status": "KNOWN",
+                  "value": {
+                    "adults": 2,
+                    "children": 0,
+                    "childAges": [],
+                    "rooms": 1
+                  },
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "currency",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "EUR",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomName",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Private room with private bathroom",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rateName",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "selection",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented selected rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "displayedPrice",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 390,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "cancellation",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented conditions",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "completeTotal",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "rating",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 8.5,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "ratingScale",
+                "value": {
+                  "status": "UNKNOWN",
+                  "value": null,
+                  "reliability": "UNKNOWN",
+                  "reason": "Synthetic missing evidence",
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "distance",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "3.8 km dal centro",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "beds",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "1 letto matrimoniale",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomCapacity",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Two guests",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "availability",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Public observed rate",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "unitsOffered",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "internalRooms",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 1,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "category",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Hotel",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "stars",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 4,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "reviewCount",
+                "value": {
+                  "status": "KNOWN",
+                  "value": 360,
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "roomAmenities",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Camera privata; Bagno privato; WiFi; Aria condizionata",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              },
+              {
+                "key": "propertyName",
+                "value": {
+                  "status": "KNOWN",
+                  "value": "Invented Meridian Property",
+                  "reliability": "LOW",
+                  "reason": null,
+                  "evidenceRefs": [
+                    "SYNTHETIC_PROOF"
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "postObservationContexts": [
+          {
+            "contextId": "PREFERENCE",
+            "budgetMinorUnits": 45000,
+            "currency": "EUR",
+            "prospectivelyFrozen": false,
+            "independentCase": false,
+            "distancePreference": {
+              "kilometers": 3,
+              "semantics": "STRONG_PREFERENCE_WITH_JUSTIFIED_EXCEPTIONS",
+              "hardMaximum": false,
+              "generalToleranceKm": null
+            }
+          }
+        ]
+      },
+      "preparedInputSha256": "18f80651137bc5c5b3ff16bcc32227d8b35a935fa72d807348f316f783af9bf9"
+    },
+    "normalization": {
+      "version": "stayopti.diagnostic-offer-requirements@1.1",
+      "caseId": "SYNTHETIC_INTENT_BRIDGE",
+      "mode": "SYNTHETIC",
+      "evaluatedAt": "2099-09-01T12:00:00Z",
+      "party": {
+        "adults": 2,
+        "childAgesAtStay": [],
+        "unitsRequested": 1,
+        "requirements": {
+          "sleepingPlaces": true,
+          "capacity": true,
+          "childAdmission": false,
+          "exclusiveUse": false,
+          "privateBathroom": false
+        }
+      },
+      "stay": {
+        "checkIn": "2099-10-10",
+        "checkOut": "2099-10-13",
+        "currency": "EUR"
+      },
+      "geography": {
+        "commonReference": {
+          "state": "KNOWN",
+          "value": {
+            "kind": "SOURCE_CENTRE",
+            "id": "SYNTHETIC_COMMON",
+            "point": null,
+            "provenance": "Same documented invented source centre"
+          },
+          "reason": "Invented explicit evidence, not real material",
+          "observedAt": "2099-09-01T12:00:00Z",
+          "timeSource": "SYNTHETIC_DECLARATION",
+          "scope": null,
+          "applicability": "SET_DOCUMENTED",
+          "links": [
+            {
+              "field": "SYNTHETIC_CAPABILITY_0/distance",
+              "evidence": [
+                {
+                  "ref": "SYNTHETIC_PROOF",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            }
+          ]
+        },
+        "contexts": [
+          {
+            "id": "PREFERENCE",
+            "semantics": "strong-preference",
+            "kilometers": 3
+          }
+        ]
+      },
+      "offers": [
+        {
+          "alternativeId": "SYNTHETIC_CAPABILITY_0",
+          "scope": {
+            "roomKey": "Private room with private bathroom",
+            "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3",
+            "stay": {
+              "checkIn": "2099-10-10",
+              "checkOut": "2099-10-13",
+              "currency": "EUR"
+            },
+            "party": {
+              "adults": 2,
+              "childAgesAtStay": [],
+              "unitsRequested": 1
+            }
+          },
+          "reference": {
+            "state": "KNOWN",
+            "value": {
+              "kind": "SOURCE_CENTRE",
+              "id": "SYNTHETIC_COMMON",
+              "point": null,
+              "provenance": "Same documented invented source centre"
+            },
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "distanceKm": {
+            "state": "KNOWN",
+            "value": 0.5,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "availability": {
+            "observed": {
+              "state": "KNOWN",
+              "value": "AVAILABLE",
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "bookability": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "unavailable": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "unitsOffered": {
+            "state": "KNOWN",
+            "value": 1,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "unitsOffered",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "internalRooms": {
+            "state": "KNOWN",
+            "value": 1,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "internalRooms",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "capacityGuests": {
+            "state": "KNOWN",
+            "value": 2,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "roomCapacity",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "sleeping": {
+            "state": "KNOWN",
+            "value": {
+              "complete": true,
+              "beds": [
+                {
+                  "kind": "DOUBLE",
+                  "count": 1,
+                  "placesPerBed": 2,
+                  "placeBasis": "LEXICAL_DOUBLE_TWO_PLACES_NOT_DIMENSIONS"
+                }
+              ]
+            },
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "children": {
+            "admitted": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "minimumAge": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "adultPricingFromAge": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "extraBedsAvailable": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "exclusiveUse": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "privateBathroom": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "completeTotal": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "ratingScale": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "ratingObserved": {
+            "state": "KNOWN",
+            "value": 8.9,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "reviewedOfferBindingFingerprint": "79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3"
+        },
+        {
+          "alternativeId": "SYNTHETIC_CAPABILITY_1",
+          "scope": {
+            "roomKey": "Private room with private bathroom",
+            "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe",
+            "stay": {
+              "checkIn": "2099-10-10",
+              "checkOut": "2099-10-13",
+              "currency": "EUR"
+            },
+            "party": {
+              "adults": 2,
+              "childAgesAtStay": [],
+              "unitsRequested": 1
+            }
+          },
+          "reference": {
+            "state": "KNOWN",
+            "value": {
+              "kind": "SOURCE_CENTRE",
+              "id": "SYNTHETIC_COMMON",
+              "point": null,
+              "provenance": "Same documented invented source centre"
+            },
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "distanceKm": {
+            "state": "KNOWN",
+            "value": 2,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "availability": {
+            "observed": {
+              "state": "KNOWN",
+              "value": "AVAILABLE",
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "bookability": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "unavailable": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "unitsOffered": {
+            "state": "KNOWN",
+            "value": 1,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "unitsOffered",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "internalRooms": {
+            "state": "KNOWN",
+            "value": 1,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "internalRooms",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "capacityGuests": {
+            "state": "KNOWN",
+            "value": 2,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "roomCapacity",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "sleeping": {
+            "state": "KNOWN",
+            "value": {
+              "complete": true,
+              "beds": [
+                {
+                  "kind": "DOUBLE",
+                  "count": 1,
+                  "placesPerBed": 2,
+                  "placeBasis": "LEXICAL_DOUBLE_TWO_PLACES_NOT_DIMENSIONS"
+                }
+              ]
+            },
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "children": {
+            "admitted": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "minimumAge": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "adultPricingFromAge": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "extraBedsAvailable": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "exclusiveUse": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "privateBathroom": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "completeTotal": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "ratingScale": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "ratingObserved": {
+            "state": "KNOWN",
+            "value": 8.2,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "reviewedOfferBindingFingerprint": "d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe"
+        },
+        {
+          "alternativeId": "SYNTHETIC_CAPABILITY_2",
+          "scope": {
+            "roomKey": "Private room with private bathroom",
+            "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758",
+            "stay": {
+              "checkIn": "2099-10-10",
+              "checkOut": "2099-10-13",
+              "currency": "EUR"
+            },
+            "party": {
+              "adults": 2,
+              "childAgesAtStay": [],
+              "unitsRequested": 1
+            }
+          },
+          "reference": {
+            "state": "KNOWN",
+            "value": {
+              "kind": "SOURCE_CENTRE",
+              "id": "SYNTHETIC_COMMON",
+              "point": null,
+              "provenance": "Same documented invented source centre"
+            },
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "distanceKm": {
+            "state": "KNOWN",
+            "value": 3.8,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "availability": {
+            "observed": {
+              "state": "KNOWN",
+              "value": "AVAILABLE",
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "bookability": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "unavailable": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "unitsOffered": {
+            "state": "KNOWN",
+            "value": 1,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "unitsOffered",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "internalRooms": {
+            "state": "KNOWN",
+            "value": 1,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "internalRooms",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "capacityGuests": {
+            "state": "KNOWN",
+            "value": 2,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "roomCapacity",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "sleeping": {
+            "state": "KNOWN",
+            "value": {
+              "complete": true,
+              "beds": [
+                {
+                  "kind": "DOUBLE",
+                  "count": 1,
+                  "placesPerBed": 2,
+                  "placeBasis": "LEXICAL_DOUBLE_TWO_PLACES_NOT_DIMENSIONS"
+                }
+              ]
+            },
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "children": {
+            "admitted": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "minimumAge": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "adultPricingFromAge": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            },
+            "extraBedsAvailable": {
+              "state": "UNKNOWN",
+              "value": null,
+              "reason": "Invented explicit evidence, not real material",
+              "observedAt": "2099-09-01T12:00:00Z",
+              "timeSource": "SYNTHETIC_DECLARATION",
+              "scope": {
+                "roomKey": "Private room with private bathroom",
+                "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+              },
+              "applicability": "OFFER_SCOPED",
+              "links": [
+                {
+                  "field": "beds",
+                  "evidence": [
+                    {
+                      "ref": "SYNTHETIC_PROOF",
+                      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "exclusiveUse": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "privateBathroom": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "completeTotal": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "ratingScale": {
+            "state": "UNKNOWN",
+            "value": null,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "ratingObserved": {
+            "state": "KNOWN",
+            "value": 8.5,
+            "reason": "Invented explicit evidence, not real material",
+            "observedAt": "2099-09-01T12:00:00Z",
+            "timeSource": "SYNTHETIC_DECLARATION",
+            "scope": {
+              "roomKey": "Private room with private bathroom",
+              "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+            },
+            "applicability": "OFFER_SCOPED",
+            "links": [
+              {
+                "field": "beds",
+                "evidence": [
+                  {
+                    "ref": "SYNTHETIC_PROOF",
+                    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  }
+                ]
+              }
+            ]
+          },
+          "reviewedOfferBindingFingerprint": "2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758"
+        }
+      ],
+      "reviewProjectionFingerprint": "a564ed85109fb392ad0223f4dd2248eb2223a235b03dcd524e0ce2237c34cd4e",
+      "requirementBasis": [
+        {
+          "requirement": "Invented adequate sleeping places and guest capacity",
+          "essential": true
+        }
+      ],
+      "requirementMapping": [
+        {
+          "key": "sleepingPlaces",
+          "needIndexes": [
+            0
+          ],
+          "reason": "Explicit synthetic scenario mapping"
+        },
+        {
+          "key": "capacity",
+          "needIndexes": [
+            0
+          ],
+          "reason": "Explicit synthetic scenario mapping"
+        },
+        {
+          "key": "childAdmission",
+          "needIndexes": [],
+          "reason": "Explicit synthetic scenario mapping"
+        },
+        {
+          "key": "exclusiveUse",
+          "needIndexes": [],
+          "reason": "Explicit synthetic scenario mapping"
+        },
+        {
+          "key": "privateBathroom",
+          "needIndexes": [],
+          "reason": "Explicit synthetic scenario mapping"
+        }
+      ]
+    },
+    "contextId": "PREFERENCE"
+  },
+  "appendix": {
+    "version": "stayopti.reviewed-evidence-appendix@1.2",
+    "id": "SYNTHETIC_APPENDIX_001",
+    "classification": "DIAGNOSTIC_ONLY",
+    "base": {
+      "caseId": "SYNTHETIC_INTENT_BRIDGE",
+      "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+      "journalHash": "fd0aa4f548aa22c280f7a56af49296f70a72688c5dc683a17e1cae351de5ef5a",
+      "eventCount": 67,
+      "source": {
+        "packetHash": "acd71b51647dace45f517f59e2e3f0d86369864d7ec17cec6632c1469f457d92",
+        "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revision": 67,
+        "lastEventHash": "f4174c67d3162183b2fd43624eeb3858e871933f71ddc523293d5857f5cb3a8c",
+        "contentFingerprint": "31826e192c9f3ec273ef5e3c6dd4b16a6e71860aa6c654c2a5b93e5169331900",
+        "preparedInputSha256": "18f80651137bc5c5b3ff16bcc32227d8b35a935fa72d807348f316f783af9bf9",
+        "originalManifestSha256": "7553fe0b6566d52e5c05a1e2d70362d2b964327476d4bbf2aeaf402e8e855782"
+      },
+      "projectionFingerprint": "a564ed85109fb392ad0223f4dd2248eb2223a235b03dcd524e0ce2237c34cd4e",
+      "normalizationFingerprint": "7fe299ffe4d16bd0b7ffc9cba79e4581f0e9c70262a962fd4b8049732062de4c",
+      "offers": [
+        {
+          "alternativeId": "SYNTHETIC_CAPABILITY_0",
+          "offerBindingFingerprint": "79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3",
+          "scope": {
+            "roomKey": "Private room with private bathroom",
+            "rateKey": "REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3",
+            "stay": {
+              "checkIn": "2099-10-10",
+              "checkOut": "2099-10-13",
+              "currency": "EUR"
+            },
+            "party": {
+              "adults": 2,
+              "childAgesAtStay": [],
+              "unitsRequested": 1
+            }
+          }
+        },
+        {
+          "alternativeId": "SYNTHETIC_CAPABILITY_1",
+          "offerBindingFingerprint": "d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe",
+          "scope": {
+            "roomKey": "Private room with private bathroom",
+            "rateKey": "REVIEWED_RATE_d5a7e00cab7c2641360550d4fab0d873db52fdab7cf426230f1cc55ca63c8cfe",
+            "stay": {
+              "checkIn": "2099-10-10",
+              "checkOut": "2099-10-13",
+              "currency": "EUR"
+            },
+            "party": {
+              "adults": 2,
+              "childAgesAtStay": [],
+              "unitsRequested": 1
+            }
+          }
+        },
+        {
+          "alternativeId": "SYNTHETIC_CAPABILITY_2",
+          "offerBindingFingerprint": "2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758",
+          "scope": {
+            "roomKey": "Private room with private bathroom",
+            "rateKey": "REVIEWED_RATE_2cbee112c5676e3e26fd1cc3ebab2366a28e2f475eea3a7222340234a48c3758",
+            "stay": {
+              "checkIn": "2099-10-10",
+              "checkOut": "2099-10-13",
+              "currency": "EUR"
+            },
+            "party": {
+              "adults": 2,
+              "childAgesAtStay": [],
+              "unitsRequested": 1
+            }
+          }
+        }
+      ]
+    },
+    "evaluatedAt": "2099-09-01T12:02:00Z",
+    "proofs": [
+      {
+        "id": "SYNTHETIC_INTEGRATION_1_PROOF",
+        "artifact": {
+          "ref": "SYNTHETIC_INTEGRATION_1_PROOF",
+          "mediaType": "application/json",
+          "base64": "ewogICJ2ZXJzaW9uIjogInN0YXlvcHRpLmFwcGVuZGl4LXBvaW50LWV2aWRlbmNlQDEiLAogICJzY29wZSI6IHsKICAgICJhbHRlcm5hdGl2ZUlkIjogIlNZTlRIRVRJQ19DQVBBQklMSVRZXzAiLAogICAgIm9mZmVyQmluZGluZ0ZpbmdlcnByaW50IjogIjc5YzQ2MWY3NGVhNDQ3YmQzYTQ0NDgxYjIzMWFjMmQxNmUyM2Y1N2ZkZjlhNWE0MjM5YzE0MDIwMTE4N2RhYjMiLAogICAgInJvb21LZXkiOiAiUHJpdmF0ZSByb29tIHdpdGggcHJpdmF0ZSBiYXRocm9vbSIsCiAgICAicmF0ZUtleSI6ICJSRVZJRVdFRF9SQVRFXzc5YzQ2MWY3NGVhNDQ3YmQzYTQ0NDgxYjIzMWFjMmQxNmUyM2Y1N2ZkZjlhNWE0MjM5YzE0MDIwMTE4N2RhYjMiLAogICAgInN0YXkiOiB7CiAgICAgICJjaGVja0luIjogIjIwOTktMTAtMTAiLAogICAgICAiY2hlY2tPdXQiOiAiMjA5OS0xMC0xMyIsCiAgICAgICJjdXJyZW5jeSI6ICJFVVIiCiAgICB9LAogICAgInBhcnR5IjogewogICAgICAiYWR1bHRzIjogMiwKICAgICAgImNoaWxkQWdlc0F0U3RheSI6IFtdLAogICAgICAidW5pdHNSZXF1ZXN0ZWQiOiAxCiAgICB9CiAgfSwKICAic291cmNlUmVmIjogIlNZTlRIRVRJQ19TT1VSQ0VfMCIsCiAgInNvdXJjZUtpbmQiOiAiUFJPUEVSVFlfRE9DVU1FTlQiLAogICJvYnNlcnZhdGlvbklkIjogIlNZTlRIRVRJQ19SQVRFX09CU0VSVkFUSU9OXzAiLAogICJvYnNlcnZlZEF0IjogIjIwOTktMDktMDFUMTI6MDE6MDBaIiwKICAidGltZVNvdXJjZSI6ICJTWU5USEVUSUNfRVhQTElDSVRfQ0xPQ0siLAogICJ2YWxpZFVudGlsIjogIjIwOTktMDktMDFUMTI6MTA6MDBaIiwKICAiYXBwbGljYWJpbGl0eSI6ICJQUk9QRVJUWV9XSURFIiwKICAiZmllbGQiOiAicmF0aW5nU2NhbGUiLAogICJzdGF0ZW1lbnQiOiAiUmF0aW5nIHNjYWxlOiAxLTEwIiwKICAidGVtcG9yYWwiOiB7CiAgICAicmVsYXRpb24iOiAiUkVTT0xWRV9VTktOT1dOIiwKICAgICJwcmlvckNsYWltU2hhMjU2IjogIjk3ZDVkMmJjNzNkNjcwNTE3YTAyOTQ5MjBkZjYxZjZmYzE0OTY1OWVhMGJlNjVkOTMwYjA2MGEwYmZiMTllMDQiLAogICAgInJldGlyZWRPYnNlcnZhdGlvbnMiOiBbXSwKICAgICJyZXRpcmVkQXZhaWxhYmlsaXR5IjogW10KICB9LAogICJyYXRpbmdPYnNlcnZhdGlvbkJpbmRpbmciOiB7CiAgICAiY2xhaW1TaGEyNTYiOiAiMTE3N2I5MTRkZGFlZjQ1MWYwOTQzZjIwZWRjZThiNWE5ZDBkYzdiMTljMTk2Nzk2ZDk2YmU4ODJlODRhNGIwNSIsCiAgICAib2JzZXJ2ZWRWYWx1ZSI6IDguOSwKICAgICJyZWxhdGlvbiI6ICJTQ0FMRV9PRl9USElTX1BVQkxJU0hFRF9PQlNFUlZBVElPTiIsCiAgICAiYmFzaXMiOiAiU3ludGhldGljIHNvdXJjZSBleHBsaWNpdGx5IGlkZW50aWZpZXMgdGhlIHNjYWxlIG9mIHRoaXMgcmV0YWluZWQgcHVibGlzaGVkIHJhdGluZyIKICB9Cn0K",
+          "sha256": "0814d27c0b4ebe2d56b889ea75bc62fd37a1ab83c2d97556fb25f2dc1afd7c9f"
+        },
+        "transcription": {
+          "content": "{\n  \"version\": \"stayopti.appendix-point-evidence@1\",\n  \"scope\": {\n    \"alternativeId\": \"SYNTHETIC_CAPABILITY_0\",\n    \"offerBindingFingerprint\": \"79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3\",\n    \"roomKey\": \"Private room with private bathroom\",\n    \"rateKey\": \"REVIEWED_RATE_79c461f74ea447bd3a44481b231ac2d16e23f57fdf9a5a4239c140201187dab3\",\n    \"stay\": {\n      \"checkIn\": \"2099-10-10\",\n      \"checkOut\": \"2099-10-13\",\n      \"currency\": \"EUR\"\n    },\n    \"party\": {\n      \"adults\": 2,\n      \"childAgesAtStay\": [],\n      \"unitsRequested\": 1\n    }\n  },\n  \"sourceRef\": \"SYNTHETIC_SOURCE_0\",\n  \"sourceKind\": \"PROPERTY_DOCUMENT\",\n  \"observationId\": \"SYNTHETIC_RATE_OBSERVATION_0\",\n  \"observedAt\": \"2099-09-01T12:01:00Z\",\n  \"timeSource\": \"SYNTHETIC_EXPLICIT_CLOCK\",\n  \"validUntil\": \"2099-09-01T12:10:00Z\",\n  \"applicability\": \"PROPERTY_WIDE\",\n  \"field\": \"ratingScale\",\n  \"statement\": \"Rating scale: 1-10\",\n  \"temporal\": {\n    \"relation\": \"RESOLVE_UNKNOWN\",\n    \"priorClaimSha256\": \"97d5d2bc73d670517a0294920df61f6fc149659ea0be65d930b060a0bfb19e04\",\n    \"retiredObservations\": [],\n    \"retiredAvailability\": []\n  },\n  \"ratingObservationBinding\": {\n    \"claimSha256\": \"1177b914ddaef451f0943f20edce8b5a9d0dc7b19c196796d96be882e84a4b05\",\n    \"observedValue\": 8.9,\n    \"relation\": \"SCALE_OF_THIS_PUBLISHED_OBSERVATION\",\n    \"basis\": \"Synthetic source explicitly identifies the scale of this retained published rating\"\n  }\n}\n",
+          "sha256": "0814d27c0b4ebe2d56b889ea75bc62fd37a1ab83c2d97556fb25f2dc1afd7c9f"
+        },
+        "pointReview": {
+          "version": "stayopti.appendix-point-review@1",
+          "actorKind": "SYNTHETIC_TEST",
+          "actorId": "SYNTHETIC_POINT_REVIEWER",
+          "artifactSha256": "0814d27c0b4ebe2d56b889ea75bc62fd37a1ab83c2d97556fb25f2dc1afd7c9f",
+          "transcriptionSha256": "0814d27c0b4ebe2d56b889ea75bc62fd37a1ab83c2d97556fb25f2dc1afd7c9f",
+          "observationFingerprint": "0814d27c0b4ebe2d56b889ea75bc62fd37a1ab83c2d97556fb25f2dc1afd7c9f",
+          "method": "SOURCE_CONTENT_AND_EXACT_OFFER_SCOPE_CHECK",
+          "reviewedAt": "2099-09-01T12:02:00Z",
+          "scopeBasis": "Invented source explicitly identifies this exact rate and party",
+          "meaningBasis": "Exact invented statement, not inferred from hash",
+          "limitations": "Synthetic test only; not independent source authentication or a real human review",
+          "receiptSha256": "02fb8ee6de04a20a386ed81fba95354bd14050675bb95e7b8f15bdeb4b5cbc30"
+        }
+      }
+    ],
+    "integrations": [
+      {
+        "id": "SYNTHETIC_INTEGRATION_1",
+        "alternativeId": "SYNTHETIC_CAPABILITY_0",
+        "field": "ratingScale",
+        "proofId": "SYNTHETIC_INTEGRATION_1_PROOF",
+        "claim": {
+          "state": "KNOWN",
+          "value": 10,
+          "reason": "Explicit invented appendix statement"
+        },
+        "temporal": {
+          "relation": "RESOLVE_UNKNOWN",
+          "priorClaimSha256": "97d5d2bc73d670517a0294920df61f6fc149659ea0be65d930b060a0bfb19e04",
+          "retiredObservations": [],
+          "retiredAvailability": []
+        }
+      }
+    ]
+  },
+  "inputHash": "cf0f932328a966944cd4e8b6519fe126cc8dab9272affca8e0b52380f7ebfb64",
+  "actual": {
+    "integration": {
+      "id": "SYNTHETIC_INTEGRATION_1",
+      "alternativeId": "SYNTHETIC_CAPABILITY_0",
+      "field": "ratingScale",
+      "status": "REJECTED",
+      "reason": "APPENDIX_HISTORICAL_RATE_CONTINUITY_UNPROVEN"
+    },
+    "decision": "abstained",
+    "kernelInvocations": 1,
+    "policyInvocations": 2
+  },
+  "expected": "Property rating evidence must not require rate continuity; the old receipt here is only a synthetic legacy control, not a proposed property-scoped approval",
+  "initialAssertion": {
+    "pass": false,
+    "message": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'REJECTED'\n- 'APPLIED'\n"
+  }
+}
