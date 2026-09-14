@@ -1,0 +1,834 @@
+{
+  "version": "d0061-r1-synthetic-before-after@1",
+  "source": "3d94b9f45632260f65784d011c53366dc9f4f2b7",
+  "syntheticOnly": true,
+  "initialTests": {
+    "pass": 2,
+    "fail": 4
+  },
+  "cases": [
+    {
+      "case": "A_SECOND_BED_UNAVAILABLE",
+      "originalCode": {
+        "adapterSha256": "6b96bd53b18c40ee07a464d139d32c9632ab5244a34ed035ec44094898c6a82e",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "originalInputSha256": "9f9db313dc8e3c8a0fee5b558f49cc63e685810571569d7c1b6f3854ca7e6f3f",
+      "initialEvidenceSha256": "5584fbf4e4e7f1fccdfc18158455f66060d0d6311e937217840a55fcf6daa05b",
+      "correctedEvidenceSha256": "d2413068ca13dce5647bdbe5db4b74b55d42204c0ceb0b8f18b5d4b91a5bc3aa",
+      "inputsIdentical": true,
+      "originalsPreserved": true,
+      "before": {
+        "status": "usable",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          }
+        ]
+      },
+      "after": {
+        "status": "abstained",
+        "sleeping": [
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          },
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          },
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          }
+        ]
+      },
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      },
+      "afterActualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    {
+      "case": "B_BED_CONFIGURATION_PENDING",
+      "originalCode": {
+        "adapterSha256": "6b96bd53b18c40ee07a464d139d32c9632ab5244a34ed035ec44094898c6a82e",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "originalInputSha256": "4967089a44d266803b260165451b6417a2ca992acaec8c28a76efbb6af66fe88",
+      "initialEvidenceSha256": "e858ef23c3bfc3b25ffc315f621eff3969660767ccfb49c5d16eff00dd233ab5",
+      "correctedEvidenceSha256": "9c92eef84609eba5ea11d8797ee2ba009914cd67255a9af99ae54e930b460b2e",
+      "inputsIdentical": true,
+      "originalsPreserved": true,
+      "before": {
+        "status": "usable",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          }
+        ]
+      },
+      "after": {
+        "status": "abstained",
+        "sleeping": [
+          {
+            "status": "INSUFFICIENT_INFORMATION",
+            "lowerBound": null
+          },
+          {
+            "status": "INSUFFICIENT_INFORMATION",
+            "lowerBound": null
+          },
+          {
+            "status": "INSUFFICIENT_INFORMATION",
+            "lowerBound": null
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          }
+        ]
+      },
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      },
+      "afterActualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    {
+      "case": "C_DETAIL_TOP_ERROR",
+      "originalCode": {
+        "adapterSha256": "6b96bd53b18c40ee07a464d139d32c9632ab5244a34ed035ec44094898c6a82e",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "originalInputSha256": "d35b445bbc6c626bcdb0763cc2bc681ec2db4dd612eb0ee3e567cc616f63734f",
+      "initialEvidenceSha256": "caf1e0810412057d712212dbcef05e68fefdd1790598bb6ed59b8506387d69b9",
+      "correctedEvidenceSha256": "2d03659ec0e194223175843e61f9e722b8bb3d07236051f2244d792707c94fde",
+      "inputsIdentical": true,
+      "originalsPreserved": true,
+      "before": {
+        "status": "usable",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          }
+        ]
+      },
+      "after": {
+        "status": "abstained",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "PROVIDER_ERROR",
+            "detailUsable": false
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "PROVIDER_ERROR",
+            "detailUsable": false
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "PROVIDER_ERROR",
+            "detailUsable": false
+          }
+        ]
+      },
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      },
+      "afterActualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    {
+      "case": "D_DETAIL_DATA_ERROR",
+      "originalCode": {
+        "adapterSha256": "6b96bd53b18c40ee07a464d139d32c9632ab5244a34ed035ec44094898c6a82e",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "originalInputSha256": "a2e66b3b210e90a36093540783c6a78cc129c40f8a9f5c82576ad1df00cd8249",
+      "initialEvidenceSha256": "558fd2d10567f0477aa1edd2934308d38ac92d290c44f9abd925281b1d7384bc",
+      "correctedEvidenceSha256": "115daa6949231f441d4f74d3268901511ec8f05d5fc1e09b5f09b9b1460f5b40",
+      "inputsIdentical": true,
+      "originalsPreserved": true,
+      "before": {
+        "status": "usable",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          }
+        ]
+      },
+      "after": {
+        "status": "abstained",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "PROVIDER_ERROR",
+            "detailUsable": false
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "PROVIDER_ERROR",
+            "detailUsable": false
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "PROVIDER_ERROR",
+            "detailUsable": false
+          }
+        ]
+      },
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      },
+      "afterActualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    {
+      "case": "E_COMPLETE_CONTROL",
+      "originalCode": {
+        "adapterSha256": "6b96bd53b18c40ee07a464d139d32c9632ab5244a34ed035ec44094898c6a82e",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "originalInputSha256": "3e4a6972ed652674a0e99540baaf0a62f3a782a13823d02c1240adc8eed343ae",
+      "initialEvidenceSha256": "89132d4f064db80581fe1b351b96d183e743439eced65c3dfff8490f6d8f011e",
+      "correctedEvidenceSha256": "fa1d91a6d1b8bc0a211694e26232daa2c245e2af0fa2199cd39ee4222c669f0c",
+      "inputsIdentical": true,
+      "originalsPreserved": true,
+      "before": {
+        "status": "usable",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          }
+        ]
+      },
+      "after": {
+        "status": "usable",
+        "sleeping": [
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          },
+          {
+            "status": "SATISFIED",
+            "lowerBound": 4
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          }
+        ]
+      },
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      },
+      "afterActualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    {
+      "case": "F_PREBOOK_ERROR_CONTROL",
+      "originalCode": {
+        "adapterSha256": "6b96bd53b18c40ee07a464d139d32c9632ab5244a34ed035ec44094898c6a82e",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "originalInputSha256": "af5ab34dd20f3e73133b20ad83db72aae0b5db78103a742d6c64ecf9ecfe3313",
+      "initialEvidenceSha256": "0d2bd828b9d20575a57163f4d7914377edb680bf3ce2683aa885f35b50b6e5d2",
+      "correctedEvidenceSha256": "4d32c857a92c9c351532c76827c4aa3f1decd1299686251483c2c09aadc856ba",
+      "inputsIdentical": true,
+      "originalsPreserved": true,
+      "before": {
+        "status": "abstained",
+        "sleeping": [
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          },
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          },
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": null,
+            "detailUsable": null
+          }
+        ]
+      },
+      "after": {
+        "status": "abstained",
+        "sleeping": [
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          },
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          },
+          {
+            "status": "CONFLICTING",
+            "lowerBound": null
+          }
+        ],
+        "details": [
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          },
+          {
+            "detailIdentityVerified": true,
+            "detailSemanticStatus": "USABLE",
+            "detailUsable": true
+          }
+        ]
+      },
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      },
+      "afterActualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    }
+  ],
+  "providerCalls": 0,
+  "privateCaseExecutions": 0,
+  "githubCi": false,
+  "scopeFollowUp": {
+    "phase": "UNPUBLISHED_R1_INTERMEDIATE_SCOPE_FIX",
+    "syntheticOnly": true,
+    "mutation": "PREBOOK and PREBOOK_GET rates[0].name = Private room; Private bathroom; 2 letti matrimoniali; secondo letto non disponibile senza letto aggiuntivo",
+    "inputSha256": "6a941ed9d62b7270ab9a029c698ee79a85a7bcc4fc1ea1e2f8e74d63a193b48c",
+    "inputUnchanged": true,
+    "initialAssertionFailed": true,
+    "beforeEvidenceSha256": "ed45db5c0fa12ff455dc04fb995cd59c39e82f9055ab64632789a9985efd85c1",
+    "afterEvidenceSha256": "07c6b91f8158e801b25ae9374009678af22c340d21513c115906eeb2ffee7eee",
+    "before": {
+      "code": {
+        "adapterSha256": "bc994c1c70195b763fd953dcc70c7b53ad23fd8ebd29f33d62364bb545561ffc",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "status": "usable",
+      "sleeping": [
+        {
+          "status": "SATISFIED",
+          "lowerBound": 4
+        },
+        {
+          "status": "SATISFIED",
+          "lowerBound": 4
+        },
+        {
+          "status": "SATISFIED",
+          "lowerBound": 4
+        }
+      ],
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    "after": {
+      "code": {
+        "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+        "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+        "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+      },
+      "status": "abstained",
+      "sleeping": [
+        {
+          "status": "CONFLICTING",
+          "lowerBound": null
+        },
+        {
+          "status": "CONFLICTING",
+          "lowerBound": null
+        },
+        {
+          "status": "CONFLICTING",
+          "lowerBound": null
+        }
+      ],
+      "actualInvocations": {
+        "purePreparation": {
+          "kernel": 0,
+          "policy": 0
+        },
+        "execution": {
+          "kernel": 1,
+          "policy": 1
+        }
+      }
+    },
+    "originalsPreserved": true,
+    "finalTests": {
+      "pass": 40,
+      "fail": 0,
+      "skipped": 0
+    },
+    "finalCases": [
+      {
+        "case": "A_SECOND_BED_UNAVAILABLE",
+        "inputSha256": "9f9db313dc8e3c8a0fee5b558f49cc63e685810571569d7c1b6f3854ca7e6f3f",
+        "code": {
+          "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+          "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+          "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+        },
+        "evidenceSha256": "f399aa0b3e539071afdc5811877c516351871b3441a665568f562e0e51724069",
+        "decision": "abstained",
+        "actualInvocations": {
+          "purePreparation": {
+            "kernel": 0,
+            "policy": 0
+          },
+          "execution": {
+            "kernel": 1,
+            "policy": 1
+          }
+        },
+        "originalsPreserved": true
+      },
+      {
+        "case": "B_BED_CONFIGURATION_PENDING",
+        "inputSha256": "4967089a44d266803b260165451b6417a2ca992acaec8c28a76efbb6af66fe88",
+        "code": {
+          "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+          "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+          "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+        },
+        "evidenceSha256": "736749f4973a6c9df490899248bd6054494149f430399056582341a9bb804e67",
+        "decision": "abstained",
+        "actualInvocations": {
+          "purePreparation": {
+            "kernel": 0,
+            "policy": 0
+          },
+          "execution": {
+            "kernel": 1,
+            "policy": 1
+          }
+        },
+        "originalsPreserved": true
+      },
+      {
+        "case": "C_DETAIL_TOP_ERROR",
+        "inputSha256": "d35b445bbc6c626bcdb0763cc2bc681ec2db4dd612eb0ee3e567cc616f63734f",
+        "code": {
+          "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+          "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+          "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+        },
+        "evidenceSha256": "2ac198dc5e4aae865f52d98debfd529c6220f6030c1206478c2cbad5052de8b2",
+        "decision": "abstained",
+        "actualInvocations": {
+          "purePreparation": {
+            "kernel": 0,
+            "policy": 0
+          },
+          "execution": {
+            "kernel": 1,
+            "policy": 1
+          }
+        },
+        "originalsPreserved": true
+      },
+      {
+        "case": "D_DETAIL_DATA_ERROR",
+        "inputSha256": "a2e66b3b210e90a36093540783c6a78cc129c40f8a9f5c82576ad1df00cd8249",
+        "code": {
+          "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+          "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+          "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+        },
+        "evidenceSha256": "a2e4982ea425ed88b280ac893e45780992f3c4a52a2df62e2cd1976bca1f0c8f",
+        "decision": "abstained",
+        "actualInvocations": {
+          "purePreparation": {
+            "kernel": 0,
+            "policy": 0
+          },
+          "execution": {
+            "kernel": 1,
+            "policy": 1
+          }
+        },
+        "originalsPreserved": true
+      },
+      {
+        "case": "E_COMPLETE_CONTROL",
+        "inputSha256": "3e4a6972ed652674a0e99540baaf0a62f3a782a13823d02c1240adc8eed343ae",
+        "code": {
+          "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+          "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+          "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+        },
+        "evidenceSha256": "e9e50b673e1653475263ca4fd7a9a8bf823c0b58a3fd3bcbfcec3cf46a2fa4b9",
+        "decision": "usable",
+        "actualInvocations": {
+          "purePreparation": {
+            "kernel": 0,
+            "policy": 0
+          },
+          "execution": {
+            "kernel": 1,
+            "policy": 1
+          }
+        },
+        "originalsPreserved": true
+      },
+      {
+        "case": "F_PREBOOK_ERROR_CONTROL",
+        "inputSha256": "af5ab34dd20f3e73133b20ad83db72aae0b5db78103a742d6c64ecf9ecfe3313",
+        "code": {
+          "adapterSha256": "92fcf06b5d8fc64d58caf5a56318b894777b2a137a0be203d9282a7af1610f8d",
+          "fixtureSha256": "554663173061c9bf9e8c9fa1ffff1442d5c7c1c52fe79388a1cc6421a5e21dde",
+          "compiledKernelSha256": "50b7a70555fa66a9b13e6a9a6c7ad0a73acd1cf7a1b1930af6eda1e37cdc21b8"
+        },
+        "evidenceSha256": "65368551fb5989d1f21734bc658a68fc6310cdb608d90c953b331632a7b1ef39",
+        "decision": "abstained",
+        "actualInvocations": {
+          "purePreparation": {
+            "kernel": 0,
+            "policy": 0
+          },
+          "execution": {
+            "kernel": 1,
+            "policy": 1
+          }
+        },
+        "originalsPreserved": true
+      }
+    ]
+  }
+}

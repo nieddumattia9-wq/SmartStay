@@ -6,7 +6,7 @@ import {DIAGNOSTIC_REQUIREMENTS_VERSION,evaluateDiagnosticOfferRequirements,norm
 import {OBSERVED_EXECUTION_VERSION,reprojectObservedRequirementCandidate} from './observed-offer-execution-v1.mjs';
 import {resolveScopedService,serviceCodes} from './diagnostic-scoped-signals-v1.mjs';
 
-export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1';
+export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.1';
 export const SUPPORTED_WIRE_PROFILE='liteapi-v3-roomTypes-rates-exact-retrieval@1';
 export const LIVE_TRANSPORT_ENABLED=false;
 const clone=x=>structuredClone(x);
@@ -152,15 +152,60 @@ function scoped(record,field,value,scope,level){return {sourceField:field,scope:
  original:{status:value===null?'UNKNOWN':'KNOWN',value:clone(value),reason:value===null?'Missing provider field':null,reliability:'SOURCE_REPORTED',evidenceRefs:record?.response?['request/'+record.ordinal]:[]},
  links:record?.response?link(record,field):[],structuredPrivacy:null};}
 function sleepingText(value){
- if(typeof value!=='string')return null;
- if(/\b(?:non disponibili|not available|subject to|su richiesta|oppure)\b/i.test(value))return null;
- // Only independent, fully parsed bed clauses. Unknown sofa/bunk places remain
- // unknown; no dimensions, max occupancy or room multiplicity used as beds.
- const clauses=value.split(';').map(v=>v.trim()).filter(v=>/^(?:\d+\s+lett|\d+\s+divan)/i.test(v));
- if(!clauses.length)return null;
- const decoded=clauses.map(normalizeItalianBedInventory);
- if(decoded.some(v=>v===null))return null;
- return {complete:false,beds:decoded.flatMap(v=>v.beds)};
+ const clauses=[],inventories=[];
+ // This is a bounded clause grammar, not a whole-description sentiment test.
+ // Numeric inventory must not drop a second clause qualifying the same beds.
+ const bedSubject=/\b(?:lett[oi]|divan[oi]|beds?|bunks?|sofas?|sleeping|berths?)\b/i;
+ const conditional=/\b(?:da confermare|da verificare|da definire|su richiesta|subject to|on request|to be confirmed|pending|may|might|if|se|salvo|secondo disponibilit[aà]|non garantit[oaie]|not guaranteed|oppure|alternativ[ae])\b/i;
+ const uncertainty=/\b(?:unknown|unconfirmed|uncertain|undocumented|unverified|sconosciut[oaie]|incert[oaie]|non (?:specificat|documentat|verificat)[oaie])\b/i;
+ const bedNegation=/\b(?:non\s+(?:disponibil[ei]|utilizzabil[ei]|present[ei]|previst[oi])|not\s+(?:available|usable|present|provided)|unavailable|unusable|(?:no|without)\s+(?:(?:a|the|any)\s+)?(?:beds?|bunks?|sofas?)|(?:nessun[oa]?|senza)\s+(?:un[oa]?\s+)?(?:lett[oi]|divan[oi]))\b/i;
+ const implicitQualification=/^(?:(?:non|not)\s+(?:disponibil[ei]|available|garantit[oaie]|guaranteed|present[ei]|present|confermat[oaie]|confirmed)|unavailable|unconfirmed|unknown|su richiesta|on request|da (?:confermare|verificare|definire)|subject to (?:availability|confirmation)|secondo disponibilit[aà]|senza garanzia|without guarantee)[.!]?$/i;
+ let previousBed=false;
+ if(typeof value==='string')for(const textValue of value.split(';').map(v=>v.trim()).filter(Boolean)){
+  const bed=bedSubject.test(textValue),implicit=previousBed&&implicitQualification.test(textValue);
+  const decoded=bed?normalizeItalianBedInventory(textValue):null;
+  let kind;
+  if(decoded){kind='SUPPORTED_INVENTORY';inventories.push(decoded);}
+  else if(bed){
+   // A statement about extra beds is not a restriction on the base inventory.
+   // The explicit extra/supplementary referent is separate from base beds; its
+   // absence or conditional provision must not negate an existing base count.
+   // Consume the WHOLE extra-bed statement. Merely mentioning extra beds in a
+   // restriction on a base bed must never make that restriction disappear.
+   const extraOnly=/^(?:nessun letto (?:aggiuntivo|supplementare)(?: disponibile)?|no (?:extra|supplementary) beds?(?: available)?|(?:letti (?:aggiuntivi|supplementari)|(?:extra|supplementary) beds?) (?:non disponibili|not available|su richiesta|on request|subject to availability))[.!]?$/i.test(textValue);
+   kind=extraOnly?'EXTRA_BEDS_NOT_BASE_INVENTORY':conditional.test(textValue)||uncertainty.test(textValue)?'BED_CONDITION_OR_UNCERTAINTY':
+    bedNegation.test(textValue)?'BED_NEGATION':'UNSUPPORTED_BED_CLAUSE';
+  }else kind=implicit?'UNRESOLVED_BED_QUALIFICATION':'OTHER_SUBJECT';
+  clauses.push({text:textValue,kind});previousBed=bed||implicit;
+ }
+ const negated=clauses.some(c=>c.kind==='BED_NEGATION');
+ const uncertain=clauses.some(c=>['BED_CONDITION_OR_UNCERTAINTY','UNSUPPORTED_BED_CLAUSE','UNRESOLVED_BED_QUALIFICATION'].includes(c.kind));
+ const status=negated&&inventories.length?'CONFLICTING_INVENTORY':negated?'NEGATED_UNQUANTIFIED_INVENTORY':
+  uncertain?'UNVERIFIED_BED_QUALIFICATION':inventories.length?'SUPPORTED_LOWER_BOUND':'MISSING_SUPPORTED_INVENTORY';
+ const claimState=status==='CONFLICTING_INVENTORY'?'CONFLICTING':status==='SUPPORTED_LOWER_BOUND'?'KNOWN':'UNKNOWN';
+ return {status,claimState,clauses,inventory:claimState==='KNOWN'?{complete:false,beds:inventories.flatMap(v=>v.beds)}:null,
+  reason:'SCOPED_BED_CLAUSE_GRAMMAR:'+status,completeInventoryCertified:false};
+}
+
+function inspectHotelDetail(record,hotelId){
+ const payload=body(record),data=payload?.data,issues=[];
+ const identityVerified=Boolean(data&&typeof data==='object'&&!Array.isArray(data)&&
+  (data.id===hotelId||data.hotelId===hotelId)&&(!present(data,'id')||data.id===hotelId)&&(!present(data,'hotelId')||data.hotelId===hotelId));
+ for(const [path,object] of [['response',payload],['data',data]])if(object&&typeof object==='object'){
+  for(const field of ['error','errors'])if(present(object,field)){
+   const value=object[field];
+   if(value===null||Array.isArray(value)&&value.length===0)continue;
+   const declared=typeof value==='string'&&value.trim().length>0||Array.isArray(value)&&value.length>0||
+    value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length>0;
+   issues.push({path:path+'.'+field,reason:declared?'PROVIDER_ERROR':'UNSUPPORTED_ERROR_SHAPE'});
+  }
+ }
+ const status=!record?'NOT_OBSERVED':!payload?'TRANSPORT_OR_PAYLOAD_UNUSABLE':
+  issues.some(i=>i.reason==='PROVIDER_ERROR')?'PROVIDER_ERROR':issues.length?'UNSUPPORTED_ERROR_SHAPE':
+  !identityVerified?'IDENTITY_UNVERIFIED':'USABLE';
+ return {identityVerified,status,usable:status==='USABLE',issues,
+  property:status==='USABLE'?data:null,originalPayload:payload,
+  source:record?.response?link(record,'HOTEL_DETAIL response and data'):[]};
 }
 
 function scenarioCheck(s){
@@ -232,6 +277,7 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
   const missing=reason=>unknown(scope,reason,activeRecord);
   const fiscal=inspectLiteApiFiscalEvidence(o,r,scenario.stay.currency,active.hotel?.remarks??[]);
   const fiscalUsable=verified&&fiscal.completeTotal!==null;
+  const sleeping=sleepingText(r.name);
   const n={alternativeId:id,scope:{...scope,stay:clone(scenario.stay),party:{adults:scenario.party.adults,childAgesAtStay:clone(scenario.party.childAgesAtStay),unitsRequested:1}},
    reference:unknown(scope,'NO_DISTANCE_REQUESTED'),distanceKm:unknown(scope,'NO_DISTANCE_REQUESTED'),
    availability:{observed:searchOffer.issue?missing('SEARCH_OFFER_UNVERIFIABLE'):claim('AVAILABLE',scope,search,'roomTypes/offerId','OBSERVED_RATE_NOT_BOOKABILITY'),
@@ -241,7 +287,7 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
    unitsOffered:!searchOffer.issue&&!validateScope(active,scenario).length?c(1,'rates/occupancyNumber','ONE_RATE_COMPONENT_FOR_ONE_REQUESTED_OCCUPANCY_NOT_INTERNAL_ROOMS'):missing('QUOTED_UNIT_BINDING_UNVERIFIED'),
    internalRooms:missing('INTERNAL_ROOMS_NOT_INFERRED_FROM_UNITS'),
    capacityGuests:integer(r.maxOccupancy)?c(r.maxOccupancy,'rates/maxOccupancy','SOURCE_DECLARED_MAXIMUM_NOT_BEDS'):missing('CAPACITY_MISSING'),
-   sleeping:sleepingText(r.name)?c(sleepingText(r.name),'rates/name','BOUNDED_EXPLICIT_BED_CLAUSES_NOT_CAPACITY_MULTIPLIER'):missing('BED_PLACES_NOT_DOCUMENTED_OR_UNSUPPORTED'),
+   sleeping:claim(sleeping.inventory,scope,activeRecord,'rates/name',sleeping.reason,'OFFER_SCOPED',sleeping.claimState),
    children:{admitted:!searchOffer.issue&&!validateScope(active,scenario).length?c(true,'rates/adultCount+childCount+occupancyNumber; request/occupancies','QUOTE_FOR_EXACT_SUBMITTED_OCCUPANCY_NOT_GENERAL_CHILD_POLICY'):missing('CHILD_OCCUPANCY_BINDING_UNVERIFIED'),
     minimumAge:missing('MINIMUM_AGE_UNDOCUMENTED'),adultPricingFromAge:missing('AGE_PRICING_UNDOCUMENTED'),extraBedsAvailable:missing('EXTRA_BEDS_UNDOCUMENTED')},
    privateBathroom:missing('PRIVACY_EVALUATED_FROM_SCOPED_ORIGINAL_TEXT'),exclusiveUse:missing('PRIVACY_EVALUATED_FROM_SCOPED_ORIGINAL_TEXT'),
@@ -255,10 +301,8 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
    n.children.admitted=claim(null,scope,pre??search,'occupancy','CURRENT_OCCUPANCY_VERIFICATION_CONFLICT','OFFER_SCOPED','CONFLICTING');
   }
   normalization.offers.push(n);
-  const detail=records.find(d=>d.kind==='HOTEL_DETAIL'&&d.hotelId===hotelId),detailRaw=body(detail)?.data;
-  const detailBound=Boolean(detailRaw&&(detailRaw.id===hotelId||detailRaw.hotelId===hotelId)&&
-   (!present(detailRaw,'id')||detailRaw.id===hotelId)&&(!present(detailRaw,'hotelId')||detailRaw.hotelId===hotelId));
-  const property=detailBound?detailRaw:null;
+  const detail=records.find(d=>d.kind==='HOTEL_DETAIL'&&d.hotelId===hotelId);
+  const detailValidation=inspectHotelDetail(detail,hotelId),property=detailValidation.property;
   const textValue=!conflict&&typeof r.name==='string'?r.name:null;
   const scopedObservations=[scoped(activeRecord,'roomName',textValue,scope,'OFFER')];
   if(r.remarks!==undefined)scopedObservations.push(scoped(activeRecord,'roomAmenities',r.remarks,scope,'OFFER'));
@@ -273,9 +317,10 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
    if(s.state==='CONFLICTING')f.availability='conflicting';facts.push(f);
   }
   signals.push({alternativeId:id,roomKey:scope.roomKey,rateKey:scope.rateKey,facts,features:[],category:null,roomText:textValue,
-   scopedObservations,serviceInterpretations:services,observations:{other:{search:clone(searchOffer),prebook:clone(preDecoded),retrieval:clone(getDecoded),detail:clone(property),fiscal,time,getTime}},
+   scopedObservations,serviceInterpretations:services,observations:{other:{search:clone(searchOffer),prebook:clone(preDecoded),retrieval:clone(getDecoded),detail:clone(property),detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),fiscal,time,getTime}},
    provenance:{kind:'VERIFIED_SYNTHETIC_PROVIDER_CAPTURE',captureSha256:capture.captureSha256,privateIdentity,sourceRecords:[search,pre,get,detail].filter(Boolean).map(x=>({ordinal:x.ordinal,requestHash:x.request.body.sha256,responseHash:x.response?.body.sha256??null})),humanReview:null}});
-  observations.push({alternativeId:id,privateIdentity,issues:[...new Set(issues)],detailIdentityVerified:detailBound,
+  observations.push({alternativeId:id,privateIdentity,issues:[...new Set(issues)],detailIdentityVerified:detailValidation.identityVerified,
+   detailUsable:detailValidation.usable,detailSemanticStatus:detailValidation.status,detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),
    searchObserved:!searchOffer.issue,prebookVerified:verified,retrievalIsIndependentVerification:false,commercialChange,
    fiscal,time,getTime,rawResponsesRetained:true,occupancyAgeLink:'ORIGINAL_REQUEST_TO_EXACT_OFFER_ID_NO_INVENTED_RESPONSE_ECHO',
    sourceIdentityFieldsOnlyForAudit:true});

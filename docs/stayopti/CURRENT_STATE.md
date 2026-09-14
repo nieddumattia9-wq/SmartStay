@@ -1,5 +1,31 @@
 # StayOpti Current State
 
+## D-0061 R1 — Bed qualifications and detail-response semantic integrity
+
+Source `3d94b9f45632260f65784d011c53366dc9f4f2b7`, evaluation work branch only.
+Four actual synthetic kernel/policy counterexamples were reproduced before the
+repair (initial six-case run: 2 PASS / 4 FAIL). Observation adapter @1.1 retains
+bed qualifications and separates matching property identity from semantically
+usable details; invalid detail facts cannot supply stars/reviews/services.
+Original captures, old fixture and historical D-0061 results remain unchanged.
+No policy weights, roles, public behavior, private approvals or measures change.
+Initial R1 candidate isolated CurrentUser gates: new39/39, targeted563/563, V3 2470/2470,
+V2 196/196, mapper18/18 and PS5.1 parse13/13 PASS. Lifecycle530 PASS with17
+preexisting real-Valkey skips; security/release/analytics/capacity/beta,
+TypeScript/build/analytics-beta and18 local smoke checks PASS. A subsequent
+unpublished-candidate counterexample LSI16 required restricting extra-bed scope
+to the entire clause; reproduced FAIL then final targeted40/40 PASS. The old
+code's gate is not final proof for that change: a new isolated candidate and
+its complete gates are required before selective publication.
+That new candidate now passes40/40 new,564/564 targeted,V3 2471/2471 (no skips),
+V2 196/196 and all the same canonical gates/scans. These—not2470—are the final
+software's results. Only three reporting documents change afterward; the final
+tree must be rechecked, with software/test/initial-evidence bytes unchanged.
+Actual push/pending counts require remote readback; no CI or operational
+provider qualification is presumed. Seven excluded paths,
+seventeen sealed files and the extra private copy remain protected.
+See `../engine-v3/d0061-r1-semantic-integrity.md` and D-0061 R1.
+
 ## D-0061 — Fresh LiteAPI observation bridge, synthetic evaluation only
 
 Source `34fa82087a8921ea4042b56a737dd93ffea59663`, evaluation work branch.
