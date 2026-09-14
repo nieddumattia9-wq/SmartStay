@@ -25,6 +25,9 @@ import type {SmartStayEvidenceFactV2} from '../../engine-v2/model/smartStayEvalu
 import {createStableHashV3} from '../contract/stableHashV3';
 
 export const OBSERVED_DIAGNOSTIC_VERSION='stayopti.observed-offer-diagnostic@1.2' as const;
+export type ObservedDiagnosticDistanceContextV3 =
+  | {id:string;kilometers:number;reference:unknown;semantics:'strong-preference';distanceException?:DiagnosticDistanceExceptionV3}
+  | {id:string;kilometers:null;reference:unknown;semantics:'not-requested';distanceException?:never};
 export interface ObservedDiagnosticComputationInputV3 {
   version:typeof OBSERVED_DIAGNOSTIC_VERSION; caseId:string; sourceFingerprint:string;
   essentialCoverage:'ESSENTIAL_COVERAGE_DEFINED'|'UNREPRESENTED_ESSENTIAL_NEEDS';
@@ -32,7 +35,7 @@ export interface ObservedDiagnosticComputationInputV3 {
     checkIn:string;checkOut:string;currency:string;capturedAt:string;destinationKey:string|null;
     preferenceId:string;preferenceSource:'manual'|'automatic';tripProfile?:SmartStayTripProfileV2;
     comfortPreferences?:SmartStayComfortPreferencesV2};
-  context:{id:string;kilometers:number;reference:unknown;semantics:'strong-preference';distanceException?:DiagnosticDistanceExceptionV3};
+  context:ObservedDiagnosticDistanceContextV3;
   candidates:{alternativeId:string;roomKey:string;rateKey:string;
     facts:SmartStayEvidenceFactV2[];category:string|null;roomText:string|null;features:string[];
     scopedObservations:ScopedObservationV3[]|null;privacyClaims:{privateBathroom:ObservedPrivacyClaimV3;exclusiveUse:ObservedPrivacyClaimV3};
@@ -48,6 +51,11 @@ export interface ObservedDiagnosticComputationInputV3 {
 // substitute partial costs for totals, nor does observation mode grant eligibility.
 export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputationInputV3) {
   const q=input.query;
+  const distanceRequested=input.context?.semantics==='strong-preference';
+  if(!input.context||!input.context.id||(distanceRequested?
+    !Number.isFinite(input.context.kilometers)||input.context.kilometers===null||input.context.kilometers<=0:
+    input.context.semantics!=='not-requested'||input.context.kilometers!==null||input.context.distanceException!==undefined))
+    throw Error('OBSERVED_DISTANCE_CONTEXT_INVALID');
   if(input.version!==OBSERVED_DIAGNOSTIC_VERSION||!input.sourceFingerprint||!input.caseId||
     !Number.isFinite(q.totalBudget)||q.totalBudget<=0||!Number.isInteger(q.nights)||q.nights<1||
     !Number.isInteger(q.rooms)||q.rooms<1||q.children!==q.childAgesAtStay.length||input.candidates.length<2||
@@ -116,7 +124,8 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
   // Legacy current-search market/intent peers use the verified in-range set.
   // This is a reference-sample rule, NOT offer integrity or the final strong-
   // preference rule: out-of-range candidates and evidenced exceptions survive.
-  const marketEligible=(c:typeof calculations[number])=>c.eligibleForPrimaryRanking&&c.location.constraint.withinLimit===true;
+  const marketEligible=(c:typeof calculations[number])=>c.eligibleForPrimaryRanking&&
+    (!distanceRequested||c.location.constraint.withinLimit===true);
   const market=evaluateMarketContextV2({candidates:calculations.map(c=>({hotelId:c.hotelId,eligibleForPrimaryRanking:marketEligible(c),
     totalCost:c.c.assessment.completeTotal,currency:q.currency,accommodationCategory:c.accommodationCategory,stars:c.quality.starQuality.stars})),
     totalBudget:q.totalBudget,nights:q.nights,rooms:q.rooms,destinationKey:q.destinationKey,currency:q.currency,
@@ -162,7 +171,8 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
       evidenceIds:c.evidence.map(f=>f.id)};
     return {hotelId:c.hotelId,policy,assessment:a,resolvedPrivacyRequirements,observations:c.c.observations,provenance:c.c.provenance,serviceInterpretations:c.c.serviceInterpretations,
       offerScope:{roomKey:c.c.roomKey,rateKey:c.c.rateKey},suitability,target,
-      distance:{status:!a.distanceState.startsWith('COMPARABLE_')?'unknown':a.distanceKm!<=input.context.kilometers?'satisfied':'exceeded'},
+      distance:{status:!distanceRequested?'not-requested':!a.distanceState.startsWith('COMPARABLE_')?'unknown':
+        a.distanceKm!<=input.context.kilometers!?'satisfied':'exceeded'},
       calculated:{quality:c.quality,comfort:c.comfortFlexibility,location:c.location,priceValue:c.priceValue,
         reliability:c.reliabilityGate,dataConfidence:c.dataConfidence},
       dimensionsCalculated:Object.entries(policy.dimensions).filter(([,d])=>d.score!==null).map(([k])=>k)};
@@ -171,15 +181,17 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
     currency:q.currency,nights:q.nights,solutions:candidates.map(c=>c.policy)};
   const representable=input.essentialCoverage==='ESSENTIAL_COVERAGE_DEFINED';
   let decision:ReturnType<typeof runPersonalUtilityRolePolicyV3>|null=null;
+  let policyInvocations=0;
   if(representable){
-    applyStrongDistancePreferenceV3(candidates,policyInput,input.context.distanceException);
+    if(distanceRequested)applyStrongDistancePreferenceV3(candidates,policyInput,input.context.distanceException,()=>{policyInvocations++;});
+    policyInvocations++;
     decision=runPersonalUtilityRolePolicyV3(policyInput);
     if(!validatePersonalUtilityRolePolicyV3(decision).valid)throw Error('OBSERVED_POLICY_OUTPUT_INVALID');
   }
   return {version:OBSERVED_DIAGNOSTIC_VERSION,classification:'DIAGNOSTIC_ONLY',sourceFingerprint:input.sourceFingerprint,
     context:input.context,party:{adults:q.adults,childAgesAtStay:q.childAgesAtStay,unitsRequested:q.rooms},
     inputStatus:representable?'REPRESENTABLE_DIAGNOSTIC_INPUT':'NON_REPRESENTABLE_ESSENTIAL_REQUIREMENT',
-    diagnosticCalculationsExecuted:true,policyExecuted:representable,decision,policyInput:representable?policyInput:null,
+    diagnosticCalculationsExecuted:true,kernelInvocations:1,policyInvocations,policyExecuted:representable,decision,policyInput:representable?policyInput:null,
     candidates,intent,expectation,profile:resolution,market,
     fingerprint:createStableHashV3({input,decision},OBSERVED_DIAGNOSTIC_VERSION),
     fullRobustness:'NOT_EXECUTED',regret:'NOT_EXECUTED',feedbackUsed:false,bestOverBudgetMappedToUpgrade:false,
@@ -188,16 +200,17 @@ export function computeObservedOfferDiagnosticV3(input:ObservedDiagnosticComputa
 
 // Documented source-reference distances use the unchanged fit formula; never
 // relabelled provider-selected-location. No coordinates/haversine reconstruction.
-function observedLocation(id:string,km:number|null,state:string,maximum:number,facts:SmartStayEvidenceFactV2[]):SmartStayLocationEvaluationV2 {
-  const usable=state.startsWith('COMPARABLE_')&&km!==null;
+function observedLocation(id:string,km:number|null,state:string,maximum:number|null,facts:SmartStayEvidenceFactV2[]):SmartStayLocationEvaluationV2 {
+  const requested=maximum!==null,usable=requested&&state.startsWith('COMPARABLE_')&&km!==null;
   return {hotelId:id,status:usable?'usable':'unavailable',eligibleForPrimaryRanking:false,
     score:usable?Math.round(calculateDistanceFitScore(km,maximum,5)*100)/100:null,
     confidence:usable?facts.find(f=>f.code==='location.distance')?.confidence??0:0,
     distance:{providerDistanceKm:km,calculatedDistanceKm:null,selectedDistanceKm:usable?km:null,
       source:usable?'documented-reference':'unavailable',discrepancyKm:null,discrepancyRatio:null},
-    constraint:{provided:true,maximumDistanceKm:maximum,withinLimit:usable?km<=maximum:null,
+    constraint:{provided:requested,maximumDistanceKm:maximum,withinLimit:usable?km<=maximum:null,
       overageKm:usable?Math.max(0,km-maximum):null,utilizationRatio:usable?km/maximum:null},
-    warningCodes:[state,'DECLARED_REFERENCE_NOT_GEOGRAPHIC_EQUIVALENCE','OBSERVATION_NOT_RECOMMENDATION_ELIGIBILITY'],
+    warningCodes:[...(!requested?['DISTANCE_NOT_REQUESTED_NO_SCORE_OR_CONSTRAINT']:[state,'DECLARED_REFERENCE_NOT_GEOGRAPHIC_EQUIVALENCE']),
+      'OBSERVATION_NOT_RECOMMENDATION_ELIGIBILITY'],
     evidenceIds:facts.filter(f=>f.code==='location.distance').flatMap(f=>[f.id,...f.derivedFromEvidenceIds])};
 }
 function observationGroups(candidates:Parameters<typeof buildPeerGroupsV2>[0]):SmartStayPeerGroupAssignmentV2[]{

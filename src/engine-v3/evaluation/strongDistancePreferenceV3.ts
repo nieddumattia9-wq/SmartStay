@@ -8,7 +8,9 @@ export interface DiagnosticDistanceExceptionV3 {
 export function applyStrongDistancePreferenceV3(
   candidates:{hotelId:string;policy:StayOptiRolePolicySolutionInputV3;distance:{status:string}|null}[],
   policyInput:RunStayOptiPersonalUtilityRolePolicyInputV3, exception?:DiagnosticDistanceExceptionV3,
+  onPolicyInvocation?:()=>void,
 ) {
+  onPolicyInvocation?.();
   const unrestricted=runPersonalUtilityRolePolicyV3(policyInput);
   const comparable=new Set(unrestricted.candidates.filter(c=>c.status==='comparable').map(c=>c.solutionId));
   const inRange=candidates.filter(c=>c.distance?.status==='satisfied'&&comparable.has(c.policy.solutionId));

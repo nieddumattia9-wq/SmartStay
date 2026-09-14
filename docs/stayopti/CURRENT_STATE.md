@@ -1,5 +1,34 @@
 # StayOpti Current State
 
+## D-0061 — Fresh LiteAPI observation bridge, synthetic evaluation only
+
+Source `34fa82087a8921ea4042b56a737dd93ffea59663`, evaluation work branch.
+New versioned capture/normalization ingress verifies original bytes, request and
+offer/occupancy/prebook/retrieval binding before shared requirements and actual
+kernel/policy. Pure preparation invokes neither. No public mapper truth flags,
+invented coordinates, tax completeness, provider TTL or human receipts.
+No requested distance is explicit through market references and policy.
+Zero/one candidate produces no execution, not an engine abstention.
+
+The synthetic governor proves MAX17 with nontransferable 1/5/1/5/5 caps and
+pre-transmission reservations; no retries, redirects, extra session or implicit
+resume. It is not a production launcher or durable real authorization. Exact
+wire-schema/account qualification and secure operational custody remain future
+requirements. Source observations and commercial conflicts stay separate.
+
+Observed isolated local validation: 107 new tests, targeted524/524, V3 2431/2431
+in actual Windows CurrentUser, V2 196/196, mapper18/18, PS5.1 parse13/13; other
+canonical gates PASS (lifecycle530 PASS/17 existing real-Valkey skips). Initial
+sandbox V3 2426/2431 is preserved and classified with a synthetic DPAPI
+differential; identical candidate SHA/tree/code then passed in CurrentUser.
+Final consolidation must match tested code and recheck its final candidate.
+This is not GitHub CI, production provider validation, private review
+or a new private measure. Seven excluded paths, seventeen sealed files and
+private materials remain unchanged. Actual commit/push state and pending commits
+must be reported after remote readback; none is presumed by this documentation.
+
+See `../engine-v3/d0061-liteapi-fresh-observation-diagnostic.md` and D-0061.
+
 ## D-0057 — Property-observation rating scale and pure appendix preparation
 
 Source `da3b0ec75544180c7d5a07e4f7213309770143e1`, evaluation work branch only.

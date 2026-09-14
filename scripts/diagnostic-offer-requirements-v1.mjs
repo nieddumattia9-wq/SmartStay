@@ -9,8 +9,8 @@ const number = x => typeof x === 'number' && Number.isFinite(x) && x >= 0;
 const text = x => typeof x === 'string' && x.trim().length > 0;
 const utc = x => typeof x === 'string' && /^\d{4}-\d\d-\d\dT.*Z$/.test(x) && Number.isFinite(Date.parse(x));
 const day = x => typeof x === 'string' && /^\d{4}-\d\d-\d\d$/.test(x) && Number.isFinite(Date.parse(x)) && new Date(x).toISOString().slice(0,10)===x;
-const known = c => c.state === 'KNOWN' ? c.value : null;
-const refs = cs => copy(cs.flatMap(c=>c.links));
+const known = c => c?.state === 'KNOWN' ? c.value : null;
+const refs = cs => copy(cs.filter(c=>c!==null).flatMap(c=>c.links));
 const result = (status,reason,claims,details={}) => ({status,reason,links:refs(claims),...details});
 const insufficient = (cs,reason) => result(cs.some(c=>c.state==='CONFLICTING')?'CONFLICTING':'INSUFFICIENT_INFORMATION',reason,cs);
 
@@ -67,22 +67,27 @@ export function normalizeItalianBedInventory(value){
 }
 export function validateDiagnosticOfferRequirements(input){
   if(!input||input.version!==DIAGNOSTIC_REQUIREMENTS_VERSION||!text(input.caseId)||!utc(input.evaluatedAt)||
-    !['SYNTHETIC','REVIEWED_DIAGNOSTIC'].includes(input.mode))fail('INPUT_SCHEMA');
+    !['SYNTHETIC','REVIEWED_DIAGNOSTIC','PROVIDER_OBSERVATION_DIAGNOSTIC'].includes(input.mode))fail('INPUT_SCHEMA');
   const p=input.party,s=input.stay;
   if(!p||!integer(p.adults,1)||!Array.isArray(p.childAgesAtStay)||p.childAgesAtStay.some(a=>!integer(a)||a>=18)||
     !integer(p.unitsRequested,1)||!p.requirements||['sleepingPlaces','capacity','childAdmission','exclusiveUse','privateBathroom'].some(k=>typeof p.requirements[k]!=='boolean'))fail('PARTY_SCHEMA');
   if(!s||!day(s.checkIn)||!day(s.checkOut)||s.checkOut<=s.checkIn||!/^[A-Z]{3}$/.test(s.currency))fail('STAY_SCHEMA');
   const g=input.geography;
   if(!g||!Array.isArray(g.contexts)||!g.contexts.length||new Set(g.contexts.map(c=>c.id)).size!==g.contexts.length||
-    g.contexts.some(c=>!text(c.id)||c.semantics!=='strong-preference'||!number(c.kilometers)||c.kilometers===0))fail('DISTANCE_CONTEXT');
-  claim(g.commonReference,reference,null,input.evaluatedAt);
+    g.contexts.some(c=>!text(c.id)||!(c.semantics==='not-requested'?c.kilometers===null:
+      c.semantics==='strong-preference'&&number(c.kilometers)&&c.kilometers>0)))fail('DISTANCE_CONTEXT');
+  const distanceRequested=g.contexts.some(c=>c.semantics!=='not-requested');
+  // Absent preference is an explicit scenario fact, not a missing/unknown
+  // threshold. Existing reviewed-entry scenario checks still apply upstream.
+  if(g.commonReference!==null||distanceRequested)claim(g.commonReference,reference,null,input.evaluatedAt);
   if(!Array.isArray(input.offers)||!input.offers.length||new Set(input.offers.map(o=>o.alternativeId)).size!==input.offers.length)fail('OFFERS_SCHEMA');
   for(const o of input.offers){
     if(!text(o.alternativeId)||!o.scope||!text(o.scope.roomKey)||!text(o.scope.rateKey)||
       !same(o.scope.stay,s)||!same(o.scope.party,{adults:p.adults,childAgesAtStay:p.childAgesAtStay,unitsRequested:p.unitsRequested}))fail('OFFER_SCOPE');
     const sc={roomKey:o.scope.roomKey,rateKey:o.scope.rateKey};
     if(!o.availability||!o.children)fail('OFFER_SCHEMA');
-    for(const [c,check]of [[o.reference,reference],[o.distanceKm,number],
+    if(o.reference!==null||distanceRequested)claim(o.reference,reference,sc,input.evaluatedAt);
+    for(const [c,check]of [[o.distanceKm,number],
       [o.availability.observed,v=>v==='AVAILABLE'],[o.availability.bookability,v=>typeof v==='boolean'],
       // Offered inventory can factually be zero. Requested units remain >= 1;
       // the unchanged accommodation evaluator reports the documented violation.
@@ -105,6 +110,13 @@ export function validateDiagnosticOfferRequirements(input){
 
 export function evaluateGeographicReference(common,offerReference,distance,contexts,offer){
   const cs=[common,offerReference,distance];
+  if(contexts.every(c=>c.semantics==='not-requested'))return {
+    state:'NOT_REQUESTED',reason:'NO_DISTANCE_PREFERENCE_REQUESTED',links:refs(cs),
+    reference:copy(known(offerReference)),reportedKilometers:known(distance),
+    selectedLocationEquivalenceVerified:false,
+    contexts:contexts.map(c=>({contextId:c.id,kilometers:null,semantics:'not-requested',status:'NOT_REQUESTED',
+      excessKilometers:null,hardViolation:false,generalToleranceKm:null,exceptionAuthorized:false})),
+    policyRule:'No distance obligation or conventional score; observations remain evidence only.',comparisonNotASelection:true};
   let state,reason;
   if(cs.some(c=>c.state==='CONFLICTING')){state='CONFLICTING';reason='REFERENCE_OR_DISTANCE_CONFLICT';}
   else if(common.state!=='KNOWN'||common.applicability!=='SET_DOCUMENTED'||!usable(offerReference,'reference',offer)){state='REFERENCE_UNVERIFIED';reason='COMMON_REFERENCE_NOT_DOCUMENTED';}
@@ -117,8 +129,8 @@ export function evaluateGeographicReference(common,offerReference,distance,conte
   return {state,reason,links:refs(cs),reference:copy(known(offerReference)),reportedKilometers:known(distance),
     selectedLocationEquivalenceVerified:false, // identity matching alone never verifies geographic equivalence
     contexts:contexts.map(c=>({contextId:c.id,kilometers:c.kilometers,semantics:c.semantics,
-      status:!comparable?'UNVERIFIED':distance.value<=c.kilometers?'WITHIN_PREFERENCE':'OUTSIDE_REQUIRES_JUSTIFIED_EXCEPTION',
-      excessKilometers:comparable?Math.max(0,Math.round((distance.value-c.kilometers)*1e9)/1e9):null,
+      status:c.semantics==='not-requested'?'NOT_REQUESTED':!comparable?'UNVERIFIED':distance.value<=c.kilometers?'WITHIN_PREFERENCE':'OUTSIDE_REQUIRES_JUSTIFIED_EXCEPTION',
+      excessKilometers:comparable&&c.semantics!=='not-requested'?Math.max(0,Math.round((distance.value-c.kilometers)*1e9)/1e9):null,
       hardViolation:false,generalToleranceKm:null,exceptionAuthorized:false})),
     policyRule:'intentRolePolicyBridgeV3: satisfied distance retained; exceeded strong preference requires case-specific evidenced gain; unknown remains incomplete',
     comparisonNotASelection:true};
@@ -183,7 +195,8 @@ export function evaluateDiagnosticOfferRequirements(input){
     const conversionBlockers=[...(availability.conversionBlocker?[availability.conversionBlocker]:[]),
       ...(o.completeTotal.state==='KNOWN'&&!completeTotalUsable?['COMPLETE_TOTAL_APPLICABILITY_UNVERIFIED']:[]),
       ...(geography.state==='DISTANCE_UNVERIFIED'?['DISTANCE_APPLICABILITY_UNVERIFIED']:[]),
-      ...(geography.state!=='COMPARABLE_SELECTED_LOCATION'?[geography.state==='COMPARABLE_SOURCE_DECLARED'?'SOURCE_REFERENCE_DIAGNOSABLE_NOT_SELECTED_LOCATION_INPUT':'GEOGRAPHIC_INPUT_'+geography.reason]:[]),
+      ...(geography.state!=='COMPARABLE_SELECTED_LOCATION'?[geography.state==='NOT_REQUESTED'?'LEGACY_SELECTED_LOCATION_BRIDGE_NOT_APPLICABLE_NO_DISTANCE_REQUEST':
+        geography.state==='COMPARABLE_SOURCE_DECLARED'?'SOURCE_REFERENCE_DIAGNOSABLE_NOT_SELECTED_LOCATION_INPUT':'GEOGRAPHIC_INPUT_'+geography.reason]:[]),
       ...(accommodation.status!=='SATISFIED'?[`ACCOMMODATION_${accommodation.status}`]:[])];
     const recommendationBlockers=[...(!completeTotalUsable?[o.completeTotal.state==='KNOWN'?'COMPLETE_TOTAL_APPLICABILITY_UNVERIFIED':'COMPLETE_TOTAL_UNVERIFIED']:[]),
       ...(availability.state!=='VERIFIED_BOOKABLE'?['BOOKABILITY_NOT_VERIFIED']:[]),

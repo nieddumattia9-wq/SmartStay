@@ -1,0 +1,26 @@
+{
+  "version": "stayopti.d0061-development-checks@1",
+  "sourceHead": "34fa82087a8921ea4042b56a737dd93ffea59663",
+  "origin": "LOCAL_SYNTHETIC_DEVELOPMENT_NOT_GITHUB_CI",
+  "privateDataUsed": false,
+  "initialObservedFailures": [
+    {"check":"fresh integration tests first invocation","pass":0,"fail":31,"cause":"ERR_MODULE_NOT_FOUND: fixture relative import traversed one directory too far","classification":"TEST_MODULE_PATH","correction":"correct fixture import path; no domain assertions removed"},
+    {"check":"concurrent governor/normalizer integration before final freeze","pass":24,"fail":7,"cause":"governor temporarily required a non-documented occupancy echo; one test used the wrong suitability output property","classification":"INTEGRATION_AND_TEST_SHAPE","correction":"documented occupancyNumber/request binding with actual counts and optional echo checks; use suitability.facts"},
+    {"check":"integration after governor scope correction","pass":30,"fail":1,"cause":"LP14 read suitability.privacy rather than existing suitability.facts","classification":"TEST_OUTPUT_PATH","correction":"assert actual conflicting bathroom state and contextual ineligibility"},
+    {"check":"independent bounded integrity probes LI01-LI12","pass":5,"fail":7,"kernelInvocations":12,"policyInvocations":12,"cause":"HTTP200 logical errors/negative availability ignored; nested expiry omitted; conflicted commercial capacity retained search suitability","classification":"PROVIDER_INGRESS_SEMANTICS","correction":"consume adverse flags, inspect scoped expiry declarations, keep historic accommodation separate from conflicted active facts"}
+  ],
+  "counterexampleCoverageAdded": ["contradictory detail identities","simultaneous retail totals","trailing bed negation","prebook occupancy mismatch"],
+  "historicTestsOrFixturesRewritten": false,
+  "environmentDifferential": {
+    "firstIsolatedCanonicalV3": {"pass":2426,"fail":5,"skipped":0},
+    "failureDomain":"Windows sandbox CurrentUser DPAPI refusal in five existing custody/handoff tests",
+    "syntheticInMemoryDpapiProbe":{"sandbox":"FAIL","actualCurrentUser":"PASS","existingProtectorCurrentUser":"PASS","realStoreCreated":false},
+    "sameCandidateActualCurrentUserV3":{"pass":2431,"fail":0,"skipped":0,"sameCommitAndTree":true,"sameSoftwareBytes":true},
+    "sealedFilesChanged":false,
+    "globalGitExceptionsAdded":false,
+    "originalFailureDiscarded":false
+  },
+  "providerCalls": 0,
+  "privateKernelInvocations": 0,
+  "finalGateResults": "See the phase report; these intermediate observations are not the final isolated gate result."
+}
