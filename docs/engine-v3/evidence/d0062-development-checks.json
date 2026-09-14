@@ -1,0 +1,37 @@
+{
+  "phase": "D-0062",
+  "source": "4e6467cdb9a5c8d6cf76ccefbccca938a3237da8",
+  "syntheticProofOnly": true,
+  "providerCalls": 0,
+  "realCredentialsLoaded": false,
+  "initialLauncherRun": {
+    "environment": "Windows PowerShell 5.1, actual CurrentUser DPAPI, isolated synthetic Git repositories and local-loopback HTTP",
+    "tests": 9,
+    "pass": 1,
+    "fail": 8,
+    "cause": "CLI name grammar accepted only letters and rejected the launcher's real ConfigSha256/InventorySha256 parameter names before acquisition.",
+    "repair": "Accept a leading letter followed by letters or digits, retaining the exact argument allowlist and duplicate rejection.",
+    "stdoutSha256": "94d9549d70af55575011aaa495e262fe4c0927dc7eb98a2ac4eac53cce38b671",
+    "resultSha256": "ba5469262af87fa2ddeba55e205c64eb9abde45e8ca81defae3dd4add59f447c"
+  },
+  "intermediateLauncherRerun": {
+    "pass": 10,
+    "fail": 0,
+    "skip": 0,
+    "stdoutSha256": "4c8bb11261a881a5b24fbf62f0d85358bf7a34c377948cf412306fa12ea930bd",
+    "qualification": "Intermediate executable-code result; final fixed isolated candidate gates are reported separately."
+  },
+  "additionalReviewRepairs": [
+    "Process.Start failure must not bypass SecureString/BSTR cleanup in a nested finally.",
+    "An authenticated production capture must retain its original hash, not just a WeakSet origin marker.",
+    "Retain interrupted response bytes as incomplete encrypted originals, never complete normalized successes.",
+    "Refuse persistence of an echoed credential in retained response metadata as well as in body bytes.",
+    "Pure capture verification must reject records after a redirect or terminal authentication failure.",
+    "Remote prebook effects can be uncertain after reset, partial response or interruption, not only timeout; any attempted creation without a usable session ID is conservatively reported uncertain."
+  ],
+  "environmentLimits": [
+    "Sandbox ancestor realpath/DPAPI limitations were not bypassed: actual synthetic filesystem tests ran separately as Windows CurrentUser.",
+    "The cleanup fixture initially depended on PowerShell module autoload and on a nonthrowing disposed Length property. The final fixture constructs an actual synthetic SecureString and verifies ObjectDisposedException via AppendChar.",
+    "No synthetic result certifies a live account, current market offer, real private custody or GitHub CI."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": "stayopti.liteapi-controlled-acquisition@1",
+  "caseId": "D0060_LITEAPI_NEW_BOLOGNA_20270110_CASE_001",
+  "origin": "LITEAPI_PRODUCTION",
+  "scenarioConfirmed": false,
+  "scenario": {
+    "caseId": "D0060_LITEAPI_NEW_BOLOGNA_20270110_CASE_001",
+    "searchRequest": {
+      "cityName": "Bologna", "countryCode": "IT", "checkin": "2027-01-10", "checkout": "2027-01-17", "currency": "EUR",
+      "guestNationality": null, "occupancies": [{"adults": 2, "children": [6, 11]}],
+      "limit": 20, "maxRatesPerHotel": 3, "includeHotelData": true, "roomMapping": true
+    },
+    "party": {"adults": 2, "childAgesAtStay": [6, 11], "unitsRequested": 1,
+      "requirements": {"sleepingPlaces": true, "capacity": true, "childAdmission": true, "exclusiveUse": false, "privateBathroom": false}},
+    "essentialRequirementBasis": {"sleepingPlaces": true, "capacity": true, "childAdmission": true, "exclusiveUse": false, "privateBathroom": false},
+    "stay": {"checkIn": "2027-01-10", "checkOut": "2027-01-17", "currency": "EUR"},
+    "totalBudget": 1400, "preferenceId": "balanced", "preferenceSource": "manual",
+    "distance": {"semantics": "not-requested", "kilometers": null}
+  },
+  "selection": {"version": "HASHED_PROVIDER_IDS_AUDIT_ONLY@1", "seed": "D0060_CASE_001_SELECTION_V1", "maximumHotels": 5},
+  "limits": {"SEARCH": 1, "HOTEL_DETAIL": 5, "FACILITIES": 1, "PREBOOK": 5, "PREBOOK_GET": 5, "total": 17},
+  "concurrency": 1, "retries": 0, "redirects": 0, "pagination": 0, "pacingMs": 1000,
+  "timeoutMs": {"SEARCH": 15000, "HOTEL_DETAIL": 15000, "FACILITIES": 15000, "PREBOOK": 30000, "PREBOOK_GET": 15000},
+  "account": {"environment": "LIVE_PRODUCTION", "conditionsConfirmed": false, "accountReference": null,
+    "commercialTermsReference": null, "priceBasis": null, "maximumUsageCostEur": null, "fivePrebookCreationsAcknowledged": false},
+  "retention": {"directory": null, "days": null, "responsible": "Mattia", "access": "WINDOWS_CURRENT_USER_DPAPI", "noAutomaticDeletionAcknowledged": false}
+}

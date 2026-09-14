@@ -1,5 +1,27 @@
 # StayOpti Current State
 
+## D-0062 — Controlled LiteAPI acquisition launcher, offline qualification
+
+Source `4e6467cdb9a5c8d6cf76ccefbccca938a3237da8`, evaluation work branch only.
+Separate documentary wire profile, authenticated durable before-send journal,
+MAX17 real transport boundary and Windows PowerShell5.1 launcher. Production
+origin cannot be asserted by relabelling synthetic captures. Original responses
+use AES-GCM/CurrentUser DPAPI; pure preparation and acquisition never execute a
+private engine decision. POST creates up to five prebook sessions; GET retrieves
+those same sessions. No provider calls or real credential in this phase.
+Scenario/account/nationality/cost/retention confirmations remain explicitly
+pending in the production proposal. No operational authorization is granted.
+Initial CLI failures are retained. Isolated local software gates:104/104 new,
+668/668 targeted, V3 2575/2575, V2 196/196, mapper18/18, PS5.1 parse14/14 PASS.
+Lifecycle530 PASS/17 preexisting real-Valkey skips; security29/release101/
+analytics31/capacity9/beta4, TypeScript/build/analytics-beta/local smoke18 PASS.
+Only reporting documents change after these results; the final isolated tree
+must repeat the gates before publication. Exact work-branch push/pending status
+is verified in delivery, never inferred from local tests or previous CI.
+Protected7+sealed17 and all private materials stay
+unchanged; public runtime/weights/roles untouched.
+See `../engine-v3/d0062-controlled-acquisition.md` and D-0062.
+
 ## D-0061 R1 — Bed qualifications and detail-response semantic integrity
 
 Source `3d94b9f45632260f65784d011c53366dc9f4f2b7`, evaluation work branch only.

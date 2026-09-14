@@ -5,6 +5,8 @@ import {verifySyntheticLiteApiCapture} from './liteapi-diagnostic-governor-v1.mj
 import {DIAGNOSTIC_REQUIREMENTS_VERSION,evaluateDiagnosticOfferRequirements,normalizeItalianBedInventory} from './diagnostic-offer-requirements-v1.mjs';
 import {OBSERVED_EXECUTION_VERSION,reprojectObservedRequirementCandidate} from './observed-offer-execution-v1.mjs';
 import {resolveScopedService,serviceCodes} from './diagnostic-scoped-signals-v1.mjs';
+import {verifyControlledCapture} from './liteapi-controlled-capture-v1.mjs';
+import {DOCUMENTARY_LITEAPI_WIRE_VERSION,decodeDocumentaryOffer,documentaryCommercial,inspectDocumentaryFiscal,documentaryDetail,documentaryTiming} from './liteapi-documentary-wire-v1.mjs';
 
 export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.1';
 export const SUPPORTED_WIRE_PROFILE='liteapi-v3-roomTypes-rates-exact-retrieval@1';
@@ -32,6 +34,7 @@ function body(record){
  try{return JSON.parse(bytes.toString('utf8'));}catch{return null;}
 }
 function requestBody(record){
+ if(record?.intent)return clone(record.intent.body);
  try{return JSON.parse(Buffer.from(record.request.body.base64,'base64').toString('utf8'));}catch{fail('REQUEST_JSON');}
 }
 function link(record,field){return [{field,evidence:[{ref:'capture/request/'+record.ordinal+'/response',sha256:record.response.body.sha256}]}];}
@@ -226,12 +229,28 @@ function scenarioCheck(s){
 export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario,selectionPolicy,evaluatedAt}){
  scenarioCheck(scenario);
  verifySyntheticLiteApiCapture(capture,{checkpoint,scenario,selectionPolicy});
+ return prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,evaluatedAt});
+}
+
+/** Genuine controlled acquisition is verified internally; no caller-supplied
+ * verifier, synthetic relabelling, reconstructed raw payload or HUMAN receipt.
+ * Merely importing this function sends no request and invokes no kernel. */
+export function prepareLiteApiProviderObservation({capture,config,checkpoint,evaluatedAt}){
+ verifyControlledCapture(capture,{config,checkpoint});
+ const scenario={...clone(config.scenario),caseId:config.caseId};
+ return prepareObservationCore({capture,checkpoint,scenario,selectionPolicy:config.selection,evaluatedAt},true);
+}
+
+function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,evaluatedAt},documentary=false){
+ const syntheticProofOnly=documentary?capture.origin==='SYNTHETIC_LOCAL_TRANSPORT':true;
+ // Metadata views expose the original capture intent to shared code. Response
+ // bytes/hashes are not changed; no absent response echo or request is created.
+ const records=documentary?capture.requests.map(r=>({...r,...Object.fromEntries(['kind','hotelId','offerId','prebookId'].map(k=>[k,r.intent[k]]))})):capture.requests;
  if(!utc(evaluatedAt)||capture.requests.some(r=>!utc(r.completedAt)||Date.parse(r.completedAt)>Date.parse(evaluatedAt)))fail('EVALUATION_TIME');
- const search=capture.requests.find(r=>r.kind==='SEARCH'),rawSearch=body(search);
+ const search=records.find(r=>r.kind==='SEARCH'),rawSearch=body(search);
  if(!rawSearch||!equal(requestBody(search),scenario.searchRequest))fail('SEARCH_UNUSABLE');
  const selected=capture.selection?.selected;
  if(!Array.isArray(selected))fail('SELECTION_NOT_SEALED');
- const records=capture.requests;
  const unknownReference=unknown(null,'NO_DISTANCE_REQUIREMENT_NO_COORDINATES_INVENTED');
  const normalization={version:DIAGNOSTIC_REQUIREMENTS_VERSION,caseId:scenario.caseId,mode:'PROVIDER_OBSERVATION_DIAGNOSTIC',
   evaluatedAt,party:clone(scenario.party),stay:clone(scenario.stay),
@@ -239,33 +258,36 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
  const observations=[],signals=[];
  for(const selectedOffer of selected){
   const hotelId=selectedOffer.hotelId,offerId=selectedOffer.offerId;
-  const searchOffer=decodeSelected(rawSearch,hotelId,offerId),issues=[];
+  const searchOffer=documentary?decodeDocumentaryOffer(search,{hotelId,offerId,scenario,stage:'SEARCH'}):decodeSelected(rawSearch,hotelId,offerId),issues=[];
   const privateIdentity={hotelId,offerId};
   // Pseudonyms are audit bindings, not names, price sorting or provider rank.
   const id='provider-observation-'+observationHash(privateIdentity).slice(0,20);
-  const scope={roomKey:'room-'+observationHash([hotelId,searchOffer.rate?.mappedRoomId??null]).slice(0,20),rateKey:'rate-'+observationHash(privateIdentity).slice(0,20)};
+  const scope={roomKey:'room-'+observationHash(documentary?[hotelId,offerId,'SELECTED_OCCUPANCY_1']:[hotelId,searchOffer.rate?.mappedRoomId??null]).slice(0,20),rateKey:'rate-'+observationHash(privateIdentity).slice(0,20)};
   const pre=records.find(r=>r.kind==='PREBOOK'&&r.hotelId===hotelId),get=records.find(r=>r.kind==='PREBOOK_GET'&&r.hotelId===hotelId);
-  const prePayload=body(pre),getPayload=body(get),preDecoded=decodeSelected(prePayload,hotelId,offerId),getDecoded=decodeSelected(getPayload,hotelId,offerId);
+  const prePayload=body(pre),getPayload=body(get),preDecoded=documentary?decodeDocumentaryOffer(pre,{hotelId,offerId,scenario,stage:'PREBOOK'}):decodeSelected(prePayload,hotelId,offerId),getDecoded=documentary?decodeDocumentaryOffer(get,{hotelId,offerId,scenario,stage:'PREBOOK_GET'}):decodeSelected(getPayload,hotelId,offerId);
+  const scopeIssues=(decoded,prior=null)=>documentary?(decoded.issues??[]):validateScope(decoded,scenario,prior);
+  const commercialFields=documentary?documentaryCommercial:commercial;
   let verified=false,active=searchOffer,activeRecord=search,commercialChange=false;
-  if(searchOffer.issue)issues.push(searchOffer.issue);else issues.push(...validateScope(searchOffer,scenario));
+  if(searchOffer.issue)issues.push(searchOffer.issue);else issues.push(...scopeIssues(searchOffer));
   for(const payload of [prePayload,getPayload])if(payload?.error!=null||Array.isArray(payload?.errors)&&payload.errors.length)issues.push('LOGICAL_ERROR_IN_COMMERCIAL_RESPONSE');
   if(!prePayload)issues.push(pre?'PREBOOK_FAILED_OR_AMBIGUOUS':'PREBOOK_NOT_ATTEMPTED');
   else if(preDecoded.issue)issues.push(preDecoded.issue);
   else {
-   const preIssues=validateScope(preDecoded,scenario,searchOffer.issue?null:searchOffer);
+   const preIssues=scopeIssues(preDecoded,searchOffer.issue?null:searchOffer);
+   if(documentary&&searchOffer.binding?.mappedRoomId&&preDecoded.binding?.mappedRoomId&&searchOffer.binding.mappedRoomId!==preDecoded.binding.mappedRoomId)preIssues.push('MAPPED_ROOM_CHANGED_NEW_OBSERVATION_NOT_OLD_CERTIFICATE');
    const prebookId=prePayload.data?.prebookId;
    if(!text(prebookId)||pre?.offerId!==offerId)preIssues.push('PREBOOK_REQUEST_RETURN_BINDING_MISSING');
    if(getDecoded.issue||!getPayload)preIssues.push('PREBOOK_RETRIEVAL_MISSING_OR_UNSUPPORTED');
    else {
-    preIssues.push(...validateScope(getDecoded,scenario,preDecoded));
+    preIssues.push(...scopeIssues(getDecoded,preDecoded));
     if(getPayload.data.prebookId!==prebookId||get?.prebookId!==prebookId)preIssues.push('RETRIEVAL_IDENTITY_CONFLICT');
-    if(!equal(commercial(preDecoded),commercial(getDecoded)))preIssues.push('PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT');
+    if(!equal(commercialFields(preDecoded),commercialFields(getDecoded)))preIssues.push('PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT');
    }
    issues.push(...preIssues);
    // A failure/conflict never falls back to a certified historic bookable fact.
-   if(!issues.length){verified=true;active=preDecoded;activeRecord=pre;commercialChange=!equal(commercial(searchOffer),commercial(preDecoded));}
+   if(!issues.length){verified=true;active=preDecoded;activeRecord=pre;commercialChange=!equal(commercialFields(searchOffer),commercialFields(preDecoded));}
   }
-  const time=timing(prePayload,pre,evaluatedAt),getTime=timing(getPayload,get,evaluatedAt);
+  const time=(documentary?documentaryTiming:timing)(prePayload,pre,evaluatedAt),getTime=(documentary?documentaryTiming:timing)(getPayload,get,evaluatedAt);
   if(['EXPLICITLY_EXPIRED','PROVIDER_EXPIRY_CONFLICT','PROVIDER_EXPIRY_UNINTERPRETABLE'].includes(time.status)||
     ['EXPLICITLY_EXPIRED','PROVIDER_EXPIRY_CONFLICT','PROVIDER_EXPIRY_UNINTERPRETABLE'].includes(getTime.status)){
    verified=false;issues.push('PROVIDER_TIME_'+time.status+'_'+getTime.status);
@@ -275,7 +297,7 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
   const r=active.rate??{},o=active.offer??{};
   const c=(v,field,reason)=>claim(v,scope,activeRecord,field,reason);
   const missing=reason=>unknown(scope,reason,activeRecord);
-  const fiscal=inspectLiteApiFiscalEvidence(o,r,scenario.stay.currency,active.hotel?.remarks??[]);
+  const fiscal=documentary?inspectDocumentaryFiscal(active,scenario.stay.currency):inspectLiteApiFiscalEvidence(o,r,scenario.stay.currency,active.hotel?.remarks??[]);
   const fiscalUsable=verified&&fiscal.completeTotal!==null;
   const sleeping=sleepingText(r.name);
   const n={alternativeId:id,scope:{...scope,stay:clone(scenario.stay),party:{adults:scenario.party.adults,childAgesAtStay:clone(scenario.party.childAgesAtStay),unitsRequested:1}},
@@ -284,14 +306,14 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
     bookability:verified?c(true,'prebookId + exact retrieved commercial record','BOUND_PREBOOK_VERIFICATION_NOT_SEARCH_BOOLEAN'):
      claim(null,scope,pre??search,'prebook','VERIFICATION_NOT_USABLE:'+issues.join('|'),'OFFER_SCOPED',conflict?'CONFLICTING':'UNKNOWN'),
     unavailable:missing('NO_EXPLICIT_UNAVAILABILITY_ATTESTATION')},
-   unitsOffered:!searchOffer.issue&&!validateScope(active,scenario).length?c(1,'rates/occupancyNumber','ONE_RATE_COMPONENT_FOR_ONE_REQUESTED_OCCUPANCY_NOT_INTERNAL_ROOMS'):missing('QUOTED_UNIT_BINDING_UNVERIFIED'),
+   unitsOffered:!searchOffer.issue&&!scopeIssues(active).length?c(1,'rates/occupancyNumber','ONE_RATE_COMPONENT_FOR_ONE_REQUESTED_OCCUPANCY_NOT_INTERNAL_ROOMS'):missing('QUOTED_UNIT_BINDING_UNVERIFIED'),
    internalRooms:missing('INTERNAL_ROOMS_NOT_INFERRED_FROM_UNITS'),
    capacityGuests:integer(r.maxOccupancy)?c(r.maxOccupancy,'rates/maxOccupancy','SOURCE_DECLARED_MAXIMUM_NOT_BEDS'):missing('CAPACITY_MISSING'),
    sleeping:claim(sleeping.inventory,scope,activeRecord,'rates/name',sleeping.reason,'OFFER_SCOPED',sleeping.claimState),
-   children:{admitted:!searchOffer.issue&&!validateScope(active,scenario).length?c(true,'rates/adultCount+childCount+occupancyNumber; request/occupancies','QUOTE_FOR_EXACT_SUBMITTED_OCCUPANCY_NOT_GENERAL_CHILD_POLICY'):missing('CHILD_OCCUPANCY_BINDING_UNVERIFIED'),
+   children:{admitted:!searchOffer.issue&&!scopeIssues(active).length?c(true,'rates/adultCount+childCount+occupancyNumber; request/occupancies','QUOTE_FOR_EXACT_SUBMITTED_OCCUPANCY_NOT_GENERAL_CHILD_POLICY'):missing('CHILD_OCCUPANCY_BINDING_UNVERIFIED'),
     minimumAge:missing('MINIMUM_AGE_UNDOCUMENTED'),adultPricingFromAge:missing('AGE_PRICING_UNDOCUMENTED'),extraBedsAvailable:missing('EXTRA_BEDS_UNDOCUMENTED')},
    privateBathroom:missing('PRIVACY_EVALUATED_FROM_SCOPED_ORIGINAL_TEXT'),exclusiveUse:missing('PRIVACY_EVALUATED_FROM_SCOPED_ORIGINAL_TEXT'),
-   completeTotal:fiscalUsable?c(fiscal.completeTotal,'offerRetailRate+taxesAndFees','VERIFIED_AGGREGATED_TOTAL:'+fiscal.representation):missing('COMPLETE_TOTAL_NOT_VERIFIED:'+fiscal.issues.concat(issues).join('|')),
+   completeTotal:fiscalUsable?c(fiscal.completeTotal,documentary?'rates/retailRate/total[0]+data.price+taxesAndFees':'offerRetailRate+taxesAndFees','VERIFIED_AGGREGATED_TOTAL:'+fiscal.representation):missing('COMPLETE_TOTAL_NOT_VERIFIED:'+fiscal.issues.concat(issues).join('|')),
    ratingObserved:missing('RATING_SCALE_AND_OBSERVATION_UNQUALIFIED'),ratingScale:missing('NO_SCALE_ASSUMED')};
   if(conflict){
    // SEARCH facts remain in historical observations. A contradicted commercial
@@ -302,11 +324,18 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
   }
   normalization.offers.push(n);
   const detail=records.find(d=>d.kind==='HOTEL_DETAIL'&&d.hotelId===hotelId);
-  const detailValidation=inspectHotelDetail(detail,hotelId),property=detailValidation.property;
+  const detailValidation=documentary?documentaryDetail(detail,hotelId,records.find(x=>x.kind==='FACILITIES')):inspectHotelDetail(detail,hotelId),property=detailValidation.property;
   const textValue=!conflict&&typeof r.name==='string'?r.name:null;
   const scopedObservations=[scoped(activeRecord,'roomName',textValue,scope,'OFFER')];
   if(r.remarks!==undefined)scopedObservations.push(scoped(activeRecord,'roomAmenities',r.remarks,scope,'OFFER'));
-  if(property?.facilities!==undefined)scopedObservations.push(scoped(detail,'amenities',property.facilities,scope,'PROPERTY'));
+  if(documentary)for(const f of detailValidation.facilityObservations){
+   // `amenities` is the shared evaluator's semantic field; the evidence link
+   // must still identify the actual documented wire member and array item.
+   const observation=scoped(detail,'amenities',f.value,scope,'PROPERTY');
+   observation.sourcePointer='data.'+f.field;observation.links=link(detail,observation.sourcePointer);
+   scopedObservations.push(observation);
+  }
+  else if(property?.facilities!==undefined)scopedObservations.push(scoped(detail,'amenities',property.facilities,scope,'PROPERTY'));
   const services=serviceCodes.map(code=>resolveScopedService(scopedObservations,code));
   const facts=[scalarFact(id,'property.stars',num(property?.starRating)&&property.starRating<=5?property.starRating:null,detail,'starRating','stars'),
    scalarFact(id,'review.count',integer(property?.reviewCount)?property.reviewCount:null,detail,'reviewCount','reviews'),
@@ -318,7 +347,8 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
   }
   signals.push({alternativeId:id,roomKey:scope.roomKey,rateKey:scope.rateKey,facts,features:[],category:null,roomText:textValue,
    scopedObservations,serviceInterpretations:services,observations:{other:{search:clone(searchOffer),prebook:clone(preDecoded),retrieval:clone(getDecoded),detail:clone(property),detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),fiscal,time,getTime}},
-   provenance:{kind:'VERIFIED_SYNTHETIC_PROVIDER_CAPTURE',captureSha256:capture.captureSha256,privateIdentity,sourceRecords:[search,pre,get,detail].filter(Boolean).map(x=>({ordinal:x.ordinal,requestHash:x.request.body.sha256,responseHash:x.response?.body.sha256??null})),humanReview:null}});
+   provenance:{kind:documentary?capture.origin:'VERIFIED_SYNTHETIC_PROVIDER_CAPTURE',captureSha256:capture.captureSha256,privateIdentity,
+    sourceRecords:[search,pre,get,detail].filter(Boolean).map(x=>({ordinal:x.ordinal,...(documentary?{requestSemanticHash:observationHash(x.intent)}:{requestHash:x.request.body.sha256}),responseHash:x.response?.body.sha256??null})),humanReview:null}});
   observations.push({alternativeId:id,privateIdentity,issues:[...new Set(issues)],detailIdentityVerified:detailValidation.identityVerified,
    detailUsable:detailValidation.usable,detailSemanticStatus:detailValidation.status,detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),
    searchObserved:!searchOffer.issue,prebookVerified:verified,retrievalIsIndependentVerification:false,commercialChange,
@@ -326,7 +356,7 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
    sourceIdentityFieldsOnlyForAudit:true});
  }
  if(!normalization.offers.length)return {version:LITEAPI_OBSERVATION_VERSION,status:'NO_CANDIDATES_NO_ENGINE_INPUT',input:null,observations,normalization,
-  engineInvocations:0,policyInvocations:0,decision:null,syntheticProofOnly:true};
+  engineInvocations:0,policyInvocations:0,decision:null,syntheticProofOnly};
  const assessment=evaluateDiagnosticOfferRequirements(normalization);
  const candidates=signals.map(c=>reprojectObservedRequirementCandidate(c,normalization.offers.find(o=>o.alternativeId===c.alternativeId),assessment.offers.find(o=>o.alternativeId===c.alternativeId),normalization));
  const input={version:OBSERVED_EXECUTION_VERSION,caseId:scenario.caseId,sourceFingerprint:observationHash({capture: capture.captureSha256,normalization}),
@@ -335,10 +365,10 @@ export function prepareLiteApiObservationDiagnostic({capture,checkpoint,scenario
    checkIn:scenario.stay.checkIn,checkOut:scenario.stay.checkOut,currency:scenario.stay.currency,capturedAt:evaluatedAt,
    destinationKey:scenario.searchRequest.cityName+'|'+scenario.searchRequest.countryCode,preferenceId:scenario.preferenceId,preferenceSource:scenario.preferenceSource},
   context:{id:'NOT_REQUESTED',semantics:'not-requested',kilometers:null,reference:clone(unknownReference)},candidates};
- return {version:LITEAPI_OBSERVATION_VERSION,status:candidates.length<2?'PREPARED_INSUFFICIENT_CANDIDATES':'PREPARED_DIAGNOSTIC_INPUT',
+ return {version:LITEAPI_OBSERVATION_VERSION,...(documentary?{wireVersion:DOCUMENTARY_LITEAPI_WIRE_VERSION}:{}),status:candidates.length<2?'PREPARED_INSUFFICIENT_CANDIDATES':'PREPARED_DIAGNOSTIC_INPUT',
   kind:'FRESH_PROVIDER_OBSERVATION',input,normalization,assessment,observations,
-  limitations:['SYNTHETIC_WIRE_PROFILE_NOT_REAL_ENDPOINT_QUALIFICATION','NO_PRODUCTION_ACCOUNT_OR_NATIONALITY_APPROVAL','NO_FUTURE_BOOKING_GUARANTEE'],
-  engineInvocations:0,policyInvocations:0,decision:null,syntheticProofOnly:true,feedbackUsed:false,humanReceiptCreated:false,goldenAdmission:false};
+  limitations:documentary?['DOCUMENTED_BOUNDED_WIRE_PROFILE_NOT_UNIVERSAL_SCHEMA','PUBLIC_PRICE_BASIS_MUST_BE_SUPPORTED','NO_FUTURE_BOOKING_GUARANTEE']:['SYNTHETIC_WIRE_PROFILE_NOT_REAL_ENDPOINT_QUALIFICATION','NO_PRODUCTION_ACCOUNT_OR_NATIONALITY_APPROVAL','NO_FUTURE_BOOKING_GUARANTEE'],
+  engineInvocations:0,policyInvocations:0,decision:null,syntheticProofOnly,feedbackUsed:false,humanReceiptCreated:false,goldenAdmission:false};
 }
 
 export function executeLiteApiObservationDiagnostic(request,compute){
