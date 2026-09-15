@@ -1,5 +1,6 @@
 // D-0062: bounded official-documentation wire profile. Pure; no transport/custody.
 import {createHash} from 'node:crypto';
+import {qualifyDocumentaryPrices,qualifyHotelImportantInformation} from './liteapi-offer-qualification-v1.mjs';
 
 export const DOCUMENTARY_LITEAPI_WIRE_VERSION='stayopti.liteapi-documentary-wire@1';
 export const DOCUMENTARY_LITEAPI_SOURCES=Object.freeze({
@@ -42,7 +43,8 @@ function errors(value,path='response'){
 function request(record){return record?.intent??{kind:record?.kind,hotelId:record?.hotelId,offerId:record?.offerId,prebookId:record?.prebookId};}
 function occupancyIssues(rate,scenario){
  const o=scenario?.searchRequest?.occupancies?.[0],issues=[];
- if(!o||rate?.occupancyNumber!==1||rate?.adultCount!==o.adults||rate?.childCount!==o.children.length)issues.push('OCCUPANCY_NOT_EXACT');
+ if(!o||rate?.adultCount!==o.adults||rate?.childCount!==o.children.length)issues.push('OCCUPANCY_NOT_EXACT');
+ if(rate?.occupancyNumber!==1)issues.push('OCCUPANCY_NUMBER_SEMANTICS_UNRESOLVED');
  for(const key of ['childrenAges','children','childAges'])if(own(rate,key)&&!same(rate[key],o?.children))issues.push('RETURNED_CHILD_AGES_MISMATCH:'+key);
  if(own(rate,'occupancy')&&!same(rate.occupancy,o))issues.push('RETURNED_OCCUPANCY_MISMATCH');
  return issues;
@@ -121,23 +123,27 @@ export function decodeDocumentaryOffer(record,{hotelId,offerId,scenario,stage=re
 export function documentaryCommercial(decoded){
  if(decoded.issue)return null;
  const {hotel:h,offer:o,rate:r}=decoded;
- return {rateId:r.rateId,name:r.name??null,maxOccupancy:r.maxOccupancy??null,occupancyNumber:r.occupancyNumber,adultCount:r.adultCount,childCount:r.childCount,
+ return {name:r.name??null,maxOccupancy:r.maxOccupancy??null,adultCount:r.adultCount,childCount:r.childCount,
   childrenAges:own(r,'childrenAges')?r.childrenAges:{omitted:true},mappedRoomId:decoded.binding.mappedRoomId,
   price:h.price??null,currency:h.currency??null,offerRetailRate:o.offerRetailRate??null,retailRate:r.retailRate??null,
-  suggestedSellingPrice:h.suggestedSellingPrice??o.suggestedSellingPrice??null,termsAndConditions:h.termsAndConditions??null,
+  suggestedSellingPrice:h.suggestedSellingPrice??o.suggestedSellingPrice??null,sellingPriceToUser:h.sellingPriceToUser??null,termsAndConditions:h.termsAndConditions??null,
   cancellationPolicies:r.cancellationPolicies??null,remarks:r.remarks??null,boardName:r.boardName??null,
   priceDifferencePercent:h.priceDifferencePercent??null,cancellationChanged:h.cancellationChanged??null,boardChanged:h.boardChanged??null,
   extras:{addonsTotalAmount:h.addonsTotalAmount??null,addonsRequest:h.addonsRequest??null,voucherCode:h.voucherCode??null,voucherTotalAmount:h.voucherTotalAmount??null}};
 }
 function singleMoney(value){const x=Array.isArray(value)?value.length===1?value[0]:null:value;return plain(x)&&amount(x.amount)!==null&&typeof x.currency==='string'?{amount:amount(x.amount),currency:x.currency}:null;}
-export function inspectDocumentaryFiscal(decoded,currency){
+export function inspectDocumentaryFiscal(decoded,currency,detail=null){
  const r=decoded.rate??{},o=decoded.offer??{},h=decoded.hotel??{},issues=[],sources=[];
  const retail=singleMoney(r.retailRate?.total),offerRetail=own(o,'offerRetailRate')?singleMoney(o.offerRetailRate):null;
  if(!retail||retail.currency!==currency)issues.push('RATE_RETAIL_AMOUNT_OR_CURRENCY_UNVERIFIED');
  if(own(o,'offerRetailRate')&&(!offerRetail||!same(offerRetail,retail)))issues.push('OFFER_RATE_RETAIL_CONFLICT');
  const prebookPrice=own(h,'prebookId')?amount(h.price):null;
  if(own(h,'prebookId')&&(prebookPrice===null||h.currency!==currency||prebookPrice!==retail?.amount))issues.push('PREBOOK_PRICE_COMPONENT_CONFLICT_OR_UNSUPPORTED_ADJUSTMENT');
- const selling=[];for(const [field,value] of [['rate.retailRate.suggestedSellingPrice',r.retailRate?.suggestedSellingPrice],['offer.suggestedSellingPrice',o.suggestedSellingPrice],['prebook.suggestedSellingPrice',h.suggestedSellingPrice]])if(value!==undefined&&value!==null){const parsed=singleMoney(value);selling.push({field,original:clone(value),parsed});if(!parsed||parsed.currency!==currency||parsed.amount!==retail?.amount)issues.push('PUBLIC_SELLING_PRICE_BASIS_NOT_QUALIFIED');}
+ const priceQualification=qualifyDocumentaryPrices(decoded,currency);
+ const selling=priceQualification.fields.filter(f=>f.scope.endsWith('PUBLIC_MINIMUM')&&f.presence==='PRESENT');
+ issues.push(...priceQualification.issues);
+ const importantInformation=qualifyHotelImportantInformation(detail,r.boardName);
+ issues.push(...importantInformation.issues);
  for(const [field,object] of [['rate.retailRate.taxesAndFees',r.retailRate],['rate.taxesAndFees',r],['offer.taxesAndFees',o]])if(own(object,'taxesAndFees'))sources.push({field,value:clone(object.taxesAndFees)});
  if(sources.length>1&&sources.some(s=>!same(s.value,sources[0].value)))issues.push('FISCAL_SOURCES_CONFLICT');
  const value=sources[0]?.value,representation=!sources.length?'OMITTED':value===null?'NULL_ALL_INCLUDED':Array.isArray(value)?value.length?'COMPONENT_LIST':'EMPTY_LIST':'UNSUPPORTED';
@@ -155,7 +161,7 @@ export function inspectDocumentaryFiscal(decoded,currency){
  if(remarks.length)issues.push('REMARKS_REQUIRE_COMMERCIAL_QUALIFICATION');
  if((amount(h.addonsTotalAmount)??0)!==0||Array.isArray(h.addonsRequest)&&h.addonsRequest.length||h.voucherCode||(amount(h.voucherTotalAmount)??0)!==0)issues.push('UNAUTHORIZED_OR_UNSUPPORTED_COMMERCIAL_ADJUSTMENT');
  const base=retail?.amount??null,excluded=payAtProperty.reduce((n,v)=>n+(amount(v.amount)??0),0);
- return {representation,sources,components,payAtProperty,amountsByCurrency,remarks,suggestedSellingPrice:selling,
+ return {representation,sources,components,payAtProperty,amountsByCurrency,remarks,suggestedSellingPrice:selling,priceQualification,importantInformation,
   observedRetail:clone(r.retailRate?.total??null),offerRetail:clone(o.offerRetailRate??null),observedPrebookPrice:own(h,'price')?h.price:null,
   priceSource:'rate.retailRate.total[0] corroborated by exact prebook data.price when present',baseAmount:base,
   completeTotal:issues.length?null:round(base+excluded),currency,issues:[...new Set(issues)],nullSemanticsSource:DOCUMENTARY_LITEAPI_SOURCES.fiscal,

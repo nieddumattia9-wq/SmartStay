@@ -1,0 +1,20 @@
+{
+  "phase": "D-0063",
+  "sourceHead": "71ddb32d31ee227f8d3c25950af2c71b835e347a",
+  "origin": "SYNTHETIC_ONLY",
+  "adapterSha256": "f4fd010263c8c15c91cfb06ca71b5deab297866cf77a925284bb6bc29b5465df",
+  "wireSha256": "a3e506a7187fb3dc8f3ab948261638c871fb64c39c0fdbbf8c29506f313f0b08",
+  "test": "tests/engine-v3/v3LiteApiCommercialQualification.test.ts CQ01-CQ08",
+  "initial": {"tests": 8, "pass": 2, "fail": 6, "kernelInvocations": 8, "policyInvocations": 8, "purePreparationCalls": 16, "providerCalls": 0},
+  "cases": [
+    {"id":"01-control","inputSha256":"78869f087e06f038f0750e10c502a42929949071dc1f547e8dfaeebfad659278","decision":"usable","expectedAssertion":"PASS"},
+    {"id":"02-above-ssp","inputSha256":"af715d23642d9976c79a3d7d37e9744cdbf997fefa06fa5131225ab27d7dc577","decision":"abstained","expectedAssertion":"FAIL"},
+    {"id":"03-english-beds","inputSha256":"8645dd3b4c66ca98f5505da97759ffb5d54ebfb94d3a8f35e69061d13c289af0","decision":"abstained","sleeping":"INSUFFICIENT_INFORMATION","expectedAssertion":"FAIL"},
+    {"id":"04-mapped-capacity","inputSha256":"2dbd0bc163d746a49f24f32ca9f273ed483f8c17c256ee1a45d9491e65f43604","decision":"usable","capacity":"SATISFIED","expectedAssertion":"FAIL"},
+    {"id":"05-mapped-beds","inputSha256":"a3eb3b6f3f92d1eb70cd636186877ac1fabd3bb0ab549f137f7a151b883aa7e6","decision":"usable","sleeping":"SATISFIED","expectedAssertion":"FAIL"},
+    {"id":"06-retrieval-identifiers","inputSha256":"36fd1ae70ed58a03b14d7b5e31cefb00245756946a292dabdd4253a68af7a556","decision":"abstained","issue":"PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT","expectedAssertion":"FAIL"},
+    {"id":"07-important-conditions","inputSha256":"fcb34ad34c880339e8330e5c434d811c9a7b6755f96946f99494ba39aba1bd48","decision":"usable","expectedAssertion":"FAIL"},
+    {"id":"08-below-ssp","inputSha256":"803a370c0f3e78e379bfba55c763d17e28d87909dd1fb664be2aefb553d74c1b","decision":"abstained","expectedAssertion":"PASS"}
+  ],
+  "preservation": "Original fixture unchanged. CQ01-CQ08 modify newly generated synthetic responses before registration. Initial inputs/outputs and logs retained separately; no real provider data copied into tests."
+}

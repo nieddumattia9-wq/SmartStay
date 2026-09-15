@@ -1,5 +1,23 @@
 # StayOpti Current State
 
+## D-0063 — Documentary commercial/room qualification, evaluation-only
+
+Source `71ddb32d31ee227f8d3c25950af2c71b835e347a`, same evaluation branch.
+Initial synthetic evidence:2 PASS/6 FAIL;56 new tests and179 direct regressions
+now PASS locally. New pure qualifier distinguishes public SSP minimum from
+retail, preserves unresolved prebook shapes, separates retrieval identity from
+commercial terms and compares mapped room capacity/beds without invented facts.
+General property conditions remain scoped, never indiscriminately summed.
+Final isolated Windows gates: V3 2631/2631, V2 196/196, PS5.1 parse14/14,
+TypeScript/build/security/release/analytics/capacity/beta/local smoke PASS.
+Lifecycle530 PASS/17 existing real-service skips. No Linux/CI or online
+dependency audit claim. Details in `../engine-v3/d0063-documentary-qualification.md`.
+Three separately hash-bound private pure preparations, including intermediate
+versions, invoked no kernel/policy; original capture and markers unchanged.
+No provider acquisition/private decision, old inventory migration or approval
+change. Main/public runtime/weights/roles unchanged. No commit/push authorized
+or performed for this correction; local changes remain explicitly uncommitted.
+
 ## D-0062 — Controlled LiteAPI acquisition launcher, offline qualification
 
 Source `4e6467cdb9a5c8d6cf76ccefbccca938a3237da8`, evaluation work branch only.

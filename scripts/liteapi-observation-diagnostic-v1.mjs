@@ -7,8 +7,9 @@ import {OBSERVED_EXECUTION_VERSION,reprojectObservedRequirementCandidate} from '
 import {resolveScopedService,serviceCodes} from './diagnostic-scoped-signals-v1.mjs';
 import {verifyControlledCapture} from './liteapi-controlled-capture-v1.mjs';
 import {DOCUMENTARY_LITEAPI_WIRE_VERSION,decodeDocumentaryOffer,documentaryCommercial,inspectDocumentaryFiscal,documentaryDetail,documentaryTiming} from './liteapi-documentary-wire-v1.mjs';
+import {LITEAPI_QUALIFICATION_VERSION,normalizeEnglishBedInventory,compareMappedRoom,compareDocumentaryRetrieval} from './liteapi-offer-qualification-v1.mjs';
 
-export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.1';
+export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.2';
 export const SUPPORTED_WIRE_PROFILE='liteapi-v3-roomTypes-rates-exact-retrieval@1';
 export const LIVE_TRANSPORT_ENABLED=false;
 const clone=x=>structuredClone(x);
@@ -155,7 +156,7 @@ function scoped(record,field,value,scope,level){return {sourceField:field,scope:
  original:{status:value===null?'UNKNOWN':'KNOWN',value:clone(value),reason:value===null?'Missing provider field':null,reliability:'SOURCE_REPORTED',evidenceRefs:record?.response?['request/'+record.ordinal]:[]},
  links:record?.response?link(record,field):[],structuredPrivacy:null};}
 function sleepingText(value){
- const clauses=[],inventories=[];
+ const clauses=[],inventories=[],alternativeInventories=[];
  // This is a bounded clause grammar, not a whole-description sentiment test.
  // Numeric inventory must not drop a second clause qualifying the same beds.
  const bedSubject=/\b(?:lett[oi]|divan[oi]|beds?|bunks?|sofas?|sleeping|berths?)\b/i;
@@ -165,10 +166,12 @@ function sleepingText(value){
  const implicitQualification=/^(?:(?:non|not)\s+(?:disponibil[ei]|available|garantit[oaie]|guaranteed|present[ei]|present|confermat[oaie]|confirmed)|unavailable|unconfirmed|unknown|su richiesta|on request|da (?:confermare|verificare|definire)|subject to (?:availability|confirmation)|secondo disponibilit[aà]|senza garanzia|without guarantee)[.!]?$/i;
  let previousBed=false;
  if(typeof value==='string')for(const textValue of value.split(';').map(v=>v.trim()).filter(Boolean)){
-  const bed=bedSubject.test(textValue),implicit=previousBed&&implicitQualification.test(textValue);
-  const decoded=bed?normalizeItalianBedInventory(textValue):null;
+  const english=normalizeEnglishBedInventory(textValue);
+  const bed=bedSubject.test(textValue)||english!==null||/\b(?:\d+|one|two|three|four)\s+(?:king|queen|double|single|twin)\b/i.test(textValue),implicit=previousBed&&implicitQualification.test(textValue);
+  const decoded=bed?normalizeItalianBedInventory(textValue)??english?.inventory:null;
   let kind;
   if(decoded){kind='SUPPORTED_INVENTORY';inventories.push(decoded);}
+  else if(english?.relation==='OR'){kind='BED_ALTERNATIVES_NOT_ASSIGNED';alternativeInventories.push(...english.alternatives);}
   else if(bed){
    // A statement about extra beds is not a restriction on the base inventory.
    // The explicit extra/supplementary referent is separate from base beds; its
@@ -182,11 +185,11 @@ function sleepingText(value){
   clauses.push({text:textValue,kind});previousBed=bed||implicit;
  }
  const negated=clauses.some(c=>c.kind==='BED_NEGATION');
- const uncertain=clauses.some(c=>['BED_CONDITION_OR_UNCERTAINTY','UNSUPPORTED_BED_CLAUSE','UNRESOLVED_BED_QUALIFICATION'].includes(c.kind));
+ const uncertain=clauses.some(c=>['BED_CONDITION_OR_UNCERTAINTY','UNSUPPORTED_BED_CLAUSE','UNRESOLVED_BED_QUALIFICATION','BED_ALTERNATIVES_NOT_ASSIGNED'].includes(c.kind));
  const status=negated&&inventories.length?'CONFLICTING_INVENTORY':negated?'NEGATED_UNQUANTIFIED_INVENTORY':
   uncertain?'UNVERIFIED_BED_QUALIFICATION':inventories.length?'SUPPORTED_LOWER_BOUND':'MISSING_SUPPORTED_INVENTORY';
  const claimState=status==='CONFLICTING_INVENTORY'?'CONFLICTING':status==='SUPPORTED_LOWER_BOUND'?'KNOWN':'UNKNOWN';
- return {status,claimState,clauses,inventory:claimState==='KNOWN'?{complete:false,beds:inventories.flatMap(v=>v.beds)}:null,
+ return {status,claimState,clauses,alternativeInventories,inventory:claimState==='KNOWN'?{complete:false,beds:inventories.flatMap(v=>v.beds)}:null,
   reason:'SCOPED_BED_CLAUSE_GRAMMAR:'+status,completeInventoryCertified:false};
 }
 
@@ -267,7 +270,7 @@ function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,eva
   const prePayload=body(pre),getPayload=body(get),preDecoded=documentary?decodeDocumentaryOffer(pre,{hotelId,offerId,scenario,stage:'PREBOOK'}):decodeSelected(prePayload,hotelId,offerId),getDecoded=documentary?decodeDocumentaryOffer(get,{hotelId,offerId,scenario,stage:'PREBOOK_GET'}):decodeSelected(getPayload,hotelId,offerId);
   const scopeIssues=(decoded,prior=null)=>documentary?(decoded.issues??[]):validateScope(decoded,scenario,prior);
   const commercialFields=documentary?documentaryCommercial:commercial;
-  let verified=false,active=searchOffer,activeRecord=search,commercialChange=false;
+  let verified=false,active=searchOffer,activeRecord=search,commercialChange=documentary?null:false,retrievalComparison=null;
   if(searchOffer.issue)issues.push(searchOffer.issue);else issues.push(...scopeIssues(searchOffer));
   for(const payload of [prePayload,getPayload])if(payload?.error!=null||Array.isArray(payload?.errors)&&payload.errors.length)issues.push('LOGICAL_ERROR_IN_COMMERCIAL_RESPONSE');
   if(!prePayload)issues.push(pre?'PREBOOK_FAILED_OR_AMBIGUOUS':'PREBOOK_NOT_ATTEMPTED');
@@ -281,7 +284,8 @@ function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,eva
    else {
     preIssues.push(...scopeIssues(getDecoded,preDecoded));
     if(getPayload.data.prebookId!==prebookId||get?.prebookId!==prebookId)preIssues.push('RETRIEVAL_IDENTITY_CONFLICT');
-    if(!equal(commercialFields(preDecoded),commercialFields(getDecoded)))preIssues.push('PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT');
+    if(documentary){retrievalComparison=compareDocumentaryRetrieval(preDecoded,getDecoded,documentaryCommercial);preIssues.push(...retrievalComparison.issues);}
+    else if(!equal(commercialFields(preDecoded),commercialFields(getDecoded)))preIssues.push('PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT');
    }
    issues.push(...preIssues);
    // A failure/conflict never falls back to a certified historic bookable fact.
@@ -297,9 +301,14 @@ function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,eva
   const r=active.rate??{},o=active.offer??{};
   const c=(v,field,reason)=>claim(v,scope,activeRecord,field,reason);
   const missing=reason=>unknown(scope,reason,activeRecord);
-  const fiscal=documentary?inspectDocumentaryFiscal(active,scenario.stay.currency):inspectLiteApiFiscalEvidence(o,r,scenario.stay.currency,active.hotel?.remarks??[]);
+  const detail=records.find(d=>d.kind==='HOTEL_DETAIL'&&d.hotelId===hotelId);
+  const detailValidation=documentary?documentaryDetail(detail,hotelId,records.find(x=>x.kind==='FACILITIES')):inspectHotelDetail(detail,hotelId),property=detailValidation.property;
+  const fiscal=documentary?inspectDocumentaryFiscal(active,scenario.stay.currency,detailValidation):inspectLiteApiFiscalEvidence(o,r,scenario.stay.currency,active.hotel?.remarks??[]);
+  const fiscalByStage=documentary?Object.fromEntries([['SEARCH',searchOffer],['PREBOOK',preDecoded],['PREBOOK_GET',getDecoded]].map(([stage,d])=>
+   [stage,d.issue?{status:'RECORD_UNUSABLE',issue:d.issue}:{status:'OBSERVATION_ONLY_NOT_BOOKABILITY_CERTIFICATE',fiscal:inspectDocumentaryFiscal(d,scenario.stay.currency,detailValidation)}])):null;
   const fiscalUsable=verified&&fiscal.completeTotal!==null;
   const sleeping=sleepingText(r.name);
+  const mappedRoomAssessment=documentary?compareMappedRoom(detailValidation,active,searchOffer,sleeping,scenario.party):null;
   const n={alternativeId:id,scope:{...scope,stay:clone(scenario.stay),party:{adults:scenario.party.adults,childAgesAtStay:clone(scenario.party.childAgesAtStay),unitsRequested:1}},
    reference:unknown(scope,'NO_DISTANCE_REQUESTED'),distanceKm:unknown(scope,'NO_DISTANCE_REQUESTED'),
    availability:{observed:searchOffer.issue?missing('SEARCH_OFFER_UNVERIFIABLE'):claim('AVAILABLE',scope,search,'roomTypes/offerId','OBSERVED_RATE_NOT_BOOKABILITY'),
@@ -322,9 +331,15 @@ function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,eva
     n[key]=claim(null,scope,pre??search,key,'CURRENT_OFFER_BINDING_OR_FACTS_CONFLICT:'+issues.join('|'),'OFFER_SCOPED','CONFLICTING');
    n.children.admitted=claim(null,scope,pre??search,'occupancy','CURRENT_OCCUPANCY_VERIFICATION_CONFLICT','OFFER_SCOPED','CONFLICTING');
   }
+  if(mappedRoomAssessment){
+   issues.push(...mappedRoomAssessment.issues);
+   for(const [field,negative,uncertain] of [['capacityGuests',mappedRoomAssessment.capacityConflict,mappedRoomAssessment.capacityUnverified],['sleeping',mappedRoomAssessment.sleepingConflict,mappedRoomAssessment.sleepingUnverified]]){
+    if(negative||uncertain){const state=negative||n[field].state==='CONFLICTING'?'CONFLICTING':'UNKNOWN';
+     n[field]=claim(null,scope,activeRecord,field,'RATE_AND_MAPPED_ROOM:'+mappedRoomAssessment.issues.join('|'),'OFFER_SCOPED',state);
+     n[field].links.push(...(detail?.response?link(detail,mappedRoomAssessment.roomPointer??'data.rooms'):[]));}
+   }
+  }
   normalization.offers.push(n);
-  const detail=records.find(d=>d.kind==='HOTEL_DETAIL'&&d.hotelId===hotelId);
-  const detailValidation=documentary?documentaryDetail(detail,hotelId,records.find(x=>x.kind==='FACILITIES')):inspectHotelDetail(detail,hotelId),property=detailValidation.property;
   const textValue=!conflict&&typeof r.name==='string'?r.name:null;
   const scopedObservations=[scoped(activeRecord,'roomName',textValue,scope,'OFFER')];
   if(r.remarks!==undefined)scopedObservations.push(scoped(activeRecord,'roomAmenities',r.remarks,scope,'OFFER'));
@@ -346,13 +361,14 @@ function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,eva
    if(s.state==='CONFLICTING')f.availability='conflicting';facts.push(f);
   }
   signals.push({alternativeId:id,roomKey:scope.roomKey,rateKey:scope.rateKey,facts,features:[],category:null,roomText:textValue,
-   scopedObservations,serviceInterpretations:services,observations:{other:{search:clone(searchOffer),prebook:clone(preDecoded),retrieval:clone(getDecoded),detail:clone(property),detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),fiscal,time,getTime}},
+   scopedObservations,serviceInterpretations:services,observations:{other:{search:clone(searchOffer),prebook:clone(preDecoded),retrieval:clone(getDecoded),retrievalComparison:clone(retrievalComparison),mappedRoomAssessment:clone(mappedRoomAssessment),detail:clone(property),detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),fiscal,time,getTime}},
    provenance:{kind:documentary?capture.origin:'VERIFIED_SYNTHETIC_PROVIDER_CAPTURE',captureSha256:capture.captureSha256,privateIdentity,
     sourceRecords:[search,pre,get,detail].filter(Boolean).map(x=>({ordinal:x.ordinal,...(documentary?{requestSemanticHash:observationHash(x.intent)}:{requestHash:x.request.body.sha256}),responseHash:x.response?.body.sha256??null})),humanReview:null}});
   observations.push({alternativeId:id,privateIdentity,issues:[...new Set(issues)],detailIdentityVerified:detailValidation.identityVerified,
    detailUsable:detailValidation.usable,detailSemanticStatus:detailValidation.status,detailValidation:clone(detailValidation),sleepingInterpretation:clone(sleeping),
    searchObserved:!searchOffer.issue,prebookVerified:verified,retrievalIsIndependentVerification:false,commercialChange,
-   fiscal,time,getTime,rawResponsesRetained:true,occupancyAgeLink:'ORIGINAL_REQUEST_TO_EXACT_OFFER_ID_NO_INVENTED_RESPONSE_ECHO',
+   retrievalComparison,mappedRoomAssessment,qualificationVersion:LITEAPI_QUALIFICATION_VERSION,
+   fiscal,fiscalByStage,time,getTime,rawResponsesRetained:true,occupancyAgeLink:'ORIGINAL_REQUEST_TO_EXACT_OFFER_ID_NO_INVENTED_RESPONSE_ECHO',
    sourceIdentityFieldsOnlyForAudit:true});
  }
  if(!normalization.offers.length)return {version:LITEAPI_OBSERVATION_VERSION,status:'NO_CANDIDATES_NO_ENGINE_INPUT',input:null,observations,normalization,
