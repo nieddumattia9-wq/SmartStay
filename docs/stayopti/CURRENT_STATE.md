@@ -1579,3 +1579,28 @@ no production request or authorization is inferred from PASS.
 The public baseline, seven excluded paths, seventeen D0037 sealed files, extra
 private HTML copy and all historical custody/authorization materials remain
 unchanged. The new authorization is MAX3 only, not the consumed D0062 literal.
+
+## D-0064 R1 — Approved architectural supplement
+
+Source b59fa3a9208d099dc677bf5d962225f5be656bd1, already synchronized on the
+work branch. Configuration @1.1 moves the proposed case data out of execution,
+preserves MAX3/nontransferable caps and uses explicit plan bindings throughout.
+Catalog duplicates are compared on consumed identity/geography, not irrelevant
+whole-record bytes; all original hashes and non-selection differences survive.
+Unknown metadata does not inherit protocol-error semantics from its field names.
+Core, commercial adapters, ranking and public V2 remain unchanged; tests verify
+the actual transitive boundary and synthetic cross-representation decisions.
+
+No production authorization is inferred. Old operational @1 materials stay
+byte-identical and require no migration; a new inventory/configuration/literal
+will be produced only for the final validated commit. Final isolated gates and
+actual push/pending state are recorded in the R1 delivery, not presumed here.
+
+Final isolated local validation on 2026-09-15: V3 2678/2678, V2 196/196;
+security29, release101, analytics31, capacity9, beta4 PASS. Lifecycle530 PASS
+and17 existing real-Valkey SKIP. TypeScript/build/analytics-beta/local staging
+and PS5.1 parse15/15 PASS. Targeted103/103 includes47 MAX3/architecture checks,
+with real launcher/CurrentUser synthetic custody and a second distinct plan.
+No native Linux or GitHub CI result is inferred. Source and tested code bytes
+must match before selective publication; final SHA/push/pending status belongs
+to the delivery verification. No real provider or engine invocation authorized.

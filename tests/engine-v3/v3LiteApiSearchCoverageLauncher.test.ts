@@ -57,7 +57,7 @@ function clean(root: string) {
   rmSync(target, { recursive: true, force: true });
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
-async function fixture(count = 5, options: { autoCrlf?: boolean } = {}) {
+async function fixture(count = 5, options: { autoCrlf?: boolean; mutatePlan?: (config:any)=>void } = {}) {
   const temp = mkdtempSync(join(tmpdir(), "StayOpti-D0064-Launcher-"));
   try {
     const repo = join(temp, "candidate"); mkdirSync(repo);
@@ -77,7 +77,7 @@ async function fixture(count = 5, options: { autoCrlf?: boolean } = {}) {
     const head = git(repo, ["rev-parse", "HEAD"]);
     const build = await moduleAt(SOURCE, "tests/engine-v3/fixtures/liteApiCoverageSyntheticV1.mjs");
     const registry = join(temp, "synthetic-registry");
-    const data = build.coverageFixture({ count, directory: registry });
+    const data = build.coverageFixture({ count, directory: registry, mutatePlan:options.mutatePlan });
     const configFile = join(temp, "config.json"), simulationFile = join(temp, "simulation.json"), inventoryFile = join(temp, "inventory.json");
     const f = { temp, repo, head, registry, paths, data, configFile, simulationFile, inventoryFile,
       configSha: writeJson(configFile, data.config), simulationSha: writeJson(simulationFile, data.simulation), inventorySha: "" };
@@ -236,4 +236,14 @@ test("CWL07 zero/one catalog and204 through true launcher never enter MAX17 or e
  for(const count of [0,1]){const f=await fixture(count);try{replaceSimulation(f,s=>{s.responses[1].status=204;});
  const r=resultJson(invoke(f,"Simulate"));assert.equal(r.status,"COMPLETE");assert.equal(r.actualAttempts,count?3:2);assert.equal(r.catalog.selectedCount,count);assert.equal(r.arms.CITY_RATES.status,"NO_CONTENT");assert.equal(r.engineInvocations,0);assert.equal(r.prebookCreationsAttempted,0);
  }finally{clean(f.temp);}}
+});
+test("CWL08 same actual launcher executes a separately sealed invented plan without Bologna defaults", {skip:WIN51},async()=>{
+ const f=await fixture(3,{mutatePlan:c=>{c.caseId='D0064_INVENTED_PLAN_B';Object.assign(c.scenario,{destination:'Invented Town B',countryCode:'FR',guestNationality:'DE',currency:'USD',checkin:'2099-11-11',checkout:'2099-11-13',nights:2,adults:1,childAges:[9],budget:950});Object.assign(c.controls,{seed:'INVENTED_PLAN_B_SEED',catalogLimit:4,maximumSelectedIds:2,ratesLimit:2,maxRatesPerHotel:1});}});
+ try{const r=resultJson(invoke(f,'Simulate'));assert.equal(r.status,'COMPLETE',r.failureClass);assert.equal(r.actualAttempts,3);assert.equal(r.catalog.selectedCount,2);
+ const {input}=await verify(f),m=await moduleAt(f.repo,'scripts/liteapi-search-coverage-capture-v1.mjs'),original=m.readCoverageOriginals(input);
+ const q=original.records.map((x:any)=>x.request);assert.equal(q[0].query.cityName,'Invented Town B');assert.equal(q[0].query.limit,4);
+ for(const x of q.slice(1)){assert.deepEqual(x.body.occupancies,[{adults:1,children:[9]}]);assert.equal(x.body.currency,'USD');assert.equal(x.body.guestNationality,'DE');assert.equal(x.body.timeout,12);assert.equal(x.body.limit,2);assert.equal(x.body.maxRatesPerHotel,1);}
+ assert.deepEqual(q[2].body.hotelIds,original.selection.selectedIds);assert.equal(r.policyInvocations,0);
+ const before=treeFiles(f.registry);rejected(invoke(f,'Simulate'),/CASE_ALREADY_PRESENT/);assert.deepEqual(treeFiles(f.registry),before);
+ }finally{clean(f.temp);}
 });

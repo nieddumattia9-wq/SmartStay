@@ -68,7 +68,7 @@ export async function runCoverageAcquisition({config,checkpoint,journal,credenti
  const send=async request=>{
   if(stopped||signal?.aborted)fail('INTERRUPTED');
   verifyBeforeSend();if(hash({config,checkpoint})!==bindingSha256)fail('CONFIG_CHANGED');
-  validateCoverageRequest(request,selection);
+  validateCoverageRequest(request,selection,config);
   if(request.kind!=='CATALOG'&&(hash(selection)!==selectionHash||journal.snapshot().selection?.selectionSha256!==selectionHash))fail('SELECTION_CHANGED');
   await wait(Math.max(0,config.controls.pacingMs-(Date.now()-lastStart)));
   if(signal?.aborted)fail('INTERRUPTED');verifyBeforeSend();
@@ -86,7 +86,7 @@ export async function runCoverageAcquisition({config,checkpoint,journal,credenti
    if(raw.status>=300&&raw.status<400)fail('REDIRECT_REFUSED');
    if(raw.status!==200&&!(raw.status===204&&request.kind!=='CATALOG'))fail('HTTP_'+raw.status);
    if(raw.status!==204&&!String(raw.headers['content-type']??'').includes('application/json'))fail('CONTENT_TYPE_UNSUPPORTED');
-   if(request.kind==='CATALOG')diagnostic=selectCoverageCatalog(raw.bodyBytes,sha(raw.bodyBytes));
+   if(request.kind==='CATALOG')diagnostic=selectCoverageCatalog(raw.bodyBytes,sha(raw.bodyBytes),config);
    else{
     diagnostic=inspectCoverageRates({bytes:raw.bodyBytes,status:raw.status,headers:raw.headers,request,selection});
     arms[request.kind]=diagnostic;
@@ -110,12 +110,12 @@ export async function runCoverageAcquisition({config,checkpoint,journal,credenti
  };
  let receipt;
  try{
-  const catalog=await send(coverageRequest('CATALOG'));
+  const catalog=await send(coverageRequest('CATALOG',null,config));
   if(!stopped){
    selection=catalog;selectionHash=hash(selection);
    journal.sealSelection(selection); // durable, authenticated, encrypted BEFORE CITY_RATES.
-   await send(coverageRequest('CITY_RATES',selection));
-   if(!stopped&&selection.selectedIds.length)await send(coverageRequest('ID_RATES',selection));
+   await send(coverageRequest('CITY_RATES',selection,config));
+   if(!stopped&&selection.selectedIds.length)await send(coverageRequest('ID_RATES',selection,config));
   }
  }catch(e){stopped=true;failureClass=/^LITEAPI_[A-Z0-9_]+$/.test(e.message)?e.message:'FAIL_CLOSED_INTERNAL';}
  finally{
@@ -125,7 +125,7 @@ export async function runCoverageAcquisition({config,checkpoint,journal,credenti
  }
  return {version:'stayopti.liteapi-search-coverage-result@1',status:stopped?'ABORTED':'COMPLETE',failureClass,origin:config.origin,syntheticProofOnly:synthetic,
   actualAttempts:receipt.attemptsReserved,transportInvocations,localHttpRequests,providerHttpRequests:synthetic?0:transportInvocations,counts:receipt.counts,
-  custodyStartedAt:receipt.startedAt,retentionEndsAt:new Date(Date.parse(receipt.startedAt)+14*86400000).toISOString(),
+  custodyStartedAt:receipt.startedAt,retentionEndsAt:new Date(Date.parse(receipt.startedAt)+config.retention.days*86400000).toISOString(),
   selectionSealSha256:selectionHash,selectionEventBeforeRates:Boolean(receipt.selection),
   catalog:selection?{rawRows:selection.rawRows,eligibleUniqueIds:selection.eligibleUniqueIds,selectedCount:selection.selectedIds.length,
    excludedRows:selection.rows.filter(r=>r.reason).length,duplicates:selection.rows.filter(r=>r.duplicate).length,

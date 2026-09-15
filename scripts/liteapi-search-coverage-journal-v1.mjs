@@ -7,9 +7,10 @@ import {openSync,closeSync,writeFileSync,readFileSync,fsyncSync,mkdirSync,exists
 import {resolve,relative,isAbsolute,join,dirname,sep,parse} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createWindowsCurrentUserDpapiProtectorV3} from './provider-raw-quarantine-store.mjs';
+import {COVERAGE_CAPS} from './liteapi-search-coverage-plan-v1.mjs';
 
 export const LITEAPI_COVERAGE_JOURNAL_VERSION='stayopti.liteapi-search-coverage-journal@1';
-export const LITEAPI_COVERAGE_CAPS=Object.freeze({CATALOG:1,CITY_RATES:1,ID_RATES:1,total:3,concurrency:1,retries:0,redirects:0});
+export const LITEAPI_COVERAGE_CAPS=COVERAGE_CAPS;
 const kinds=['CATALOG','CITY_RATES','ID_RATES'];
 const repository=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const fail=code=>{throw Error('LITEAPI_COVERAGE_'+code);};
@@ -91,9 +92,9 @@ function validateSummary(events,header){
    if(selection||active!==null||requests.length!==1||requests[0].kind!=='CATALOG'||requests[0].state!=='SUCCEEDED'||!Number.isInteger(d.selectedCount)||d.selectedCount<0||d.selectedCount>20||!hex(d.selectionSha256)||!equal(Object.keys(d).sort(),['original','selectedCount','selectionSha256'].sort()))fail('SELECTION_SEAL_INVALID');
    selection=clone(d);
   }else if(e.type==='RESERVE'){
-   if(active!==null||!kinds.includes(d.kind)||d.ordinal!==requests.length+1||d.ordinal>3||!hex(d.subjectSha256)||seen.has(d.kind+':'+d.subjectSha256))fail('RESERVATION_INTEGRITY');
+   if(active!==null||!kinds.includes(d.kind)||d.ordinal!==requests.length+1||d.ordinal>header.limits.total||!hex(d.subjectSha256)||seen.has(d.kind+':'+d.subjectSha256))fail('RESERVATION_INTEGRITY');
    if(d.kind!==kinds[requests.length]||requests.some(r=>r.state==='FAILED')||d.kind!=='CATALOG'&&!selection||d.kind==='ID_RATES'&&selection.selectedCount===0)fail('REQUEST_SEQUENCE');
-   if(++counts[d.kind]>LITEAPI_COVERAGE_CAPS[d.kind])fail('CAP_EXCEEDED');
+   if(++counts[d.kind]>header.limits[d.kind])fail('CAP_EXCEEDED');
    if(!equal(Object.keys(d).sort(),['kind','ordinal','request','subjectSha256'].sort()))fail('RESERVATION_FIELDS');
    seen.add(d.kind+':'+d.subjectSha256);requests.push({...d,state:'RESERVED',reservedAt:e.at});active=d.ordinal;
   }else if(e.type==='COMPLETE'){
@@ -208,7 +209,7 @@ export function createCoverageJournal(input){
   reserve({kind,hotelId=null,offerId=null,requestBytes,checkpointSha256}){
    const s=current();if(checkpointSha256!==input.bindingSha256)fail('CHECKPOINT_MISMATCH');
    if(!kinds.includes(kind))fail('KIND_NOT_ALLOWED');if(s.activeOrdinal!==null)fail('CONCURRENCY_PROHIBITED');
-   if(s.attemptsReserved>=3||s.counts[kind]>=LITEAPI_COVERAGE_CAPS[kind])fail('CAP_EXCEEDED');
+   if(s.attemptsReserved>=header.limits.total||s.counts[kind]>=header.limits[kind])fail('CAP_EXCEEDED');
    if(hotelId!==null||offerId!==null)fail('FOREIGN_SUBJECT');
    if(kind!==kinds[s.attemptsReserved]||s.requests.some(r=>r.state==='FAILED')||kind!=='CATALOG'&&!s.selection||kind==='ID_RATES'&&s.selection.selectedCount===0)fail('REQUEST_SEQUENCE');
    if(offerId!==null&&(typeof offerId!=='string'||!offerId.length))fail('OFFER_INVALID');

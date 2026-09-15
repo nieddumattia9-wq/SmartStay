@@ -21,7 +21,7 @@ test('CV01 MAX3 is independent of unchanged MAX17 and forbids foreign operations
  const {p,f}=await modules(),old=await at('scripts/liteapi-controlled-plan-v1.mjs'),x=f.coverageFixture({directory:'C:/invented'});
  assert.equal(p.validateCoveragePlan(x.config,{synthetic:true}).pending.length,0);assert.equal(old.LIMITS.total,17);
  for(const kind of ['SEARCH','PREBOOK','PREBOOK_GET','HOTEL_DETAIL','FACILITIES','BOOKING','total'])assert.throws(()=>p.coverageRequest(kind),/OPERATION_NOT_ALLOWED/);
- for(const change of [(c:any)=>c.controls.limits.total=17,(c:any)=>c.controls.limits.ID_RATES=2,(c:any)=>c.controls.retries=1,(c:any)=>c.controls.clientTimeoutMs=1,(c:any)=>c.controls.seed='new',(c:any)=>c.prebook=true]){const c=structuredClone(x.config);change(c);assert.throws(()=>p.validateCoveragePlan(c,{synthetic:true}),/FROZEN_PLAN_CHANGED|CONFIG_SCHEMA/);}
+ for(const change of [(c:any)=>c.controls.limits.total=17,(c:any)=>c.controls.limits.ID_RATES=2,(c:any)=>c.controls.retries=1,(c:any)=>c.controls.clientTimeoutMs=1,(c:any)=>c.controls.seed='',(c:any)=>c.prebook=true]){const c=structuredClone(x.config);change(c);assert.throws(()=>p.validateCoveragePlan(c,{synthetic:true}),/FROZEN_PLAN_CHANGED|CONFIG_SCHEMA/);}
  assert.throws(()=>old.validatePlan(x.config,{synthetic:true}),/CONFIG_VERSION_OR_CASE/);
 });
 test('CV02 deterministic catalog selection independent of order/names and exact opaque ID bytes',async()=>{

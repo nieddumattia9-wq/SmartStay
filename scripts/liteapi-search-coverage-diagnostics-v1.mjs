@@ -1,5 +1,5 @@
 // Pure coverage accounting; no merit, price qualification, kernel or policy.
-import {canonical,sha,hash,fail,SEED,coverageRequest} from './liteapi-search-coverage-plan-v1.mjs';
+import {canonical,sha,hash,fail,PROPOSED_PLAN,validateCoverageMechanismPlan,coverageRequest} from './liteapi-search-coverage-plan-v1.mjs';
 import {decodeDocumentaryOffer} from './liteapi-documentary-wire-v1.mjs';
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const opaque=x=>typeof x==='string'&&x.trim().length>0&&!/[\x00-\x1f\x7f]/.test(x);
@@ -10,7 +10,9 @@ export function semanticErrors(value,pointer='$'){
  if(!plain(value))return out;
  for(const [k,v] of Object.entries(value)){
   if(['error','errors'].includes(k)&&v!==null&&!(Array.isArray(v)&&v.length===0))out.push(pointer+'.'+k);
-  else if(v&&typeof v==='object')out.push(...semanticErrors(v,pointer+'.'+k));
+  // Error semantics apply to the documented envelope/property/offer/rate
+  // containers, not an unrelated extension object's arbitrarily named field.
+  else if(['data','roomTypes','rates'].includes(k)&&v&&typeof v==='object')out.push(...semanticErrors(v,pointer+'.'+k));
  }return out;
 }
 export function parseCoverageBody(bytes,expectedSha256){
@@ -18,19 +20,27 @@ export function parseCoverageBody(bytes,expectedSha256){
  try{p=JSON.parse(Buffer.from(bytes).toString('utf8'));}catch{fail('JSON_UNSUPPORTED');}
  if(!plain(p)||!Array.isArray(p.data))fail('ROOT_SCHEMA_UNSUPPORTED');return p;
 }
-export function selectCoverageCatalog(bytes,expectedSha256){
+export function selectCoverageCatalog(bytes,expectedSha256,plan=PROPOSED_PLAN){
+ validateCoverageMechanismPlan(plan);const {scenario,controls}=plan;
  const p=parseCoverageBody(bytes,expectedSha256);if(semanticErrors(p).length)fail('CATALOG_SEMANTIC_ERROR');
- if(p.data.length>100||p.data.some(r=>!plain(r)))fail('CATALOG_SCHEMA_UNSUPPORTED');
- const rows=p.data.map((r,index)=>({index,id:r.id??null,recordSha256:hash(r),reason:!opaque(r.id)?'ID_UNSUPPORTED':normal(r.country)!=='IT'?'COUNTRY_NOT_VERIFIED':normal(r.city)!=='BOLOGNA'?'CITY_NOT_VERIFIED':null,duplicate:false}));
+ if(p.data.length>controls.catalogLimit||p.data.some(r=>!plain(r)))fail('CATALOG_SCHEMA_UNSUPPORTED');
+ const rows=p.data.map((r,index)=>({index,id:r.id??null,recordSha256:hash(r),
+  selectionFactSha256:hash({id:r.id??null,country:normal(r.country),city:normal(r.city)}),
+  reason:!opaque(r.id)?'ID_UNSUPPORTED':normal(r.country)!==normal(scenario.countryCode)?'COUNTRY_NOT_VERIFIED':normal(r.city)!==normal(scenario.destination)?'CITY_NOT_VERIFIED':null,duplicate:false,nonSelectionDifferences:false,nonSelectionDifferingFields:[]}));
  const groups=new Map();for(const r of rows)if(opaque(r.id))groups.set(r.id,[...(groups.get(r.id)??[]),r]);
  for(const group of groups.values())if(group.length>1){for(const r of group)r.duplicate=true;
-  if(new Set(group.map(r=>r.recordSha256)).size>1)for(const r of group)r.reason='DUPLICATE_ID_CONFLICT';}
+  if(new Set(group.map(r=>r.selectionFactSha256)).size>1)for(const r of group)r.reason='DUPLICATE_ID_CONFLICT';
+  else if(new Set(group.map(r=>r.recordSha256)).size>1){
+   const fields=[...new Set(group.flatMap(r=>Object.keys(p.data[r.index])))].filter(k=>!['id','country','city'].includes(k)).sort();
+   const differing=fields.filter(k=>new Set(group.map(r=>canonical({present:Object.hasOwn(p.data[r.index],k),value:p.data[r.index][k]??null}))).size>1);
+   for(const r of group){r.nonSelectionDifferences=true;r.nonSelectionDifferingFields=[...differing];}
+  }}
  const ids=[...new Set(rows.filter(r=>!r.reason).map(r=>r.id))];
- ids.sort((a,b)=>cmp(hash([SEED,a]),hash([SEED,b]))||cmp(a,b));
- const selection={version:'stayopti.verified-catalog-sample@1',catalogSha256:expectedSha256,seed:SEED,rawRows:rows.length,
-  eligibleUniqueIds:ids.length,poolIds:[...ids].sort(cmp),poolFingerprint:hash([...ids].sort(cmp)),selectedIds:ids.slice(0,20),rows,
+ ids.sort((a,b)=>cmp(hash([controls.seed,a]),hash([controls.seed,b]))||cmp(a,b));
+ const selection={version:'stayopti.verified-catalog-sample@1.1',catalogSha256:expectedSha256,seed:controls.seed,planFingerprint:hash({caseId:plan.caseId,scenario,controls}),rawRows:rows.length,
+  eligibleUniqueIds:ids.length,poolIds:[...ids].sort(cmp),poolFingerprint:hash([...ids].sort(cmp)),selectedIds:ids.slice(0,controls.maximumSelectedIds),rows,
   catalogComplete:false,availabilityCertified:false,meritSelection:false,geographyBasis:'PROVIDER_CATALOG_CITY_COUNTRY_NOT_INDEPENDENT_GEOCODING'};
- return {...selection,derivedRequest:selection.selectedIds.length?coverageRequest('ID_RATES',selection):null};
+ return {...selection,derivedRequest:selection.selectedIds.length?coverageRequest('ID_RATES',selection,plan):null};
 }
 /** Every source row/offer retains its index and issues, even if the older wire
  * rejects the whole candidate. Raw opaque IDs remain only in encrypted originals. */

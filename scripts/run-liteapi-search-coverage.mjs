@@ -65,7 +65,7 @@ async function main(){
   credential=null;
   const receipt=verifyCoverageJournal({root:caseRoot,registryRoot,repositoryRoot:root,caseId:p.config.caseId,mode:synthetic?'SYNTHETIC_ONLY':'REAL',bindingSha256,authorizationSha256,...(synthetic?{protector:p.protector}:{})});
   output(a,{...collected,caseId:p.config.caseId,privateDirectory:caseRoot,codeInventorySha256:a.InventorySha256,configFileSha256:a.ConfigSha256,
-   journalVerified:['COMPLETED','ABORTED'].includes(receipt.status),retentionDays:14,retentionResponsibility:'Mattia',automaticDeletion:false,
+   journalVerified:['COMPLETED','ABORTED'].includes(receipt.status),retentionDays:p.config.retention.days,retentionResponsibility:p.config.retention.responsible,automaticDeletion:false,
    credentialPersisted:false,credentialPrinted:false,credentialClearedFromProcess:true,credentialCleanupBasis:'BEST_EFFORT_MEMORY_NO_ENVIRONMENT_NO_FILE'});
  }finally{credential=null;process.removeListener('SIGINT',abort);process.removeListener('SIGTERM',abort);}
 }

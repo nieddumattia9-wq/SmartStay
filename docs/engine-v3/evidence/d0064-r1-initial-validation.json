@@ -1,0 +1,23 @@
+{
+  "version": "D0064-R1-initial-evidence@1",
+  "base": "b59fa3a9208d099dc677bf5d962225f5be656bd1",
+  "syntheticOnly": true,
+  "initialMechanism": "LITEAPI_COVERAGE_CASE_OR_ORIGIN for a separately identified invented plan",
+  "initialCatalog": {
+    "data": [
+      {"id":"invented","country":"IT","city":"Bologna"},
+      {"id":"invented","country":" it ","city":"BOLOGNA","thumbnail":"ignored-invented"}
+    ],
+    "originalSha256": "9fb1603a87f5e81a03d0e826f446218264c4d65a27b352912feeaf5114264cb6",
+    "eligibleUniqueIds": 0,
+    "bothRowsReason": "DUPLICATE_ID_CONFLICT"
+  },
+  "newTestInitialFailures": {
+    "compile": "3 nullable-decision assert errors, corrected with explicit presence checks",
+    "firstRuntime": {"tests":103,"pass":97,"fail":6,"skip":0},
+    "cause": "New synthetic tests assumed one policy invocation even for strong-distance reference plus final selection; two exact contract-error prefixes were also incorrect. Production implementation not changed to satisfy those assumptions."
+  },
+  "providerRequests": 0,
+  "realCredentialLoads": 0,
+  "historicalEvidenceChanged": false
+}
