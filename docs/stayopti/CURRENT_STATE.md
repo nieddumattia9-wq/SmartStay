@@ -1556,3 +1556,26 @@ document. Dependency-registry network audits are outside this Git-only network
 authorization; no new dependency or lock change is included. No real input,
 feedback, journal, private custody or delivery ZIP belongs in the commit.
 No new capture, real V3 run, Golden admission or public-runtime change is allowed.
+
+## D-0064 — MAX3 coverage launcher, 2026-09-15
+
+Source `c9aa2d901c43ecb3de56169ae1fb00da7a452191`: D0063 was selectively
+committed/pushed on the work branch; that supersedes its earlier pending
+publication statement, not the historical acquisition checkpoint or inventory.
+D0064 adds a separate diagnostic acquisition profile with CATALOG1/CITY1/ID1,
+durable pre-send reservations, encrypted catalog-selection seal before both
+Rates arms, one-shot markers and CurrentUser custody. No prebook or engine path.
+
+Targeted Windows qualification:35/35 PASS, including the actual PowerShell5.1
+launcher, CurrentUser DPAPI, timeout, concurrent start, process interruption,
+restart refusal and synthetic prompt-block verification. Initial sandbox/path
+and synthetic prompt-test module failures remain recorded separately. Final
+isolated canonical gates:V3 2666/2666,V2 196/196,security29,release101,
+analytics31,capacity9,beta4 PASS; lifecycle530 PASS/17 existing real-Valkey SKIP.
+TypeScript,build,analytics-beta,local staging and actual PS5.1 parse15/15 PASS.
+Publication SHA/push/local-pending state is recorded in the delivery receipt;
+no production request or authorization is inferred from PASS.
+
+The public baseline, seven excluded paths, seventeen D0037 sealed files, extra
+private HTML copy and all historical custody/authorization materials remain
+unchanged. The new authorization is MAX3 only, not the consumed D0062 literal.

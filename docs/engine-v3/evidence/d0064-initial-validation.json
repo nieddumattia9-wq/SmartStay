@@ -1,0 +1,16 @@
+{
+  "version": "stayopti.d0064-initial-validation@1",
+  "sourceHead": "c9aa2d901c43ecb3de56169ae1fb00da7a452191",
+  "syntheticOnly": true,
+  "observations": [
+    {"run":"initial-sandbox","tests":25,"pass":10,"fail":15,"cause":"EPERM at canonical parent realpath under restricted sandbox; no guard weakened","resolution":"same code tested under Windows CurrentUser"},
+    {"run":"currentuser-01","tests":25,"pass":25,"fail":0},
+    {"run":"launcher-01","tests":32,"pass":31,"fail":1,"cause":"synthetic Read-Host stub used ConvertTo-SecureString; Microsoft.PowerShell.Security autoload failed","resolution":"test stub creates genuine .NET SecureString directly; actual protected launcher prompt unchanged"}
+  ],
+  "providerRequests":0,
+  "productionCredentials":0,
+  "privateSessionsAccessed":0,
+  "D0064EngineInvocations":0,
+  "D0064PolicyInvocations":0,
+  "historicalTestsRewritten":false
+}
