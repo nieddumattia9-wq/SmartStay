@@ -90,6 +90,7 @@ export async function runCoverageAcquisition({config,checkpoint,journal,credenti
    else{
     diagnostic=inspectCoverageRates({bytes:raw.bodyBytes,status:raw.status,headers:raw.headers,request,selection});
     arms[request.kind]=diagnostic;
+    if(diagnostic.classification==='UNKNOWN_FORMAT')fail(diagnostic.reason);
     if(diagnostic.semanticErrors.length)fail('RATES_SEMANTIC_ERROR');
    }
    r.outcome='SUCCEEDED';

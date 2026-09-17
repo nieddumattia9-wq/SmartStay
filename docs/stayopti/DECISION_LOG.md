@@ -117,3 +117,13 @@ Material decisions include product promise, ranking semantics, recommendation ro
 | D-0064 | 2026-09-15 | Add a separately authorized MAX3 coverage launcher: immutable catalog sample before two Rates arms, durable nontransferable one-shot reservations, encrypted CurrentUser custody and complete raw-versus-wire diagnostic accounting. | Offline synthetic qualification and selective work-branch publication; production attempt requires new explicit MAX3 acceptance, no prebook/engine or reuse of D0062 | `decisions/0064-liteapi-search-coverage-max3.md` |
 
 | D-0064 R1 | 2026-09-15 | Separate validated case data from the bounded MAX3 mechanism; authenticate exact originals before scoped semantic equivalence, retaining real conflicts and provider-neutral decision invariance. | User-approved architectural supplement; synthetic verification and selective work-branch publication, new production binding/authorization still required | `decisions/0064-r1-reusable-plan-semantic-boundary.md` |
+
+| D-0064 R2 | 2026-09-17 | Classify authenticated Rates envelopes before success-array validation; separate documented no availability, actual provider errors and unknown formats, preserving historical aborts and non-comparable counts. | Offline adapter repair and pure diagnosis only; no new acquisition, commit or push | `decisions/0064-r2-rates-response-classification.md` |
+
+D-0064 R2 consolidation authorization (2026-09-17): the user subsequently
+authorized a selective seven-file commit and non-force publication on the
+evaluation work branch only. This supersedes only the prior no-commit/push
+status. Exact software/test hashes allow reuse of the 71/71 runtime result;
+isolated compilation/typecheck/build close the excluded-file scope difference.
+Actual local/remote SHA and pending commits are recorded in delivery, never
+inferred from test PASS. No acquisition authority or historical binding changes.

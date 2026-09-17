@@ -1,5 +1,45 @@
 # StayOpti Current State
 
+## D-0064 R2 — Selective work-branch consolidation authorization
+
+The user has now authorized publication of the seven-file R2 correction on
+`codex/evaluation-d0036-d0041` only. This prospectively supersedes the pending
+commit/push status below, not any acquisition, authorization or custody record.
+All seven files matched the private validated inventory before this doc-only
+addendum; executable source, tests and synthetic initial-failure evidence are
+unchanged. The 71/71 runtime result is reusable against the verified closure.
+Because the original compilation included excluded developer files, test
+compilation, TypeScript and build must additionally pass on the isolated
+publication candidate without those files. Actual exit codes, final SHA,
+non-force push/readback and remaining-local count belong to the consolidation
+receipt; this entry does not presume success. No full engine invocation or
+acquisition is part of consolidation. Historical MAX3 remains consumed/closed.
+The next coverage proposal is separate, not permission to enlarge this plan
+or rerun the consumed case. Main, policy and protected bytes remain unchanged.
+
+## D-0064 response diagnosis — local R2 classification repair
+
+Source `3a13636eacc13fd8ed7c8832340caa4c37e5a6d2`, evaluation branch unchanged.
+The success-array check hid a documented Rates application outcome. Exact-byte
+authentication now precedes a pure distinction between success, documented
+no-results, provider error and unknown format. Missing/null data alone remains
+unknown; no-availability is recognized only by the documented root code with
+no contradictory records/errors. Counts for unknown shapes are not invented.
+The original synthetic regression failed before correction; final focused tests
+pass 71/71 (35 new plus 36 existing MAX3 tests), no skips, including actual
+Windows PowerShell 5.1 / CurrentUser synthetic custody and launcher execution.
+TypeScript and build PASS; no full V3/V2 repeat or CI claim. No kernel/policy
+invocation in this diagnosis or these tests. A separate hash-bound private pure
+diagnosis preserves the historical ABORTED result, originals, journal, markers,
+selection and authorization. No acquisition or retry was performed.
+Seven excluded paths, seventeen sealed files and the preexisting private HTML
+copy remain protected. No public runtime, policy, weights or roles changed.
+The repair is local and uncommitted: staging remains empty, commit/push were
+not authorized or performed, and the live remote was not queried offline.
+Historical inventories are not regenerated to accommodate the changed code.
+See `decisions/0064-r2-rates-response-classification.md` for the narrow rule and
+the distinction between bounded response coverage and market exhaustion.
+
 ## D-0063 — Documentary commercial/room qualification, evaluation-only
 
 Source `71ddb32d31ee227f8d3c25950af2c71b835e347a`, same evaluation branch.

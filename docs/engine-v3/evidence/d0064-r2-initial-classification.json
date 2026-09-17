@@ -1,0 +1,17 @@
+{
+  "phase": "D0064_R2",
+  "sourceHead": "3a13636eacc13fd8ed7c8832340caa4c37e5a6d2",
+  "origin": "SYNTHETIC_ONLY",
+  "test": "CR01 documented Rates2001 is not an unknown JSON root or a provider failure",
+  "input": {"httpStatus": 200, "body": {"error": {"code": 2001, "message": "no availability found"}}},
+  "initialCompileExitCode": 0,
+  "initialTestExitCode": 1,
+  "initialTests": {"pass": 0, "fail": 1},
+  "actualError": "LITEAPI_COVERAGE_ROOT_SCHEMA_UNSUPPORTED",
+  "expected": "DOCUMENTED_NO_RESULTS",
+  "semanticSource": "docs/engine-v3/v3-17-liteapi-golden-provider-qualification.md",
+  "providerCalls": 0,
+  "kernelInvocations": 0,
+  "policyInvocations": 0,
+  "historicalProductionResultRewritten": false
+}
