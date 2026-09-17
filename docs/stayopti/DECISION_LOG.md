@@ -127,3 +127,5 @@ status. Exact software/test hashes allow reuse of the 71/71 runtime result;
 isolated compilation/typecheck/build close the excluded-file scope difference.
 Actual local/remote SHA and pending commits are recorded in delivery, never
 inferred from test PASS. No acquisition authority or historical binding changes.
+
+| D-0064 CITY200 / ID20 | 2026-09-17 | Add explicit plan @1.2 with separate bounded city/ID windows; preserve legacy @1.1, exact sealed sampling and all MAX3 one-shot safeguards without duplicating transport/custody. | User-authorized synthetic qualification and selective work-branch consolidation; new private Inventory/Preflight and unaccepted literal required, no real acquisition | `decisions/0064-city200-id20-versioned-plan.md` |

@@ -8,6 +8,11 @@ export const fail=code=>{throw Error('LITEAPI_COVERAGE_'+code);};
 import {PROPOSED_PLAN,CONTROLS,SCENARIO} from './liteapi-search-coverage-proposal-v1.mjs';
 export {CASE_ID,LIMITS,SEED,SCENARIO,CONTROLS,PROPOSED_PLAN} from './liteapi-search-coverage-proposal-v1.mjs';
 export const COVERAGE_VERSION='stayopti.liteapi-search-coverage@1.1';
+// @1.1 remains the historical plan AND unchanged inventory format. A new plan
+// is explicit, never inferred from fields or substituted into an old receipt.
+export const COVERAGE_ARM_LIMITS_VERSION='stayopti.liteapi-search-coverage@1.2';
+const planVersions=[COVERAGE_VERSION,COVERAGE_ARM_LIMITS_VERSION];
+const splitArmLimits=plan=>plan?.version===COVERAGE_ARM_LIMITS_VERSION;
 export const BRANCH='codex/evaluation-d0036-d0041';
 // Capability ceiling is independent of the chosen case. No configuration can
 // add an operation or transfer a sub-limit. The literal still seals every byte.
@@ -16,7 +21,9 @@ const positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
 const isoDate=v=>typeof v==='string'&&/^\d{4}-\d\d-\d\d$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
 export function validateCoverageMechanismPlan(plan){
  const s=plan?.scenario,c=plan?.controls;
- if(!s||!c||!same(Object.keys(s).sort(),Object.keys(SCENARIO).sort())||!same(Object.keys(c).sort(),Object.keys(CONTROLS).sort()))fail('FROZEN_PLAN_CHANGED');
+ if(plan?.version!==undefined&&!planVersions.includes(plan.version))fail('CONFIG_SCHEMA');
+ const controlKeys=splitArmLimits(plan)?Object.keys(CONTROLS).filter(k=>k!=='ratesLimit').concat('cityRatesLimit','idRatesLimit'):Object.keys(CONTROLS);
+ if(!s||!c||!same(Object.keys(s).sort(),Object.keys(SCENARIO).sort())||!same(Object.keys(c).sort(),controlKeys.sort()))fail('FROZEN_PLAN_CHANGED');
  if(typeof plan.caseId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/.test(plan.caseId))fail('CASE_OR_ORIGIN');
  if(typeof s.destination!=='string'||!s.destination.trim()||/[\x00-\x1f]/.test(s.destination)||
   !/^[A-Z]{2}$/.test(s.countryCode)||!/^[A-Z]{2}$/.test(s.guestNationality)||!/^[A-Z]{3}$/.test(s.currency)||!isoDate(s.checkin)||!isoDate(s.checkout)||
@@ -25,7 +32,8 @@ export function validateCoverageMechanismPlan(plan){
   s.profile!=='BALANCED'||s.profileSource!=='manual'||s.distancePreference!=='NOT_REQUESTED')fail('SCENARIO_UNSUPPORTED');
  if(!same(c.limits,{CATALOG:1,CITY_RATES:1,ID_RATES:1,total:3})||c.concurrency!==1||c.retries!==0||c.redirects!==0||c.additionalPages!==0||
   c.host!=='api.liteapi.travel'||c.pacingMs<1000||!positive(c.pacingMs,60000)||!positive(c.clientTimeoutMs,60000)||!positive(c.providerTimeoutSeconds,60)||
-  c.clientTimeoutMs<c.providerTimeoutSeconds*1000||!positive(c.catalogLimit,100)||!positive(c.maximumSelectedIds,20)||!positive(c.ratesLimit,20)||
+  c.clientTimeoutMs<c.providerTimeoutSeconds*1000||!positive(c.catalogLimit,100)||!positive(c.maximumSelectedIds,20)||
+  (splitArmLimits(plan)?(!positive(c.cityRatesLimit,200)||!positive(c.idRatesLimit,20)||c.maximumSelectedIds>c.idRatesLimit):!positive(c.ratesLimit,20))||
   !positive(c.maxRatesPerHotel,3)||typeof c.seed!=='string'||!c.seed.trim())fail('FROZEN_PLAN_CHANGED');
  return true;
 }
@@ -76,7 +84,7 @@ export function verifyCoverageInventory(root,inventory,expectedHead,expectedBran
 
 export function validateCoveragePlan(config,{synthetic=false}={}){
  const keys=['version','origin','caseId','scenario','controls','scenarioConfirmed','account','retention'];
- if(!config||!same(Object.keys(config).sort(),keys.sort())||config.version!==COVERAGE_VERSION)fail('CONFIG_SCHEMA');
+ if(!config||!same(Object.keys(config).sort(),keys.sort())||!planVersions.includes(config.version))fail('CONFIG_SCHEMA');
  if(config.origin!==(synthetic?'SYNTHETIC_LOCAL_TRANSPORT':'LITEAPI_PRODUCTION'))fail('CASE_OR_ORIGIN');
  validateCoverageMechanismPlan(config);
  const pending=[];
@@ -89,16 +97,19 @@ export function validateCoveragePlan(config,{synthetic=false}={}){
  if(!r.directory||r.days!==14||r.responsible!=='Mattia'||r.access!=='WINDOWS_CURRENT_USER_DPAPI'||r.noAutomaticDeletionAcknowledged!==true||r.confirmed!==true)pending.push('RETENTION_PENDING');
  return {status:pending.length?'HOLD_CONFIGURATION_PENDING':'READY_FOR_EXPLICIT_COVERAGE_ACQUISITION_AUTHORIZATION',pending,providerRequests:0,credentialLoaded:false};
 }
-export const ratesBody=(plan=PROPOSED_PLAN)=>{validateCoverageMechanismPlan(plan);const s=plan.scenario,c=plan.controls;
- return {checkin:s.checkin,checkout:s.checkout,currency:s.currency,guestNationality:s.guestNationality,occupancies:[{adults:s.adults,children:[...s.childAges]}],limit:c.ratesLimit,offset:0,timeout:c.providerTimeoutSeconds,maxRatesPerHotel:c.maxRatesPerHotel,includeHotelData:true,roomMapping:true};};
+export const ratesBody=(plan=PROPOSED_PLAN,kind='CITY_RATES')=>{validateCoverageMechanismPlan(plan);const s=plan.scenario,c=plan.controls;
+ if(!['CITY_RATES','ID_RATES'].includes(kind))fail('OPERATION_NOT_ALLOWED');
+ const limit=splitArmLimits(plan)?(kind==='CITY_RATES'?c.cityRatesLimit:c.idRatesLimit):c.ratesLimit;
+ return {checkin:s.checkin,checkout:s.checkout,currency:s.currency,guestNationality:s.guestNationality,occupancies:[{adults:s.adults,children:[...s.childAges]}],limit,offset:0,timeout:c.providerTimeoutSeconds,maxRatesPerHotel:c.maxRatesPerHotel,includeHotelData:true,roomMapping:true};};
 export function coverageRequest(kind,selection=null,plan=PROPOSED_PLAN){
  validateCoverageMechanismPlan(plan);const s=plan.scenario,c=plan.controls;
  if(!['CATALOG','CITY_RATES','ID_RATES'].includes(kind))fail('OPERATION_NOT_ALLOWED');
  if(kind==='ID_RATES'&&(!Array.isArray(selection?.selectedIds)||selection.selectedIds.length<1||selection.selectedIds.length>c.maximumSelectedIds||
+  (splitArmLimits(plan)&&selection.selectedIds.length>c.idRatesLimit)||
   selection.selectedIds.some(id=>typeof id!=='string'||!id.trim()||/[\x00-\x1f\x7f]/.test(id))||new Set(selection.selectedIds).size!==selection.selectedIds.length))fail('SELECTED_IDS_REQUIRED');
  return {kind,method:kind==='CATALOG'?'GET':'POST',host:c.host,path:kind==='CATALOG'?'/v3.0/data/hotels':'/v3.0/hotels/rates',
  query:kind==='CATALOG'?{countryCode:s.countryCode,cityName:s.destination,limit:c.catalogLimit,offset:0,timeout:c.providerTimeoutSeconds}:{},
- body:kind==='CATALOG'?null:kind==='CITY_RATES'?{...ratesBody(plan),cityName:s.destination,countryCode:s.countryCode}:{...ratesBody(plan),hotelIds:[...selection.selectedIds]}};
+ body:kind==='CATALOG'?null:kind==='CITY_RATES'?{...ratesBody(plan,kind),cityName:s.destination,countryCode:s.countryCode}:{...ratesBody(plan,kind),hotelIds:[...selection.selectedIds]}};
 }
 export function validateCoverageRequest(request,selection,plan=PROPOSED_PLAN){
  if(!same(request,coverageRequest(request?.kind,selection,plan)))fail('REQUEST_OUTSIDE_SEALED_PLAN');

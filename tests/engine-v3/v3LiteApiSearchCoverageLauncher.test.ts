@@ -247,3 +247,178 @@ test("CWL08 same actual launcher executes a separately sealed invented plan with
  const before=treeFiles(f.registry);rejected(invoke(f,'Simulate'),/CASE_ALREADY_PRESENT/);assert.deepEqual(treeFiles(f.registry),before);
  }finally{clean(f.temp);}
 });
+
+// An explicit new configuration, not a migration of the @1.1 fixtures above.
+function armLimits(config: any, cityRatesLimit = 200, idRatesLimit = 20) {
+  config.version = 'stayopti.liteapi-search-coverage@1.2';
+  delete config.controls.ratesLimit;
+  Object.assign(config.controls, { cityRatesLimit, idRatesLimit, maximumSelectedIds: idRatesLimit });
+}
+
+test('CWL09 actual PS5.1 CITY200/ID20 authenticates separate request windows and seals the20 before either Rates', { skip: WIN51 }, async () => {
+  const f = await fixture(25, { mutatePlan: c => armLimits(c) });
+  try {
+    const beforeInputs = [sha(readFileSync(f.configFile)), sha(readFileSync(f.simulationFile))];
+    const r = resultJson(invoke(f, 'Simulate'));
+    assert.equal(r.status, 'COMPLETE', r.failureClass); assert.equal(r.actualAttempts, 3);
+    assert.equal(r.catalog.rawRows, 25); assert.equal(r.catalog.selectedCount, 20);
+    assert.equal(r.providerHttpRequests, 0); assert.equal(r.engineInvocations, 0); assert.equal(r.policyInvocations, 0);
+    assert.equal(r.prebookCreationsAttempted, 0); assert.equal(r.selectionEventBeforeRates, true);
+    const { input, state } = await verify(f), m = await moduleAt(f.repo, 'scripts/liteapi-search-coverage-capture-v1.mjs');
+    assert.equal(state.keyProtection, 'WINDOWS_CURRENT_USER_DPAPI');
+    const storedBefore = treeFiles(f.registry), originals = m.readCoverageOriginals(input);
+    assert.equal(originals.records.length, 3); assert.deepEqual(originals.selection.selectedIds, f.data.selection.selectedIds);
+    assert.equal(originals.records[0].request.query.limit, 100);
+    assert.equal(originals.records[1].request.body.limit, 200);
+    assert.equal(originals.records[2].request.body.limit, 20);
+    assert.deepEqual(originals.records[2].request.body.hotelIds, originals.selection.selectedIds);
+    assert.equal(originals.records[2].request.body.hotelIds.length, 20);
+    const seal = state.events.find((e: any) => e.type === 'SEAL');
+    const rateReservations = state.events.filter((e: any) => e.type === 'RESERVE' && e.data.kind !== 'CATALOG');
+    assert.equal(rateReservations.length, 2); assert.ok(rateReservations.every((e: any) => seal.sequence < e.sequence));
+    assert.equal(state.selection.selectionSha256, r.selectionSealSha256);
+    assert.deepEqual(treeFiles(f.registry), storedBefore, 'authenticated reopening does not mutate synthetic custody');
+    assert.deepEqual([sha(readFileSync(f.configFile)), sha(readFileSync(f.simulationFile))], beforeInputs);
+  } finally { clean(f.temp); }
+});
+
+test('CWL10 new arm limits preserve zero/singleID, HTTP204 and documented2001 through actual launcher', { skip: WIN51 }, async () => {
+  for (const count of [0, 1]) {
+    const f = await fixture(count, { mutatePlan: c => armLimits(c) });
+    try {
+      replaceSimulation(f, s => {
+        s.responses[1].status = 204;
+        if (count) s.responses[2].response = { error: { code: '2001', message: 'no availability found' }, data: null };
+      });
+      const r = resultJson(invoke(f, 'Simulate'));
+      assert.equal(r.status, 'COMPLETE', r.failureClass); assert.equal(r.actualAttempts, count ? 3 : 2);
+      assert.equal(r.catalog.selectedCount, count); assert.equal(r.arms.CITY_RATES.classification, 'DOCUMENTED_NO_RESULTS');
+      assert.equal(r.arms.CITY_RATES.noResultsBasis, 'HTTP_204'); assert.equal(r.arms.CITY_RATES.rawOffers, 0);
+      if (count) {
+        assert.equal(r.arms.ID_RATES.status, 'NO_AVAILABILITY');
+        assert.equal(r.arms.ID_RATES.noResultsBasis, 'LITEAPI_RATES_ERROR_CODE_2001');
+        assert.equal(r.comparison.countsComparable, true); assert.equal(r.comparison.providerInventoryExhausted, null);
+      } else { assert.equal(r.idRatesStatus, 'SKIPPED_NO_VERIFIED_IDS'); assert.equal(r.arms.ID_RATES, undefined); }
+      const { input } = await verify(f), m = await moduleAt(f.repo, 'scripts/liteapi-search-coverage-capture-v1.mjs');
+      const read = m.readCoverageOriginals(input);
+      assert.equal(read.records[1].request.body.limit, 200);
+      if (count) { assert.equal(read.records[2].request.body.limit, 20); assert.equal(read.records[2].request.body.hotelIds.length, 1); }
+      assert.equal(r.providerHttpRequests, 0); assert.equal(r.engineInvocations, 0); assert.equal(r.policyInvocations, 0);
+    } finally { clean(f.temp); }
+  }
+});
+
+test('CWL11 CITY200 does not turn contradictory, erroneous or unknown ID responses into empty success', { skip: WIN51 }, async () => {
+  for (const outcome of ['CONFLICT', 'ERROR', 'UNKNOWN']) {
+    const f = await fixture(2, { mutatePlan: c => armLimits(c) });
+    try {
+      replaceSimulation(f, s => {
+        if (outcome === 'CONFLICT') s.responses[2].response.error = { code: 2001, message: 'no availability found' };
+        else s.responses[2].response = outcome === 'ERROR' ? { error: { code: 9999, message: 'Invented failure' } } : { data: null };
+      });
+      const r = resultJson(invoke(f, 'Simulate'));
+      assert.equal(r.status, 'ABORTED'); assert.equal(r.actualAttempts, 3);
+      assert.equal(r.arms.ID_RATES.classification, outcome === 'UNKNOWN' ? 'UNKNOWN_FORMAT' : 'PROVIDER_ERROR');
+      assert.equal(r.arms.ID_RATES.countsComparable, false); assert.equal(r.comparison.overlap, null);
+      if (outcome === 'CONFLICT') { assert.equal(r.arms.ID_RATES.rawOffers, 2); assert.equal(r.arms.ID_RATES.wireBindableOffers, 0); }
+      else assert.equal(r.arms.ID_RATES.rawOffers, null, 'unknown/error count must not become zero');
+      assert.equal(r.providerHttpRequests, 0); assert.equal(r.engineInvocations, 0); assert.equal(r.policyInvocations, 0);
+      const before = treeFiles(f.registry); rejected(invoke(f, 'Simulate'), /CASE_ALREADY_PRESENT/);
+      assert.deepEqual(treeFiles(f.registry), before);
+    } finally { clean(f.temp); }
+  }
+});
+
+test('CWL12 tampered arm windows, selection or MAX17 are rejected before creating CurrentUser progress', { skip: WIN51 }, async () => {
+  const f = await fixture(3, { mutatePlan: c => armLimits(c) });
+  try {
+    const original = readFileSync(f.configFile), originalHash = f.configSha;
+    for (const change of [
+      (c: any) => { c.controls.cityRatesLimit = 201; },
+      (c: any) => { c.controls.idRatesLimit = 21; },
+      (c: any) => { c.controls.idRatesLimit = 19; },
+      (c: any) => { c.controls.catalogLimit = 101; },
+      (c: any) => { c.controls.limits.total = 17; },
+      (c: any) => { c.controls.limits.PREBOOK = 1; },
+      (c: any) => { c.controls.ratesLimit = 200; },
+    ]) {
+      const altered = JSON.parse(original.toString('utf8')); change(altered); f.configSha = writeJson(f.configFile, altered);
+      rejected(invoke(f, 'Simulate'), /FROZEN_PLAN_CHANGED/);
+      assert.equal(existsSync(f.registry), false, 'an invalid profile cannot reserve a case or authorization');
+    }
+    writeFileSync(f.configFile, original); f.configSha = originalHash;
+    const r = resultJson(invoke(f, 'Simulate')); assert.equal(r.status, 'COMPLETE', r.failureClass);
+    const before = treeFiles(f.registry), changed = JSON.parse(original.toString('utf8'));
+    changed.controls.cityRatesLimit = 199; f.configSha = writeJson(f.configFile, changed);
+    rejected(invoke(f, 'Simulate'), /CASE_ALREADY_PRESENT/);
+    assert.deepEqual(treeFiles(f.registry), before, 'a new config hash cannot refund the existing case');
+  } finally { clean(f.temp); }
+});
+
+test('CWL13 actual arm-limit launcher supports another invented scenario and unequal bounded windows', { skip: WIN51 }, async () => {
+  const f = await fixture(4, { mutatePlan: c => {
+    armLimits(c, 7, 2); c.caseId = 'D0064_INVENTED_CITY_ID_V12';
+    Object.assign(c.scenario, { destination: 'Invented Town C', countryCode: 'FR', guestNationality: 'DE', currency: 'USD',
+      checkin: '2099-11-11', checkout: '2099-11-13', nights: 2, adults: 1, childAges: [9], budget: 950 });
+    Object.assign(c.controls, { catalogLimit: 4, seed: 'INVENTED_CITY_ID_V12_SEED', maxRatesPerHotel: 1 });
+  } });
+  try {
+    const r = resultJson(invoke(f, 'Simulate')); assert.equal(r.status, 'COMPLETE', r.failureClass);
+    assert.equal(r.catalog.selectedCount, 2); assert.equal(r.actualAttempts, 3);
+    const { input } = await verify(f), m = await moduleAt(f.repo, 'scripts/liteapi-search-coverage-capture-v1.mjs');
+    const read = m.readCoverageOriginals(input), q = read.records.map((x: any) => x.request);
+    assert.equal(q[0].query.cityName, 'Invented Town C'); assert.equal(q[0].query.limit, 4);
+    assert.equal(q[1].body.limit, 7); assert.equal(q[2].body.limit, 2);
+    for (const request of q.slice(1)) {
+      assert.deepEqual(request.body.occupancies, [{ adults: 1, children: [9] }]);
+      assert.equal(request.body.currency, 'USD'); assert.equal(request.body.guestNationality, 'DE');
+      assert.equal(request.body.checkin, '2099-11-11'); assert.equal(request.body.maxRatesPerHotel, 1);
+    }
+    assert.deepEqual(q[2].body.hotelIds, read.selection.selectedIds);
+    assert.equal(r.providerHttpRequests, 0); assert.equal(r.engineInvocations, 0); assert.equal(r.policyInvocations, 0);
+  } finally { clean(f.temp); }
+});
+
+test('CWL14 actual new-profile launcher stops after a changed input hash without submitting a Rates arm', { skip: WIN51 }, async () => {
+  const f = await fixture(2, { mutatePlan: c => { armLimits(c); c.controls.pacingMs = 3000; } });
+  const child = spawn(PS51, args(f, 'Simulate'), { cwd: f.repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = ''; child.stdout!.on('data', b => { stdout += b; }); child.stderr!.on('data', b => { stderr += b; });
+  const done = new Promise<number | null>((ok, no) => { child.once('error', no); child.once('close', ok); });
+  try {
+    const sealEvent = join(f.registry, 'cases', f.data.config.caseId, 'events', '000004.json'), deadline = Date.now() + 15_000;
+    while (!existsSync(sealEvent) && Date.now() < deadline) await new Promise(r => setTimeout(r, 20));
+    assert.ok(existsSync(sealEvent), 'the selected pool must have been durably sealed');
+    writeFileSync(f.configFile, Buffer.concat([readFileSync(f.configFile), Buffer.from(' ')]));
+    assert.equal(await done, 0, stdout + stderr);
+    const r = JSON.parse(stdout.slice(stdout.indexOf('{'), stdout.lastIndexOf('}') + 1));
+    assert.equal(r.status, 'ABORTED'); assert.match(r.failureClass, /INPUT_CHANGED/);
+    assert.equal(r.actualAttempts, 1); assert.equal(r.localHttpRequests, 1); assert.equal(r.providerHttpRequests, 0);
+    assert.equal(r.engineInvocations, 0); assert.equal(r.policyInvocations, 0);
+    const { state } = await verify(f); assert.equal(state.attemptsReserved, 1); assert.equal(state.restartAllowed, false);
+    const before = treeFiles(f.registry);
+    rejected(invoke(f, 'Simulate'), /INPUT_FILE_HASH/);
+    f.configSha = sha(readFileSync(f.configFile)); rejected(invoke(f, 'Simulate'), /CASE_ALREADY_PRESENT/);
+    assert.deepEqual(treeFiles(f.registry), before);
+  } finally { await done; clean(f.temp); }
+});
+
+test('CWL15 concurrent new-profile launch and timeout preserve one-shot reservation and untouched stored evidence', { skip: WIN51 }, async () => {
+  const f = await fixture(2, { mutatePlan: c => { armLimits(c); c.controls.providerTimeoutSeconds = 1; c.controls.clientTimeoutMs = 1000; } });
+  replaceSimulation(f, s => { s.responses[1].timeout = true; });
+  const child = spawn(PS51, args(f, 'Simulate'), { cwd: f.repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = ''; child.stdout!.on('data', b => { stdout += b; }); child.stderr!.on('data', b => { stderr += b; });
+  const done = new Promise<number | null>((ok, no) => { child.once('error', no); child.once('close', ok); });
+  try {
+    const reserveEvent = join(f.registry, 'cases', f.data.config.caseId, 'events', '000002.json'), deadline = Date.now() + 15_000;
+    while (!existsSync(reserveEvent) && Date.now() < deadline) await new Promise(r => setTimeout(r, 20));
+    assert.ok(existsSync(reserveEvent)); assert.equal(child.exitCode, null, 'the competing process is still active');
+    rejected(invoke(f, 'Simulate'), /CASE_ALREADY_PRESENT|CASE_ALREADY_CONSUMED/);
+    assert.equal(await done, 0, stdout + stderr);
+    const r = JSON.parse(stdout.slice(stdout.indexOf('{'), stdout.lastIndexOf('}') + 1));
+    assert.equal(r.status, 'ABORTED'); assert.equal(r.failureClass, 'TIMEOUT'); assert.equal(r.actualAttempts, 2);
+    assert.equal(r.counts.ID_RATES, 0); assert.equal(r.providerHttpRequests, 0);
+    const { state } = await verify(f); assert.equal(state.status, 'ABORTED'); assert.equal(state.attemptsReserved, 2);
+    assert.equal(state.restartAllowed, false); const before = treeFiles(f.registry);
+    rejected(invoke(f, 'Simulate'), /CASE_ALREADY_PRESENT/); assert.deepEqual(treeFiles(f.registry), before);
+  } finally { await done; clean(f.temp); }
+});

@@ -1,5 +1,21 @@
 # StayOpti Current State
 
+## D-0064 — CITY200 / ID20 versioned plan
+
+Explicit configuration @1.2 separates cityRatesLimit (maximum200) from
+idRatesLimit (maximum20), retaining catalog100 and MAX3 one-shot sublimits.
+The historical @1.1 shape, custody, receipts and consumed authorizations remain
+unchanged. Only evaluation plan validation/request construction changes; no
+public runtime, engine, weights or role changes. The new private operational
+configuration requires final-commit Inventory/Preflight and a new literal still
+to be accepted. See `../engine-v3/d0064-city200-id20.md` for actual validation
+and publication limits. No acquisition is authorized by the software work.
+The isolated candidate passed106/106 focused MAX3/R2/arm-limit/launcher tests,
+test compilation, TypeScript, build and actual PowerShell5.1 parsing, with
+synthetic CurrentUser DPAPI and no provider/kernel/policy calls. Publication
+is authorized on the work branch only; final local/remote SHA and pending
+commits are verified separately in delivery, not inferred from these tests.
+
 ## D-0064 R2 — Selective work-branch consolidation authorization
 
 The user has now authorized publication of the seven-file R2 correction on
