@@ -129,3 +129,5 @@ Actual local/remote SHA and pending commits are recorded in delivery, never
 inferred from test PASS. No acquisition authority or historical binding changes.
 
 | D-0064 CITY200 / ID20 | 2026-09-17 | Add explicit plan @1.2 with separate bounded city/ID windows; preserve legacy @1.1, exact sealed sampling and all MAX3 one-shot safeguards without duplicating transport/custody. | User-authorized synthetic qualification and selective work-branch consolidation; new private Inventory/Preflight and unaccepted literal required, no real acquisition | `decisions/0064-city200-id20-versioned-plan.md` |
+
+| D-0065 | 2026-09-17 | Interpret explicit bed inventories only with wholly recognized room denominations; retain exact spans, qualifications, alternative assignments and mapped-room uncertainty without changing the strict structured-label parser or core policy. | Evaluation-only pure synthetic preparation; initial failures retained, selective work-branch publication conditional on isolated checks and actual remote verification; no engine or provider execution | `decisions/0065-bounded-room-description-beds.md` |

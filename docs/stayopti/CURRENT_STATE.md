@@ -1,5 +1,23 @@
 # StayOpti Current State
 
+## D-0065 — Bounded bed-description interpretation
+
+The evaluation adapter now separates an explicit English bed inventory from a
+complete, bounded room denomination while retaining original text, exact spans
+and unsupported meaning. It does not infer beds from bedrooms/occupancy, strip
+unknown modifiers, guarantee requested beds or override mapped-room conflicts.
+Strict structured bed-type parsing and the decision core remain unchanged.
+The initial pure-preparation experiment preserved five failures of eight tests.
+The final isolated candidate passed111/111 new pure tests and10/10 selected
+existing pure regressions, canonical test compilation, TypeScript and build.
+No excluded developer file was required. Local checks are not GitHub CI.
+Validation and publication evidence are recorded in
+`../engine-v3/d0065-bounded-room-description-beds.md` and the delivery receipt.
+No engine/kernel/policy execution, provider call or historical migration occurs.
+Commercial analysis stays private; no sample-derived markup rule is added.
+Selective work-branch commit/push is authorized after checks. Final SHA, remote
+readback and pending commits must be reported separately, not inferred here.
+
 ## D-0064 — CITY200 / ID20 versioned plan
 
 Explicit configuration @1.2 separates cityRatesLimit (maximum200) from

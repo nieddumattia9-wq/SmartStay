@@ -7,9 +7,9 @@ import {OBSERVED_EXECUTION_VERSION,reprojectObservedRequirementCandidate} from '
 import {resolveScopedService,serviceCodes} from './diagnostic-scoped-signals-v1.mjs';
 import {verifyControlledCapture} from './liteapi-controlled-capture-v1.mjs';
 import {DOCUMENTARY_LITEAPI_WIRE_VERSION,decodeDocumentaryOffer,documentaryCommercial,inspectDocumentaryFiscal,documentaryDetail,documentaryTiming} from './liteapi-documentary-wire-v1.mjs';
-import {LITEAPI_QUALIFICATION_VERSION,normalizeEnglishBedInventory,compareMappedRoom,compareDocumentaryRetrieval} from './liteapi-offer-qualification-v1.mjs';
+import {LITEAPI_QUALIFICATION_VERSION,qualifyEnglishRoomDescriptionBeds,compareMappedRoom,compareDocumentaryRetrieval} from './liteapi-offer-qualification-v1.mjs';
 
-export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.2';
+export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.3';
 export const SUPPORTED_WIRE_PROFILE='liteapi-v3-roomTypes-rates-exact-retrieval@1';
 export const LIVE_TRANSPORT_ENABLED=false;
 const clone=x=>structuredClone(x);
@@ -163,10 +163,14 @@ function sleepingText(value){
  const conditional=/\b(?:da confermare|da verificare|da definire|su richiesta|subject to|on request|to be confirmed|pending|may|might|if|se|salvo|secondo disponibilit[aà]|non garantit[oaie]|not guaranteed|oppure|alternativ[ae])\b/i;
  const uncertainty=/\b(?:unknown|unconfirmed|uncertain|undocumented|unverified|sconosciut[oaie]|incert[oaie]|non (?:specificat|documentat|verificat)[oaie])\b/i;
  const bedNegation=/\b(?:non\s+(?:disponibil[ei]|utilizzabil[ei]|present[ei]|previst[oi])|not\s+(?:available|usable|present|provided)|unavailable|unusable|(?:no|without)\s+(?:(?:a|the|any)\s+)?(?:beds?|bunks?|sofas?)|(?:nessun[oa]?|senza)\s+(?:un[oa]?\s+)?(?:lett[oi]|divan[oi]))\b/i;
- const implicitQualification=/^(?:(?:non|not)\s+(?:disponibil[ei]|available|garantit[oaie]|guaranteed|present[ei]|present|confermat[oaie]|confirmed)|unavailable|unconfirmed|unknown|su richiesta|on request|da (?:confermare|verificare|definire)|subject to (?:availability|confirmation)|secondo disponibilit[aà]|senza garanzia|without guarantee)[.!]?$/i;
+ // An adjacent subjectless predicate remains uncertainty even when its tail is
+ // unsupported. It is not silently discarded after a newly recognized title.
+ // Require a recognized availability/configuration predicate after NOT/NON;
+ // NOT alone cannot change the subject of breakfast, pets or room amenities.
+ const implicitQualification=/^(?:not\s+(?:(?:always|currently|necessarily|fully|yet)\s+)?(?:available|provided|included|guaranteed|confirmed|present|usable|verified|documented|specified)\b|non\s+(?:disponibil[ei]|utilizzabil[ei]|garantit[oaie]|present[ei]|confermat[oaie]|specificat[oaie]|documentat[oaie]|verificat[oaie])\b|(?:unavailable|unconfirmed|unknown|unverified|uncertain)[.!]?$|su richiesta\b|on request\b|da (?:confermare|verificare|definire)\b|subject to (?:availability|confirmation)\b|(?:if|when) available\b|(?:availability|configuration) (?:is )?(?:not|unknown|uncertain|unconfirmed)\b|secondo disponibilit[aà]\b|senza garanzia\b|without guarantee\b|no guarantee\b)/i;
  let previousBed=false;
- if(typeof value==='string')for(const textValue of value.split(';').map(v=>v.trim()).filter(Boolean)){
-  const english=normalizeEnglishBedInventory(textValue);
+ if(typeof value==='string')for(const originalText of value.split(';').filter(v=>v.trim())){
+  const textValue=originalText.trim(),englishInterpretation=qualifyEnglishRoomDescriptionBeds(originalText),english=englishInterpretation.parsed;
   const bed=bedSubject.test(textValue)||english!==null||/\b(?:\d+|one|two|three|four)\s+(?:king|queen|double|single|twin)\b/i.test(textValue),implicit=previousBed&&implicitQualification.test(textValue);
   const decoded=bed?normalizeItalianBedInventory(textValue)??english?.inventory:null;
   let kind;
@@ -182,14 +186,26 @@ function sleepingText(value){
    kind=extraOnly?'EXTRA_BEDS_NOT_BASE_INVENTORY':conditional.test(textValue)||uncertainty.test(textValue)?'BED_CONDITION_OR_UNCERTAINTY':
     bedNegation.test(textValue)?'BED_NEGATION':'UNSUPPORTED_BED_CLAUSE';
   }else kind=implicit?'UNRESOLVED_BED_QUALIFICATION':'OTHER_SUBJECT';
-  clauses.push({text:textValue,kind});previousBed=bed||implicit;
+  clauses.push({text:textValue,originalText,kind,englishInterpretation});previousBed=bed||implicit;
  }
+ // A leading subjectless qualification can precede its inventory. Do not move
+ // a predicate away from an earlier explicit other subject such as breakfast.
+ let leading=0;
+ while(leading<clauses.length&&clauses[leading].kind==='OTHER_SUBJECT'&&implicitQualification.test(clauses[leading].text))leading++;
+ if(leading&&clauses[leading]&&clauses[leading].kind!=='OTHER_SUBJECT')
+  for(let i=0;i<leading;i++)clauses[i].kind='UNRESOLVED_BED_QUALIFICATION';
+ // A semicolon is not an AND operator or proof of separate physical beds.
+ // Identical assertions repeat one lower bound; different inventories remain
+ // separately visible until their relationship is explicitly documented.
+ const inventoryComposition=inventories.length<2?'SINGLE_OR_NO_SUPPORTED_CLAUSE':
+  inventories.every(i=>equal(i,inventories[0]))?'IDENTICAL_ASSERTIONS_NOT_ADDED':'UNRESOLVED_BETWEEN_CLAUSES';
  const negated=clauses.some(c=>c.kind==='BED_NEGATION');
- const uncertain=clauses.some(c=>['BED_CONDITION_OR_UNCERTAINTY','UNSUPPORTED_BED_CLAUSE','UNRESOLVED_BED_QUALIFICATION','BED_ALTERNATIVES_NOT_ASSIGNED'].includes(c.kind));
+ const uncertain=inventoryComposition==='UNRESOLVED_BETWEEN_CLAUSES'||clauses.some(c=>['BED_CONDITION_OR_UNCERTAINTY','UNSUPPORTED_BED_CLAUSE','UNRESOLVED_BED_QUALIFICATION','BED_ALTERNATIVES_NOT_ASSIGNED'].includes(c.kind));
  const status=negated&&inventories.length?'CONFLICTING_INVENTORY':negated?'NEGATED_UNQUANTIFIED_INVENTORY':
   uncertain?'UNVERIFIED_BED_QUALIFICATION':inventories.length?'SUPPORTED_LOWER_BOUND':'MISSING_SUPPORTED_INVENTORY';
  const claimState=status==='CONFLICTING_INVENTORY'?'CONFLICTING':status==='SUPPORTED_LOWER_BOUND'?'KNOWN':'UNKNOWN';
- return {status,claimState,clauses,alternativeInventories,inventory:claimState==='KNOWN'?{complete:false,beds:inventories.flatMap(v=>v.beds)}:null,
+ return {originalText:typeof value==='string'?value:null,status,claimState,clauses,alternativeInventories,observedInventories:clone(inventories),inventoryComposition,
+  inventory:claimState==='KNOWN'?{complete:false,beds:clone(inventories[0].beds)}:null,
   reason:'SCOPED_BED_CLAUSE_GRAMMAR:'+status,completeInventoryCertified:false};
 }
 

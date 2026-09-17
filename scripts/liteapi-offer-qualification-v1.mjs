@@ -142,6 +142,51 @@ export function normalizeEnglishBedInventory(text){
  return branches.length>1?{relation:'OR',alternatives,inventory:null}:{relation:'AND',alternatives,inventory:alternatives[0]};
 }
 
+export const ROOM_DESCRIPTION_BED_VERSION='stayopti.room-description-bed-inventory@1';
+const roomDenomination='(?:(?:standard|superior|deluxe|executive|family|junior|classic|premium|economy|basic)\\s+){0,3}(?:room|suite|studio|apartment)';
+const roomInventoryForms=[
+ new RegExp('^\\s*'+roomDenomination+'(?:\\s+-\\s+|\\s*[:,]\\s*|\\s+(?:with\\s+)?)(?<inventory>.+?)\\s*$','id'),
+ new RegExp('^\\s*'+roomDenomination+'\\s*\\(\\s*(?<inventory>[^()]+?)\\s*\\)\\s*[.!]?\\s*$','id'),
+ new RegExp('^\\s*(?<inventory>.+?)(?:\\s*[-:,]\\s*|\\s+)'+roomDenomination+'\\s*[.!]?\\s*$','id'),
+];
+
+/** Evaluation-only wrapper, deliberately separate from whole-label parsing of
+ * structured bedTypes. A complete, bounded room denomination may surround one
+ * contiguous inventory. Every surrounding character must match a known form;
+ * unknown adjectives, qualifications, negation and OR are never stripped.
+ * Offsets are UTF-16, end-exclusive, relative to the exact original text. */
+export function qualifyEnglishRoomDescriptionBeds(text){
+ const originalText=typeof text==='string'?text:null;
+ const result={version:ROOM_DESCRIPTION_BED_VERSION,originalText,status:'UNSUPPORTED',
+  reason:originalText===null?'NOT_TEXT':'NO_COMPLETE_BOUNDED_INVENTORY_AND_ROOM_DENOMINATION',
+  parsed:null,interpretedSpan:null,surroundingSpans:[],
+  uninterpretedSpans:originalText===null?[]:[{start:0,end:text.length,text}],
+  limits:{language:'BOUNDED_ENGLISH',maximumDescriptorTextLength:1024,offsetUnit:'UTF16_END_EXCLUSIVE',
+   denominationMeaning:'NAME_ONLY_NO_UNIT_TYPE_PRIVACY_OR_COMFORT_FACT',
+   descriptorRequiresExplicitBedNounPerAlternative:true,
+   completeInventoryCertified:false,capacityUsedAsBedEvidence:false,unknownSurroundingTextDiscarded:false}};
+ if(originalText===null)return result;
+ const accept=(parsed,start,end,reason)=>({...result,status:'SUPPORTED',reason,parsed,
+  interpretedSpan:{start,end,text:text.slice(start,end)},uninterpretedSpans:[],
+  surroundingSpans:[[0,start],[end,text.length]].filter(([a,b])=>b>a).map(([start,end])=>
+   ({start,end,text:text.slice(start,end),meaning:'RECOGNIZED_DENOMINATION_OR_SEPARATOR_NOT_BED_EVIDENCE'}))});
+ const direct=normalizeEnglishBedInventory(text);
+ if(direct){const start=text.length-text.trimStart().length,end=text.trimEnd().length;
+  return accept(direct,start,end,'WHOLE_CLAUSE_ENGLISH_INVENTORY');}
+ if(text.length>result.limits.maximumDescriptorTextLength)return {...result,reason:'ROOM_DESCRIPTION_EXCEEDS_BOUNDED_LENGTH'};
+ for(const form of roomInventoryForms){
+  const match=form.exec(text);if(!match)continue;
+  // Omitted bed nouns are legacy shorthand only for a whole inventory clause.
+  // In a room name, "one king suite" counts a suite, not a king bed. Require
+  // an explicit bed noun in every OR branch before consuming a denomination.
+  if(match.groups.inventory.split(/\s+or\s+/i).some(branch=>!/\bbeds?\b/i.test(branch)))continue;
+  const parsed=normalizeEnglishBedInventory(match.groups.inventory);if(!parsed)continue;
+  const [start,end]=match.indices.groups.inventory;
+  return accept(parsed,start,end,'INVENTORY_WITH_COMPLETE_RECOGNIZED_ROOM_DENOMINATION');
+ }
+ return result;
+}
+
 export function compareMappedRoom(detail,decoded,searchDecoded,sleeping,party){
  const selectedId=decoded.binding?.mappedRoomId??searchDecoded.binding?.mappedRoomId??null;
  const result={status:'NOT_DOCUMENTED',mappedRoomId:selectedId,issues:[],capacityConflict:false,sleepingConflict:false,

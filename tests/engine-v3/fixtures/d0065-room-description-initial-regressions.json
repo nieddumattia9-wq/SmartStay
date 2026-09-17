@@ -1,0 +1,72 @@
+{
+  "version": "stayopti.d0065-room-description-initial-regressions@1",
+  "origin": "SYNTHETIC_ONLY_NO_PRIVATE_OBSERVATIONS",
+  "sourceHead": "72ff17d818b351c5ef6062b250cafb3b421c9fc3",
+  "sourceBranch": "codex/evaluation-d0036-d0041",
+  "sourceFilesSha256": {
+    "scripts/liteapi-offer-qualification-v1.mjs": "3f5c7a78f2e761828d44e21c29356184fb6079bcbcbaf8fcc11192b3f2826913",
+    "scripts/liteapi-observation-diagnostic-v1.mjs": "3ff1aabfa435bdc15a999e616ad0f39b72f6cd1f3727543d457887c1a67cd667"
+  },
+  "initialTestSourceSha256": "9c4f301e9e7b22a61f0ada91ca739de8f166edc1f65b549989b7470eb307436c",
+  "command": "node --test <external-compiled-root>/tests/engine-v3/v3RoomDescriptionBedInventory.test.js",
+  "compilation": {"command": "node node_modules/typescript/bin/tsc -p tsconfig.tests.json --outDir <external-compiled-root>", "exitCode": 0},
+  "stdoutSha256": "e944573605d20ab43b87373772a19ba57b1f013f5717d329b4caa34febdf40fb",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exitCode": 1,
+  "tests": 8,
+  "passed": 3,
+  "failed": 5,
+  "skipped": 0,
+  "kernelInvocations": 0,
+  "policyInvocations": 0,
+  "providerCalls": 0,
+  "inputBasis": "Invented in-memory documentary fixture; two alternatives cost 643 and 756 EUR, synthetic property labels. Same original authenticated capture is prepared twice without mutation. No engine diagnostic API is called.",
+  "cases": [
+    {"id": "suite-word-count", "text": "SUITE TWO DOUBLE BEDS", "expectedState": "KNOWN", "expectedLowerBound": 4, "observedState": "UNKNOWN", "result": "FAIL"},
+    {"id": "deluxe-numeric", "text": "Deluxe Room - 3 single beds", "expectedState": "KNOWN", "expectedLowerBound": 3, "observedState": "UNKNOWN", "result": "FAIL"},
+    {"id": "studio-conjunction", "text": "Studio with one queen bed and two twin beds", "expectedState": "KNOWN", "expectedLowerBound": 4, "observedState": "UNKNOWN", "result": "FAIL"},
+    {"id": "suffix-denomination", "text": "2 king beds - Executive Suite", "expectedState": "KNOWN", "expectedLowerBound": 4, "observedState": "UNKNOWN", "result": "FAIL"},
+    {"id": "unknown-count", "text": "KING TWO BEDROOM SUITE", "expectedState": "UNKNOWN", "observedState": "UNKNOWN", "result": "PASS"},
+    {"id": "capacity-only", "text": "FAMILY 4 PAX", "expectedState": "UNKNOWN", "observedState": "UNKNOWN", "result": "PASS"},
+    {"id": "request-qualified", "text": "SUITE TWO DOUBLE BEDS on request", "expectedState": "UNKNOWN", "observedState": "UNKNOWN", "result": "PASS"},
+    {"id": "alternative-inventory", "text": "Suite: two double beds OR four single beds", "expectedState": "UNKNOWN", "observedState": "UNKNOWN", "expectedAlternativeInventories": 2, "observedAlternativeInventories": 0, "result": "FAIL"}
+  ],
+  "interpretation": "Four supported inventories were rejected solely because neutral room descriptors surrounded them. OR remained unknown but its alternative inventories were lost. This is parser evidence only, not recommendation, bookability or Golden evidence.",
+  "developmentRegressions": [
+    {
+      "stage": "Expanded candidate before signed-count separator correction",
+      "tests": 82, "passed": 81, "failed": 1, "exitCode": 1,
+      "stdoutSha256": "9bd8b74bc65c52d17a05140fe0a71acb6605090d6d8db4ac4fae7700efeeb488",
+      "counterexample": {"text": "Suite -1 double beds", "observed": "SUPPORTED", "expected": "UNSUPPORTED"},
+      "correction": "Require surrounding whitespace for the prefix dash separator; never remove a possible negative count sign."
+    },
+    {
+      "stage": "Independent review regressions before correction",
+      "tests": 98, "passed": 85, "failed": 13, "exitCode": 1,
+      "stdoutSha256": "8b7bac5c4b04445b6a266b47e38827269bf2366d83bed258cf7e78840918403d",
+      "counterexamples": [
+        {"texts": ["1 double room", "one single room", "one king suite", "Suite one king OR two twin beds", "one queen OR two single beds - Suite"], "observed": "SUPPORTED", "expected": "UNSUPPORTED"},
+        {"prefix": "Suite two double beds; ", "qualifiers": ["not provided", "not included", "if available", "on request only", "availability not guaranteed", "no guarantee", "not always guaranteed", "not included in this rate"], "observed": "KNOWN", "expected": "UNKNOWN"}
+      ],
+      "correction": "Require an explicit bed noun per descriptor alternative and retain adjacent subjectless qualification prefixes."
+    },
+    {
+      "stage": "Expanded independent review before correction, including prior thirteen failures",
+      "tests": 105, "passed": 86, "failed": 19, "exitCode": 1,
+      "stdoutSha256": "b7b170692debddb095fb2b089fc3e1768c69bbf77d3b1bed0cbca2fcdd85d72c",
+      "additionalCounterexamples": [
+        {"qualifiers": ["on request", "not guaranteed", "if available", "no guarantee"], "suffix": "; Suite two double beds", "observed": "KNOWN", "expected": "UNKNOWN"},
+        {"text": "Suite two double beds; two double beds", "observedLowerBound": 8, "expectedLowerBound": 4},
+        {"text": "Suite one queen bed; two twin beds", "observed": "KNOWN", "expected": "UNKNOWN"}
+      ],
+      "correction": "Retain leading adjacent subjectless qualifications; repeat identical lower bounds once and leave the relation between differing clause inventories unresolved."
+    },
+    {
+      "stage": "Explicit other-subject review regressions before predicate narrowing",
+      "tests": 111, "passed": 105, "failed": 6, "exitCode": 1,
+      "stdoutSha256": "3fd55f8504113b354cda0ca514ca002247123b8e8bf364f18fcaade68b572ab6",
+      "counterexamples": {"otherSubjects": ["not including breakfast", "not suitable for pets", "not all rooms have air conditioning"], "inventory": "Suite two double beds", "positions": ["before inventory separated by semicolon", "after inventory separated by semicolon"], "observed": "UNKNOWN", "expected": "KNOWN"},
+      "correction": "Require a bounded availability/configuration predicate after NOT/NON; NOT alone is not a subjectless bed qualification."
+    }
+  ]
+}
