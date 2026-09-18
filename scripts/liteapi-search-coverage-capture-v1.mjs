@@ -1,7 +1,7 @@
 // D-0064 transport uses the D0062 raw Node HTTPS mechanism, version-isolated.
 // No import of acquisition MAX17, preparation/engine or public runtime.
 import http from 'node:http';
-import https from 'node:https';
+import {sendBoundedAcquisitionHttp as sendHttp} from './bounded-acquisition-http-v1.mjs';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {canonical,sha,hash,same,fail,validateCoveragePlan,coverageRequest,validateCoverageRequest,verifyCoverageInventory,coverageAuthorization} from './liteapi-search-coverage-plan-v1.mjs';
@@ -9,28 +9,6 @@ import {selectCoverageCatalog,inspectCoverageRates,semanticErrors,coverageCompar
 import {createCoverageJournal,verifyCoverageJournal,decryptCoverageOriginal} from './liteapi-search-coverage-journal-v1.mjs';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const pack=b=>({base64:Buffer.from(b).toString('base64'),sha256:sha(b),byteLength:b.length});
-function sendHttp(request,{credential,loopbackPort,timeoutMs,signal}){
- return new Promise((resolve,reject)=>{
-  let received=null;const chunks=[];
-  const rejectWithPartial=error=>{if(received)error.partialResponse={...received,bodyBytes:Buffer.concat(chunks)};reject(error);};
-  const synthetic=Number.isInteger(loopbackPort),query=new URLSearchParams(request.query).toString();
-  const bytes=request.body===null?null:Buffer.from(canonical(request.body));
-  const headers={'accept':'application/json',...(bytes?{'content-type':'application/json','content-length':bytes.length}:{})};
-  if(!synthetic)headers['X-API-Key']=credential;
-  const req=(synthetic?http:https).request({hostname:synthetic?'127.0.0.1':request.host,port:synthetic?loopbackPort:443,
-   method:request.method,path:request.path+(query?'?'+query:''),headers,agent:false,rejectUnauthorized:true},res=>{
-   received={status:res.statusCode,headers:Object.fromEntries(Object.entries(res.headers).filter(([k])=>['content-type','date'].includes(k)))};
-   let n=0;res.on('data',b=>{chunks.push(b);n+=b.length;if(n>32*1024*1024){req.destroy(Object.assign(Error('RESPONSE_TOO_LARGE'),{code:'RESPONSE_TOO_LARGE'}));return;}});
-   res.on('end',()=>resolve({status:res.statusCode,headers:Object.fromEntries(Object.entries(res.headers).filter(([k])=>['content-type','date'].includes(k))),bodyBytes:Buffer.concat(chunks)}));
-   res.on('error',rejectWithPartial);
-  });
-  const timer=setTimeout(()=>req.destroy(Object.assign(Error('TIMEOUT'),{code:'ETIMEDOUT'})),timeoutMs);
-  const abort=()=>req.destroy(Object.assign(Error('INTERRUPTED'),{code:'ABORTED'}));signal?.addEventListener('abort',abort,{once:true});
-  req.on('error',rejectWithPartial);req.on('close',()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);});
-  if(bytes)req.write(bytes);req.end();
- });
-}
-
 export async function runCoverageAcquisition({config,checkpoint,journal,credential=null,simulation=null,verifyBeforeSend,signal,liveApproval=null}){
  const synthetic=config?.origin==='SYNTHETIC_LOCAL_TRANSPORT';
  if(validateCoveragePlan(config,{synthetic}).pending.length)fail('CONFIGURATION_PENDING');

@@ -1,5 +1,30 @@
 # StayOpti Current State
 
+## D-0066 — Authenticated, details-only enrichment
+
+A separately versioned MAX5 profile derives exact hotel/mapped-room targets
+and all offer variants from authenticated completed coverage originals. It
+reuses bounded transport, durable AES-GCM/DPAPI journal primitives and the
+protected PowerShell prompt. Legacy formats, limits and consumed cases are
+not migrated. The existing D-0065 bed interpretation is relocated unchanged
+into a pure helper; no parser redesign, policy or public-runtime change.
+
+The new operation is at most five planned GET hotel-detail requests, provider
+timeout4s/client20s, concurrency1, pacing1000ms, response32MiB, no retry,
+redirect or pagination. New custody/authorization/retention are independent.
+The pure comparison distinguishes collection, room found and assessable
+compatibility without refreshing rate price, availability or expiry.
+
+Final isolated validation passed380/380 targeted tests without excluded local
+files, canonical test compilation, TypeScript/build and PS5.1 parse5/5.
+Measured results and the 26-path publication inventory are recorded in
+`../engine-v3/d0066-hotel-detail-enrichment.md`. Real CurrentUser DPAPI tests
+are not provider/account verification or GitHub CI. Final-checkpoint Inventory
+and Preflight must precede a new explicit literal; preparation creates no new
+real custody and does not authorize acquisition. No kernel/policy invocation.
+The delivery receipt must report actual local/remote SHA, push status and
+remaining local commits; main and all protected/private materials remain intact.
+
 ## D-0065 — Bounded bed-description interpretation
 
 The evaluation adapter now separates an explicit English bed inventory from a

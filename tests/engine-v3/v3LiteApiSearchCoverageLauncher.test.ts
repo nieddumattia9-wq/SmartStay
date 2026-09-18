@@ -207,29 +207,57 @@ test("CWL05 stopping only the verified synthetic Node child leaves a non-resumab
 });
 
 
-test("CWL06 actual shipped approval/secure prompt block in Windows PS5.1, synthetic responses only", {skip:WIN51},()=>{
+test("CWL06 actual shared approval/secure prompt and stdin handoff in Windows PS5.1, synthetic responses only", {skip:WIN51},()=>{
  const temp=mkdtempSync(join(tmpdir(),"StayOpti-D0064-Launcher-Prompt-"));
  try{
- const text=readFileSync(join(SOURCE,"scripts/invoke-liteapi-search-coverage.ps1"),"utf8"),start=text.indexOf("  Write-Host 'MAX3:"),end=text.indexOf('  $AcquisitionArgs+=',start);
- assert(start>=0&&end>start);const actual=text.slice(start,end);
- const script=join(temp,"prompt.ps1");
+ const wrapper=readFileSync(join(SOURCE,"scripts/invoke-liteapi-search-coverage.ps1"),"utf8");
+ assert.match(wrapper,/\. \(Join-Path \$PSScriptRoot 'invoke-liteapi-profile-runner\.ps1'\)/);
+ assert.match(wrapper,/-ReadyStatus 'READY_FOR_EXPLICIT_COVERAGE_ACQUISITION_AUTHORIZATION'/);
+ const script=join(temp,"prompt.ps1"),child=join(temp,"synthetic-preflight-and-pipe.mjs");
+ writeFileSync(child,`const mode=process.argv.find(x=>x.startsWith('--Mode='));
+if(mode==='--Mode=Preflight'){
+ if(process.env.CWL06_PROMPT_CASE==='PREFLIGHT_FAIL')process.exitCode=1;
+ else process.stdout.write(JSON.stringify({status:'READY_FOR_EXPLICIT_COVERAGE_ACQUISITION_AUTHORIZATION',expectedAuthorization:'SYNTHETIC_LITERAL_ONLY'}));
+}else if(mode==='--Mode=Acquire'){
+ let value='';for await(const chunk of process.stdin)value+=chunk.toString('utf8');
+ const valid=value.trim()==='SYNTHETIC_NOT_A_REAL_KEY'&&process.argv.includes('--Authorization=SYNTHETIC_LITERAL_ONLY');value='';
+ if(!valid)process.exitCode=1;else process.stdout.write('SYNTHETIC_STDIN_HANDOFF=PASS\\n');
+}else process.exitCode=1;
+`);
  writeFileSync(script,`$ErrorActionPreference='Stop'
-$PreflightResult=[pscustomobject]@{expectedAuthorization='SYNTHETIC_LITERAL_ONLY'}
+if($PSVersionTable.PSEdition -ne 'Desktop' -or $PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1){throw 'PS51_REQUIRED'}
+. $env:CWL06_PROMPT_PRIMITIVE
 $script:Calls=@()
 function Read-Host { param([string]$Prompt,[switch]$AsSecureString)
  $script:Calls+=@{prompt=$Prompt;secure=[bool]$AsSecureString}
- if($AsSecureString){$SyntheticSecure=New-Object Security.SecureString; foreach($SyntheticChar in 'SYNTHETIC_NOT_A_REAL_KEY'.ToCharArray()){$SyntheticSecure.AppendChar($SyntheticChar)}; return $SyntheticSecure}
+ if($AsSecureString){
+  if($env:CWL06_PROMPT_CASE -ne 'ACCEPT'){throw 'SECURE_PROMPT_WITHOUT_AUTHORITY'}
+  $SyntheticSecure=New-Object Security.SecureString; foreach($SyntheticChar in 'SYNTHETIC_NOT_A_REAL_KEY'.ToCharArray()){$SyntheticSecure.AppendChar($SyntheticChar)}; return $SyntheticSecure
+ }
+ if($env:CWL06_PROMPT_CASE -eq 'WRONG_LITERAL'){return 'WRONG_LITERAL'}
  return 'SYNTHETIC_LITERAL_ONLY'
 }
-${actual}
-if($Calls.Count -ne 2 -or $Calls[0].secure -or -not $Calls[1].secure -or $AcquisitionAuthorization -cne 'SYNTHETIC_LITERAL_ONLY' -or $AcquisitionSecure -isnot [Security.SecureString]){throw 'PROMPT_FLOW_FAILED'}
-$AcquisitionSecure.Dispose();$AcquisitionSecure=$null;$AcquisitionAuthorization=$null
-Write-Output 'SYNTHETIC_LITERAL_THEN_SECURESTRING=PASS'
+$CapturedFailure=$null
+try {Invoke-StayOptiProtectedProfile -Mode 'Acquire' -NodePath $env:CWL06_PROMPT_NODE -NodeArguments @($env:CWL06_PROMPT_CHILD,'--Mode=Acquire') -ReadyStatus 'READY_FOR_EXPLICIT_COVERAGE_ACQUISITION_AUTHORIZATION' -SafetyNotice 'SYNTHETIC_ONLY_NO_PROVIDER' -ErrorPrefix 'LITEAPI_COVERAGE'}
+catch {$CapturedFailure=$_.Exception.Message}
+if($env:CWL06_PROMPT_CASE -eq 'ACCEPT'){
+ if($null -ne $CapturedFailure -or $Calls.Count -ne 2 -or $Calls[0].secure -or -not $Calls[1].secure){throw 'PROMPT_FLOW_FAILED'}
+}elseif($env:CWL06_PROMPT_CASE -eq 'WRONG_LITERAL'){
+ if($CapturedFailure -cne 'LITEAPI_COVERAGE_AUTHORIZATION_NOT_ACCEPTED' -or $Calls.Count -ne 1 -or $Calls[0].secure){throw 'WRONG_LITERAL_GUARD_FAILED'}
+}else{
+ if($CapturedFailure -cne 'LITEAPI_COVERAGE_PREFLIGHT_FAILED' -or $Calls.Count -ne 0){throw 'PREFLIGHT_GUARD_FAILED'}
+}
+Write-Output ('SYNTHETIC_PROMPT_CASE='+$env:CWL06_PROMPT_CASE+';CALLS='+$Calls.Count+';PASS')
 `);
- const r=spawnSync(PS51,["-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",script],{encoding:"utf8",windowsHide:true,timeout:15000});started(r);assert.equal(r.status,0,r.stdout+r.stderr);assert.match(r.stdout,/SYNTHETIC_LITERAL_THEN_SECURESTRING=PASS/);assert.doesNotMatch(r.stdout+r.stderr,/SYNTHETIC_NOT_A_REAL_KEY/);
- // Wrong literal in the exact block must not reach the protected key prompt.
- const rejectedScript=readFileSync(script,"utf8").replace("return 'SYNTHETIC_LITERAL_ONLY'","return 'WRONG_LITERAL'");writeFileSync(script,rejectedScript);
- const bad=spawnSync(PS51,["-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",script],{encoding:"utf8",windowsHide:true,timeout:15000});started(bad);assert.equal(bad.status,1);assert.match(bad.stderr,/AUTHORIZATION_NOT_ACCEPTED/);
+ for(const scenario of ['ACCEPT','WRONG_LITERAL','PREFLIGHT_FAIL']){
+  const r=spawnSync(PS51,["-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",script],{
+   encoding:"utf8",windowsHide:true,timeout:15000,env:{...process.env,CWL06_PROMPT_CASE:scenario,CWL06_PROMPT_NODE:process.execPath,CWL06_PROMPT_CHILD:child,CWL06_PROMPT_PRIMITIVE:join(SOURCE,'scripts/invoke-liteapi-profile-runner.ps1')},
+  });
+  started(r);assert.equal(r.status,0,r.stdout+r.stderr);
+  assert.match(r.stdout,new RegExp('SYNTHETIC_PROMPT_CASE='+scenario+';CALLS='+(scenario==='ACCEPT'?2:scenario==='WRONG_LITERAL'?1:0)+';PASS'));
+  assert.match(r.stdout,/CREDENTIAL_CLEARED_FROM_PROCESS=YES/);assert.doesNotMatch(r.stdout+r.stderr,/SYNTHETIC_NOT_A_REAL_KEY/);
+  if(scenario==='ACCEPT')assert.match(r.stdout,/SYNTHETIC_STDIN_HANDOFF=PASS/);else assert.doesNotMatch(r.stdout,/SYNTHETIC_STDIN_HANDOFF=PASS/);
+ }
  }finally{clean(temp);}
 });
 test("CWL07 zero/one catalog and204 through true launcher never enter MAX17 or engine", {skip:WIN51},async()=>{

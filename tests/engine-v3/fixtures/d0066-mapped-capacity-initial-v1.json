@@ -1,0 +1,44 @@
+{
+  "version": "stayopti.d0066-initial-synthetic-capacity-proof@1",
+  "origin": "SYNTHETIC_ONLY",
+  "comparisonModuleSha256": "5995b8749e36327b774bb26b72bafe5557d553264ee599cb4f022fcad5a321dd",
+  "commandScope": "Canonical TypeScript test compilation, then node --test --test-name-pattern=HD32|HD33 on v3LiteApiHotelDetailPlanAndComparison",
+  "initialExitCode": 1,
+  "initialPass": 1,
+  "initialFail": 3,
+  "counterexamples": [
+    {
+      "id": "HD32",
+      "rateDescription": "Suite: one queen bed",
+      "mappedBedTypes": [{"quantity": 1, "bedType": "Queen bed"}],
+      "mappedRoomName": "Suite two double beds",
+      "observedCompatibility": "CONFLICTING",
+      "observation": "Already detected; no bed parser correction needed"
+    },
+    {
+      "id": "HD33-negative",
+      "maxAdults": -1,
+      "maxChildren": -1,
+      "observedCapacityStatus": "CONFLICTING",
+      "required": "Invalid negative limits must remain UNKNOWN, not documented party violations"
+    },
+    {
+      "id": "HD33-text",
+      "maxAdults": "four",
+      "maxChildren": "four",
+      "observedCapacityStatus": "COMPATIBLE",
+      "required": "Preserve unsupported observations with explicit per-field UNKNOWN"
+    },
+    {
+      "id": "HD33-fraction",
+      "maxAdults": 1.5,
+      "maxChildren": 1.5,
+      "observedCapacityStatus": "COMPATIBLE",
+      "required": "Preserve unsupported observations with explicit per-field UNKNOWN"
+    }
+  ],
+  "providerRequests": 0,
+  "kernelInvocations": 0,
+  "policyInvocations": 0,
+  "privateDataUsed": false
+}
