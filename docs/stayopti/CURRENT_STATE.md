@@ -1,5 +1,22 @@
 # StayOpti Current State
 
+## D-0066 R1 — Pure room evidence comparison
+
+Per-source occupancy maxima are compared to the party rather than requiring
+identical source values. Structured mapped beds, tariff assertions, textual
+concordance and sleeping sufficiency remain distinct; bounded condition clauses
+preserve main-bed restrictions without spreading unrelated/extra-bed conditions.
+Historic results and inventories remain immutable. No provider or engine call.
+Initial synthetic proof: 26 PASS / 17 FAIL of 43. The first isolated233/233
+candidate was superseded after a concrete ignored-rate-remarks counterexample.
+The final isolated candidate passes245/245 pure regressions, canonical test
+compilation, TypeScript and build. Local
+checks do not represent GitHub CI. Executable/test bytes are bound to the
+isolated candidate; selective publication and exact local/remote status must be
+read from the phase report and delivery, not assumed from tests.
+See `../engine-v3/d0066-r1-room-comparison.md` and D-0066 R1.
+
+
 ## D-0066 — Authenticated, details-only enrichment
 
 A separately versioned MAX5 profile derives exact hotel/mapped-room targets

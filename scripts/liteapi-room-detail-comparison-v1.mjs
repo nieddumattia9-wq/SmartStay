@@ -7,6 +7,7 @@ import {classifyCoverageRatesResponse} from './liteapi-search-coverage-diagnosti
 import {readDocumentaryResponse,decodeDocumentaryOffer,documentaryDetail} from './liteapi-documentary-wire-v1.mjs';
 import {compareMappedRoom} from './liteapi-offer-qualification-v1.mjs';
 import {sleepingText} from './liteapi-bed-description-v1.mjs';
+import {qualifyMappedBedConditions} from './liteapi-mapped-bed-conditions-v1.mjs';
 const clone=x=>structuredClone(x),plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x),own=(o,k)=>o!=null&&Object.hasOwn(o,k);
 const opaque=x=>typeof x==='string'&&x.length>0&&!/[\x00-\x1f\x7f]/.test(x),hex=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
 const numericId=x=>Number.isSafeInteger(x)&&x>=0,validId=x=>numericId(x)||opaque(x),idKey=x=>validId(x)?String(x):null;
@@ -130,34 +131,61 @@ function compareOne(source,offer,record){
  const comparison=compareMappedRoom(preparedDetail,decoded,decoded,sleeping,party);
  const capacities={rate:offer.rate.maxOccupancy??null,mapped:room.maxOccupancy??null,maxAdults:room.maxAdults??null,maxChildren:room.maxChildren??null,
   requestedAdults:party.adults,requestedChildAges:clone(party.childAgesAtStay),bedPlacesInferredFromCapacity:false};
- const capacityKnown=Number.isSafeInteger(capacities.rate)&&capacities.rate>=0&&Number.isSafeInteger(capacities.mapped)&&capacities.mapped>=0;
- const partyConflicts=[],invalidLimits=[];
- const limitStatus=(field,required,code)=>{
-  const value=room[field];
-  if(!Number.isSafeInteger(value)||value<0){if(own(room,field)&&value!==null)invalidLimits.push(code+'_INVALID_OR_UNSUPPORTED');return 'UNKNOWN';}
-  if(value<required){partyConflicts.push(code+'_BELOW_PARTY');return 'DOCUMENTED_LIMIT_CONFLICT';}
-  return 'SATISFIES_REQUESTED_COUNT';
+ const partyCapacityStatus=comparison.capacityAssessment?.status??'UNKNOWN';
+ const limitStatus=field=>{
+  const s=comparison.capacityAssessment?.checks.find(c=>c.origin==='MAPPED_ROOM'&&c.field===field)?.status;
+  return s==='SATISFIED'?'SATISFIES_REQUESTED_COUNT':s==='INSUFFICIENT'?'DOCUMENTED_LIMIT_CONFLICT':'UNKNOWN';
  };
- const adultLimitStatus=limitStatus('maxAdults',party.adults,'MAPPED_MAX_ADULTS'),childLimitStatus=limitStatus('maxChildren',party.childAgesAtStay.length,'MAPPED_MAX_CHILDREN');
- const conditions=project(room,['roomName','name','description','remarks','conditions']);
- const conditionTexts=Object.values(conditions).flat(Infinity).filter(v=>typeof v==='string');
- const relevantConditions=conditionTexts.map(text=>({text,bedInterpretation:sleepingText(text)})).filter(c=>c.bedInterpretation.clauses.some(x=>x.kind!=='OTHER_SUBJECT'));
- const unparsedConditions=['remarks','conditions'].filter(k=>own(room,k)&&room[k]!==null&&!(typeof room[k]==='string'||Array.isArray(room[k])&&room[k].every(v=>typeof v==='string')));
- const subjectlessConditions=conditionTexts.filter(text=>/^(?:on request|subject to availability|not available|da confermare|su richiesta)[.!]?$/i.test(text.trim()));
- const bedConditionUnresolved=unparsedConditions.length>0||subjectlessConditions.length>0||relevantConditions.some(c=>c.bedInterpretation.claimState!=='KNOWN');
+ const adultLimitStatus=limitStatus('maxAdults'),childLimitStatus=limitStatus('maxChildren');
+ const conditionAssessment=qualifyMappedBedConditions(room),conditions=conditionAssessment.conditions;
+ const rateConditionAssessment={...qualifyMappedBedConditions(project(offer.rate,['name','remarks','conditions'])),scope:'SOURCE_BOUND_RATE_NOT_GENERIC_PROPERTY'};
+ const rateConditions=rateConditionAssessment.entries.filter(c=>c.kind!=='OTHER_SUBJECT');
+ const relevantConditions=conditionAssessment.entries.filter(c=>c.kind!=='OTHER_SUBJECT');
+ const unparsedConditions=conditionAssessment.unparsedFields,subjectlessConditions=relevantConditions.filter(c=>c.kind==='UNRESOLVED_BED_QUALIFICATION').map(c=>c.text);
+ const bedConditionUnresolved=conditionAssessment.unresolved;
  const roomInventoryKnown=Array.isArray(comparison.roomInventories)&&comparison.roomInventories.length>0;
  const alternativeChecks=sleeping.alternativeInventories.map(inventory=>compareMappedRoom(preparedDetail,decoded,decoded,{inventory},party));
  const alternativesConflict=alternativeChecks.length>0&&alternativeChecks.every(x=>x.sleepingConflict);
- const mappedTextChecks=relevantConditions.filter(c=>c.bedInterpretation.inventory).map(c=>({text:c.text,comparison:compareMappedRoom(preparedDetail,decoded,decoded,c.bedInterpretation,party)}));
- const bedConflict=comparison.sleepingConflict||sleeping.claimState==='CONFLICTING'||alternativesConflict||mappedTextChecks.some(c=>c.comparison.sleepingConflict)||relevantConditions.some(c=>c.bedInterpretation.claimState==='CONFLICTING');
- const capacityConflict=comparison.capacityConflict||partyConflicts.length>0;
- const unresolved=initial.issues.length>0||invalidLimits.length>0||!capacityKnown||!roomInventoryKnown||sleeping.claimState!=='KNOWN'||room.bedRelation==='OR'||bedConditionUnresolved||comparison.sleepingUnverified||comparison.capacityUnverified;
+ const mappedTextChecks=relevantConditions.filter(c=>c.bedInterpretation?.inventory).map(c=>({text:c.text,field:c.field,comparison:compareMappedRoom(preparedDetail,decoded,decoded,c.bedInterpretation,party)}));
+ const mappedAlternativeChecks=relevantConditions.filter(c=>c.bedInterpretation?.alternativeInventories.length).map(c=>({text:c.text,field:c.field,
+  alternatives:c.bedInterpretation.alternativeInventories.map(inventory=>compareMappedRoom(preparedDetail,decoded,decoded,{inventory},party))}));
+ const rateTextChecks=rateConditions.filter(c=>c.bedInterpretation?.inventory).map(c=>({text:c.text,field:c.field,comparison:compareMappedRoom(preparedDetail,decoded,decoded,c.bedInterpretation,party)}));
+ const rateAlternativeChecks=rateConditions.filter(c=>c.bedInterpretation?.alternativeInventories.length).map(c=>({text:c.text,field:c.field,
+  alternatives:c.bedInterpretation.alternativeInventories.map(inventory=>compareMappedRoom(preparedDetail,decoded,decoded,{inventory},party))}));
+ const allConditions=[...relevantConditions.map(c=>({...c,scope:'MAPPED_ROOM'})),...rateConditions.map(c=>({...c,scope:'RATE'}))];
+ const bedCountChecks=allConditions.filter(c=>Number.isSafeInteger(c.documentedBedCount)).map(c=>({scope:c.scope,field:c.field,text:c.text,count:c.documentedBedCount,
+  status:!roomInventoryKnown?'UNKNOWN':comparison.roomInventories.some(i=>i.beds.reduce((n,b)=>n+b.count,0)===c.documentedBedCount)?'AGREES_WITH_A_DOCUMENTED_CONFIGURATION':'CONFLICTING',
+  placesInferred:false}));
+ const bedConflict=comparison.sleepingConflict||sleeping.claimState==='CONFLICTING'||alternativesConflict||[...mappedTextChecks,...rateTextChecks].some(c=>c.comparison.sleepingConflict)||[...mappedAlternativeChecks,...rateAlternativeChecks].some(c=>c.alternatives.every(a=>a.sleepingConflict))||bedCountChecks.some(c=>c.status==='CONFLICTING')||
+  allConditions.some(c=>c.bedInterpretation?.claimState==='CONFLICTING'||c.bedInterpretation?.clauses.some(x=>x.kind==='BED_NEGATION'));
+ const capacityConflict=comparison.capacityConflict;
+ // Generic rate names assert no bed inventory. They neither create places nor
+ // erase separately documented mapped-room beds. Actual rate qualifiers do.
+ const rateBedUnresolved=rateConditionAssessment.unresolved||sleeping.clauses.some(c=>!['OTHER_SUBJECT','EXTRA_BEDS_NOT_BASE_INVENTORY','SUPPORTED_INVENTORY'].includes(c.kind));
+ const alternatives=comparison.roomInventories.map(i=>{
+  const documentedLowerBound=i.beds.reduce((n,b)=>n+(Number.isSafeInteger(b.placesPerBed)?b.count*b.placesPerBed:0),0);
+  const unknownPlaces=i.beds.some(b=>!Number.isSafeInteger(b.placesPerBed));
+  return {inventory:clone(i),documentedLowerBound,unknownPlaces,status:documentedLowerBound>=party.adults+party.childAgesAtStay.length?'SATISFIED':unknownPlaces?'UNKNOWN':'INSUFFICIENT'};
+ });
+ const hasAlternatives=room.bedRelation==='OR'||sleeping.alternativeInventories.length>0||allConditions.some(c=>c.bedInterpretation?.alternativeInventories.length);
+ const sleepingAssessment={version:'stayopti.mapped-sleeping-assessment@1',requiredGuests:party.adults+party.childAgesAtStay.length,alternatives,
+  status:bedConflict?'CONFLICTING':!alternatives.length||comparison.sleepingUnverified||bedConditionUnresolved||rateBedUnresolved?'UNKNOWN':
+   alternatives.every(a=>a.status==='SATISFIED')?'SATISFIED':alternatives.every(a=>a.status==='INSUFFICIENT')?'INSUFFICIENT':'UNKNOWN',
+  assignedConfiguration:!hasAlternatives,rateInventoryInferred:false,bedPlacesInferredFromCapacity:false,
+  scope:'MAPPED_ROOM_DESCRIPTION_NOT_VERIFIED_ASSIGNMENT_TO_HISTORICAL_RATE'};
+ const bedSourceAgreement=bedConflict?'CONFLICTING':!sleeping.inventory?'RATE_INVENTORY_NOT_DOCUMENTED':roomInventoryKnown&&!comparison.sleepingUnverified?'CONSISTENT_LOWER_BOUND':'UNKNOWN';
+ const unresolved=initial.issues.length>0||partyCapacityStatus!=='SATISFIED'||sleepingAssessment.status!=='SATISFIED'||hasAlternatives;
  return {...initial,status:'MAPPED_ROOM_FOUND',roomFound:true,compatibility:capacityConflict||bedConflict?'CONFLICTING':unresolved?'PARTIALLY_ASSESSABLE':'COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION',
-  capacities,capacityStatus:capacityConflict?'CONFLICTING':capacityKnown?'COMPATIBLE':'UNKNOWN',adultLimitStatus,childLimitStatus,sleeping,bedStatus:bedConflict?'CONFLICTING':sleeping.alternativeInventories.length||room.bedRelation==='OR'?'ALTERNATIVES_NOT_ASSIGNED':sleeping.claimState==='KNOWN'&&roomInventoryKnown&&!bedConditionUnresolved?'COMPATIBLE':'UNKNOWN',
+  capacities,capacityStatus:capacityConflict?'CONFLICTING':partyCapacityStatus==='SATISFIED'?'COMPATIBLE':'UNKNOWN',partyCapacityStatus,adultLimitStatus,childLimitStatus,sleeping,sleepingAssessment,bedSourceAgreement,
+  bedStatus:bedConflict?'CONFLICTING':hasAlternatives?'ALTERNATIVES_NOT_ASSIGNED':sleepingAssessment.status==='SATISFIED'?'COMPATIBLE':sleepingAssessment.status==='INSUFFICIENT'?'INSUFFICIENT':'UNKNOWN',
   mappedRoom:clone(room),mappedRoomPointers:matches.map(x=>'data.rooms['+x.index+']'),duplicateEquivalentCount:matches.length,
-  mappedComparison:comparison,alternativeChecks,mappedTextChecks,conditions,relevantConditions,unparsedConditions,subjectlessConditions,
-  issues:[...new Set([...initial.issues,...comparison.issues,...partyConflicts,...invalidLimits,
+  mappedComparison:comparison,alternativeChecks,mappedTextChecks,mappedAlternativeChecks,rateTextChecks,rateAlternativeChecks,bedCountChecks,rateConditionAssessment,conditionAssessment,conditions,relevantConditions,unparsedConditions,subjectlessConditions,
+  issues:[...new Set([...initial.issues,...comparison.issues,
+   ...(sleepingAssessment.status==='INSUFFICIENT'?['MAPPED_SLEEPING_PLACES_BELOW_PARTY']:[]),
+   ...(bedCountChecks.some(c=>c.status==='CONFLICTING')?['MAPPED_TEXT_BED_COUNT_CONFLICT']:[]),
    ...(mappedTextChecks.some(c=>c.comparison.sleepingConflict)?['MAPPED_TEXT_BED_CONFIGURATION_CONFLICT']:[]),
+   ...(rateTextChecks.some(c=>c.comparison.sleepingConflict)?['RATE_TEXT_MAPPED_BED_CONFIGURATION_CONFLICT']:[]),
+   ...(rateConditionAssessment.unresolved?['RATE_BED_CONDITIONS_REQUIRE_QUALIFICATION']:[]),
    ...(bedConditionUnresolved?['MAPPED_BED_CONDITIONS_REQUIRE_QUALIFICATION']:[])])],
   temporalRelation:record.completedAt===offer.observedAt?'SAME_DECLARED_INSTANT_NOT_INDEPENDENT_CERTIFICATION':'SEPARATE_OBSERVATIONS_NO_RETROACTIVE_ROOM_ASSIGNMENT_CERTIFICATE'};
 }
@@ -169,7 +197,7 @@ export function compareHotelDetailCapture(source,capture){
   matches.set(q.hotelId,r);
  }
  const offers=source.offers.map(o=>compareOne(source,o,matches.get(o.hotelId)));
- return {version:'stayopti.liteapi-room-detail-comparison@1',sourceBindingSha256:source.bindingSha256,sourceCaseId:source.caseId,
+ return {version:'stayopti.liteapi-room-detail-comparison@1.1',sourceBindingSha256:source.bindingSha256,sourceCaseId:source.caseId,
   collectionStatus:capture?.journal?.status??capture?.status??'UNVERIFIED_COLLECTION_STATUS',offerCount:offers.length,propertyCount:source.targets.length,
   roomFoundCount:offers.filter(o=>o.roomFound).length,assessableCount:offers.filter(o=>o.compatibility==='COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION').length,
   conflictingCount:offers.filter(o=>o.compatibility==='CONFLICTING').length,offers,sourceOriginalsChanged:false,commercialObservationsRefreshed:false,engineInvocations:0,policyInvocations:0};

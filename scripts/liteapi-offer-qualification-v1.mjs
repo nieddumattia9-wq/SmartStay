@@ -187,9 +187,31 @@ export function qualifyEnglishRoomDescriptionBeds(text){
  return result;
 }
 
+/** Compare each documented maximum with the requested group, not with another
+ * source's maximum. Missing optional sublimits remain individually UNKNOWN;
+ * they are not invented requirements. Both total limits are needed here. */
+export function assessRoomCapacityLimits(rate,room,party){
+ const required={maxOccupancy:party.adults+party.childAgesAtStay.length,maxAdults:party.adults,maxChildren:party.childAgesAtStay.length};
+ const checks=['RATE','MAPPED_ROOM'].flatMap(origin=>Object.entries(required).map(([field,count])=>{
+  const record=origin==='RATE'?rate:room,value=record?.[field],present=own(record,field);
+  const valid=Number.isSafeInteger(value)&&value>=0;
+  return {origin,field,original:clone(value??null),presence:!present?'OMITTED':value===null?'NULL':'PRESENT',required:count,
+   status:!valid?'UNKNOWN':value<count?'INSUFFICIENT':'SATISFIED',
+   reason:!valid?(present?'INVALID_OR_UNDOCUMENTED_LIMIT':'LIMIT_NOT_DOCUMENTED'):value<count?'DOCUMENTED_LIMIT_BELOW_GROUP':'DOCUMENTED_MAXIMUM_COVERS_GROUP',
+   blocksVerification:!valid&&(field==='maxOccupancy'||present)};
+ }));
+ const differences=Object.keys(required).flatMap(field=>{
+  const [a,b]=checks.filter(c=>c.field===field);return a.status!=='UNKNOWN'&&b.status!=='UNKNOWN'&&a.original!==b.original?[{field,rate:a.original,mapped:b.original,reasonForDifference:'NOT_ESTABLISHED'}]:[];
+ });
+ return {version:'stayopti.room-capacity-assessment@1',checks,differences,
+  sourceAgreement:differences.length?'DIFFERENT_LIMITS':checks.filter(c=>c.field==='maxOccupancy').some(c=>c.status==='UNKNOWN')?'UNKNOWN':'EQUAL_LIMITS',
+  status:checks.some(c=>c.status==='INSUFFICIENT')?'INSUFFICIENT':checks.some(c=>c.blocksVerification)?'UNKNOWN':'SATISFIED',
+  scope:'OBSERVED_APPLICABLE_MAXIMA_ONLY_NOT_UNDOCUMENTED_RULES',bedPlacesInferred:false};
+}
+
 export function compareMappedRoom(detail,decoded,searchDecoded,sleeping,party){
  const selectedId=decoded.binding?.mappedRoomId??searchDecoded.binding?.mappedRoomId??null;
- const result={status:'NOT_DOCUMENTED',mappedRoomId:selectedId,issues:[],capacityConflict:false,sleepingConflict:false,
+ const result={version:'stayopti.mapped-room-comparison@2',status:'NOT_DOCUMENTED',mappedRoomId:selectedId,issues:[],capacityConflict:false,sleepingConflict:false,
   room:null,rateCapacity:decoded.rate?.maxOccupancy??null,rateInventory:clone(sleeping.inventory),roomInventories:[],
   sources:[source(decoded,'rate.name + maxOccupancy + mappedRoomId'),source(searchDecoded,'selected offer mappedRoomId'),...clone(detail.source??[])]};
  if(selectedId===null||!detail.usable)return result;
@@ -199,13 +221,19 @@ export function compareMappedRoom(detail,decoded,searchDecoded,sleeping,party){
  const {room,index}=matches[0];result.room=clone(room);result.roomPointer='data.rooms['+index+']';
  if(own(room,'hotelId')&&room.hotelId!==decoded.binding?.hotelId)return {...result,status:'MAPPED_IDENTITY_CONFLICT',issues:['MAPPED_ROOM_PROPERTY_IDENTITY_CONFLICT'],capacityConflict:true,sleepingConflict:true};
  if((room.error!=null&&!(Array.isArray(room.error)&&room.error.length===0))||(room.errors!=null&&!(Array.isArray(room.errors)&&room.errors.length===0)))return {...result,status:'MAPPED_RECORD_UNUSABLE',issues:['MAPPED_ROOM_SEMANTIC_ERROR'],capacityUnverified:true,sleepingUnverified:true};
- const validCapacity=Number.isSafeInteger(room.maxOccupancy)&&room.maxOccupancy>=0;
- if(validCapacity&&Number.isSafeInteger(result.rateCapacity)&&room.maxOccupancy!==result.rateCapacity){result.capacityConflict=true;result.issues.push('RATE_MAPPED_ROOM_CAPACITY_CONFLICT');}
- if(validCapacity&&room.maxOccupancy<party.adults+party.childAgesAtStay.length){result.capacityConflict=true;result.issues.push('MAPPED_ROOM_BELOW_REQUESTED_PARTY');}
+ result.capacityAssessment=assessRoomCapacityLimits(decoded.rate??{},room,party);
+ result.capacityAssessment.sources=clone(result.sources);
+ result.capacityConflict=result.capacityAssessment.status==='INSUFFICIENT';
+ result.capacityUnverified=result.capacityAssessment.status==='UNKNOWN';
+ for(const check of result.capacityAssessment.checks){
+  const code=(check.origin==='RATE'?'RATE':'MAPPED')+'_'+({maxOccupancy:'MAX_OCCUPANCY',maxAdults:'MAX_ADULTS',maxChildren:'MAX_CHILDREN'}[check.field]);
+  if(check.status==='INSUFFICIENT')result.issues.push(check.origin==='MAPPED_ROOM'&&check.field==='maxOccupancy'?'MAPPED_ROOM_BELOW_REQUESTED_PARTY':code+'_BELOW_PARTY');
+  if(check.blocksVerification)result.issues.push(code+'_INVALID_OR_UNSUPPORTED');
+ }
  const inventory=Array.isArray(room.bedTypes)?room.bedTypes.map(b=>{
   // Whole label must be one supported lexical type, not a substring in a denial.
-  const type=typeof b.bedType==='string'?b.bedType.replace(/^extra-large double bed \(super-king size\)$/i,'Super-king bed'):null;
-  return Number.isSafeInteger(b.quantity)&&b.quantity>0&&type?normalizeEnglishBedInventory(b.quantity+' '+type)?.inventory:null;
+  const type=typeof b?.bedType==='string'?b.bedType.replace(/^extra-large double bed \(super-king size\)$/i,'Super-king bed'):null;
+  return Number.isSafeInteger(b?.quantity)&&b.quantity>0&&type?normalizeEnglishBedInventory(b.quantity+' '+type)?.inventory:null;
  }):[];
  const relation=room.bedRelation;
  if(inventory.length&&inventory.every(Boolean)&&(['AND','OR'].includes(relation)||relation==='NONE'&&inventory.length===1)){
@@ -231,6 +259,6 @@ export function compareMappedRoom(detail,decoded,searchDecoded,sleeping,party){
    }
   }
  }else if(inventory.length||room.bedTypes!=null){result.issues.push('MAPPED_BED_CONFIGURATION_UNSUPPORTED');result.sleepingUnverified=true;}
- result.status=result.capacityConflict||result.sleepingConflict?'CONFLICTING':result.sleepingUnverified?'UNVERIFIED':'COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION';
+ result.status=result.capacityConflict||result.sleepingConflict?'CONFLICTING':result.sleepingUnverified||result.capacityUnverified?'UNVERIFIED':'COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION';
  return result;
 }

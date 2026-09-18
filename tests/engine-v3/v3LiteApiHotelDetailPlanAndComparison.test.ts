@@ -62,10 +62,11 @@ test('HD13 original response alteration is rejected before interpretation',async
  const {c,f}=await modules(),x=f.hotelDetailFixture();x.capture.records[0].response.response.body.base64=Buffer.from('{}').toString('base64');assert.throws(()=>c.compareHotelDetailCapture(x.source,x.capture),/RESPONSE_INTEGRITY/);
 });
 test('HD14 party occupancy does not create beds or rooms',async()=>{
- const {result}=await examine({mutateRates:(p:any)=>p.data.forEach((h:any)=>h.roomTypes[0].rates[0].name='FAMILY 4 PAX')});assert.ok(result.offers.every((o:any)=>o.bedStatus==='UNKNOWN'&&o.sleeping.inventory===null));
+ // R1 separates an absent rate inventory from the documented mapped inventory.
+ const {result}=await examine({mutateRates:(p:any)=>p.data.forEach((h:any)=>h.roomTypes[0].rates[0].name='FAMILY 4 PAX')});assert.ok(result.offers.every((o:any)=>o.bedStatus==='COMPATIBLE'&&o.sleeping.inventory===null&&o.sleepingAssessment.rateInventoryInferred===false));
 });
 test('HD15 bedrooms do not create beds',async()=>{
- const {result}=await examine({mutateRates:(p:any)=>p.data.forEach((h:any)=>h.roomTypes[0].rates[0].name='KING TWO BEDROOM SUITE')});assert.ok(result.offers.every((o:any)=>o.bedStatus==='UNKNOWN'));
+ const {result}=await examine({mutateRates:(p:any)=>p.data.forEach((h:any)=>h.roomTypes[0].rates[0].name='KING TWO BEDROOM SUITE')});assert.ok(result.offers.every((o:any)=>o.bedStatus==='COMPATIBLE'&&o.sleeping.inventory===null&&o.bedSourceAgreement==='RATE_INVENTORY_NOT_DOCUMENTED'));
 });
 for(const description of ['Suite: two double beds; second bed not available','Suite: two double beds on request','Suite: two double beds; bed allocation unknown'])test('HD16 scoped bed limitations retained '+description,async()=>{
  const {result}=await examine({mutateRates:(p:any)=>p.data.forEach((h:any)=>h.roomTypes[0].rates[0].name=description)});assert.ok(result.offers.every((o:any)=>o.bedStatus!=='COMPATIBLE'));

@@ -1,0 +1,36 @@
+{
+  "version": "stayopti.d0066-r1-initial-pure-comparison-proof@1",
+  "origin": "SYNTHETIC_ONLY",
+  "baselineCommit": "88ab447058e200a2ff21d4075b227fe6dd38cd73",
+  "nodeVersion": "v24.18.0",
+  "commandScope": "Canonical TypeScript test compilation with tsconfig.tests.json into an isolated temporary output; node --test tests/engine-v3/v3LiteApiHotelDetailComparisonR1.test.js. No engine execution.",
+  "sourceHashes": {
+    "scripts/liteapi-offer-qualification-v1.mjs": "007967a3664a5961fb1d8b7f5a28d65f9d81c96612c8a03ed52939972e080733",
+    "scripts/liteapi-room-detail-comparison-v1.mjs": "ffbf2b34ba120f2d6cecbf3fc0bdf1904b6e62a482600309f5398d0b6a261202",
+    "scripts/liteapi-bed-description-v1.mjs": "b088b3e26fd3dc679f18d296864282df7aedd141a6e169599c02eaa936e73f03",
+    "tests/engine-v3/fixtures/liteApiHotelDetailSyntheticV1.mjs": "44329ac618987e66a22a91c9e53d582126398312c523f0c9149a530544693356"
+  },
+  "initialTestSourceSha256": "3507a9eed1563fcb4732fef540169536e718a1e82cf73a457e7b0f70d1a4fcb7",
+  "initialTestCount": 43,
+  "initialPass": 26,
+  "initialFail": 17,
+  "initialSkipped": 0,
+  "initialExitCode": 1,
+  "counterexamples": [
+    {"test": "HD-R1-02", "partyCount": 4, "maxima": [[4,5],[5,4],[6,7]], "observedCapacityStatus": "CONFLICTING", "expected": "Different sufficient maxima are preserved without being an occupancy violation", "failures": 3},
+    {"test": "HD-R1-04", "rateLimits": [{"maxAdults":1},{"maxChildren":1}], "requestedAdults": 2, "requestedChildren": 2, "observed": "Rate individual limits did not block compatibility", "failures": 2},
+    {"test": "HD-R1-05", "rateMaxOccupancy": -1, "observed": "Invalid rate maximum became a capacity conflict instead of UNKNOWN", "failures": 1},
+    {"test": "HD-R1-06", "rateLimits": [{"maxAdults":"many"},{"maxChildren":"many"}], "observed": "Malformed rate limits were silently usable", "failures": 2},
+    {"test": "HD-R1-07", "titles": ["Neutral suite","FAMILY 4 PAX","KING TWO BEDROOM SUITE"], "mappedInventory": [{"quantity":2,"bedType":"Double bed"}], "observedCompatibility": "PARTIALLY_ASSESSABLE", "expected": "Generic title creates no beds but does not erase the bound structured room inventory", "failures": 3},
+    {"test": "HD-R1-09", "mappedConditions": ["Extra beds on request","No extra beds available","Pets allowed; Extra beds on request"], "mappedInventory": [{"quantity":2,"bedType":"Double bed"}], "observed": "Conditions confined to extra beds invalidated adequate base beds", "failures": 3},
+    {"test": "HD-R1-12", "rateText": "Suite: one double bed", "mappedInventory": [{"quantity":1,"bedType":"Double bed"}], "requestedGuests": 4, "observedCompatibility": "COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION", "expected": "Agreement does not establish enough sleeping places", "failures": 1},
+    {"test": "HD-R1-14", "rateText": "Neutral suite", "mappedInventory": [{"quantity":2,"bedType":"Double bed"},{"quantity":1,"bedType":"Sofa bed"}], "observedAssessableCount": 0, "expected": "Existing four-place lower bound sufficient without inventing sofa places", "failures": 1},
+    {"test": "HD-R1-20", "scenario": {"destination":"Invented Cedar Point","adults":3,"childAges":[]}, "rateMaximum": 3, "roomMaximum": 4, "inventory": "three single beds", "observedAssessableCount": 0, "expectedAssessableCount": 2, "failures": 1}
+  ],
+  "controlsPreserved": ["Unchanged complete control", "Actual insufficient maximum", "Mapped adult and child limits", "Unknown malformed mapped limits", "Uninterpretable actual bed clause", "Main bed conditions", "Unrelated descriptions", "Unquantified sofa and bunk places", "OR unassigned", "True explicit bed conflicts", "Rate negation", "Independent alternative preserved", "Deterministic repeat and record order"],
+  "providerRequests": 0,
+  "kernelInvocations": 0,
+  "policyInvocations": 0,
+  "privateDataUsed": false,
+  "originalInputsPreserved": true
+}

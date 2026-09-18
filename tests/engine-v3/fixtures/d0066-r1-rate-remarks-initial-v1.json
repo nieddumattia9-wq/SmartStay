@@ -1,0 +1,23 @@
+{
+  "version": "stayopti.d0066-r1-rate-remarks-initial-synthetic-proof@1",
+  "origin": "SYNTHETIC_ONLY",
+  "phase": "Additional counterexample observed during final code review, after the first 59 passing regressions but before rate-remarks correction",
+  "comparisonModuleSha256": "4f144f38967d7691135f36832a6f0bfef8721dc2770ceccf41adb82e992f652d",
+  "conditionHelperSha256": "81236388b4846496449e960ab5aba9844cb74bcacc6f3ebbf32f3e4437c4536b",
+  "fixture": "hotelDetailFixture({count:2, mutateRates: set each selected rate name to Neutral suite and remarks to Second bed not available})",
+  "sourceMutationTiming": "Original synthetic Rates payload is modified before fixture byte packing and source binding; no trusted binding is bypassed",
+  "rateName": "Neutral suite",
+  "rateRemarks": "Second bed not available",
+  "mappedBedTypes": [{"quantity":2,"bedType":"Double bed"}],
+  "party": {"adults":2,"childAges":[5,13]},
+  "observed": [
+    {"compatibility":"COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION","bedStatus":"COMPATIBLE","sleepingAssessmentStatus":"SATISFIED"},
+    {"compatibility":"COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION","bedStatus":"COMPATIBLE","sleepingAssessmentStatus":"SATISFIED"}
+  ],
+  "defect": "Source-bound rate remarks are preserved in originalRate but not consumed in bed qualification; a specific rate denial cannot be overridden by generic title fallback to structured room inventory",
+  "required": "Qualify rate remarks separately from mapped-room conditions, retain original field and scope, and block verification for applicable negatives or uncertainty",
+  "providerRequests":0,
+  "kernelInvocations":0,
+  "policyInvocations":0,
+  "privateDataUsed":false
+}
