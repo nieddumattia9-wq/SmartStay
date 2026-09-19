@@ -1,0 +1,21 @@
+{
+  "version": "stayopti.synthetic-r02-counterexamples@1",
+  "sourceCheckpoint": "f03b83d0b403e1b8bd82c92606d9855df7133db2",
+  "sourceHashes": {
+    "scripts/liteapi-mapped-bed-conditions-v1.mjs": "81236388b4846496449e960ab5aba9844cb74bcacc6f3ebbf32f3e4437c4536b",
+    "scripts/liteapi-room-detail-comparison-v1.mjs": "702d1bda7d21decbab4a5f5a015b036b6513a188ae86afb6f766e0c4853a4a79"
+  },
+  "fixture": "liteApiHotelDetailSyntheticV1.mjs:hotelDetailFixture({count:2})",
+  "syntheticOnly": true,
+  "kernelInvocations": 0,
+  "policyInvocations": 0,
+  "originalsChanged": false,
+  "initialResults": [
+    {"field":"room.description","text":"Suite: two double beds; Iron available on request","expectedAssessableCount":2,"actualAssessableCount":2,"assertion":"PASS"},
+    {"field":"room.description","text":"<div class=\"room\"><p><strong>Suite: two double beds</strong></p><p class=\"accessory\">Iron available on request</p></div>","expectedAssessableCount":2,"actualAssessableCount":0,"sleeping":"UNKNOWN","assertion":"FAIL"},
+    {"field":"room.description","text":"<ul><li>Suite: two double beds</li><li>Iron available on request</li></ul>","expectedAssessableCount":2,"actualAssessableCount":0,"sleeping":"UNKNOWN","assertion":"FAIL"},
+    {"field":"rate.name","text":"Suite: <strong>two double beds</strong>","expectedAssessableCount":2,"actualAssessableCount":0,"sleeping":"UNKNOWN","assertion":"FAIL"},
+    {"field":"room.description","text":"Iron; on request","expectedAssessableCount":2,"actualAssessableCount":0,"sleeping":"UNKNOWN","assertion":"FAIL"},
+    {"field":"room.description","text":"<div>Suite: two double beds</div><p>Beds on request</p>","expectedAssessableCount":0,"actualAssessableCount":0,"assertion":"PASS"}
+  ]
+}

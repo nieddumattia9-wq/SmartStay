@@ -1,0 +1,35 @@
+{
+  "evidenceKind": "SYNTHETIC_INITIAL_FAILURE_SUMMARY_NOT_PROVIDER_CAPTURE",
+  "sourceCommit": "f03b83d0b403e1b8bd82c92606d9855df7133db2",
+  "adapterSha256": "60ea1ca38ac6c9861ae7427ac587278303ab55f41145eb8f6fee14aa6e89131e",
+  "runner": "Windows PowerShell 5.1; canonical tsconfig.tests.json compilation; node --test",
+  "initialTests": {"total": 5, "pass": 3, "fail": 2, "skip": 0},
+  "fixtureDefinitions": [
+    "tests/engine-v3/fixtures/liteApiDocumentarySyntheticV1.mjs",
+    "tests/engine-v3/fixtures/liteApiObservationSyntheticV1.mjs"
+  ],
+  "construction": "v3CancellationInstantEquivalence.test.ts exercise mutates simulated source responses before capture registration; three entirely invented offers",
+  "beforeCancelTime": "2099-09-25T12:00:00Z",
+  "cases": [
+    {
+      "id": "CT01", "entry": "documentary", "afterCancelTime": "2099-09-25T13:00:00+01:00",
+      "inputSha256": "b805789e10e7dc57b34d6af337ad524af650f971e35ca60e9d6c04e309023620",
+      "expected": "usable", "observed": "abstained", "assertion": "FAIL",
+      "prebookVerified": [false, false, false], "issue": "PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT",
+      "kernelCalls": 1, "policyCalls": 1
+    },
+    {
+      "id": "CT02", "entry": "synthetic", "afterCancelTime": "2099-09-25T08:00:00-04:00",
+      "inputSha256": "982560d2740575db7db49da82b938b513b3f37df8723fcf130b3c3ecaeb6e30f",
+      "expected": "usable", "observed": "abstained", "assertion": "FAIL",
+      "prebookVerified": [false, false, false], "issue": "PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT",
+      "kernelCalls": 1, "policyCalls": 1
+    },
+    {"id": "CT03", "afterCancelTime": "2099-09-25T13:00:01+01:00", "expected": "abstained", "observed": "abstained", "assertion": "PASS", "kernelCalls": 1, "policyCalls": 1},
+    {"id": "CT04", "afterCancelTime": "2099-09-25T12:00:00", "expected": "abstained", "observed": "abstained", "assertion": "PASS", "kernelCalls": 1, "policyCalls": 1},
+    {"id": "CT05", "afterCancelTime": "2099-09-25T13:00:00+01:00", "otherChange": "penalty amount 35 to 90 EUR", "expected": "abstained", "observed": "abstained", "assertion": "PASS", "kernelCalls": 1, "policyCalls": 1}
+  ],
+  "providerCalls": 0,
+  "originalsPreserved": true,
+  "privateInputsUsed": false
+}

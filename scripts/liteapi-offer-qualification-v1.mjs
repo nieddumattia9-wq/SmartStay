@@ -1,4 +1,5 @@
 // D-0063. Pure, evaluation-only documentary qualification. No transport or policy.
+import {compareLiteApiCommercialTerms} from './liteapi-cancellation-comparison-v1.mjs';
 export const LITEAPI_QUALIFICATION_VERSION='stayopti.liteapi-offer-qualification@1';
 const clone=x=>structuredClone(x),own=(o,k)=>o!=null&&Object.hasOwn(o,k);
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -69,14 +70,14 @@ export function compareDocumentaryRetrieval(post,get,commercial){
   paymentTypes:ga.hotel.paymentTypes??null,ratePaymentTypes:ga.rate.paymentTypes??null};
  const identityDiff=differences(['session','property','selectedOffer']),occupancyDiff=differences(['occupancyNumber','adultCount','childCount']),rateDiff=differences(['rateId']);
  const metadataDiff=differences(['priceType','ratePriceType','paymentTypes','ratePaymentTypes']);
- const ca=commercial(pa),cg=commercial(ga),termsDiff=Object.keys(ca).filter(k=>!same(ca[k],cg[k])).map(k=>({field:k,before:clone(ca[k]),after:clone(cg[k])}));
+ const ca=commercial(pa),cg=commercial(ga),termsComparison=compareLiteApiCommercialTerms(ca,cg),termsDiff=termsComparison.differences;
  const issues=[...(identityDiff.length?['RETRIEVAL_IDENTITY_CONFLICT']:[]),...(occupancyDiff.length?['RETRIEVAL_OCCUPANCY_LINK_UNRESOLVED']:[]),
   ...(rateDiff.length?['RETRIEVAL_RATE_IDENTITY_UNRESOLVED']:[]),...(metadataDiff.length?['RETRIEVAL_COMMERCIAL_METADATA_UNRESOLVED']:[]),...(termsDiff.length?['PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT']:[])];
  return {status:issues.length?'UNRESOLVED_OR_CONFLICTING':'MATCH',
   identity:{status:identityDiff.length?'CONFLICTING':'MATCH',differences:identityDiff},
   occupancy:{status:occupancyDiff.length?'UNRESOLVED_DIFFERENCE':'MATCH',differences:occupancyDiff,numberIsGuestCount:false,indexConversionApplied:false},
   rateIdentity:{status:rateDiff.length?'UNRESOLVED_DIFFERENCE':'MATCH',differences:rateDiff,equivalenceAssumed:false},
-  commercial:{status:termsDiff.length?'CONFLICTING':'MATCH',differences:termsDiff},
+  commercial:{status:termsDiff.length?'CONFLICTING':'MATCH',differences:termsDiff,cancellationTimeComparison:termsComparison.temporalComparisons},
   commercialMetadata:{status:metadataDiff.length?'UNRESOLVED_DIFFERENCE':'MATCH',differences:metadataDiff},
   providerExplanationAvailable:false,independentAvailabilityVerification:false,issues,
   sources:[source(pa,'POST record'),source(ga,'GET record')]};

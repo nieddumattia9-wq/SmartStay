@@ -8,6 +8,7 @@ import {readDocumentaryResponse,decodeDocumentaryOffer,documentaryDetail} from '
 import {compareMappedRoom} from './liteapi-offer-qualification-v1.mjs';
 import {sleepingText} from './liteapi-bed-description-v1.mjs';
 import {qualifyMappedBedConditions} from './liteapi-mapped-bed-conditions-v1.mjs';
+import {interpretRoomPresentation} from './room-presentation-text-v1.mjs';
 const clone=x=>structuredClone(x),plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x),own=(o,k)=>o!=null&&Object.hasOwn(o,k);
 const opaque=x=>typeof x==='string'&&x.length>0&&!/[\x00-\x1f\x7f]/.test(x),hex=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
 const numericId=x=>Number.isSafeInteger(x)&&x>=0,validId=x=>numericId(x)||opaque(x),idKey=x=>validId(x)?String(x):null;
@@ -107,8 +108,17 @@ export function inspectHotelDetailResponse(record,hotelId){
  return {...base,classification:'SUCCESS',reason:null,identityVerified:true,usable:true,property:clone(p.data),issues:[],source:detail.source};
 }
 
+const presentationComparisonKey=value=>{
+ if(Array.isArray(value))return value.map(presentationComparisonKey);
+ if(typeof value!=='string')return clone(value);
+ const p=interpretRoomPresentation(value);
+ // Only wholly supported presentation differences are equivalent. All text,
+ // including ancillary/negative conditions, participates; no bed-only projection.
+ return p.supported?{presentationVersion:p.version,text:p.text}:{unsupportedOriginal:value};
+};
 const roomRelevant=room=>{
  const facts=project(room,['id','hotelId','maxOccupancy','maxAdults','maxChildren','bedTypes','bedRelation','roomName','name','description','remarks','conditions','error','errors']);
+ for(const field of ['roomName','name','description','remarks','conditions'])if(own(facts,field))facts[field]=presentationComparisonKey(facts[field]);
  if(Array.isArray(facts.bedTypes))facts.bedTypes=facts.bedTypes.map(b=>plain(b)?project(b,['quantity','bedType','bedSize']):b).sort((a,b)=>canonical(a)<canonical(b)?-1:canonical(a)>canonical(b)?1:0);
  return facts;
 };
@@ -127,7 +137,8 @@ function compareOne(source,offer,record){
  if(duplicateConflict)return {...initial,status:'DUPLICATE_MAPPED_ROOM_CONFLICT',roomFound:true,compatibility:'CONFLICTING',rooms:clone(matches),issues:[...initial.issues,'DUPLICATE_MAPPED_ROOM_CONFLICT']};
  const room=matches[0].room,preparedDetail={...detail,property:{...detail.property,rooms:[room]}};
  const decoded={binding:{hotelId:offer.hotelId,mappedRoomId:idKey(offer.mappedRoomId),payloadSha256:offer.responseSha256,pointer:offer.pointer},rate:clone(offer.rate)};
- const sleeping=sleepingText(offer.roomText),party={adults:source.scenario.adults,childAgesAtStay:source.scenario.childAges};
+ const ratePresentation=interpretRoomPresentation(offer.roomText);
+ const sleeping={...sleepingText(ratePresentation.supported?ratePresentation.text:offer.roomText),originalText:offer.roomText,presentation:ratePresentation},party={adults:source.scenario.adults,childAgesAtStay:source.scenario.childAges};
  const comparison=compareMappedRoom(preparedDetail,decoded,decoded,sleeping,party);
  const capacities={rate:offer.rate.maxOccupancy??null,mapped:room.maxOccupancy??null,maxAdults:room.maxAdults??null,maxChildren:room.maxChildren??null,
   requestedAdults:party.adults,requestedChildAges:clone(party.childAgesAtStay),bedPlacesInferredFromCapacity:false};
@@ -179,6 +190,7 @@ function compareOne(source,offer,record){
   capacities,capacityStatus:capacityConflict?'CONFLICTING':partyCapacityStatus==='SATISFIED'?'COMPATIBLE':'UNKNOWN',partyCapacityStatus,adultLimitStatus,childLimitStatus,sleeping,sleepingAssessment,bedSourceAgreement,
   bedStatus:bedConflict?'CONFLICTING':hasAlternatives?'ALTERNATIVES_NOT_ASSIGNED':sleepingAssessment.status==='SATISFIED'?'COMPATIBLE':sleepingAssessment.status==='INSUFFICIENT'?'INSUFFICIENT':'UNKNOWN',
   mappedRoom:clone(room),mappedRoomPointers:matches.map(x=>'data.rooms['+x.index+']'),duplicateEquivalentCount:matches.length,
+  mappedRoomObservations:matches.map(x=>({pointer:'data.rooms['+x.index+']',original:clone(x.room)})),
   mappedComparison:comparison,alternativeChecks,mappedTextChecks,mappedAlternativeChecks,rateTextChecks,rateAlternativeChecks,bedCountChecks,rateConditionAssessment,conditionAssessment,conditions,relevantConditions,unparsedConditions,subjectlessConditions,
   issues:[...new Set([...initial.issues,...comparison.issues,
    ...(sleepingAssessment.status==='INSUFFICIENT'?['MAPPED_SLEEPING_PLACES_BELOW_PARTY']:[]),
@@ -197,7 +209,7 @@ export function compareHotelDetailCapture(source,capture){
   matches.set(q.hotelId,r);
  }
  const offers=source.offers.map(o=>compareOne(source,o,matches.get(o.hotelId)));
- return {version:'stayopti.liteapi-room-detail-comparison@1.1',sourceBindingSha256:source.bindingSha256,sourceCaseId:source.caseId,
+ return {version:'stayopti.liteapi-room-detail-comparison@1.2',sourceBindingSha256:source.bindingSha256,sourceCaseId:source.caseId,
   collectionStatus:capture?.journal?.status??capture?.status??'UNVERIFIED_COLLECTION_STATUS',offerCount:offers.length,propertyCount:source.targets.length,
   roomFoundCount:offers.filter(o=>o.roomFound).length,assessableCount:offers.filter(o=>o.compatibility==='COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION').length,
   conflictingCount:offers.filter(o=>o.compatibility==='CONFLICTING').length,offers,sourceOriginalsChanged:false,commercialObservationsRefreshed:false,engineInvocations:0,policyInvocations:0};

@@ -17,6 +17,27 @@ const {
   "../../server/services/bookingOfferIntegrityService.js"
 );
 
+for (const [deadline, expectedState] of [
+  ["2026-09-01T13:00:00+01:00", "confirmed"],
+  ["2026-09-01T13:00:01+01:00", "changed"],
+  ["2026-09-01T12:00:00", "changed"],
+]) {
+  test("recheck respects explicit cancellation instant meaning: " + deadline, async () => {
+    const fixture = createFixture();
+    const setup = createService({ providerResult: {
+      outcome: "confirmed",
+      offer: { ...fixture.offer, freeCancellationUntil: deadline },
+      providerBookingReference: "synthetic-recheck-reference",
+    } });
+    const result = await setup.service({ searchId: "search-1", hotelId: setup.fixture.hotel.id, offerId: setup.fixture.offerId });
+    assert.equal(result.state, expectedState);
+    assert.equal(result.requiresUserConfirmation, expectedState === "changed");
+    assert.deepEqual(result.changedFields, expectedState === "changed" ? ["freeCancellationUntil"] : []);
+    assert.equal(result.offer.freeCancellationUntil, deadline);
+    assert.equal(setup.saved.length, 1);
+  });
+}
+
 function createFixture() {
   const offer = {
     id:

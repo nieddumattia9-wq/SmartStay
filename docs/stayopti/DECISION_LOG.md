@@ -149,3 +149,15 @@ No assertion, policy, historical receipt or protected path is relaxed or
 rewritten. This supersedes the candidate's pending-local-gates status, not its
 historical Linux evidence. Main/deploy/provider authority is unchanged; actual
 push status and pending commits are reported after direct remote readback.
+
+| D-0068 | 2026-09-19 | Interpret bounded inert room presentation with subject-scoped uncertainty and compare cancellation timestamps by valid explicit instant, preserving originals and all other commercial conditions. | User-authorized R02/R06 only; publication conditional on official Windows gates and direct work-branch readback | `decisions/0068-room-presentation-and-cancellation-instants.md` |
+
+D-0068 validation addendum (2026-09-19): the exact Windows `release:ci` and
+`audit:security` commands passed on isolated candidate bcdb060, including V2
+226/226, V3 3154/3154 and lifecycle 646 PASS / 17 existing opt-in Valkey SKIP.
+TypeScript, build, all release-related suites, PS5.1 parse 17/17 and explicit-SHA
+manifest creation/verification passed. Targeted groups passed 306/306, 52/52 and
+43/43. No provider/private data was used, no test assertion was weakened, no
+ranking or historical evidence policy changed. This replaces the preparatory
+validation status only; publication is reported from actual remote readback,
+not inferred from local tests. R07/A01/A02 remain outside this decision.

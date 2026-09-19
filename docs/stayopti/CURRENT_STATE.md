@@ -1,5 +1,31 @@
 # StayOpti Current State
 
+## D-0068 — Room presentation and cancellation-instant equivalence
+
+Source `f03b83d0b403e1b8bd82c92606d9855df7133db2`, evaluation work branch.
+R02 preserves originals while interpreting bounded inert presentation and scoped
+accessory uncertainty. Rate/detail equivalence, bed restrictions and equivalent
+duplicate records are tested. R06 shares strict explicit-instant comparison across
+diagnostic, backend and UI callers; other commercial conditions remain unchanged.
+Initial synthetic failures are retained, not rewritten as successful history.
+
+Final clean isolated Windows `release:ci` and exact `audit:security` PASS:
+V2 226/226, V3 3154/3154, lifecycle 646 PASS / 17 explicit Valkey integration
+SKIP, security 29/29, release 101/101, analytics 31/31, capacity 9/9, beta 4/4.
+TypeScript, build, analytics gate, zero-vulnerability audit, local smoke (18),
+PowerShell 5.1 parse 17/17 and release-manifest creation/verification PASS.
+Targeted R02 306/306, R06 diagnostic 52/52 and public comparison group 43/43.
+These are local results, not GitHub CI. Tested executable hashes are bound to
+isolated candidate `bcdb060c5ee20bae2b8f7785478ec38162f99885`; final documentation
+records the measured results without changing those files.
+
+Scope, before/after evidence and residual grammar limits are recorded in
+`../engine-v3/d0068-room-temporal-equivalence-validation.md`. Selective publication
+on the work branch is authorized; actual push status, remote SHA and any pending
+commits must be reported after direct remote readback. No R07/A01/A02, policy
+tuning, main promotion, provider request, private decryption, deployment or
+historical inventory migration. Protected files and developer work are preserved.
+
 ## D-0067 — Semantic boundary audit lot, Windows validated
 
 The user-authorized R01/R03/R04/R05 candidate matches source c5aa866 exactly.

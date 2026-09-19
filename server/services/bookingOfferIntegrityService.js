@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { isDeepStrictEqual } = require("node:util");
+const { compareExplicitInstants } = require("../shared/explicit-instant.mjs");
 
 const {
   getAccommodationProviderById,
@@ -645,6 +646,12 @@ function compareBookingOfferSnapshots(
     Object.keys(original)
       .filter(
         (field) =>
+          field === "freeCancellationUntil"
+            ? original[field] !== confirmed[field] && !compareExplicitInstants(
+                originalOffer?.freeCancellationUntil,
+                confirmedOffer?.freeCancellationUntil
+              ).equivalent
+            :
           original[field] !==
           confirmed[field]
       );

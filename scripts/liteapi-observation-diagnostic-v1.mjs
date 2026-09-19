@@ -9,6 +9,7 @@ import {verifyControlledCapture} from './liteapi-controlled-capture-v1.mjs';
 import {DOCUMENTARY_LITEAPI_WIRE_VERSION,decodeDocumentaryOffer,documentaryCommercial,inspectDocumentaryFiscal,documentaryDetail,documentaryTiming} from './liteapi-documentary-wire-v1.mjs';
 import {LITEAPI_QUALIFICATION_VERSION,compareMappedRoom,compareDocumentaryRetrieval} from './liteapi-offer-qualification-v1.mjs';
 import {sleepingText} from './liteapi-bed-description-v1.mjs';
+import {compareLiteApiCommercialTerms} from './liteapi-cancellation-comparison-v1.mjs';
 
 export const LITEAPI_OBSERVATION_VERSION='stayopti.liteapi-fresh-observation-diagnostic@1.3';
 export const SUPPORTED_WIRE_PROFILE='liteapi-v3-roomTypes-rates-exact-retrieval@1';
@@ -249,11 +250,11 @@ function prepareObservationCore({capture,checkpoint,scenario,selectionPolicy,eva
     preIssues.push(...scopeIssues(getDecoded,preDecoded));
     if(getPayload.data.prebookId!==prebookId||get?.prebookId!==prebookId)preIssues.push('RETRIEVAL_IDENTITY_CONFLICT');
     if(documentary){retrievalComparison=compareDocumentaryRetrieval(preDecoded,getDecoded,documentaryCommercial);preIssues.push(...retrievalComparison.issues);}
-    else if(!equal(commercialFields(preDecoded),commercialFields(getDecoded)))preIssues.push('PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT');
+    else if(!compareLiteApiCommercialTerms(commercialFields(preDecoded),commercialFields(getDecoded)).equal)preIssues.push('PREBOOK_RETRIEVAL_COMMERCIAL_CONFLICT');
    }
    issues.push(...preIssues);
    // A failure/conflict never falls back to a certified historic bookable fact.
-   if(!issues.length){verified=true;active=preDecoded;activeRecord=pre;commercialChange=!equal(commercialFields(searchOffer),commercialFields(preDecoded));}
+   if(!issues.length){verified=true;active=preDecoded;activeRecord=pre;commercialChange=!compareLiteApiCommercialTerms(commercialFields(searchOffer),commercialFields(preDecoded)).equal;}
   }
   const time=(documentary?documentaryTiming:timing)(prePayload,pre,evaluatedAt),getTime=(documentary?documentaryTiming:timing)(getPayload,get,evaluatedAt);
   if(['EXPLICITLY_EXPIRED','PROVIDER_EXPIRY_CONFLICT','PROVIDER_EXPIRY_UNINTERPRETABLE'].includes(time.status)||
