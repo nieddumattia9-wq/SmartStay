@@ -1,3 +1,5 @@
+import { qualifyAmenityEvidence } from "../../utils/amenityEvidence";
+
 import type {
   Hotel,
   HotelReviewCountRelation,
@@ -376,36 +378,6 @@ function createEvidenceId(
 
   return (
     `${normalizedHotelId}:${suffix}`
-  );
-}
-
-function containsPhrase(
-  text:
-    string,
-  phrase:
-    string
-) {
-  const normalizedText =
-    normalizeText(
-      text
-    );
-
-  const normalizedPhrase =
-    normalizeText(
-      phrase
-    );
-
-  if (
-    !normalizedText ||
-    !normalizedPhrase
-  ) {
-    return false;
-  }
-
-  return (
-    ` ${normalizedText} `
-  ).includes(
-    ` ${normalizedPhrase} `
   );
 }
 
@@ -2117,8 +2089,8 @@ function createFeatureFact(
     SmartStayAccommodationProfileV2,
   feature:
     SmartStayAccommodationFeatureCodeV2,
-  searchableText:
-    string,
+  amenityStatements:
+    readonly unknown[],
   provider:
     string | null,
   capturedAt:
@@ -2136,42 +2108,25 @@ function createFeatureFact(
       )
     );
 
-  const matchedAlias =
-    (
-      FEATURE_ALIASES[
-        feature
-      ] ??
-      []
-    ).find(
-      (alias) =>
-        containsPhrase(
-          searchableText,
-          alias
-        )
-    );
-
-  if (matchedAlias) {
+  const evidence = qualifyAmenityEvidence(amenityStatements, FEATURE_ALIASES[feature] ?? []);
+  if (evidence.claims.length) {
+    const common = {
+      id, code, sourceProvider: provider, sourceField: "amenities|facilities", capturedAt,
+    };
+    if (evidence.presence === "conflicting") {
+      return createConflictingEvidenceFactV2({
+        ...common, missingReasonCode: "contradictory-service-assertions",
+      });
+    }
+    if (evidence.presence === "unknown") {
+      return createUnknownEvidenceFactV2({
+        ...common, missingReasonCode: "service-assertion-not-qualified",
+      });
+    }
+    // This fact describes presence only; a paid service is never claimed free.
+    // Original service text (including costs) remains in property amenities.
     return createKnownEvidenceFactV2({
-      id,
-
-      code,
-
-      value:
-        true,
-
-      source:
-        "provider",
-
-      sourceProvider:
-        provider,
-
-      sourceField:
-        "amenities|facilities",
-
-      confidence:
-        0.84,
-
-      capturedAt,
+      ...common, value: evidence.presence === "present", source: "provider", confidence: 0.84,
     });
   }
 
@@ -2406,20 +2361,10 @@ export function buildHotelEvidenceModelV2(
       ),
     ];
 
-  const searchableText =
-    [
-      ...(hotel.amenities ?? []),
-      ...(hotel.facilities ?? []),
-    ]
-      .map(
-        normalizeText
-      )
-      .filter(
-        Boolean
-      )
-      .join(
-        " "
-      );
+  const amenityStatements = [
+    ...(hotel.amenities ?? []),
+    ...(hotel.facilities ?? []),
+  ];
 
   for (
     const feature
@@ -2430,7 +2375,7 @@ export function buildHotelEvidenceModelV2(
         hotel,
         accommodation,
         feature,
-        searchableText,
+        amenityStatements,
         provider,
         capturedAt
       )

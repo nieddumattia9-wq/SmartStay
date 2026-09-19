@@ -605,8 +605,9 @@ test(
 
             return {
               data: {
-                contractStub:
-                  true,
+                data: probeHotels.map((hotel) => ({
+                  hotelId: hotel.sourceHotelId,
+                })),
               },
 
               noContent:

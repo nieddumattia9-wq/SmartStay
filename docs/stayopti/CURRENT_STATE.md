@@ -1,5 +1,26 @@
 # StayOpti Current State
 
+## D-0067 — Semantic boundary audit lot, Windows validated
+
+The user-authorized R01/R03/R04/R05 candidate matches source c5aa866 exactly.
+Integration repairs factual public adapter/evidence/presentation boundaries,
+not scoring policy or V3 activation. The supplied Linux runtime proof is not
+accepted as canonical Windows validation. Additional review regressions cover
+legacy Rates error paths/competing wrappers and hyphenated amenity equivalence.
+Final isolated Windows `release:ci` and exact `audit:security` PASS: V2 226/226,
+V3 3042/3042, lifecycle 618 PASS / 17 explicit Valkey integration SKIP,
+security 29/29, release 101/101, analytics 31/31, capacity 9/9 and beta 4/4.
+TypeScript, build, analytics gate, local smoke, PS5.1 parse 17/17 and local
+release-manifest creation/verification PASS. Registry audit reports zero
+vulnerabilities in both canonical scopes; these are local, not GitHub CI results.
+The first full gates also exposed an invalid security transport stub and a
+preexisting accented bed-qualifier boundary defect; both are repaired without
+weakening assertions. The final 21-path scope and measured evidence are in
+`../engine-v3/d0067-public-semantic-boundaries-validation.md`.
+Selective work-branch consolidation is authorized; actual push status, observed
+local/remote SHA and pending commits must be stated in the completion receipt.
+No provider call, real acquisition, main update or deployment is authorized.
+
 ## D-0066 R1 — Pure room evidence comparison
 
 Per-source occupancy maxima are compared to the party rather than requiring

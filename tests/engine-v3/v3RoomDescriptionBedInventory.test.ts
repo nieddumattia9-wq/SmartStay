@@ -216,6 +216,26 @@ for(const qualification of ['on request','not guaranteed','if available','no gua
   for(const o of prepared.observations)assert.equal(o.sleepingInterpretation.clauses[0].kind,'UNRESOLVED_BED_QUALIFICATION');
  });
 
+for(const qualification of ['secondo disponibilità','secondo disponibilita','secondo disponibilità.',
+ 'secondo disponibilità!','secondo disponibilita?','secondo disponibilità da verificare'])
+ for(const leading of [true,false])test('RDB accented availability qualifier retains its scoped uncertainty '+String(leading)+': '+qualification,async()=>{
+  const description=leading?qualification+'; Suite two double beds':'Suite two double beds; '+qualification;
+  const prepared=await prepare(description);
+  for(const n of prepared.normalization.offers)assert.equal(n.sleeping.state,'UNKNOWN');
+  for(const o of prepared.observations){
+   assert.equal(o.sleepingInterpretation.originalText,description);
+   const clause=o.sleepingInterpretation.clauses.find((c:any)=>c.text===qualification);
+   assert.equal(clause.kind,'UNRESOLVED_BED_QUALIFICATION');
+  }
+ });
+
+for(const otherSubject of ['colazione secondo disponibilità','secondo disponibilitàextra','secondo disponibilitàX'])
+ test('RDB accented qualifier requires a complete token and retains explicit other subjects: '+otherSubject,async()=>{
+  const prepared=await prepare('Suite two double beds; '+otherSubject);
+  for(const n of prepared.normalization.offers)assert.equal(n.sleeping.state,'KNOWN');
+  for(const o of prepared.observations)assert(o.sleepingInterpretation.clauses.some((c:any)=>c.text===otherSubject&&c.kind==='OTHER_SUBJECT'));
+ });
+
 test('RDB unrelated previous subject does not rebind its own qualification to beds',async()=>{
  const prepared=await prepare('breakfast; not available; Suite two double beds');
  for(const n of prepared.normalization.offers)assert.equal(n.sleeping.state,'KNOWN');

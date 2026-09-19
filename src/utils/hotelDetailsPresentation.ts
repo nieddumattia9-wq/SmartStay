@@ -1,3 +1,5 @@
+import { qualifyAmenityEvidence } from "./amenityEvidence";
+
 export type HotelAmenityCategoryId =
   | "essentials"
   | "room-comfort"
@@ -35,6 +37,7 @@ type AmenityDefinition = {
 };
 
 type NormalizedAmenity = {
+  highlightable: boolean;
   id: string;
   label: string;
   category: HotelAmenityCategoryId;
@@ -66,8 +69,8 @@ const CATEGORY_TITLES: Record<HotelAmenityCategoryId, string> = {
 };
 
 const DEFINITIONS: readonly AmenityDefinition[] = [
-  { id: "wifi", label: "Free Wi-Fi", category: "essentials", priority: 1, patterns: [/\b(?:free\s+)?wi[\s-]?fi\b/i, /\bwireless internet\b/i, /\binternet access\b/i] },
-  { id: "air-conditioning", label: "Air conditioning", category: "essentials", priority: 2, patterns: [/\bair conditioning\b/i, /\bair-conditioned\b/i] },
+  { id: "wifi", label: "Wi-Fi", category: "essentials", priority: 1, patterns: [/\bwi[\s-]?fi\b/i, /\bwireless internet\b/i, /\binternet access\b/i] },
+  { id: "air-conditioning", label: "Air conditioning", category: "essentials", priority: 2, patterns: [/\bair conditioning\b/i, /\bair[-\s]conditioned\b/i] },
   { id: "private-bathroom", label: "Private bathroom", category: "essentials", priority: 3, patterns: [/\bprivate bathroom\b/i, /\ben ?suite\b/i] },
   { id: "heating", label: "Heating", category: "essentials", priority: 4, patterns: [/\bheating\b/i] },
   { id: "non-smoking", label: "Non-smoking rooms", category: "essentials", priority: 5, patterns: [/\bnon[-\s]?smoking\b/i, /\bsmoke[-\s]?free\b/i] },
@@ -150,7 +153,7 @@ function inferCategory(normalized: string): HotelAmenityCategoryId {
   return "other";
 }
 
-function normalizeAmenity(value: unknown): NormalizedAmenity | null {
+function normalizeAmenity(value: unknown, related: readonly unknown[]): NormalizedAmenity | null {
   const label = cleanAmenityLabel(value);
   if (!label) return null;
 
@@ -159,11 +162,17 @@ function normalizeAmenity(value: unknown): NormalizedAmenity | null {
   );
 
   if (definition) {
+    const evidence = qualifyAmenityEvidence(related, definition.patterns);
+    const qualified = evidence.presence === "present" && evidence.cost !== "conflicting";
+    const presentedLabel = evidence.cost === "paid"
+      ? definition.label + " (surcharge)"
+      : definition.id === "wifi" && evidence.cost === "free" ? "Free Wi-Fi" : definition.label;
     return {
-      id: definition.id,
-      label: definition.label,
+      id: qualified ? definition.id : `${definition.id}:qualified:${normalizeLookup(label)}`,
+      label: qualified ? presentedLabel : label,
       category: definition.category,
       priority: definition.priority,
+      highlightable: qualified,
     };
   }
 
@@ -175,6 +184,7 @@ function normalizeAmenity(value: unknown): NormalizedAmenity | null {
     label,
     category: inferCategory(normalized),
     priority: 100,
+    highlightable: false,
   };
 }
 
@@ -196,8 +206,9 @@ export function buildHotelAmenityPresentation(
 ): HotelAmenityPresentation {
   const uniqueById = new Map<string, NormalizedAmenity>();
 
-  for (const item of [...amenities, ...facilities]) {
-    const normalized = normalizeAmenity(item);
+  const statements = [...amenities, ...facilities];
+  for (const item of statements) {
+    const normalized = normalizeAmenity(item, statements);
     if (!normalized) continue;
 
     const existing = uniqueById.get(normalized.id);
@@ -224,6 +235,7 @@ export function buildHotelAmenityPresentation(
 
   return {
     highlights: sortedItems
+      .filter((item) => item.highlightable)
       .slice(0, Math.max(0, highlightLimit))
       .map((item) => item.label),
     groups,

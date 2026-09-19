@@ -135,3 +135,17 @@ inferred from test PASS. No acquisition authority or historical binding changes.
 | D-0066 | 2026-09-18 | Bind a new MAX5 details-only plan to authenticated consumed coverage originals and all offer variants; reuse bounded transport, durable encrypted journal and protected prompt, keeping room comparison separate from commercial refresh or decisions. | Synthetic qualification and selective work-branch publication; final-checkpoint preparation still requires a new unaccepted acquisition literal; no real provider or engine execution | `decisions/0066-bounded-hotel-detail-enrichment.md` |
 
 | D-0066 R1 | 2026-09-18 | Separate source concordance from party capacity and sleeping sufficiency; retain structured mapped inventory and qualify bounded bed conditions without refreshing commercial facts or historical receipts. | Evaluation-only pure repair; selective work-branch publication conditional on isolated gates and remote readback; no acquisition or kernel/policy | `decisions/0066-r1-room-evidence-and-party-sufficiency.md` |
+
+| D-0067 | 2026-09-19 | Correct public Rates outcome classification, scoped amenity facts, opaque offer identity and numeric absence; preserve legacy sessions without ambiguous selection. | Isolated candidate, runtime regressions PASS; canonical compilation/build and Windows gates pending, not published | `decisions/0067-public-semantic-boundaries.md` |
+
+D-0067 integration validation (2026-09-19): the subsequent user authorization
+permits selective work-branch commit/push after official Windows gates. Final
+`release:ci` and `audit:security` PASS, including V2 226/226, V3 3042/3042,
+security 29/29 and lifecycle 618 PASS / 17 explicit Valkey integration SKIP.
+The 21-path integration additionally closes supported legacy Rates error paths,
+hyphenated service equivalence, a fourth malformed transport stub, and the
+preexisting accented bed-qualifier boundary exposed by the mandatory V3 gate.
+No assertion, policy, historical receipt or protected path is relaxed or
+rewritten. This supersedes the candidate's pending-local-gates status, not its
+historical Linux evidence. Main/deploy/provider authority is unchanged; actual
+push status and pending commits are reported after direct remote readback.

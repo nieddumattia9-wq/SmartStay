@@ -1836,7 +1836,7 @@ function HotelDetailsPanel({
                       </p>
 
                       <h3>
-                        What is available
+                        Services and conditions
                       </h3>
                     </div>
 
@@ -1855,7 +1855,7 @@ function HotelDetailsPanel({
                     )}
                   </ul>
 
-                  {amenityPresentation.groups.length > 1 && (
+                  {(amenityPresentation.groups.length > 1 || amenityPresentation.totalCount > amenityPresentation.highlights.length) && (
                     <button
                       type="button"
                       className="hotel-details-panel__amenity-toggle"

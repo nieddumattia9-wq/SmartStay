@@ -1,4 +1,6 @@
 // D-0066 mechanical extraction of the unchanged D-0065 bed-clause evaluator.
+// D-0067: bounded Unicode token-boundary repair; historical extraction remains
+// checked by HD23 after reversing only the explicitly documented regex delta.
 // Pure: no capture, transport, kernel, policy or I/O.
 import {normalizeItalianBedInventory} from './diagnostic-offer-requirements-v1.mjs';
 import {qualifyEnglishRoomDescriptionBeds} from './liteapi-offer-qualification-v1.mjs';
@@ -17,7 +19,7 @@ export function sleepingText(value){
  // unsupported. It is not silently discarded after a newly recognized title.
  // Require a recognized availability/configuration predicate after NOT/NON;
  // NOT alone cannot change the subject of breakfast, pets or room amenities.
- const implicitQualification=/^(?:not\s+(?:(?:always|currently|necessarily|fully|yet)\s+)?(?:available|provided|included|guaranteed|confirmed|present|usable|verified|documented|specified)\b|non\s+(?:disponibil[ei]|utilizzabil[ei]|garantit[oaie]|present[ei]|confermat[oaie]|specificat[oaie]|documentat[oaie]|verificat[oaie])\b|(?:unavailable|unconfirmed|unknown|unverified|uncertain)[.!]?$|su richiesta\b|on request\b|da (?:confermare|verificare|definire)\b|subject to (?:availability|confirmation)\b|(?:if|when) available\b|(?:availability|configuration) (?:is )?(?:not|unknown|uncertain|unconfirmed)\b|secondo disponibilit[aà]\b|senza garanzia\b|without guarantee\b|no guarantee\b)/i;
+ const implicitQualification=/^(?:not\s+(?:(?:always|currently|necessarily|fully|yet)\s+)?(?:available|provided|included|guaranteed|confirmed|present|usable|verified|documented|specified)\b|non\s+(?:disponibil[ei]|utilizzabil[ei]|garantit[oaie]|present[ei]|confermat[oaie]|specificat[oaie]|documentat[oaie]|verificat[oaie])\b|(?:unavailable|unconfirmed|unknown|unverified|uncertain)[.!]?$|su richiesta\b|on request\b|da (?:confermare|verificare|definire)\b|subject to (?:availability|confirmation)\b|(?:if|when) available\b|(?:availability|configuration) (?:is )?(?:not|unknown|uncertain|unconfirmed)\b|secondo disponibilit[aà](?![\p{L}\p{M}\p{N}_])|senza garanzia\b|without guarantee\b|no guarantee\b)/iu;
  let previousBed=false;
  if(typeof value==='string')for(const originalText of value.split(';').filter(v=>v.trim())){
   const textValue=originalText.trim(),englishInterpretation=qualifyEnglishRoomDescriptionBeds(originalText),english=englishInterpretation.parsed;

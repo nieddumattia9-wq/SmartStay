@@ -674,9 +674,10 @@ test(
             noContent:
               false,
 
+            // Rates-envelope validation is now real even in metadata tests.
+            // The mapper remains a test double; metadata expectations are unchanged.
             data: {
-              rates:
-                true,
+              data: providerHotelIds.map((hotelId) => ({ hotelId })),
             },
           }),
 
@@ -961,9 +962,10 @@ test(
             noContent:
               false,
 
+            // Rates-envelope validation is now real even in metadata tests.
+            // The mapper remains a test double; metadata expectations are unchanged.
             data: {
-              rates:
-                true,
+              data: providerHotelIds.map((hotelId) => ({ hotelId })),
             },
           }),
 
@@ -1189,8 +1191,7 @@ test(
               false,
 
             data: {
-              rates:
-                true,
+              data: [{ hotelId: "lp-facility" }],
             },
           }),
 

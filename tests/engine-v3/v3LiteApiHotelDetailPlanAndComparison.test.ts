@@ -92,11 +92,24 @@ test('HD21 target selection is deterministic and source malformed IDs are not dr
 test('HD22 synthetic source cannot be relabeled production',async()=>{
  const {p,c,f}=await modules(),x=f.hotelDetailFixture();x.config.origin='LITEAPI_PRODUCTION';assert.throws(()=>p.validateHotelDetailPlan(x.config),/SOURCE_ORIGIN/);assert.throws(()=>c.verifyHotelDetailSourceFiles(x.source),/PRODUCTION_SOURCE_REQUIRED/);
 });
-test('HD23 extraction preserves prior sleepingText function body byte-for-byte',()=>{
+test('HD23 D0067 bounded token-boundary delta preserves the historical extraction body',()=>{
  // Exact function body from committed 2005caed; hash is a relocation proof,
  // not a substitute for semantic fixtures. No Git checkout is needed at runtime.
  const after=readFileSync('scripts/liteapi-bed-description-v1.mjs','utf8').split('export function sleepingText')[1];
- assert.equal(createHash('sha256').update(('function sleepingText'+after).trim().replaceAll('\r\n','\n')).digest('hex'),'89bd8124661b83555f3dfcae37a755befb94ce24f4e9d9d1bbfa7716989bb124');
+ // D0067 repairs the preexisting accented-token boundary in this one regex.
+ // Reverse only that approved delta, then retain the original historical hash:
+ // unrelated edits to the mechanically extracted function still fail this test.
+ const currentBoundary=String.raw`secondo disponibilit[aà](?![\p{L}\p{M}\p{N}_])`;
+ const historicalBoundary=String.raw`secondo disponibilit[aà]\b`;
+ assert.equal(after.split(currentBoundary).length-1,1);
+ const matchingLines=after.split('\n').filter(line=>line.includes('const implicitQualification='));
+ assert.equal(matchingLines.length,1);
+ const currentLine=matchingLines[0];
+ assert.ok(currentLine.includes(currentBoundary));
+ assert.match(currentLine,/\/iu;\r?$/);
+ const historicalLine=currentLine.replace(currentBoundary,historicalBoundary).replace(/\/iu;(\r?)$/,'/i;$1');
+ const historicalBody=after.replace(currentLine,historicalLine);
+ assert.equal(createHash('sha256').update(('function sleepingText'+historicalBody).trim().replaceAll('\r\n','\n')).digest('hex'),'89bd8124661b83555f3dfcae37a755befb94ce24f4e9d9d1bbfa7716989bb124');
 });
 test('HD24 failed transport record remains readable without fabricated details',async()=>{
  const {c,f}=await modules(),x=f.hotelDetailFixture();x.capture.records[0].response.response=null;x.capture.records[0].response.outcome='FAILED';x.capture.records[0].response.failureClass='TIMEOUT';x.capture.journal.status='ABORTED';

@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { isDeepStrictEqual } = require("node:util");
 
 const {
   getAccommodationProviderById,
@@ -265,7 +266,7 @@ function getStableInternalOfferId(
   return internalId;
 }
 
-function createOfferIdentityPayload(
+function createLegacyOfferIdentityPayload(
   offer
 ) {
   const source =
@@ -319,6 +320,33 @@ function createOfferIdentityPayload(
   ].join("\u001f");
 }
 
+// Versioned payload with exact opaque IDs and URLs; label normalization is
+// separate from identity. JSON encoding prevents separator-based collisions.
+function createOfferIdentityPayload(offer) {
+  const source = offer && typeof offer === "object" && !Array.isArray(offer) ? offer : {};
+  const exact = (value) => typeof value === "string" ? value : "";
+  return JSON.stringify([
+    "stayopti.public-offer@2",
+    normalizeIdentityText(source.sourceProvider),
+    exact(source.id),
+    normalizeIdentityText(source.roomName),
+    normalizeIdentityText(source.mealPlan),
+    normalizeNumber(source.totalKnownCost ?? source.price),
+    normalizeIdentityText(source.currency),
+    normalizeBoolean(source.refundable),
+    normalizeIdentityText(source.freeCancellationUntil),
+    normalizeNumber(source.excludedTaxes),
+    normalizeNumber(source.unknownTaxes),
+    normalizeIdentityText(source.cancellationPolicy),
+    exact(source.deepLink),
+  ]);
+}
+
+function createLegacyPublicOfferId(offer) {
+  return "offer-" + crypto.createHash("sha256")
+    .update(createLegacyOfferIdentityPayload(offer)).digest("hex").slice(0, 24);
+}
+
 function createPublicOfferId(
   offer
 ) {
@@ -367,13 +395,14 @@ function resolveOfferByPublicId(
     return null;
   }
 
-  return offers.find(
-    (offer) =>
-      createPublicOfferId(
-        offer
-      ) ===
-      normalizedOfferId
-  ) ?? null;
+  const matches = offers.filter((offer) =>
+    createPublicOfferId(offer) === normalizedOfferId ||
+    createLegacyPublicOfferId(offer) === normalizedOfferId
+  );
+  // Old sessions remain resolvable only when the token identifies one offer.
+  // Array order is never a tie breaker for an ambiguous booking identity.
+  if (matches.length === 0) return null;
+  return matches.every((offer) => isDeepStrictEqual(offer, matches[0])) ? matches[0] : null;
 }
 
 function getOfferSourceProvider({

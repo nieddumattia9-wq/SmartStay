@@ -1,3 +1,4 @@
+const { classifyLiteApiRatesResponse } = require("./liteApiRatesResponse");
 const {
     ACCOMMODATION_PROVIDER_IDS,
   } = require("../providerRegistry");
@@ -1906,7 +1907,7 @@ function createLiteApiOfferFromMapper(
     }
     
     function isLiteApiNoResults(data) {
-      return !data || extractRecords(data).length === 0;
+      return classifyLiteApiRatesResponse({ payload: data, allowLegacyEnvelopes: true }).classification === "DOCUMENTED_NO_RESULTS";
     }
     
 function createLiteApiFailedSearchResponse(currency = "EUR") {

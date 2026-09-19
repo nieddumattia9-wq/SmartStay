@@ -1,3 +1,4 @@
+const { classifyLiteApiRatesResponse } = require("./liteApiRatesResponse");
 const {
   operationalLogger,
 } = require(
@@ -18,6 +19,7 @@ const {
 const {
   createProviderSuccessResult,
   createProviderNoResultsResult,
+  createProviderFailureResult,
 } = require("../common/providerSearchResult");
 
 const {
@@ -490,7 +492,6 @@ function loadDefaultDependencies() {
   } = require("./liteApiClient");
 
   const {
-    isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
   } = require("./liteApiProvider");
@@ -513,7 +514,6 @@ function loadDefaultDependencies() {
     getLiteApiHotels,
     getLiteApiFacilities,
     prebookLiteApiOffer,
-    isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
@@ -536,7 +536,6 @@ function createLiteApiAdapter(
     getLiteApiHotels,
     getLiteApiFacilities,
     prebookLiteApiOffer,
-    isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
@@ -549,7 +548,6 @@ function createLiteApiAdapter(
   const requiredFunctions = {
     searchLiteApiRates,
     getLiteApiHotels,
-    isLiteApiNoResults,
     getLiteApiCurrency,
     mapLiteApiHotelResponse,
     mapLiteApiHotelDetailsResponse,
@@ -659,12 +657,23 @@ function createLiteApiAdapter(
           providerInput.currency
         );
 
-      if (
-        response?.noContent ||
-        isLiteApiNoResults(
-          rawData
-        )
-      ) {
+      const observation = classifyLiteApiRatesResponse({
+        payload: rawData,
+        httpStatus: response?.status ?? (response?.noContent ? 204 : 200),
+        bodyIsEmpty: rawData === null || rawData === undefined || rawData === "",
+        allowLegacyEnvelopes: true,
+      });
+      if (["PROVIDER_ERROR", "UNKNOWN_FORMAT"].includes(observation.classification)) {
+        return {
+          ...createProviderFailureResult({
+            providerId: PROVIDER_ID, currency, retryable: false,
+            code: "LITEAPI_" + observation.reason,
+            message: "The provider response could not establish search availability.",
+          }),
+          providerObservation: observation,
+        };
+      }
+      if (observation.classification === "DOCUMENTED_NO_RESULTS") {
         return createProviderNoResultsResult({
           providerId:
             PROVIDER_ID,
@@ -763,18 +772,14 @@ function createLiteApiAdapter(
       );
 
       if (hotels.length === 0) {
-        return createProviderNoResultsResult({
-          providerId:
-            PROVIDER_ID,
-
-          currency,
-
-          rawData:
-            null,
-
-          message:
-            "LiteAPI returned no usable hotels for this search.",
-        });
+        return {
+          ...createProviderFailureResult({
+            providerId: PROVIDER_ID, currency, retryable: false,
+            code: "LITEAPI_UNUSABLE_RECORDS",
+            message: "Provider records could not be mapped to usable hotels.",
+          }),
+          providerObservation: { ...observation, mappedHotelCount: 0 },
+        };
       }
 
       return createProviderSuccessResult({

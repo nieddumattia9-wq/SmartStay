@@ -3,6 +3,9 @@ const {
 } = require("../utils/reviewCountRelation");
 
 function toNumber(value, fallback = null) {
+    // Missing facts and nonnumeric types must never become explicit zero.
+    if ((typeof value !== "number" && typeof value !== "string") ||
+        (typeof value === "string" && value.trim() === "")) return fallback;
 
     const number =
       Number(value);
