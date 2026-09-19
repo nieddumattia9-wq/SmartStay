@@ -8,6 +8,25 @@ const {
 } = require(
   "../services/bookingOfferIntegrityService"
 );
+const { offerFingerprint, normalizeCurrency } = require("../providers/common/commercialSummary");
+
+function createPublicCommercialSummary(hotel) {
+  const summary = hotel.commercialSummary;
+  if (summary?.version !== "search-currency-summary@1") return undefined;
+  const selected = (hotel.offers ?? []).find(offer =>
+    offerFingerprint(offer) === summary.selectedOfferFingerprint);
+  return {
+    version: summary.version,
+    status: summary.status,
+    searchCurrency: summary.searchCurrency,
+    offerCount: summary.offerCount,
+    comparableOfferCount: summary.comparableOfferCount,
+    selectedOfferId: selected ? createPublicOfferId(selected) : null,
+    // Display observation binding only; not a new booking/handoff identity.
+    selectedObservationId: selected ? offerFingerprint(selected) : null,
+    selectionBasis: summary.selectionBasis,
+  };
+}
 
 const AVAILABLE_DATA_KEYS = [
   "hasPrice",
@@ -207,12 +226,14 @@ function createPublicHotelOffer(
     )
       ? offer
       : {};
+  const explicitSummary = hotel?.commercialSummary?.version === "search-currency-summary@1";
 
   return {
     id:
       createPublicOfferId(
         source
       ),
+    ...(explicitSummary ? { observationId: offerFingerprint(source) } : {}),
 
     provider:
       getText(
@@ -222,8 +243,9 @@ function createPublicHotelOffer(
 
     price:
       getFiniteNumber(
-        source.price,
-        0
+        explicitSummary && typeof source.price !== "number" && typeof source.price !== "string"
+          ? null : source.price,
+        explicitSummary ? null : 0
       ),
 
     basePrice:
@@ -239,10 +261,7 @@ function createPublicHotelOffer(
       ),
 
     currency:
-      getText(
-        source.currency,
-        "EUR"
-      ),
+      explicitSummary ? normalizeCurrency(source.currency) : getText(source.currency, "EUR"),
 
     cancellationPolicy:
       getNullableText(
@@ -411,6 +430,7 @@ function createPublicHotel(
             )
         )
       : [];
+  const commercialSummary = createPublicCommercialSummary(hotel);
 
   return {
     id,
@@ -428,6 +448,7 @@ function createPublicHotel(
       ),
 
     offers,
+    ...(commercialSummary ? { commercialSummary } : {}),
 
     name:
       getText(
@@ -498,7 +519,7 @@ function createPublicHotel(
     price:
       getFiniteNumber(
         hotel.price,
-        0
+        commercialSummary ? null : 0
       ),
 
     basePrice:
@@ -516,7 +537,7 @@ function createPublicHotel(
     currency:
       getText(
         hotel.currency,
-        "EUR"
+        commercialSummary ? null : "EUR"
       ),
 
     taxesIncluded:

@@ -713,7 +713,8 @@ function createLiteApiAdapter(
       const preliminaryHotels =
         limitLiteApiHotels(
           mergeHotels(
-            preliminaryMappedHotels
+            preliminaryMappedHotels,
+            { searchCurrency: providerInput.currency }
           )
         );
 
@@ -753,7 +754,8 @@ function createLiteApiAdapter(
       const hotels =
         limitLiteApiHotels(
           mergeHotels(
-            mappedHotels
+            mappedHotels,
+            { searchCurrency: providerInput.currency }
           )
         );
 

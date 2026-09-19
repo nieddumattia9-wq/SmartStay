@@ -2,6 +2,7 @@ const {
   combineReviewCountRelations,
   inferReviewCountRelation,
 } = require("../../utils/reviewCountRelation");
+const { mergeOffers, normalizeCurrency, selectCommercialSummary } = require("./commercialSummary");
 
 function normalizeText(value = "") {
     if (
@@ -218,358 +219,8 @@ function normalizeText(value = "") {
     return null;
   }
 
-  function getValidOffers(hotel) {
-  
-    if (!Array.isArray(hotel.offers)) {
-  
-      return [];
-  
-    }
-  
-    return hotel.offers
-      .filter((offer) => (
-        offer &&
-        Number.isFinite(Number(offer.price)) &&
-        Number(offer.price) > 0
-      ));
-  
-  }
-  
-  function normalizeCurrency(value) {
-    const currency =
-      String(
-        value ?? ""
-      )
-        .trim()
-        .toUpperCase();
-
-    return /^[A-Z]{3}$/.test(currency)
-      ? currency
-      : "";
-  }
-
-  function getOfferCompletenessScore(
-    offer
-  ) {
-    if (
-      !offer ||
-      typeof offer !== "object"
-    ) {
-      return 0;
-    }
-
-    let score = 0;
-
-    if (offer.roomName) score += 1;
-
-    if (
-      Number.isFinite(
-        Number(offer.totalKnownCost)
-      )
-    ) {
-      score += 1;
-    }
-
-    if (
-      Number.isFinite(
-        Number(offer.excludedTaxes)
-      )
-    ) {
-      score += 1;
-    }
-
-    if (
-      offer.refundable === true ||
-      offer.refundable === false
-    ) {
-      score += 1;
-    }
-
-    if (offer.cancellationPolicy) {
-      score += 1;
-    }
-
-    if (
-      Array.isArray(
-        offer.cancellationPolicies
-      ) &&
-      offer.cancellationPolicies
-        .length > 0
-    ) {
-      score += 1;
-    }
-
-    if (offer.deepLink) score += 1;
-
-    return score;
-  }
-
-  function createOfferMergeKey(
-    offer
-  ) {
-    const sourceProvider =
-      normalizeText(
-        offer?.sourceProvider
-      );
-
-    const provider =
-      normalizeText(
-        offer?.provider
-      );
-
-    const offerId =
-      String(
-        offer?.id ?? ""
-      ).trim();
-
-    const currency =
-      normalizeCurrency(
-        offer?.currency
-      );
-
-    if (offerId) {
-      return [
-        "id",
-        sourceProvider,
-        provider,
-        offerId,
-        currency,
-      ].join("|");
-    }
-
-    const price =
-      Number(offer?.price);
-
-    const totalKnownCost =
-      Number(
-        offer?.totalKnownCost
-      );
-
-    const excludedTaxes =
-      Number(
-        offer?.excludedTaxes
-      );
-
-    const cancellationPenalty =
-      Number(
-        offer?.cancellationPenalty
-      );
-
-    const refundable =
-      offer?.refundable === true
-        ? "true"
-        : offer?.refundable === false
-          ? "false"
-          : "";
-
-    return [
-      "fingerprint",
-      sourceProvider,
-      provider,
-      normalizeText(
-        offer?.roomName
-      ),
-      Number.isFinite(price)
-        ? price.toFixed(2)
-        : "",
-      currency,
-      refundable,
-      normalizeText(
-        offer?.refundableTag
-      ),
-      normalizeText(
-        offer?.cancellationPolicy
-      ),
-      Number.isFinite(
-        totalKnownCost
-      )
-        ? totalKnownCost.toFixed(2)
-        : "",
-      Number.isFinite(
-        excludedTaxes
-      )
-        ? excludedTaxes.toFixed(2)
-        : "",
-      Number.isFinite(
-        cancellationPenalty
-      )
-        ? cancellationPenalty
-            .toFixed(2)
-        : "",
-    ].join("|");
-  }
-
-  function mergeOffers(
-    firstOffers = [],
-    secondOffers = []
-  ) {
-    const offerMap =
-      new Map();
-
-    [
-      ...firstOffers,
-      ...secondOffers,
-    ].forEach((offer) => {
-      if (!offer) {
-        return;
-      }
-
-      const key =
-        createOfferMergeKey(
-          offer
-        );
-
-      const existingOffer =
-        offerMap.get(key);
-
-      if (!existingOffer) {
-        offerMap.set(
-          key,
-          offer
-        );
-
-        return;
-      }
-
-      const existingScore =
-        getOfferCompletenessScore(
-          existingOffer
-        );
-
-      const candidateScore =
-        getOfferCompletenessScore(
-          offer
-        );
-
-      if (
-        candidateScore >
-        existingScore
-      ) {
-        offerMap.set(
-          key,
-          offer
-        );
-      }
-    });
-
-    return Array.from(
-      offerMap.values()
-    );
-  }
-
-  function getOfferComparableCost(
-    offer
-  ) {
-    const totalKnownCost =
-      Number(
-        offer?.totalKnownCost
-      );
-
-    if (
-      Number.isFinite(
-        totalKnownCost
-      ) &&
-      totalKnownCost > 0
-    ) {
-      return totalKnownCost;
-    }
-
-    return Number(offer?.price);
-  }
-
-  function getBestOffer(
-    offers = [],
-    preferredCurrency = ""
-  ) {
-    const validOffers =
-      offers.filter((offer) => (
-        offer &&
-        Number.isFinite(
-          Number(offer.price)
-        ) &&
-        Number(offer.price) > 0
-      ));
-
-    if (validOffers.length === 0) {
-      return null;
-    }
-
-    const normalizedPreferredCurrency =
-      normalizeCurrency(
-        preferredCurrency
-      );
-
-    let comparableOffers =
-      validOffers;
-
-    if (
-      normalizedPreferredCurrency
-    ) {
-      comparableOffers =
-        validOffers.filter(
-          (offer) =>
-            normalizeCurrency(
-              offer.currency
-            ) ===
-            normalizedPreferredCurrency
-        );
-
-      /*
-       * Non confrontiamo numericamente
-       * prezzi appartenenti a valute
-       * differenti.
-       */
-      if (
-        comparableOffers.length === 0
-      ) {
-        return null;
-      }
-    } else {
-      const currencies =
-        uniqueValues(
-          validOffers
-            .map((offer) =>
-              normalizeCurrency(
-                offer.currency
-              )
-            )
-            .filter(Boolean)
-        );
-
-      if (currencies.length > 1) {
-        return null;
-      }
-    }
-
-    return comparableOffers
-      .slice()
-      .sort(
-        (
-          firstOffer,
-          secondOffer
-        ) => {
-          const costDifference =
-            getOfferComparableCost(
-              firstOffer
-            ) -
-            getOfferComparableCost(
-              secondOffer
-            );
-
-          if (costDifference !== 0) {
-            return costDifference;
-          }
-
-          return (
-            Number(
-              firstOffer.price
-            ) -
-            Number(
-              secondOffer.price
-            )
-          );
-        }
-      )[0] ?? null;
+  function getOffers(hotel) {
+    return Array.isArray(hotel.offers) ? hotel.offers : [];
   }
 
   function preferValue(firstValue, secondValue) {
@@ -816,114 +467,9 @@ function normalizeText(value = "") {
   }
 
   function createCommercialData(
-    bestOffer,
-    fallbackHotel = {}
+    bestOffer
   ) {
-    if (!bestOffer) {
-      return {
-        provider:
-          fallbackHotel.provider ??
-          null,
-
-        price:
-          fallbackHotel.price ??
-          null,
-
-        basePrice:
-          fallbackHotel.basePrice ??
-          null,
-
-        saving:
-          fallbackHotel.saving ??
-          0,
-
-        currency:
-          fallbackHotel.currency ??
-          null,
-
-        taxesIncluded:
-          fallbackHotel.taxesIncluded ??
-          null,
-
-        includedTaxes:
-          fallbackHotel.includedTaxes ??
-          0,
-
-        excludedTaxes:
-          fallbackHotel.excludedTaxes ??
-          0,
-
-        unknownTaxes:
-          fallbackHotel.unknownTaxes ??
-          0,
-
-        taxBreakdown:
-          Array.isArray(
-            fallbackHotel.taxBreakdown
-          )
-            ? fallbackHotel.taxBreakdown
-            : [],
-
-        totalKnownCost:
-          fallbackHotel.totalKnownCost ??
-          null,
-
-        cancellationPolicy:
-          fallbackHotel
-            .cancellationPolicy ??
-          null,
-
-        refundableTag:
-          fallbackHotel.refundableTag ??
-          null,
-
-        refundable:
-          fallbackHotel.refundable ??
-          null,
-
-        freeCancellationUntil:
-          fallbackHotel
-            .freeCancellationUntil ??
-          null,
-
-        cancellationPenalty:
-          fallbackHotel
-            .cancellationPenalty ??
-          null,
-
-        cancellationPenaltyCurrency:
-          fallbackHotel
-            .cancellationPenaltyCurrency ??
-          null,
-
-        cancellationPenaltyType:
-          fallbackHotel
-            .cancellationPenaltyType ??
-          null,
-
-        cancellationTimezone:
-          fallbackHotel
-            .cancellationTimezone ??
-          null,
-
-        cancellationPolicies:
-          Array.isArray(
-            fallbackHotel
-              .cancellationPolicies
-          )
-            ? fallbackHotel
-                .cancellationPolicies
-            : [],
-
-        roomName:
-          fallbackHotel.roomName ??
-          null,
-
-        deepLink:
-          fallbackHotel.deepLink ??
-          null,
-      };
-    }
+    bestOffer ??= {};
 
     return {
       provider:
@@ -943,7 +489,7 @@ function normalizeText(value = "") {
         0,
 
       currency:
-        bestOffer.currency ??
+        normalizeCurrency(bestOffer.currency) ??
         null,
 
       taxesIncluded:
@@ -1316,42 +862,10 @@ function normalizeText(value = "") {
     );
   }
 
-  function mergeHotelRecords(firstHotel, secondHotel) {
-    const offers =
-      mergeOffers(
-        getValidOffers(firstHotel),
-        getValidOffers(secondHotel)
-      );
-
-    const preferredCurrency =
-      normalizeCurrency(
-        firstHotel.currency
-      ) ||
-      normalizeCurrency(
-        secondHotel.currency
-      ) ||
-      normalizeCurrency(
-        getValidOffers(
-          firstHotel
-        )[0]?.currency
-      ) ||
-      normalizeCurrency(
-        getValidOffers(
-          secondHotel
-        )[0]?.currency
-      );
-
-    const bestOffer =
-      getBestOffer(
-        offers,
-        preferredCurrency
-      );
-
-    const commercialData =
-      createCommercialData(
-        bestOffer,
-        firstHotel
-      );
+  function mergeHotelRecords(firstHotel, secondHotel, context = {}) {
+    const offers = mergeOffers(getOffers(firstHotel), getOffers(secondHotel));
+    const { offer: bestOffer, summary: commercialSummary } = selectCommercialSummary(offers, context);
+    const commercialData = createCommercialData(bestOffer);
 
     const reviewBundle =
       chooseReviewBundle(
@@ -1590,6 +1104,7 @@ function normalizeText(value = "") {
         reviewBundle.sourceHotelId,
 
       ...commercialData,
+      commercialSummary,
 
       distance,
       distanceUnit,
@@ -1621,7 +1136,7 @@ function normalizeText(value = "") {
     };
   }
 
-  function mergeProviderHotelResults(hotels = []) {
+  function mergeProviderHotelResults(hotels = [], context = {}) {
   
     if (!Array.isArray(hotels)) {
   
@@ -1667,15 +1182,28 @@ function normalizeText(value = "") {
         mergeKey,
         mergeHotelRecords(
           existingHotel,
-          hotel
+          hotel,
+          context
         )
       );
   
     });
   
-    return Array.from(
-      hotelMap.values()
-    );
+    // Single records need the same currency check as duplicate records.
+    return Array.from(hotelMap.values(), hotel => {
+      const offers = mergeOffers(getOffers(hotel));
+      const { offer, summary } = selectCommercialSummary(offers, context);
+      const commercial = createCommercialData(offer);
+      return {
+        ...hotel, ...commercial, offers, commercialSummary: summary,
+        availableData: {
+          ...hotel.availableData,
+          hasPrice: offer !== null,
+          hasBasePrice: offer !== null && Number(commercial.basePrice) > Number(commercial.price),
+          hasSaving: offer !== null && Number(commercial.saving) > 0,
+        },
+      };
+    });
   
   }
   

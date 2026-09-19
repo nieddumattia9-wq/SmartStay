@@ -161,3 +161,15 @@ manifest creation/verification passed. Targeted groups passed 306/306, 52/52 and
 ranking or historical evidence policy changed. This replaces the preparatory
 validation status only; publication is reported from actual remote readback,
 not inferred from local tests. R07/A01/A02 remain outside this decision.
+
+| D-0069 | 2026-09-19 | Bind common commercial merge summaries to explicit search currency, preserve all differing/incomplete observations and expose non-comparability without first-record fallback. | User-authorized R07 only; selective work-branch publication after official Windows gates and direct remote readback, A01/A02 excluded | `decisions/0069-search-currency-merge-summary.md` |
+
+D-0069 validation addendum (2026-09-19): isolated Windows candidate 0e974220
+passes exact `release:ci` and separate `audit:security`, targeted 19/19,
+V2 226/226, V3 3154/3154, lifecycle 665 PASS / 17 existing Valkey SKIP,
+and all release/security/analytics/capacity/beta gates. TypeScript/build,
+PS5.1 parse 17/17 and explicit-SHA release-manifest creation/verification PASS.
+The additive public observation binding closes a reproduced same-public-ID
+display ambiguity without modifying booking identity or its rejection rules.
+No ranking, weights, roles, main, historical evidence or private approvals change.
+Actual publication and pending commits are reported from remote readback.

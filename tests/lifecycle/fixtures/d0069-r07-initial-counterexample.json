@@ -1,0 +1,65 @@
+{
+  "base": "7d3fe511881da58b7055c75d7c86227ff7cafff4",
+  "syntheticOnly": true,
+  "input": [
+    {
+      "id": "synthetic-property",
+      "sourceProvider": "invented-provider",
+      "sourceHotelId": "P1",
+      "price": 600,
+      "currency": "EUR",
+      "offers": [
+        {
+          "id": "e",
+          "price": 600,
+          "totalKnownCost": 600,
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "id": "synthetic-property",
+      "sourceProvider": "invented-provider",
+      "sourceHotelId": "P1",
+      "price": 500,
+      "currency": "USD",
+      "offers": [
+        {
+          "id": "u",
+          "price": 500,
+          "totalKnownCost": 500,
+          "currency": "USD"
+        }
+      ]
+    }
+  ],
+  "searchCurrency": "EUR",
+  "forward": {
+    "price": 600,
+    "currency": "EUR",
+    "offerIds": [
+      "e",
+      "u"
+    ]
+  },
+  "reverse": {
+    "price": 500,
+    "currency": "USD",
+    "offerIds": [
+      "u",
+      "e"
+    ]
+  },
+  "testExit": 1,
+  "sourceSha256": "87165cd0811880051c54b3e59ca63676cc9072cc134da8f089ec4ae69224cfb5",
+  "expected": {
+    "forward": {
+      "price": 600,
+      "currency": "EUR"
+    },
+    "reverse": {
+      "price": 600,
+      "currency": "EUR"
+    }
+  }
+}

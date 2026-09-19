@@ -1,5 +1,27 @@
 # StayOpti Current State
 
+## D-0069 — R07 search-currency merge summary
+
+Source `7d3fe511881da58b7055c75d7c86227ff7cafff4`, evaluation work branch.
+The failing 600 EUR / 500 USD permutation is preserved. Search currency now
+flows from both real provider adapters to common display-summary selection.
+Missing/invalid context and no comparable offer are explicit non-selection,
+including at public presentation; all differing/incomplete observations remain.
+No FX, price invention, ranking/role change, provider call or private decryption.
+A01/A02 and property-identity matching remain outside scope.
+
+Targeted synthetic tests 19/19 PASS. Exact isolated Windows `release:ci` and
+separate `audit:security` PASS on candidate 0e974220: V2 226/226, V3 3154/3154,
+lifecycle 665 PASS / 17 existing explicit Valkey SKIP, security 29/29,
+release 101/101, analytics 31/31, capacity 9/9, beta 4/4. TypeScript, build,
+analytics gate, zero-vulnerability audit, local smoke, PS5.1 parse 17/17 and
+explicit-SHA release-manifest creation/verification PASS. Executable/test
+hashes stay bound to the tested candidate; only measured documentation is
+finalized afterwards. No CI or publication success is inferred. See
+`../engine-v3/d0069-search-currency-merge-validation.md`. Consolidation is
+conditional on final gates and selective scope checks; actual push status and
+pending local commits must be reported after direct remote readback.
+
 ## D-0068 — Room presentation and cancellation-instant equivalence
 
 Source `f03b83d0b403e1b8bd82c92606d9855df7133db2`, evaluation work branch.

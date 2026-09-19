@@ -440,7 +440,8 @@ function createRouteStackSearchResult({
 
   const hotels =
     mergeHotels(
-      mappedHotels
+      mappedHotels,
+      { searchCurrency: request?.currency ?? "EUR" }
     );
 
   const continuationCursor =
