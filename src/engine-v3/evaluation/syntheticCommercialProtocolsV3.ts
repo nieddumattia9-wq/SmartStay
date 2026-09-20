@@ -1,6 +1,6 @@
 import { stableSerializeV3 } from '../contract/stableHashV3';
 import {
-  COMMERCIAL_EVIDENCE_VERSION_V3, commercialEqualV3, validCommercialScopeV3,
+  COMMERCIAL_EVIDENCE_VERSION_V3, FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3, commercialScopesEqualV3, validCommercialScopeV3,
   validateCommercialEvidenceV3,
   type CommercialAssessmentV3, type CommercialComponentV3, type CommercialEventV3,
   type CommercialEvidenceV3, type CommercialScopeV3, type CommercialTermsV3,
@@ -10,7 +10,7 @@ import {
 export type SyntheticCommercialProfileV3 = 'synthetic-session@1' | 'synthetic-attested-quote@1';
 export interface SyntheticCommercialOriginalV3 { id: string; operation: string; capturedAt: string; body: string; sha256: string }
 export interface SyntheticCommercialPacketV3 {
-  version: 'synthetic-commercial-packet@1'; origin: 'SYNTHETIC_ONLY'; profile: SyntheticCommercialProfileV3;
+  version: 'synthetic-commercial-packet@1' | 'synthetic-commercial-packet@1.1'; origin: 'SYNTHETIC_ONLY'; profile: SyntheticCommercialProfileV3;
   expectedScope: CommercialScopeV3; evaluatedAt: string;
   records: SyntheticCommercialOriginalV3[]; manifestSha256: string;
 }
@@ -86,7 +86,7 @@ function normalize(profile: SyntheticCommercialProfileV3, original: SyntheticCom
 /** Authentication -> normalization -> pure qualification. No engine, policy, network or HUMAN receipt. */
 export async function prepareSyntheticCommercialEvidenceV3(packet: SyntheticCommercialPacketV3): Promise<PreparedCommercialEvidenceV3> {
   const copy=structuredClone(packet),{manifestSha256,...manifest}=copy;
-  if(copy.version!=='synthetic-commercial-packet@1'||copy.origin!=='SYNTHETIC_ONLY'||!['synthetic-session@1','synthetic-attested-quote@1'].includes(copy.profile))throw new Error('COMMERCIAL_PROFILE_UNSUPPORTED');
+  if(!['synthetic-commercial-packet@1','synthetic-commercial-packet@1.1'].includes(copy.version)||copy.origin!=='SYNTHETIC_ONLY'||!['synthetic-session@1','synthetic-attested-quote@1'].includes(copy.profile))throw new Error('COMMERCIAL_PROFILE_UNSUPPORTED');
   if(await commercialPacketManifestV3(manifest)!==manifestSha256)throw new Error('COMMERCIAL_MANIFEST_HASH_MISMATCH');
   const ids=new Set<string>();
   for(const r of copy.records){
@@ -96,8 +96,9 @@ export async function prepareSyntheticCommercialEvidenceV3(packet: SyntheticComm
   // Interpret only after ALL originals have passed authentication, not progressively.
   const events=copy.records.map(r=>normalize(copy.profile,r));
   if(!validCommercialScopeV3(copy.expectedScope))throw new Error('COMMERCIAL_EXPECTED_SCOPE_INVALID');
-  if(events.some(e=>!commercialEqualV3(e.scope,copy.expectedScope)))throw new Error('COMMERCIAL_EXPECTED_SCOPE_MISMATCH');
-  const evidence:CommercialEvidenceV3={version:COMMERCIAL_EVIDENCE_VERSION_V3,scope:copy.expectedScope,evaluatedAt:copy.evaluatedAt,events,
+  const version=copy.version==='synthetic-commercial-packet@1.1'?FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3:COMMERCIAL_EVIDENCE_VERSION_V3;
+  if(events.some(e=>!commercialScopesEqualV3(e.scope,copy.expectedScope,version)))throw new Error('COMMERCIAL_EXPECTED_SCOPE_MISMATCH');
+  const evidence:CommercialEvidenceV3={version,scope:copy.expectedScope,evaluatedAt:copy.evaluatedAt,events,
     provenance:{origin:'SYNTHETIC_ONLY',profile:copy.profile,manifestSha256,originalSha256s:copy.records.map(r=>r.sha256)}};
   const prepared=freezeDeep({evidence,assessment:validateCommercialEvidenceV3(evidence),authenticatedOriginals:copy.records});issued.add(prepared);return prepared;
 }

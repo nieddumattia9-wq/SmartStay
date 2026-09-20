@@ -2,6 +2,7 @@ import type {
   Hotel,
 } from "../../types/hotel";
 
+import type { SearchPartySource } from '../../utils/searchParty';
 import {
   classifyAccommodationV2,
 } from "../categories/accommodationCategoryModel";
@@ -225,6 +226,8 @@ export interface SmartStayEngineV2SearchInput {
   children?:
     number |
     null;
+
+  searchParty?: SearchPartySource;
 
   rooms?:
     number |

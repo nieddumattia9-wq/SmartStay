@@ -185,3 +185,12 @@ PASS (V2 242, V3 3230, lifecycle 665 PASS/17 preexisting Valkey skips); typechec
 build, security/dependency audit and release-related gates PASS. No provider or
 private execution. Original failures remain bound to c3733cef; final remote
 publication is established only by direct readback, separately from local gates.
+
+| D-0072 | 2026-09-20 | Preserve search-origin child ages and room allocation through metadata, V2, V3 semantic scope/replay and explicitly versioned single-unit A02 binding; retain incomplete and unsupported scopes without historical migration. | Authorized synthetic implementation; selective work-branch publication conditional on isolated Windows gates and direct remote readback | `decisions/0072-search-family-commercial-binding.md` |
+
+D-0072 local final validation: isolated candidate a3be50a, targeted175/175,
+V2 242/242, V3 3262/3262, exact Windows release:ci PASS (including typecheck,
+build, dependency audit, local smoke and all canonical suites). Lifecycle665
+PASS/17 preexisting Valkey skips. Source/test hashes remain fixed while reporting
+Markdown is completed. No CI or LIVE claim; final publication is verified by
+direct remote readback, with main and all historical/protected materials intact.

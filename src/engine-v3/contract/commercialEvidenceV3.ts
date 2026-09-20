@@ -1,8 +1,11 @@
 import { createStableHashV3, stableSerializeV3 } from './stableHashV3';
+import { interpretChildAges } from '../../utils/searchParty';
 import { createStayOfferIntegritySnapshotV3, enumerateStayNightsV3, validateStayOfferIntegritySnapshotV3, type StayOfferIntegritySnapshotV3 } from '../integrity/stayOfferIntegrityV3';
 import { canonicalExplicitInstant, orderExplicitInstants } from '../../../server/shared/explicit-instant';
 
 export const COMMERCIAL_EVIDENCE_VERSION_V3 = 'stayopti.offer-commercial-evidence@1' as const;
+export const FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3 = 'stayopti.offer-commercial-evidence@1.1' as const;
+export type CommercialEvidenceVersionV3 = typeof COMMERCIAL_EVIDENCE_VERSION_V3 | typeof FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3;
 // Same monetary boundary as historical decision-bound evidence; not a price policy.
 export const COMMERCIAL_EVIDENCE_DELTA_V3 = 0.02;
 export interface CommercialScopeV3 {
@@ -32,12 +35,12 @@ export interface CommercialEventV3 {
  terms: CommercialTermsV3; issues: string[]; contraryObservations: string[];
 }
 export interface CommercialEvidenceV3 {
- version: typeof COMMERCIAL_EVIDENCE_VERSION_V3;
+ version: CommercialEvidenceVersionV3;
  scope: CommercialScopeV3; evaluatedAt: string; events: CommercialEventV3[];
  provenance: { origin: 'SYNTHETIC_ONLY'; profile: string; manifestSha256: string; originalSha256s: string[] };
 }
 export interface CommercialAssessmentV3 {
- version: typeof COMMERCIAL_EVIDENCE_VERSION_V3;
+ version: CommercialEvidenceVersionV3;
  status: 'SUPPORTED_AT_OBSERVATION' | 'INCOMPLETE' | 'CONFLICTING' | 'EXPIRED' | 'INVALID';
  reasons: string[]; scope: CommercialScopeV3; observedTotal: number | null; verifiedTotal: number | null;
  snapshot: StayOfferIntegritySnapshotV3 | null; verificationCount: number; retrievalCount: number;
@@ -46,6 +49,15 @@ export interface CommercialAssessmentV3 {
  engineInvocations: 0; policyInvocations: 0; goldenAdmission: false;
 }
 export const commercialEqualV3=(a:unknown,b:unknown)=>stableSerializeV3(a)===stableSerializeV3(b);
+export function commercialScopeMeaningV3(scope: CommercialScopeV3, version: CommercialEvidenceVersionV3) {
+ // Legacy @1 retains ordered equality. @1.1 has a single-unit age multiset;
+ // multi-unit wire scopes still do not attest a per-room allocation.
+ return version === FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3 && scope.units === 1
+  ? {...scope, childAges: interpretChildAges(scope.childAges, scope.childAges.length).ages} : scope;
+}
+export function commercialScopesEqualV3(a: CommercialScopeV3, b: CommercialScopeV3, version: CommercialEvidenceVersionV3) {
+ return commercialEqualV3(commercialScopeMeaningV3(a, version), commercialScopeMeaningV3(b, version));
+}
 export function commercialTermsMeaningV3(terms:CommercialTermsV3):CommercialTermsV3 {
  const at=commercialInstantV3(terms.cancellation.until);
  return {...terms,restrictions:[...new Set(terms.restrictions)].sort(),cancellation:{...terms.cancellation,until:at??terms.cancellation.until}};
@@ -62,7 +74,7 @@ const opaque=(v:unknown)=>typeof v==='string'&&v.length>0;
 export function validCommercialScopeV3(s: CommercialScopeV3): boolean {
  return !!s&&[s.propertyId,s.offerId,s.offerVersion,s.roomId].every(opaque)&&/^[A-Z]{3}$/.test(s.currency)&&
  enumerateStayNightsV3(s.checkIn,s.checkOut).length>0&&Number.isSafeInteger(s.adults)&&s.adults>0&&Number.isSafeInteger(s.units)&&s.units>0&&
- Array.isArray(s.childAges)&&s.childAges.every(x=>Number.isSafeInteger(x)&&x>=0&&x<18);
+ Array.isArray(s.childAges)&&interpretChildAges(s.childAges,s.childAges.length).state==='KNOWN'&&s.childAges.every(x=>x<18);
 }
 function eventTotal(e: CommercialEventV3): number | null {
  if(!money(e.amount)||e.currency!==e.scope.currency||e.mandatoryCoverage!=='DOCUMENTED')return null;
@@ -79,13 +91,13 @@ function eventTotal(e: CommercialEventV3): number | null {
 export function validateCommercialEvidenceV3(evidence: CommercialEvidenceV3): CommercialAssessmentV3 {
  const reasons: string[]=[],invalid:string[]=[],conflicts:string[]=[],expired:string[]=[];
  const {scope,events}=evidence;
- if(evidence.version!==COMMERCIAL_EVIDENCE_VERSION_V3||!validCommercialScopeV3(scope)||commercialInstantV3(evidence.evaluatedAt)===null)invalid.push('SCHEMA_OR_SCOPE_INVALID');
+ if(![COMMERCIAL_EVIDENCE_VERSION_V3,FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3].includes(evidence.version)||!validCommercialScopeV3(scope)||commercialInstantV3(evidence.evaluatedAt)===null)invalid.push('SCHEMA_OR_SCOPE_INVALID');
  const ids=new Set<string>();let previous:string|null=null;
  const evaluated=commercialInstantV3(evidence.evaluatedAt);
  let expiryUninterpretable=false;
  for(const e of events){
   if(!opaque(e.id)||ids.has(e.id))invalid.push('EVENT_ID_INVALID');ids.add(e.id);
-  if(!commercialEqualV3(e.scope,scope))conflicts.push('EVENT_SCOPE_MISMATCH:'+e.id);
+  if(!commercialScopesEqualV3(e.scope,scope,evidence.version))conflicts.push('EVENT_SCOPE_MISMATCH:'+e.id);
   const at=commercialInstantV3(e.observedAt);
   if(at===null||evaluated===null||previous!==null&&orderExplicitInstants(e.observedAt,previous)===-1||orderExplicitInstants(e.observedAt,evidence.evaluatedAt)===1)invalid.push('OBSERVATION_TIME_INVALID:'+e.id);
   if(at!==null)previous=e.observedAt;
@@ -138,9 +150,9 @@ export function validateCommercialEvidenceV3(evidence: CommercialEvidenceV3): Co
   if(snapshot.room.state!=='known'||snapshot.mealPlan.state!=='known'||snapshot.cancellation.state!=='known')reasons.push('COMMERCIAL_CONDITIONS_INCOMPLETE');
  }
  const all=[...new Set([...invalid,...conflicts,...expired,...reasons])].sort();
- return {version:COMMERCIAL_EVIDENCE_VERSION_V3,status:invalid.length?'INVALID':conflicts.length?'CONFLICTING':expired.length?'EXPIRED':reasons.length?'INCOMPLETE':'SUPPORTED_AT_OBSERVATION',reasons:all,scope:structuredClone(scope),observedTotal,verifiedTotal,snapshot,
+ return {version:evidence.version,status:invalid.length?'INVALID':conflicts.length?'CONFLICTING':expired.length?'EXPIRED':reasons.length?'INCOMPLETE':'SUPPORTED_AT_OBSERVATION',reasons:all,scope:structuredClone(scope),observedTotal,verifiedTotal,snapshot,
   verificationCount:verifications.length,retrievalCount:retrievals.length,providerValidUntil:verified?.providerValidUntil??null,
   freshness:expiryUninterpretable||evaluated===null?'UNKNOWN':expired.length?'EXPIRED':verified?.providerValidUntil?'EXPLICIT_EXPIRY_VALID':'UNKNOWN',
-  semanticFingerprint:createStableHashV3({scope,observedTotal,verifiedTotal,components:componentMeanings(verified?.components??[]),terms:verified?commercialTermsMeaningV3(verified.terms):null,availability:verified?.availability??'UNKNOWN',providerValidUntil:commercialInstantV3(verified?.providerValidUntil),reasons:all},'stayopti-common-commercial-semantics'),
+  semanticFingerprint:createStableHashV3({scope:commercialScopeMeaningV3(scope,evidence.version),observedTotal,verifiedTotal,components:componentMeanings(verified?.components??[]),terms:verified?commercialTermsMeaningV3(verified.terms):null,availability:verified?.availability??'UNKNOWN',providerValidUntil:commercialInstantV3(verified?.providerValidUntil),reasons:all},'stayopti-common-commercial-semantics'),
   provenanceFingerprint:createStableHashV3({provenance:evidence.provenance,events},'stayopti-common-commercial-provenance'),engineInvocations:0,policyInvocations:0,goldenAdmission:false};
 }

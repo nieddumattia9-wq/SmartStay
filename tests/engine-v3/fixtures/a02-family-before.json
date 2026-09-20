@@ -1,0 +1,22 @@
+{
+  "sourceCheckpoint": "e3622ae2a535acd80099a4e0f9a9ff630e747aa1",
+  "origin": "SYNTHETIC_ONLY",
+  "scenario": { "adults": 2, "children": 2, "childAges": [6, 11], "rooms": 1 },
+  "roomAssignments": [{ "adults": 2, "children": 2, "childAges": [6, 11] }],
+  "roomDescription": "Private family suite; 2 double beds; capacity 4 guests",
+  "reproduction": "neutralSearch with this family and room description -> createStoredSearchMeta/normalizeStoredSearchMeta -> buildSmartStayFrontendRuntimeV2 -> adaptV2SearchResultToDecisionV3; commercialPacket with the same authenticated scope/terms -> prepareSyntheticCommercialEvidenceV3 -> createBoundCommercialEvidenceV3",
+  "observedBefore": {
+    "metadataAges": null,
+    "restoredAges": null,
+    "v2Ages": null,
+    "decisionChildren": 2,
+    "decisionAges": null,
+    "preparation": "SUPPORTED_AT_OBSERVATION",
+    "binding": "COMMERCIAL_DECISION_BINDING_REJECTED:DECISION_CHILD_AGE_BINDING_UNREPRESENTABLE"
+  },
+  "sourceHashes": {
+    "src/utils/searchMeta.ts": "9e656c2b8348b4fee44a6d8c6021821ad8f9f51ee697c77f2178b12c4bcab273",
+    "src/engine-v3/evaluation/boundCommercialEvidenceV3.ts": "246aabf4972a8e80adf2927ef34a9c58ed579a30fbf983d478e8942c52ace71c"
+  },
+  "historicalResultImmutable": true
+}

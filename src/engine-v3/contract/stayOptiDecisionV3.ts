@@ -1,3 +1,5 @@
+import { validSearchPartyMeaning, type SearchPartyMeaning } from '../../utils/searchParty';
+import { createDecisionFingerprintV3 } from '../replay/decisionReplayV3';
 import {
   assertCommercialFirewallV3,
 } from "./commercialFirewallV3";
@@ -104,6 +106,8 @@ export type StayOptiDecisionRoleV3 =
   | "split-saver";
 
 export interface StayOptiDecisionContextV3 {
+  /** Explicit extension; absence retains the historical count-only contract. */
+  party?: SearchPartyMeaning;
   checkIn:
     string |
     null;
@@ -464,6 +468,7 @@ export interface StayOptiDecisionV3 {
 }
 
 export type StayOptiDecisionValidationIssueCodeV3 =
+  | "decision-party-invalid"
   | "decision-version-mismatch"
   | "decision-hash-invalid"
   | "decision-solution-invalid"
@@ -618,6 +623,11 @@ export function validateStayOptiDecisionV3(
       "configHash/replay",
       "Config, input and decision fingerprints must use the stable V3 hash format."
     );
+  }
+
+  if ('party' in decision.context && (!validSearchPartyMeaning(decision.context.party!, decision.context) ||
+      createDecisionFingerprintV3(decision) !== decision.replay.decisionFingerprint)) {
+    addIssue(issues, 'decision-party-invalid', 'context.party/replay', 'Search party extension or its decision fingerprint is invalid.');
   }
 
   const solutionIds =

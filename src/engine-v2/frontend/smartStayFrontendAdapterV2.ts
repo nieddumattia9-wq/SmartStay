@@ -313,6 +313,8 @@ export interface SmartStayFrontendInputV2 {
       "children"
     ];
 
+  searchParty?: SmartStayEngineV2SearchInput['searchParty'];
+
   rooms?:
     SmartStayEngineV2SearchInput[
       "rooms"
@@ -3533,6 +3535,8 @@ function createFrontendEngineInput(
 
     children:
       input.children,
+
+    ...(input.searchParty !== undefined ? { searchParty: structuredClone(input.searchParty) } : {}),
 
     rooms:
       input.rooms,

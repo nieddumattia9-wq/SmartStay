@@ -1,3 +1,4 @@
+import { createRoomsPayload } from '../../utils/searchRoomAssignments';
 import {
   calculateStayNights,
   createStoredSearchMeta,
@@ -115,64 +116,6 @@ const DEFAULT_GUESTS: GuestsSelectorValue = {
   childAges: [],
   rooms: 1,
 };
-
-function createRoomsPayload(
-  guests: GuestsSelectorValue
-): HotelRoomPayload[] {
-  const rooms: HotelRoomPayload[] =
-    Array.from(
-      {
-        length: guests.rooms,
-      },
-      () => ({
-        adults: 1,
-        children: 0,
-        childAges: [],
-      })
-    );
-
-  let remainingAdults =
-    guests.adults - guests.rooms;
-
-  let adultRoomIndex = 0;
-
-  while (remainingAdults > 0) {
-    rooms[
-      adultRoomIndex % rooms.length
-    ].adults += 1;
-
-    remainingAdults -= 1;
-    adultRoomIndex += 1;
-  }
-
-  guests.childAges.forEach((
-    childAge,
-    childIndex
-  ) => {
-    if (
-      childAge === null ||
-      !Number.isInteger(childAge) ||
-      childAge < 0 ||
-      childAge > 12
-    ) {
-      return;
-    }
-
-    const room =
-      rooms[
-        childIndex % rooms.length
-      ];
-
-    room.childAges.push(
-      childAge
-    );
-
-    room.children =
-      room.childAges.length;
-  });
-
-  return rooms;
-}
 
 function TripOptimizer() {
   const navigate =
@@ -456,6 +399,9 @@ function TripOptimizer() {
 
               children:
                 guests.children,
+
+              childAges: guests.childAges,
+              roomAssignments: searchPayload.rooms,
 
               rooms:
                 guests.rooms,

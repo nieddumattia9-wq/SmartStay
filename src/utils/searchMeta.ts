@@ -1,3 +1,4 @@
+import { createSearchPartySource, type SearchPartySource } from './searchParty';
 import {
   formatDestinationLabel,
 } from "./destinationLabel";
@@ -10,6 +11,8 @@ import {
 } from "./smartStaySearchProfile";
 
 export type StoredSearchMeta = {
+  // Absent only for count-only historical metadata; never auto-migrate it.
+  searchParty?: SearchPartySource;
   destinationLabel: string;
 
   destinationLatitude:
@@ -36,6 +39,8 @@ export type StoredSearchMeta = {
 };
 
 type CreateStoredSearchMetaInput = {
+  childAges?: unknown;
+  roomAssignments?: unknown;
   destinationLabel: string;
 
   destinationLatitude?:
@@ -458,6 +463,8 @@ export function createStoredSearchMeta(
 
     rooms:
       guestComposition.rooms,
+    ...('childAges' in input || 'roomAssignments' in input
+      ? { searchParty: createSearchPartySource(input.childAges, input.roomAssignments) } : {}),
   };
 }
 
@@ -573,5 +580,6 @@ export function normalizeStoredSearchMeta(
 
     rooms:
       guestComposition.rooms,
+    ...('searchParty' in source ? { searchParty: structuredClone(source.searchParty) as SearchPartySource } : {}),
   };
 }

@@ -1273,6 +1273,8 @@ const rankedHotels =
                     ?.children ??
                   null,
 
+                searchParty: searchMeta?.searchParty,
+
                 rooms:
                   searchMeta
                     ?.rooms ??
@@ -1423,6 +1425,10 @@ const rankedHotels =
         ?.adults,
       searchMeta
         ?.children,
+      searchMeta?.searchParty,
+      searchMeta?.currency,
+      searchMeta?.checkIn,
+      searchMeta?.checkOut,
       searchMeta
         ?.rooms,
     ]);

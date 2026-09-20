@@ -1,5 +1,25 @@
 # StayOpti Current State
 
+## D-0072 — search family context and A02 binding, 2026-09-20
+
+Source `e3622ae2a535acd80099a4e0f9a9ff630e747aa1`, evaluation work branch.
+Explicit search-party @1 carries original ages and actual room allocation from
+TripOptimizer metadata/restore through Results and V2 to the V3 context/scope
+and fingerprints. A02 packet/evidence @1.1 compares single-unit age multisets
+only after authentication; actual shadow/replay consumes the bound result.
+Missing/partial/invalid ages never become known from the offer. Multicamera
+assignments survive but A02 binding remains explicitly unsupported because its
+wire scope cannot prove them. Count-only historical documents and @1 evidence
+are not migrated. Public age classification, numerical policies, roles and
+V3 activation remain unchanged. Final isolated gates/publication are recorded
+after execution, separately from CI. See D-0072 for before proof and limits.
+Final isolated Windows candidate `a3be50a85d0aa1d52aa868420ea653b33016dfa6`:
+targeted175/175 (32 new family tests), exact release:ci PASS, V2 242/242,
+V3 3262/3262, lifecycle665 PASS/17 existing Valkey skips, all security/release/
+analytics/capacity/beta gates, TypeScript/build/audit/local smoke PASS. Only
+reporting Markdown changes after this software/test byte checkpoint. No CI,
+LIVE, Golden or commercial completeness certification follows from age binding.
+
 ## D-0071 R1 / A02 — exact common temporal semantics, 2026-09-20
 
 Source checkpoint `c3733cef02ba20d02214334eb936156491be218b` on the evaluation

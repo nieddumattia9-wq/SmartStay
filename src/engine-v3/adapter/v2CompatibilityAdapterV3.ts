@@ -2,6 +2,7 @@ import type {
   HotelOffer,
 } from "../../types/hotel";
 
+import { resolveSearchParty } from '../../utils/searchParty';
 import {
   type SmartStaySelectedOfferV2,
 } from "../../engine-v2/offers/intentAwareOfferSelectionV2";
@@ -1584,6 +1585,8 @@ export function adaptV2SearchResultToDecisionV3(
     adults,
     children,
     rooms,
+    ...(input.searchInput.searchParty !== undefined
+      ? { party: resolveSearchParty(input.searchInput.searchParty, { adults, children, rooms }) } : {}),
     totalBudget:
       normalizePositiveNumber(
         input.searchInput
@@ -1613,6 +1616,7 @@ export function adaptV2SearchResultToDecisionV3(
   const scopeFingerprint =
     createStableHashV3(
       {
+        ...(context.party ? { party: context.party } : {}),
         checkIn,
         checkOut,
         nights,

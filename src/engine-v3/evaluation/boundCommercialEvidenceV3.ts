@@ -1,6 +1,7 @@
 import { createStableHashV3 } from '../contract/stableHashV3';
 import { validateStayOptiDecisionV3, type StayOptiDecisionV3 } from '../contract/stayOptiDecisionV3';
-import { COMMERCIAL_EVIDENCE_DELTA_V3, commercialEqualV3, commercialInstantV3, validateCommercialEvidenceV3 } from '../contract/commercialEvidenceV3';
+import { COMMERCIAL_EVIDENCE_DELTA_V3, FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3, commercialEqualV3, commercialInstantV3, validateCommercialEvidenceV3 } from '../contract/commercialEvidenceV3';
+import { sameChildAgeGroup } from '../../utils/searchParty';
 import type { StayOptiComparableDecisionV3 } from '../promotion/shadowCanaryPromotionV3';
 import { isPreparedCommercialEvidenceV3, type PreparedCommercialEvidenceV3 } from './syntheticCommercialProtocolsV3';
 
@@ -23,7 +24,14 @@ function bindingProblems(decision:StayOptiDecisionV3,comparable:StayOptiComparab
   if(!validateStayOptiDecisionV3(decision).valid)return ['DECISION_INVALID'];
   const scope=assessment.scope,context=decision.context;
   // Historical decision DTO has a count, not the ages: do not silently certify that missing binding.
-  if(scope.childAges.length>0)return ['DECISION_CHILD_AGE_BINDING_UNREPRESENTABLE'];
+  if (!context.party) {
+    if(scope.childAges.length>0)return ['DECISION_CHILD_AGE_BINDING_UNREPRESENTABLE'];
+  } else {
+    if (prepared.evidence.version !== FAMILY_COMMERCIAL_EVIDENCE_VERSION_V3) return ['FAMILY_COMMERCIAL_VERSION_REQUIRED'];
+    if (context.party.ageInformation.state !== 'KNOWN' || context.party.assignmentState === 'INVALID') return ['DECISION_SEARCH_PARTY_INCOMPLETE'];
+    if (context.rooms !== 1 || scope.units !== 1) return ['COMMERCIAL_ROOM_ASSIGNMENT_UNREPRESENTABLE'];
+    if (!sameChildAgeGroup(context.party.ageInformation.ages, scope.childAges, context.children!)) return ['DECISION_CHILD_AGES_MISMATCH'];
+  }
   if(context.checkIn!==scope.checkIn||context.checkOut!==scope.checkOut||context.adults!==scope.adults||context.children!==scope.childAges.length||context.rooms!==scope.units||context.currency!==scope.currency)return ['DECISION_SCOPE_MISMATCH'];
   const token=createStableHashV3({hotelId:scope.propertyId},'stayopti-v3-hotel-selection-token');
   if(comparable.status!=='recommended'||comparable.selectedSolutionToken!==token||decision.robustness.policyPreferredHotelId!==scope.propertyId)return ['DECISION_SELECTION_MISMATCH'];
