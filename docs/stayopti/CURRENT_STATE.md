@@ -1,5 +1,20 @@
 # StayOpti Current State
 
+## D-0071 R1 / A02 — exact common temporal semantics, 2026-09-20
+
+Source checkpoint `c3733cef02ba20d02214334eb936156491be218b` on the evaluation
+work branch. Synthetic reproduction confirms that `.123000Z` was incorrectly
+EXPIRED while `.123Z` was supported, and unknown offset `-00:00` was accepted.
+The R1 candidate reuses the R06 grammar with exact fractional ordering and
+canonical keys through preparation and actual binding. Invalid timestamps are
+not expired facts. Legacy validation, child-age binding refusal, ranking and
+historical results remain unchanged. Targeted 128/128 PASS; isolated Windows
+candidate `4bccb8b3126d3dbb8f3846ff505217dd02ebaf12` passes exact release:ci:
+V2 242/242, V3 3230/3230, lifecycle 665 PASS/17 preexisting Valkey skips,
+all release/security gates, TypeScript, build, dependency audit and local smoke.
+Publication/actual remote state are verified separately in delivery; no CI claim.
+No private execution, acquisition, credential, provider request or LIVE change.
+
 ## D-0071 / A02 — candidate protocol-neutral commercial evidence
 
 After A01 commit `1bc9af7ec9f5cef49364a925b0561bb38ad464f0` (published on the

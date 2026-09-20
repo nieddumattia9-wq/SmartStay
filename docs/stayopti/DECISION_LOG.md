@@ -177,3 +177,11 @@ Actual publication and pending commits are reported from remote readback.
 | D-0070 / A01 | 2026-09-20 | Use provider-neutral traveler-relevant diversification for new executions with explicit legacy replay and saved-order version boundaries. | Approved; isolated Windows release:ci PASS, publication verified separately | `decisions/0070-provider-neutral-visible-ranking.md` |
 
 | D-0071 / A02 | 2026-09-20 | Introduce explicit protocol-neutral commercial evidence and pure preparation with authenticated synthetic ingresses, exact legacy dispatch and verified binding to independent shadow. | Approved evaluation-only; targeted 58 PASS, isolated Windows release:ci PASS (V2 242, V3 3212); no LIVE or Golden promotion, publication verified separately | `decisions/0071-protocol-neutral-commercial-evidence.md` |
+
+| D-0071 R1 / A02 | 2026-09-20 | Reuse exact R06 instant semantics in commercial preparation and decision binding; preserve meaningful fractional precision and distinguish uninterpretable timestamps from actual expiry. | Synthetic evaluation-only repair; original failures retained, selective publication conditional on final Windows gates and direct remote readback; legacy and child-age boundary unchanged | `decisions/0071-r1-common-commercial-instants.md` |
+
+D-0071 R1 local validation: targeted 128/128 and isolated Windows release:ci
+PASS (V2 242, V3 3230, lifecycle 665 PASS/17 preexisting Valkey skips); typecheck,
+build, security/dependency audit and release-related gates PASS. No provider or
+private execution. Original failures remain bound to c3733cef; final remote
+publication is established only by direct readback, separately from local gates.

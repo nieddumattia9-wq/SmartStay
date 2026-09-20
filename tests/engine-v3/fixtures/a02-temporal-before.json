@@ -1,0 +1,58 @@
+{
+  "syntheticOnly": true,
+  "sourceHead": "c3733cef02ba20d02214334eb936156491be218b",
+  "code": [
+    {
+      "path": "src/engine-v3/contract/commercialEvidenceV3.ts",
+      "sha256": "0e38c494bb48bdd9a53d2ea09bbc0ff88cda59040efac26784c7ca66d242593e"
+    },
+    {
+      "path": "src/engine-v3/evaluation/boundCommercialEvidenceV3.ts",
+      "sha256": "2a75e7512452401b92aeb1b33d269182e377f6e1dfb60b1af0fb93f5bc1240b1"
+    },
+    {
+      "path": "server/shared/explicit-instant.mjs",
+      "sha256": "75db76600e2d9bf59e9f5dbbec2ab98cdbb9aad3b032975b9da5f4db0bc30728"
+    }
+  ],
+  "rows": [
+    {
+      "expiry": "2099-08-01T10:10:00.123Z",
+      "status": "SUPPORTED_AT_OBSERVATION",
+      "freshness": "EXPLICIT_EXPIRY_VALID",
+      "reasons": [],
+      "binding": "ACCEPTED",
+      "packetManifest": "3ecc0a0dc9ac39b6a47a88fbd57c99859116f612985f076907ed1d0cdcadf4cd"
+    },
+    {
+      "expiry": "2099-08-01T10:10:00.123000Z",
+      "status": "EXPIRED",
+      "freshness": "EXPIRED",
+      "reasons": [
+        "PROVIDER_EXPIRY_INVALID:record-0",
+        "PROVIDER_EXPIRY_INVALID:record-1",
+        "PROVIDER_EXPIRY_INVALID:record-2"
+      ],
+      "binding": "COMMERCIAL_DECISION_BINDING_REJECTED:EXPIRED|PROVIDER_EXPIRY_INVALID:record-0|PROVIDER_EXPIRY_INVALID:record-1|PROVIDER_EXPIRY_INVALID:record-2",
+      "packetManifest": "0bc1267753024580d0cf6256be0adb08899306398dc243f9939783d7cfdb6291"
+    },
+    {
+      "expiry": "2099-08-01T10:10:00-00:00",
+      "status": "SUPPORTED_AT_OBSERVATION",
+      "freshness": "EXPLICIT_EXPIRY_VALID",
+      "reasons": [],
+      "binding": "ACCEPTED",
+      "packetManifest": "f6b7dba53803e8afb8aa573891699b58823bd01d51230072b0a5e6cb5cdff0c9"
+    }
+  ],
+  "r06Equivalent": "SAME_INSTANT",
+  "r06UnknownOffset": "INSUFFICIENT_INFORMATION",
+  "preparationCalls": 3,
+  "kernelPolicyInvocations": 0,
+  "regressionRun": {
+    "total": 125,
+    "pass": 111,
+    "fail": 14
+  },
+  "fixture": "commercialPacket synthetic-session@1, all validUntil fields replaced, exact bodies and manifest resealed"
+}

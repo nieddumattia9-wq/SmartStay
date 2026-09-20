@@ -1,5 +1,6 @@
 import { createStableHashV3, stableSerializeV3 } from './stableHashV3';
 import { createStayOfferIntegritySnapshotV3, enumerateStayNightsV3, validateStayOfferIntegritySnapshotV3, type StayOfferIntegritySnapshotV3 } from '../integrity/stayOfferIntegrityV3';
+import { canonicalExplicitInstant, orderExplicitInstants } from '../../../server/shared/explicit-instant';
 
 export const COMMERCIAL_EVIDENCE_VERSION_V3 = 'stayopti.offer-commercial-evidence@1' as const;
 // Same monetary boundary as historical decision-bound evidence; not a price policy.
@@ -47,21 +48,15 @@ export interface CommercialAssessmentV3 {
 export const commercialEqualV3=(a:unknown,b:unknown)=>stableSerializeV3(a)===stableSerializeV3(b);
 export function commercialTermsMeaningV3(terms:CommercialTermsV3):CommercialTermsV3 {
  const at=commercialInstantV3(terms.cancellation.until);
- return {...terms,restrictions:[...new Set(terms.restrictions)].sort(),cancellation:{...terms.cancellation,until:at===null?terms.cancellation.until:new Date(at).toISOString()}};
+ return {...terms,restrictions:[...new Set(terms.restrictions)].sort(),cancellation:{...terms.cancellation,until:at??terms.cancellation.until}};
 }
 function componentMeanings(components:CommercialComponentV3[]) {
  // Component identifiers/order are provenance, not monetary or contractual facts.
  return components.map(({id:_id,...fact})=>fact).sort((a,b)=>stableSerializeV3(a).localeCompare(stableSerializeV3(b)));
 }
-export function commercialInstantV3(v: unknown): number | null {
- if(typeof v!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?(?:Z|[+-]\d\d:\d\d)$/.test(v))return null;
- const date=v.slice(0,10),time=v.slice(11,19),offset=v.slice(-6);
- const day=Date.parse(date+'T00:00:00Z');
- if(!Number.isFinite(day)||new Date(day).toISOString().slice(0,10)!==date)return null;
- if(Number(time.slice(0,2))>23||Number(time.slice(3,5))>59||Number(time.slice(6,8))>59)return null;
- if(!v.endsWith('Z')&&(Number(offset.slice(1,3))>14||Number(offset.slice(4))>59||Number(offset.slice(1,3))===14&&Number(offset.slice(4))!==0))return null;
- const n=Date.parse(v);return Number.isFinite(n)?n:null;
-}
+// Canonical exact instant, not a millisecond number. Uses the R06 grammar;
+// raw timestamps remain in the authenticated events and snapshot.
+export const commercialInstantV3=canonicalExplicitInstant;
 const money=(n:unknown)=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
 const opaque=(v:unknown)=>typeof v==='string'&&v.length>0;
 export function validCommercialScopeV3(s: CommercialScopeV3): boolean {
@@ -85,15 +80,21 @@ export function validateCommercialEvidenceV3(evidence: CommercialEvidenceV3): Co
  const reasons: string[]=[],invalid:string[]=[],conflicts:string[]=[],expired:string[]=[];
  const {scope,events}=evidence;
  if(evidence.version!==COMMERCIAL_EVIDENCE_VERSION_V3||!validCommercialScopeV3(scope)||commercialInstantV3(evidence.evaluatedAt)===null)invalid.push('SCHEMA_OR_SCOPE_INVALID');
- const ids=new Set<string>();let previous=-Infinity;
+ const ids=new Set<string>();let previous:string|null=null;
+ const evaluated=commercialInstantV3(evidence.evaluatedAt);
+ let expiryUninterpretable=false;
  for(const e of events){
   if(!opaque(e.id)||ids.has(e.id))invalid.push('EVENT_ID_INVALID');ids.add(e.id);
   if(!commercialEqualV3(e.scope,scope))conflicts.push('EVENT_SCOPE_MISMATCH:'+e.id);
   const at=commercialInstantV3(e.observedAt);
-  if(at===null||at<previous||at>(commercialInstantV3(evidence.evaluatedAt)??-Infinity))invalid.push('OBSERVATION_TIME_INVALID:'+e.id);
-  previous=at??previous;
-  if(e.providerVerifiedAt!==null&&(commercialInstantV3(e.providerVerifiedAt)===null||(commercialInstantV3(e.providerVerifiedAt)??Infinity)>(at??-Infinity)))invalid.push('PROVIDER_VERIFICATION_TIME_INVALID:'+e.id);
-  if(e.providerValidUntil!==null){const until=commercialInstantV3(e.providerValidUntil);if(until===null||until<(at??Infinity))expired.push('PROVIDER_EXPIRY_INVALID:'+e.id);else if(until<(commercialInstantV3(evidence.evaluatedAt)??Infinity))expired.push('PROVIDER_EXPLICIT_EXPIRY:'+e.id);}
+  if(at===null||evaluated===null||previous!==null&&orderExplicitInstants(e.observedAt,previous)===-1||orderExplicitInstants(e.observedAt,evidence.evaluatedAt)===1)invalid.push('OBSERVATION_TIME_INVALID:'+e.id);
+  if(at!==null)previous=e.observedAt;
+  if(e.providerVerifiedAt!==null&&(commercialInstantV3(e.providerVerifiedAt)===null||at===null||orderExplicitInstants(e.providerVerifiedAt,e.observedAt)===1))invalid.push('PROVIDER_VERIFICATION_TIME_INVALID:'+e.id);
+  if(e.providerValidUntil!==null){
+   const until=commercialInstantV3(e.providerValidUntil);
+   if(until===null){expiryUninterpretable=true;invalid.push('PROVIDER_EXPIRY_UNINTERPRETABLE:'+e.id);}
+   else if(evaluated!==null&&orderExplicitInstants(e.providerValidUntil,evidence.evaluatedAt)===-1)expired.push('PROVIDER_EXPLICIT_EXPIRY:'+e.id);
+  }
   if(!/^[a-f0-9]{64}$/.test(e.source.sha256)||!e.source.pointer||!e.source.transformation)invalid.push('SOURCE_REFERENCE_INVALID:'+e.id);
   if(e.components.some(c=>!opaque(c.id))||new Set(e.components.map(c=>c.id)).size!==e.components.length)invalid.push('COMPONENT_ID_AMBIGUOUS:'+e.id);
   if(e.currency!==scope.currency)conflicts.push('CURRENCY_MISMATCH:'+e.id);
@@ -113,13 +114,13 @@ export function validateCommercialEvidenceV3(evidence: CommercialEvidenceV3): Co
   if(first&&!commercialEqualV3(componentMeanings(first.components),componentMeanings(v.components)))conflicts.push('COMMERCIAL_COMPONENTS_CHANGED:'+v.id);
   const cost=eventTotal(v);
   if(cost===null)reasons.push('VERIFIED_COMPLETE_COST_UNPROVEN:'+v.id);
-  if(first&&(commercialInstantV3(v.observedAt)??-Infinity)<(commercialInstantV3(first.observedAt)??Infinity))invalid.push('VERIFICATION_PRECEDES_OBSERVATION');
+  if(first&&orderExplicitInstants(v.observedAt,first.observedAt)===-1)invalid.push('VERIFICATION_PRECEDES_OBSERVATION');
   if(cost!==null&&observedTotal!==null&&cost>observedTotal+COMMERCIAL_EVIDENCE_DELTA_V3)conflicts.push('TRAVELER_PRICE_INCREASE:'+v.id);
   if(verified&&(!commercialEqualV3(commercialTermsMeaningV3(v.terms),commercialTermsMeaningV3(verified.terms))||cost!==verifiedTotal))conflicts.push('VERIFICATIONS_DISAGREE:'+v.id);
  }
  for(const r of retrievals){
   const v=verifications.find(e=>e.id===r.refersToVerificationId);
-  if(!v||!v.sessionId||r.sessionId!==v.sessionId||(commercialInstantV3(r.observedAt)??-Infinity)<(commercialInstantV3(v.observedAt)??Infinity))conflicts.push('RETRIEVAL_BINDING_INVALID:'+r.id);
+  if(!v||!v.sessionId||r.sessionId!==v.sessionId||orderExplicitInstants(r.observedAt,v.observedAt)===-1)conflicts.push('RETRIEVAL_BINDING_INVALID:'+r.id);
   else if(!commercialEqualV3(commercialTermsMeaningV3(r.terms),commercialTermsMeaningV3(v.terms))||!commercialEqualV3(componentMeanings(r.components),componentMeanings(v.components))||eventTotal(r)===null||eventTotal(v)===null||Math.abs(eventTotal(r)!-eventTotal(v)!)>COMMERCIAL_EVIDENCE_DELTA_V3||r.availability!==v.availability||commercialInstantV3(r.providerValidUntil)!==commercialInstantV3(v.providerValidUntil))conflicts.push('RETRIEVAL_CONFLICT:'+r.id);
  }
  let snapshot:StayOfferIntegritySnapshotV3|null=null;
@@ -139,7 +140,7 @@ export function validateCommercialEvidenceV3(evidence: CommercialEvidenceV3): Co
  const all=[...new Set([...invalid,...conflicts,...expired,...reasons])].sort();
  return {version:COMMERCIAL_EVIDENCE_VERSION_V3,status:invalid.length?'INVALID':conflicts.length?'CONFLICTING':expired.length?'EXPIRED':reasons.length?'INCOMPLETE':'SUPPORTED_AT_OBSERVATION',reasons:all,scope:structuredClone(scope),observedTotal,verifiedTotal,snapshot,
   verificationCount:verifications.length,retrievalCount:retrievals.length,providerValidUntil:verified?.providerValidUntil??null,
-  freshness:expired.length?'EXPIRED':verified?.providerValidUntil?'EXPLICIT_EXPIRY_VALID':'UNKNOWN',
+  freshness:expiryUninterpretable||evaluated===null?'UNKNOWN':expired.length?'EXPIRED':verified?.providerValidUntil?'EXPLICIT_EXPIRY_VALID':'UNKNOWN',
   semanticFingerprint:createStableHashV3({scope,observedTotal,verifiedTotal,components:componentMeanings(verified?.components??[]),terms:verified?commercialTermsMeaningV3(verified.terms):null,availability:verified?.availability??'UNKNOWN',providerValidUntil:commercialInstantV3(verified?.providerValidUntil),reasons:all},'stayopti-common-commercial-semantics'),
   provenanceFingerprint:createStableHashV3({provenance:evidence.provenance,events},'stayopti-common-commercial-provenance'),engineInvocations:0,policyInvocations:0,goldenAdmission:false};
 }

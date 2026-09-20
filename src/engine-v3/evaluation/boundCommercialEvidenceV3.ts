@@ -14,7 +14,7 @@ export interface BoundCommercialEvidenceV3 {
 const issued=new WeakSet<object>();
 function cancellationMeaning<T extends {freeCancellationUntil:string|null}>(value:T):T {
   const at=commercialInstantV3(value.freeCancellationUntil);
-  return {...value,freeCancellationUntil:at===null?value.freeCancellationUntil:new Date(at).toISOString()};
+  return {...value,freeCancellationUntil:at??value.freeCancellationUntil};
 }
 function bindingProblems(decision:StayOptiDecisionV3,comparable:StayOptiComparableDecisionV3,prepared:PreparedCommercialEvidenceV3):string[] {
   if(!isPreparedCommercialEvidenceV3(prepared))return ['AUTHENTICATED_PREPARATION_REQUIRED'];
