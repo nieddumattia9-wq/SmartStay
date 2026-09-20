@@ -1,5 +1,22 @@
 # StayOpti Current State
 
+## D-0071 / A02 — candidate protocol-neutral commercial evidence
+
+After A01 commit `1bc9af7ec9f5cef49364a925b0561bb38ad464f0` (published on the
+work branch), explicit common-evidence and bound-evidence versions separate
+original authentication, semantic preparation and independent-shadow consumption.
+Two invented protocols reach that actual consumer with equivalent facts;
+historical evidence validation remains exact behind explicit dispatch.
+58 targeted tests PASS; final isolated Windows `release:ci` PASS: V2 242/242,
+V3 3212/3212, lifecycle 665 PASS / 17 existing Valkey skips, security29,
+release101, analytics31, capacity9, beta4, typecheck/build, dependency audit,
+analytics-beta and local smoke. Local evidence, not GitHub CI. No LIVE producer,
+real blind/Golden admission or public V3 activation. Child ages are retained
+in evidence but binding to the count-only historical decision is explicitly
+unsupported, not silently certified. See decision D-0071 for exact limits.
+Selective commit/push is authorized only on the work branch; actual SHA,
+remote equality and pending commits are reported after direct observation.
+
 ## D-0070 / A01 — candidate provider-neutral presentation
 
 New ranking executions explicitly resolve `traveler-relevant@1`; historical

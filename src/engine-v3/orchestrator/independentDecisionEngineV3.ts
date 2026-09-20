@@ -52,6 +52,8 @@ import type {
   StayOptiEvaluationSegmentV3,
 } from "../evaluation/evaluationCalibrationV3";
 
+import { verifyBoundCommercialEvidenceV3, type BoundCommercialEvidenceV3 } from "../evaluation/boundCommercialEvidenceV3";
+
 export interface RunIndependentDecisionShadowInputV3 {
   mode?: "off" | "shadow";
   comparisonToken: string;
@@ -112,7 +114,8 @@ export interface StayOptiBoundPublicRateAbstentionEvidenceV3 {
 
 export type StayOptiBoundPublicRateEvidenceInputV3 =
   | StayOptiBoundPublicRateEvidenceV3
-  | StayOptiBoundPublicRateAbstentionEvidenceV3;
+  | StayOptiBoundPublicRateAbstentionEvidenceV3
+  | BoundCommercialEvidenceV3;
 
 type PublicRateEvidenceWithoutFingerprintV3 =
   Omit<
@@ -648,13 +651,23 @@ function finitePositiveAmount(
 }
 
 export function deriveBoundPublicRateConsistencyV3(
+  input: {decision: StayOptiDecisionV3; comparable: StayOptiComparableDecisionV3; evidence?: StayOptiBoundPublicRateEvidenceInputV3}
+): StayPublicRatesConsistencyV3 {
+  if (input.evidence?.evidenceType === "protocol-neutral-commercial-evidence") {
+    return verifyBoundCommercialEvidenceV3({...input, evidence: input.evidence});
+  }
+  return deriveLegacyBoundPublicRateConsistencyV3({...input, evidence: input.evidence});
+}
+
+// Historical body and payload contract unchanged. No implicit migration or profile inference.
+export function deriveLegacyBoundPublicRateConsistencyV3(
   input: {
     decision:
       StayOptiDecisionV3;
     comparable:
       StayOptiComparableDecisionV3;
     evidence?:
-      StayOptiBoundPublicRateEvidenceInputV3;
+      StayOptiBoundPublicRateEvidenceV3 | StayOptiBoundPublicRateAbstentionEvidenceV3;
   }
 ): StayPublicRatesConsistencyV3 {
   const evidence =

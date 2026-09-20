@@ -1,0 +1,22 @@
+{
+  "checkpoint": "fdca9e3457cfe1bf9757dfe092e47362627733be",
+  "origin": "SYNTHETIC_ONLY",
+  "method": "actual deriveBoundPublicRateConsistencyV3, same invented selected solution and totals; new factory fingerprint after changing evidenceType only",
+  "results": {
+    "rates-prebook-get-prebook": "verified",
+    "search-quote-verification": "failed",
+    "missing": "unverified",
+    "priceIncreaseOneEuro": "failed",
+    "retrievalDisagreementOneEuro": "failed"
+  },
+  "meaning": "Historical contract requires a named sequence, not a common evidence proof. Preserved, not retroactively relabelled.",
+  "developmentRegression": {
+    "candidate": "3412c6c5ebed1fb4a2f53ba4bb98df6647e732ea",
+    "decisionIncludedTax": 24,
+    "evidenceIncludedTax": 29,
+    "sameTotal": true,
+    "observedBindingBeforeCorrection": "verified",
+    "requiredBinding": "failed",
+    "method": "Supported authenticated synthetic packet through actual preparation and bound commercial consumer; now covered by CE decision binding also checks known fiscal components."
+  }
+}

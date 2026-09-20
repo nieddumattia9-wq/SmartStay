@@ -1121,6 +1121,9 @@ function createCase(
   thresholdFingerprint:
     string
 ) {
+  if (source.publicRateEvidence.evidenceType === "protocol-neutral-commercial-evidence") {
+    throw new Error("Synthetic commercial evidence is evaluation-only, not a real-case blind or Golden source.");
+  }
   requireOpaqueToken(
     source.caseId,
     "caseId"
