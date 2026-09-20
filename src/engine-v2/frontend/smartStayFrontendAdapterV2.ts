@@ -363,6 +363,9 @@ export interface SmartStayFrontendInputV2 {
   previousRankingHotelIds?:
     string[];
 
+  rankingPolicyVersion?: SmartStayEngineV2SearchInput['rankingPolicyVersion'];
+  previousRankingPolicyVersion?: SmartStayEngineV2SearchInput['previousRankingPolicyVersion'];
+
   maximumVisibleResults?:
     number;
 }
@@ -3558,6 +3561,8 @@ function createFrontendEngineInput(
     previousRankingHotelIds:
       input
         .previousRankingHotelIds,
+    rankingPolicyVersion: input.rankingPolicyVersion,
+    previousRankingPolicyVersion: input.previousRankingPolicyVersion,
 
     maximumVisibleResults:
       input

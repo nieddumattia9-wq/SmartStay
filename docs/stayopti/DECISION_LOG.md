@@ -173,3 +173,5 @@ The additive public observation binding closes a reproduced same-public-ID
 display ambiguity without modifying booking identity or its rejection rules.
 No ranking, weights, roles, main, historical evidence or private approvals change.
 Actual publication and pending commits are reported from remote readback.
+
+| D-0070 / A01 | 2026-09-20 | Use provider-neutral traveler-relevant diversification for new executions with explicit legacy replay and saved-order version boundaries. | Approved; isolated Windows release:ci PASS, publication verified separately | `decisions/0070-provider-neutral-visible-ranking.md` |

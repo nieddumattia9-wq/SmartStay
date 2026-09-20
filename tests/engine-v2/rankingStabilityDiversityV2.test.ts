@@ -946,6 +946,8 @@ function evaluateScenarioRanking(
           .previousRankingHotelIds,
     },
     {
+      // The frozen Golden fixture describes the historical policy and order.
+      policyVersion: 'provider-diversity@1',
       maximumVisibleResults:
         scenario
           .expectations
@@ -1151,3 +1153,22 @@ test(
     );
   }
 );
+
+test('A01 neutral keeps property dedupe, useful diversity and role anchors',()=>{
+ for(const id of ['turin-near-duplicate-providers','florence-balanced-couple']){
+  const s=getScenario(id),c=s.candidates.map(x=>createRankingCandidate(s,x));
+  const run=(candidates:typeof c)=>evaluateRankingStabilityDiversityV2({candidates},{policyVersion:'traveler-relevant@1',maximumVisibleResults:3});
+  const a=run(c),b=run(c.map((x,i)=>({...x,sourceProvider:i%2?'Other':null})));
+  assert.deepEqual(a,b);
+  assert.ok(a.evaluations.filter(x=>x.roleAnchor&&x.eligible).every(x=>x.visible));
+  if(id.startsWith('turin'))assert.equal(a.nearDuplicateGroups.length,1);
+ }
+ const s=getScenario('genoa-ranking-stability'),candidates=s.candidates.map(x=>createRankingCandidate(s,x));
+ const matching=evaluateRankingStabilityDiversityV2({candidates,previousRankingHotelIds:s.search.previousRankingHotelIds,previousRankingPolicyVersion:'traveler-relevant@1'});
+ assert.equal(matching.previousOrderStatus,'same-policy');assert.equal(matching.stabilityApplied,true);
+ const mismatch=evaluateRankingStabilityDiversityV2({candidates,previousRankingHotelIds:s.search.previousRankingHotelIds,previousRankingPolicyVersion:'provider-diversity@1'});
+ assert.equal(mismatch.previousOrderStatus,'policy-mismatch');assert.equal(mismatch.stabilityApplied,false);
+ // Category/unit/price/distance differences remain the very same inputs/options.
+ const neutral=evaluateRankingStabilityDiversityV2({candidates:candidates.map((c,i)=>({...c,sourceProvider:'One',accommodation:{...c.accommodation,category:i%2?'hotel':'apartment',unitType:i%2?'hotel-room':'entire-place'}}))});
+ assert.ok(neutral.evaluations.some(x=>x.diversityDimensionCodes.some(d=>d==='category'||d==='unit-type')));
+});

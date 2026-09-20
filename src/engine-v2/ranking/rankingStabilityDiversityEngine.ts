@@ -1,3 +1,5 @@
+import { LEGACY_RANKING_POLICY_V2, resolveRankingPolicyV2, type SmartStayRankingPolicyVersionV2 } from './rankingPolicyVersionV2';
+
 import type {
   SmartStayAccommodationProfileV2,
   SmartStayRankBand,
@@ -49,11 +51,13 @@ export interface SmartStayRankingStabilityDiversityCandidateV2 {
 }
 
 export interface SmartStayRankingStabilityDiversityInputV2 {
+  previousRankingPolicyVersion?: SmartStayRankingPolicyVersionV2;
   candidates: SmartStayRankingStabilityDiversityCandidateV2[];
   previousRankingHotelIds?: string[];
 }
 
 export interface SmartStayRankingStabilityDiversityOptionsV2 {
+  policyVersion?: SmartStayRankingPolicyVersionV2;
   maximumVisibleResults?: number;
   scoreEquivalenceTolerance?: number;
   confidenceEquivalenceTolerance?: number;
@@ -112,6 +116,8 @@ export interface SmartStayRankingCandidateEvaluationV2 {
 }
 
 export interface SmartStayRankingStabilityDiversityEvaluationV2 {
+  policyVersion: SmartStayRankingPolicyVersionV2;
+  previousOrderStatus: 'absent' | 'same-policy' | 'policy-mismatch';
   status: SmartStayRankingStabilityDiversityStatusV2;
   baseRankingHotelIds: string[];
   stableRankingHotelIds: string[];
@@ -176,6 +182,7 @@ const PRIMARY_ROLE_ORDER:
   ];
 
 const DEFAULTS: ResolvedOptions = {
+  policyVersion: resolveRankingPolicyV2(),
   maximumVisibleResults: 10,
   scoreEquivalenceTolerance: 0.75,
   confidenceEquivalenceTolerance: 0.08,
@@ -311,6 +318,7 @@ function resolveOptions(
     SmartStayRankingStabilityDiversityOptionsV2
 ): ResolvedOptions {
   return {
+    policyVersion: resolveRankingPolicyV2(options.policyVersion),
     maximumVisibleResults:
       normalizePositiveInteger(
         options.maximumVisibleResults,
@@ -1377,6 +1385,8 @@ function calculateDiversitySelection(
       3;
   }
 
+  // Historical replay only. Provenance never contributes to the new policy.
+  if (options.policyVersion === LEGACY_RANKING_POLICY_V2) {
   const sameProviderCount =
     countSelectedBy(
       selected,
@@ -1411,6 +1421,8 @@ function calculateDiversitySelection(
   ) {
     rawPenalty +=
       2.5;
+  }
+
   }
 
   const candidatePriceBand =
@@ -2069,11 +2081,12 @@ export function evaluateRankingStabilityDiversityV2(
         !candidate.eligible
     );
 
+  const previousOrderStatus = !input.previousRankingHotelIds?.length ? 'absent' :
+    (input.previousRankingPolicyVersion ?? LEGACY_RANKING_POLICY_V2) === resolvedOptions.policyVersion ? 'same-policy' : 'policy-mismatch';
   const previousOrder =
     new Map(
       (
-        input.previousRankingHotelIds ??
-        []
+        previousOrderStatus === 'same-policy' ? input.previousRankingHotelIds! : []
       ).map(
         (
           hotelId,
@@ -2555,6 +2568,8 @@ export function evaluateRankingStabilityDiversityV2(
         : strongData
           ? "strong-data"
           : "usable",
+    policyVersion: resolvedOptions.policyVersion,
+    previousOrderStatus,
     baseRankingHotelIds,
     stableRankingHotelIds,
     diversifiedRankingHotelIds,

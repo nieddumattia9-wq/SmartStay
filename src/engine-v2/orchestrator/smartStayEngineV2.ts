@@ -185,6 +185,8 @@ export const SMARTSTAY_ENGINE_V2_PIPELINE_VERSION =
   "2.0.0-pipeline.10" as const;
 
 export interface SmartStayEngineV2SearchInput {
+  rankingPolicyVersion?: import('../ranking/rankingPolicyVersionV2').SmartStayRankingPolicyVersionV2;
+  previousRankingPolicyVersion?: import('../ranking/rankingPolicyVersionV2').SmartStayRankingPolicyVersionV2;
   hotels:
     Hotel[];
 
@@ -2064,8 +2066,10 @@ export function evaluateSmartStaySearchV2(
           previousRankingHotelIds:
             input
               .previousRankingHotelIds,
+          previousRankingPolicyVersion: input.previousRankingPolicyVersion,
         },
         {
+          policyVersion: input.rankingPolicyVersion,
           maximumVisibleResults:
             1,
         }
@@ -2532,8 +2536,10 @@ export function evaluateSmartStaySearchV2(
         previousRankingHotelIds:
           input
             .previousRankingHotelIds,
+        previousRankingPolicyVersion: input.previousRankingPolicyVersion,
       },
       {
+        policyVersion: input.rankingPolicyVersion,
         maximumVisibleResults:
           normalizeMaximumVisibleResults(
             input

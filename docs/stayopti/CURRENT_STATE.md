@@ -1,5 +1,18 @@
 # StayOpti Current State
 
+## D-0070 / A01 — candidate provider-neutral presentation
+
+New ranking executions explicitly resolve `traveler-relevant@1`; historical
+`provider-diversity@1` remains available for replay. Saved orders cross neither
+policy nor storage versions implicitly. No merit weights, role policy, provider
+namespace or public V3 activation changes. The initial synthetic frontend
+regression fails on the base. Isolated Windows `release:ci` PASS: V2 242/242,
+V3 3154/3154, lifecycle665 PASS/17 existing opt-in Valkey SKIP, security29,
+release101, analytics31, capacity9, beta4; typecheck/build, dependency audit,
+analytics-beta and local staging smoke PASS. No GitHub CI result is inferred.
+Selective work-branch commit/push is authorized; actual remote state is reported
+after direct readback, not inferred from these local gates.
+
 ## D-0069 — R07 search-currency merge summary
 
 Source `7d3fe511881da58b7055c75d7c86227ff7cafff4`, evaluation work branch.

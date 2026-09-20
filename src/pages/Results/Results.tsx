@@ -1,3 +1,4 @@
+import { NEUTRAL_RANKING_POLICY_V2, readRankingOrderV2, writeRankingOrderV2 } from '../../engine-v2/ranking/rankingPolicyVersionV2';
 import {
   formatDestinationLabel,
 } from "../../utils/destinationLabel";
@@ -140,8 +141,9 @@ import type {
     }
   }
 
+// Keep legacy keys byte-for-byte; new orders never overwrite old-policy orders.
 const RANKING_V2_STORAGE_PREFIX =
-  "smartstay_ranking_v2_";
+  `smartstay_ranking_v2_${NEUTRAL_RANKING_POLICY_V2}_`;
 
 function getRankingV2StorageKey(
   searchId: string
@@ -171,45 +173,7 @@ function readStoredRankingV2(
     return [];
   }
 
-  try {
-    const parsed =
-      JSON.parse(
-        raw
-      ) as unknown;
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    const availableHotelIds =
-      new Set(
-        hotels.map(
-          (hotel) =>
-            hotel.id
-        )
-      );
-
-    const ranking =
-      parsed.filter(
-        (
-          value
-        ): value is string =>
-          typeof value ===
-            "string" &&
-          availableHotelIds.has(
-            value
-          )
-      );
-
-    return [
-      ...new Set(
-        ranking
-      ),
-    ];
-  }
-  catch {
-    return [];
-  }
+  return readRankingOrderV2(raw, hotels.map(hotel=>hotel.id), NEUTRAL_RANKING_POLICY_V2).hotelIds;
 }
 
 function writeStoredRankingV2(
@@ -227,9 +191,7 @@ function writeStoredRankingV2(
     getRankingV2StorageKey(
       searchId
     ),
-    JSON.stringify(
-      hotelIds
-    )
+    writeRankingOrderV2(hotelIds, NEUTRAL_RANKING_POLICY_V2)
   );
 }
 
@@ -1348,6 +1310,8 @@ const rankedHotels =
                   null,
 
                 previousRankingHotelIds,
+                rankingPolicyVersion: NEUTRAL_RANKING_POLICY_V2,
+                previousRankingPolicyVersion: NEUTRAL_RANKING_POLICY_V2,
 
                 maximumVisibleResults:
                   hotels.length,
