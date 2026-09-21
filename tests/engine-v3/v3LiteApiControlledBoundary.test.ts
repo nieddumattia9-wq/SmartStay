@@ -91,10 +91,12 @@ test('CB11 actual PowerShell 5.1 finally disposes synthetic secret when Process.
 },()=>{
  const temp=mkdtempSync(join(tmpdir(),'StayOpti-D0062-Cleanup-'));
  try{
-  const launcher=readFileSync(join(process.cwd(),'scripts/invoke-liteapi-controlled-acquisition.ps1'),'utf8');
-  const matches=[...launcher.matchAll(/^} finally \{/gm)];assert.equal(matches.length,1,'extract actual outer finally, not a hand-maintained copy');
-  const end=launcher.indexOf('# Deliberately no exit:',matches[0].index);assert(end>matches[0].index!);
-  const actualFinally=launcher.slice(matches[0].index!+2,end).trim();
+  const wrapper=readFileSync(join(process.cwd(),'scripts/invoke-liteapi-controlled-acquisition.ps1'),'utf8');
+  assert.match(wrapper,/Invoke-StayOptiProtectedProfile/);
+  const launcher=readFileSync(join(process.cwd(),'scripts/invoke-liteapi-profile-runner.ps1'),'utf8');
+  const matches=[...launcher.matchAll(/^ } finally \{/gm)];assert.equal(matches.length,1,'extract actual shared outer finally, not a hand-maintained copy');
+  const end=launcher.indexOf('# End protected cleanup.',matches[0].index);assert(end>matches[0].index!);
+  const actualFinally=launcher.slice(matches[0].index!+3,end).trim();
   assert.match(actualFinally,/AcquisitionStarted/);assert.match(actualFinally,/ZeroFreeBSTR/);
   const script=join(temp,'synthetic-cleanup.ps1');
   const missing=join(temp,'deliberately-nonexistent-process.exe').replaceAll("'","''");

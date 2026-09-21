@@ -67,7 +67,7 @@ export function hotelDetailCodePaths(root){
    const q=relative(root,resolve(root,dirname(p),m[1])).replaceAll('\\','/');if(!safePath(q))fail('CODE_IMPORT_SCOPE');visit(q);
   }};
  visit('scripts/run-liteapi-hotel-detail-enrichment.mjs');
- seen.add('scripts/invoke-liteapi-hotel-detail-enrichment.ps1');seen.add('scripts/invoke-liteapi-profile-runner.ps1');seen.add('scripts/protect-v3-provider-raw-key-dpapi.ps1');return [...seen].sort();
+ seen.add('scripts/invoke-liteapi-hotel-detail-enrichment.ps1');seen.add('scripts/invoke-liteapi-profile-runner.ps1');seen.add('scripts/liteapi-credential-store.ps1');seen.add('scripts/protect-v3-provider-raw-key-dpapi.ps1');return [...seen].sort();
 }
 export function createHotelDetailInventory(root,{expectedHead,expectedBranch}){
  if(git(root,['rev-parse','HEAD'])!==expectedHead||git(root,['branch','--show-current'])!==expectedBranch||expectedBranch!==BRANCH)fail('CHECKPOINT_MISMATCH');

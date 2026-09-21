@@ -7,6 +7,7 @@ import {createAcquisitionJournal,verifyAcquisitionJournal} from './liteapi-acqui
 import {runControlledAcquisition,verifyControlledCapture} from './liteapi-controlled-capture-v1.mjs';
 import {prepareLiteApiProviderObservation} from './liteapi-observation-diagnostic-v1.mjs';
 import {createWindowsCurrentUserDpapiProtectorV3} from './provider-raw-quarantine-store.mjs';
+import {readProtectedCredentialFrame,credentialHandlingReport} from './liteapi-credential-channel.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 function parse(args){const out={};for(const a of args){const m=/^--([A-Za-z][A-Za-z0-9]*)=(.*)$/s.exec(a);if(!m||out[m[1]]!==undefined)fail('CLI_ARGUMENT');out[m[1]]=m[2];}
@@ -31,8 +32,6 @@ export function controlledPreflight(a){
   result:{...status,codeSha256:checkpoint.codeSha256,configSha256:hash(config),rawCustodyCreated:false,dpapiProbe:'PASS_SYNTHETIC_BYTES_CURRENT_USER',
    expectedAuthorization:status.pending.length?null:authorizationLiteral(config,inventory),authorizationConsumed:false,engineInvocations:0,policyInvocations:0}};
 }
-async function readCredential(){let data='';for await(const c of process.stdin){data+=c.toString('utf8');if(data.length>65536)fail('CREDENTIAL_INPUT_TOO_LARGE');if(data.includes('\n'))break;}
- const value=data.replace(/[\r\n]+$/,'');data='';if(!value.trim()||/[\r\n]/.test(value))fail('CREDENTIAL_EMPTY_OR_INVALID');return value;}
 function output(a,value){const s=JSON.stringify(value,null,2)+'\n';if(a.OutputPath){outside(root,a.OutputPath);if(existsSync(a.OutputPath))fail('OUTPUT_ALREADY_PRESENT');writeFileSync(a.OutputPath,s,{flag:'wx'});}process.stdout.write(s);}
 async function main(){
  const a=parse(process.argv.slice(2));
@@ -48,10 +47,10 @@ async function main(){
  if(!synthetic&&(a.SimulationPath||a.SimulationSha256))fail('SIMULATION_OPTION_IN_PRODUCTION');
  const simulation=synthetic?load(a.SimulationPath,a.SimulationSha256):null;
  if(synthetic&&simulation.origin!=='SYNTHETIC_ONLY')fail('SYNTHETIC_PROOF_REQUIRED');
- let credential=null;
+ let credential=null,credentialSource='SYNTHETIC_NO_CREDENTIAL';
  const signal=new AbortController(),abort=()=>signal.abort();process.once('SIGINT',abort);process.once('SIGTERM',abort);
  try{
-  if(!synthetic)credential=await readCredential();
+  if(!synthetic)({credential,source:credentialSource}=await readProtectedCredentialFrame());
   const p=controlledPreflight(a);if(!same(p.result,initial.result))fail('PREFLIGHT_CHANGED');
   const registryRoot=resolve(p.config.retention.directory),caseRoot=join(registryRoot,'cases',p.config.caseId),bindingSha256=hash({config:p.config,checkpoint:p.checkpoint});
   const authorizationSha256=hash(synthetic?{synthetic:true,config:p.config,checkpoint:p.checkpoint}:a.Authorization);
@@ -78,7 +77,7 @@ async function main(){
    captureSha256:sha(captureText),preparationStatus,issues,engineInvocations:0,policyInvocations:0,
    retentionDays:p.config.retention.days,retentionResponsibility:p.config.retention.responsible,automaticDeletion:false,
    custodyStartedAt:receipt.startedAt,retentionEndsAt:new Date(Date.parse(receipt.startedAt)+p.config.retention.days*86400000).toISOString(),
-   credentialPersisted:false,credentialPrinted:false,credentialClearedFromProcess:true,syntheticProofOnly:synthetic,
+   ...credentialHandlingReport(credentialSource,collected.capture.requests.find(r=>['HTTP_401','HTTP_403'].includes(r.failureClass))?.failureClass),syntheticProofOnly:synthetic,
    journalVerified:receipt.status==='COMPLETED'||receipt.status==='ABORTED',authorizationConsumed:!synthetic});
  }finally{credential=null;process.removeListener('SIGINT',abort);process.removeListener('SIGTERM',abort);}
 }

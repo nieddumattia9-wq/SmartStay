@@ -237,7 +237,7 @@ test("HDL05 successful detail without a mapped room preserves incomplete coverag
   } finally { clean(f.temp); }
 });
 
-test("HDL06 actual protected PS5.1 prompt verifies literal before SecureString and sends only a synthetic pipe", { skip: WIN51 }, async () => {
+test("HDL06 actual PS5.1 literal precedes stored SecureString retrieval and sends only a synthetic pipe", { skip: WIN51 }, async () => {
   const temp = mkdtempSync(join(tmpdir(), "StayOpti-D0066-Launcher-Prompt-"));
   try {
     const plan = await moduleAt(SOURCE, "scripts/liteapi-hotel-detail-plan-v1.mjs");
@@ -252,7 +252,7 @@ if(mode==='--Mode=Preflight'){
  else process.stdout.write(JSON.stringify({status:${JSON.stringify(ready)},expectedAuthorization:'SYNTHETIC_LITERAL_ONLY'}));
 }else if(mode==='--Mode=Acquire'){
  let value='';for await(const chunk of process.stdin)value+=chunk.toString('utf8');
- const valid=value.trim()==='SYNTHETIC_NOT_A_REAL_KEY'&&process.argv.includes('--Authorization=SYNTHETIC_LITERAL_ONLY');value='';
+ const valid=JSON.parse(value).credential==='SYNTHETIC_NOT_A_REAL_KEY'&&process.argv.includes('--Authorization=SYNTHETIC_LITERAL_ONLY');value='';
  if(!valid)process.exitCode=1;else process.stdout.write('SYNTHETIC_PIPE_RECEIVED_WITHOUT_CREDENTIAL_OUTPUT\\n');
 }else process.exitCode=1;
 `);
@@ -270,6 +270,11 @@ function Read-Host { param([string]$Prompt,[switch]$AsSecureString)
  }
  if($env:D0066_PROMPT_CASE -eq 'WRONG_LITERAL'){return 'WRONG_LITERAL'}
  return 'SYNTHETIC_LITERAL_ONLY'
+}
+function Get-StayOptiLiteApiCredential { param([string]$Profile)
+ if($Profile -cne 'Production' -or $env:D0066_PROMPT_CASE -ne 'ACCEPT'){throw 'STORE_READ_WITHOUT_AUTHORITY'}
+ $script:Calls+=@{secure=$true}
+ ConvertTo-SecureString 'SYNTHETIC_NOT_A_REAL_KEY' -AsPlainText -Force
 }
 $CapturedFailure=$null
 try { Invoke-StayOptiProtectedProfile -Mode 'Acquire' -NodePath $env:D0066_PROMPT_NODE -NodeArguments @($env:D0066_PROMPT_CHILD,'--Mode=Acquire') -ReadyStatus $env:D0066_PROMPT_READY -SafetyNotice 'SYNTHETIC_ONLY_NO_PROVIDER' -ErrorPrefix 'LITEAPI_DETAIL' }

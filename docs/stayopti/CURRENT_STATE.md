@@ -1,5 +1,27 @@
 # StayOpti Current State
 
+## D-0074 — separate DPAPI credential store, 2026-09-21
+
+Authorized implementation based on f33f4ea: one protected setup prompt, explicit
+replace/remove, profile-scoped CurrentUser DPAPI outside repository/custody,
+and shared launcher retrieval only after preflight plus accepted literal.
+MAX17 now reuses the same primitive as MAX3/MAX5. Versioned stdin/reporting
+distinguishes encrypted persistence from absence of secrets in output/artifacts.
+No key validation request, no automatic retry or reopening consumed attempts.
+Historical receipts/inventories are not migrated; future plans remain separate.
+Targeted Windows 34/34 PASS, including 11 new synthetic credential tests.
+Final isolated Windows release:ci PASS: V2 242/242, V3 3333/3333, lifecycle
+665 PASS/17 explicit existing Valkey skips, security/release/analytics/capacity/
+beta PASS, TypeScript/build, zero-vulnerability audits, PS5.1 parse 19/19,
+explicit-SHA manifest verification and local smoke 18 PASS. Initial CL01 static
+test failure is retained; it now follows the actual shared launcher and setup
+boundary. Software/test bytes match the final isolated candidate; only reporting
+Markdown follows the gates. Main, 25 protected files and private materials remain
+unchanged; no real credential, acquisition or private execution. Selective
+publication and pending commits are verified by direct remote readback in delivery,
+not inferred from these local PASS results. No CI claim.
+See D-0074 for commands, initial failures, scope and limitations.
+
 ## D-0073 R1 — scoped property conditions repair, 2026-09-21
 
 Local repair on 33df2d9: distinguish nominal policy headings from substantive

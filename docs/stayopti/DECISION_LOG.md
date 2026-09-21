@@ -228,3 +228,14 @@ correct-root rerun passes without software changes. Only reporting Markdown
 follows the gates. No historical result is rewritten or private preparation
 rerun; no CI claim. Actual publication and pending commits are established by
 direct remote readback in delivery, not inferred from these local PASS results.
+
+| D-0074 | 2026-09-21 | Persist a separately scoped DPAPI CurrentUser LiteAPI credential with explicit configure/replace/remove; retrieve only after existing preflight and per-attempt approval, sharing launcher/stdin handling and preserving historical case authority. | Authorized synthetic implementation; selective work-branch publication conditional on final Windows gates and direct remote readback; no real credential or acquisition | `decisions/0074-local-dpapi-provider-credential.md` |
+
+D-0074 validation: actual Windows PowerShell 5.1/CurrentUser DPAPI, invented
+credentials only. Final isolated release:ci PASS, V3 3333/3333, V2 242/242,
+lifecycle 665 PASS/17 existing Valkey skips, all release-related gates,
+TypeScript/build, dependency audits, parse 19/19, same-SHA manifest and smoke.
+The initial full-gate CL01 failure is preserved and corrected by following
+the shared launcher/store instead of requiring the removed duplicate prompt.
+No historical inventory/receipt migration or private acquisition. Publication
+status and pending commits require direct remote readback; no GitHub CI claim.

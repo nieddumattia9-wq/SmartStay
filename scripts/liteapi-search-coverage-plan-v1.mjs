@@ -47,7 +47,7 @@ export function coverageCodePaths(root){
    const q=relative(root,resolve(root,dirname(p),m[1])).replaceAll('\\','/');if(!safePath(q))fail('CODE_IMPORT_SCOPE');visit(q);
   }};
  visit('scripts/run-liteapi-search-coverage.mjs');
- seen.add('scripts/invoke-liteapi-search-coverage.ps1');seen.add('scripts/invoke-liteapi-profile-runner.ps1');seen.add('scripts/protect-v3-provider-raw-key-dpapi.ps1');
+ seen.add('scripts/invoke-liteapi-search-coverage.ps1');seen.add('scripts/invoke-liteapi-profile-runner.ps1');seen.add('scripts/liteapi-credential-store.ps1');seen.add('scripts/protect-v3-provider-raw-key-dpapi.ps1');
  return [...seen].sort();
 }
 export function createCoverageInventory(root,{expectedHead,expectedBranch}){

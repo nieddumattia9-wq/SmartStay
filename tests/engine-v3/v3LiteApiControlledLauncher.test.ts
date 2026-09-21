@@ -130,10 +130,18 @@ async function verify(f: Fixture) {
 
 test("CL01 launcher is explicitly PS5.1 with process-only credential pipe and no implicit engine execution", () => {
   const ps = readFileSync(join(SOURCE, "scripts/invoke-liteapi-controlled-acquisition.ps1"), "utf8");
+  const shared = readFileSync(join(SOURCE, "scripts/invoke-liteapi-profile-runner.ps1"), "utf8");
+  const store = readFileSync(join(SOURCE, "scripts/liteapi-credential-store.ps1"), "utf8");
   const runner = readFileSync(join(SOURCE, "scripts/run-liteapi-controlled-acquisition.mjs"), "utf8");
   assert.match(ps, /PSVersionTable/); assert.doesNotMatch(ps, /\bpwsh(?:\.exe)?\b/i);
-  assert.match(ps, /AsSecureString/); assert.match(ps, /RedirectStandardInput/); assert.match(ps, /ZeroFreeBSTR/);
-  assert.doesNotMatch(ps, /SetEnvironmentVariable|Set-Clipboard|Invoke-Expression/);
+  assert.match(ps, /invoke-liteapi-profile-runner\.ps1/); assert.match(ps, /Invoke-StayOptiProtectedProfile -Mode \$Mode/);
+  assert.match(store, /Read-Host[^\r\n]+-AsSecureString/);
+  assert.match(shared, /RedirectStandardInput/); assert.match(shared, /ZeroFreeBSTR/);
+  assert.match(shared, /Get-StayOptiLiteApiCredential -Profile Production/);
+  assert(shared.indexOf("$PreflightResult.status") < shared.indexOf("AUTHORIZATION_NOT_ACCEPTED"));
+  assert(shared.indexOf("AUTHORIZATION_NOT_ACCEPTED") < shared.indexOf("$AcquisitionSecure=Get-StayOptiLiteApiCredential"));
+  assert.doesNotMatch(shared, /Read-Host[^\r\n]+-AsSecureString/, "Acquire cannot prompt for a second secret");
+  assert.doesNotMatch(ps + shared + store, /SetEnvironmentVariable|Set-Clipboard|Invoke-Expression/);
   assert.doesNotMatch(runner, /executeObservedOfferDiagnostic\s*\(|executeReviewedEvidenceAppendix\s*\(/);
 });
 

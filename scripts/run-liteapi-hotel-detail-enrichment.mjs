@@ -9,6 +9,7 @@ import {createHotelDetailsJournal,verifyHotelDetailsJournal} from './liteapi-hot
 import {runHotelDetailsAcquisition,readAuthenticatedHotelDetails} from './liteapi-hotel-details-capture-v1.mjs';
 import {verifyHotelDetailSourceFiles,compareHotelDetailCapture} from './liteapi-room-detail-comparison-v1.mjs';
 import {createWindowsCurrentUserDpapiProtectorV3} from './provider-raw-quarantine-store.mjs';
+import {readProtectedCredentialFrame,credentialHandlingReport} from './liteapi-credential-channel.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 function parse(args){const out={};for(const a of args){const m=/^--([A-Za-z][A-Za-z0-9]*)=(.*)$/s.exec(a);if(!m||out[m[1]]!==undefined)fail('CLI_ARGUMENT');out[m[1]]=m[2];}
@@ -38,8 +39,6 @@ export function hotelDetailsPreflight(a){
    plannedDetailRequests:config.targets.length,offerCount:config.source.offers.length,rawCustodyCreated:false,dpapiProbe:'PASS_SYNTHETIC_BYTES_CURRENT_USER',
    expectedAuthorization:status.pending.length?null:hotelDetailAuthorization(config,inventory),authorizationConsumed:false,engineInvocations:0,policyInvocations:0}};
 }
-async function readCredential(){let data='';for await(const c of process.stdin){data+=c.toString('utf8');if(data.length>65536)fail('CREDENTIAL_INPUT_TOO_LARGE');if(data.includes('\n'))break;}
- const value=data.replace(/[\r\n]+$/,'');data='';if(!value.trim()||/[\r\n]/.test(value))fail('CREDENTIAL_EMPTY_OR_INVALID');return value;}
 function output(a,value){const s=JSON.stringify(value,null,2)+'\n';if(a.OutputPath){outside(root,a.OutputPath);assertNoLinks(a.OutputPath);writeFileSync(a.OutputPath,s,{flag:'wx'});}process.stdout.write(s);}
 function verifySyntheticFiles(a,p){
  if(sha(readFileSync(a.ConfigPath))!==a.ConfigSha256||sha(readFileSync(a.InventoryPath))!==a.InventorySha256||sha(readFileSync(a.SimulationPath))!==a.SimulationSha256)fail('INPUT_CHANGED');
@@ -58,10 +57,10 @@ async function main(){
  if(!synthetic&&a.Authorization!==initial.result.expectedAuthorization)fail('EXPLICIT_AUTHORIZATION_MISMATCH');
  const simulation=synthetic?load(a.SimulationPath,a.SimulationSha256):null;
  if(synthetic&&simulation.origin!=='SYNTHETIC_ONLY')fail('SYNTHETIC_PROOF_REQUIRED');
- let credential=null;
+ let credential=null,credentialSource='SYNTHETIC_NO_CREDENTIAL';
  const signal=new AbortController(),abort=()=>signal.abort();process.once('SIGINT',abort);process.once('SIGTERM',abort);
  try{
-  if(!synthetic)credential=await readCredential();
+  if(!synthetic)({credential,source:credentialSource}=await readProtectedCredentialFrame());
   const p=hotelDetailsPreflight(a);if(!same(p.result,initial.result))fail('PREFLIGHT_CHANGED');
   const registryRoot=resolve(p.config.retention.directory),caseRoot=join(registryRoot,'cases',p.config.caseId),bindingSha256=hash({config:p.config,checkpoint:p.checkpoint});
   const authorizationSha256=hash(synthetic?{synthetic:true,config:p.config,checkpoint:p.checkpoint}:a.Authorization);
@@ -77,7 +76,7 @@ async function main(){
   const comparison=compareHotelDetailCapture(p.config.source,authenticated);
   output(a,{...collected,caseId:p.config.caseId,privateDirectory:caseRoot,codeInventorySha256:a.InventorySha256,configFileSha256:a.ConfigSha256,
    journalVerified:['COMPLETED','ABORTED'].includes(receipt.status),comparison,retentionDays:p.config.retention.days,retentionResponsibility:p.config.retention.responsible,automaticDeletion:false,
-   previousSourceRetentionRenewed:false,credentialPersisted:false,credentialPrinted:false,credentialClearedFromProcess:true,credentialCleanupBasis:'BEST_EFFORT_MEMORY_NO_ENVIRONMENT_NO_FILE'});
+   previousSourceRetentionRenewed:false,...credentialHandlingReport(credentialSource,collected.failureClass)});
  }finally{credential=null;process.removeListener('SIGINT',abort);process.removeListener('SIGTERM',abort);}
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))main().catch(e=>{
