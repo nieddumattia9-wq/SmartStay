@@ -206,3 +206,25 @@ Historical A02 contracts, 25 protected paths and private originals preserved.
 Only reporting Markdown follows validated software/test hashes. Selective push
 status and pending commits are established by direct remote readback at delivery,
 not inferred from these local PASS results or attributed to GitHub CI.
+
+| D-0073 R1 | 2026-09-21 | Separate nominal policy headings, scoped exemptions and independently asserted obligations before historical pure qualification, preserving originals and uncertain conditional scope. | Local synthetic repair; no private preparation, acquisition or real binding; commit/push not performed in this revision | `decisions/0073-r1-scoped-property-conditions.md` |
+
+D-0073 R1 local validation: initial three domain failures retained; 27 new
+regressions in final Windows V3 3322/3322 PASS. V2 242/242, TypeScript/build and
+synthetic PS5.1/DPAPI PASS; unchanged-input reuse described in the R1 record.
+No private rerun, publication, CI or full release-gate assertion. Working HEAD
+remains 33df2d9; protected files and original private D-0073 result are unchanged.
+
+D-0073 R1 consolidation addendum (2026-09-21): subsequent explicit user authority
+allows only the six-file correction commit and non-force work-branch push.
+All six starting hashes match the prior local receipt; software/test bytes are
+identical to isolated candidate 54dfae4183769ccb1f32212dd5a3ffbabe4bc0cb.
+New exact Windows release:ci and separate audit:security PASS; V2 242, V3 3322,
+lifecycle 665 PASS/17 existing skips, all release-related gates, TypeScript/build,
+PS5.1 parse 17/17, explicit-SHA manifest creation/verification and local smoke PASS.
+An additional manifest command initially used the output directory instead of
+the artifact checkout as verification root; its ENOENT log is retained and the
+correct-root rerun passes without software changes. Only reporting Markdown
+follows the gates. No historical result is rewritten or private preparation
+rerun; no CI claim. Actual publication and pending commits are established by
+direct remote readback in delivery, not inferred from these local PASS results.

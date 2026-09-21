@@ -14,6 +14,9 @@ export interface HistoricalConditionV3 {
  code: string; text: string; subject: 'ADMISSION' | 'ACCOMPANIMENT' | 'IDENTIFICATION' | 'MONETARY' | 'ACCESSORY';
  applicability: 'APPLIES' | 'NOT_APPLICABLE' | 'UNVERIFIED';
  effect: 'PERMITS' | 'PROHIBITS' | 'REQUIRES_CONFIRMATION' | 'INFORMATION_ONLY'; source: HistoricalSourceV3;
+ /** Additive adapter explanation; not evidence or an authorization by itself. */
+ interpretation?: {version:string;originalFieldText:string;presentationText:string|null;clauseText:string;
+  role:'HEADING'|'CONTENT';segmentation:string};
 }
 export interface HistoricalOfferFactsV3 {
  identity: { provider: string; propertyId: string; offerId: string; roomId: string | null;

@@ -1,5 +1,28 @@
 # StayOpti Current State
 
+## D-0073 R1 — scoped property conditions repair, 2026-09-21
+
+Local repair on 33df2d9: distinguish nominal policy headings from substantive
+rules, bounded animal exemptions from general charges, and independent clauses
+from shared conditional scope. Original field/hash/time provenance is retained.
+Three authenticated synthetic counterexamples fail before the repair and pass
+afterwards; 27 new regressions including a separately reproduced must-be-paid
+variant. Final isolated Windows V3 3322/3322 PASS, V2 242/242, TypeScript/build
+PASS, actual PS5.1/DPAPI synthetic reader PASS. The subsequent authorized
+consolidation verifies all six file hashes against the local R1 receipt and runs
+the missing publication gates on the same isolated software/test candidate:
+exact Windows release:ci and separate audit:security PASS. V2 242/242,
+V3 3322/3322, lifecycle 665 PASS/17 existing opt-in Valkey skips; security 29,
+release 101, analytics 31, capacity 9 and beta 4 PASS. TypeScript/build,
+analytics-beta gate, 18-check local smoke, PS5.1 parse 17/17 and explicit-SHA
+release-manifest creation/verification PASS. Only reporting Markdown changes
+after these gates; no CI GitHub claim. No private rerun, acquisition or real
+binding: the previous private matrix remains bound to its original code.
+Six-file selective work-branch publication is authorized; actual local/remote
+SHA, push status and pending commits are verified by direct remote readback in
+delivery. Main, the 25 protected files and unrelated changes remain preserved.
+See D-0073 R1 for the inventory, retained initial failures and bounded grammar.
+
 ## D-0073 — authenticated historical commercial preparation, 2026-09-21
 
 Additive evaluation-only historical matrix @1, based on 41bea039. Existing

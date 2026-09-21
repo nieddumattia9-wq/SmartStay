@@ -10,7 +10,8 @@ import {decodeDocumentaryOffer,inspectDocumentaryFiscal,readDocumentaryResponse}
 import {interpretRoomPresentation} from './room-presentation-text-v1.mjs';
 import {canonicalExplicitInstant} from '../server/shared/explicit-instant.mjs';
 
-export const HISTORICAL_LITEAPI_VERSION='stayopti.authenticated-historical-liteapi@1';
+export const HISTORICAL_LITEAPI_VERSION='stayopti.authenticated-historical-liteapi@1.1';
+export const HISTORICAL_CONDITIONS_VERSION='stayopti.historical-property-conditions@1.1';
 const issued=new WeakSet(),clone=structuredClone;
 const fail=c=>{throw Error('HISTORICAL_LITEAPI_'+c);};
 const freeze=x=>{if(x&&typeof x==='object'){Object.values(x).forEach(freeze);Object.freeze(x);}return x;};
@@ -43,22 +44,55 @@ export function historicalCancellationInstants(cancellation){
   coverage:infos.length?'DECLARED_ENTRIES':'NO_DEADLINE_ENTRY_NOT_INFERRED'};
 }
 
+// Only complete nominal labels are presentation, never arbitrary title fields:
+// a title containing an actual restriction must still be interpreted as content.
+const nominalPolicyHeading=/^(?:children(?:\s+and\s+extra\s+beds)?|pets|general|guest type|check[- ]in\s*(?:&|and)\s*check[- ]out)[.:]?$/i;
+const animalExemption=/^(?:service|assistance) animals? (?:are |is )?exempt from (?:pet )?(?:fees?|charges?|restrictions?)(?:\s*(?:\/|and)\s*(?:pet )?(?:fees?|charges?|restrictions?))*[.!]?$/i;
+function independentConditionClauses(text){
+ // Do not turn a consequent of if/when/unless into an unconditional statement.
+ if(/\b(?:if|when|unless|provided|except)\b/i.test(text))return [text];
+ const independent=/^(?:(?:pets?|(?:service|assistance) animals?|children)\s+(?:are|is|must|cannot)\b|(?:all|every|each)\s+(?:guests?|stays?|bookings?)\s+(?:must|are|is|incur|pay)\b|(?:(?:a|an|the)\s+)?(?:(?:mandatory|compulsory|service|resort|city|tourist|cleaning|facility|destination|additional|general)\s+)*(?:fees?|charges?|tax(?:es)?|surcharges?|supplements?)\s+(?:are|is|apply|applies|must|remain|remains)\b)/i;
+ const cuts=/(?:,\s*(?:(?:and|but|while|however)\s+)?|\s+(?:and|but|while|however)\s+)/gi;
+ const result=[];let start=0;
+ for(const m of text.matchAll(cuts)){
+  const left=text.slice(start,m.index).trim(),right=text.slice(m.index+m[0].length).trim();
+  if(/\b(?:are|is|allowed|permitted|accepted|applies|apply|pay|payable|required|must|exempt)\b/i.test(left)&&independent.test(right)){
+   result.push(left);start=m.index+m[0].length;
+  }
+ }
+ result.push(text.slice(start).trim());return result;
+}
+
 /** Conditions are observations, NOT human confirmations or universal provider policy. */
 export function qualifyHistoricalPropertyConditions(property,party,boardName,ref,rateTexts=[]){
- const out=[],add=(code,text,subject,applicability,effect,pointer)=>out.push({code,text,subject,applicability,effect,source:{...ref,pointer}});
+ let context=null;
+ const out=[],add=(code,text,subject,applicability,effect,pointer)=>out.push({code,text,subject,applicability,effect,
+  source:{...ref,pointer,...(context?{scope:context.scope}:{})},
+  ...(context?{interpretation:{version:HISTORICAL_CONDITIONS_VERSION,originalFieldText:context.originalFieldText,
+   presentationText:context.presentationText,clauseText:text,role:code==='POLICY_HEADING'?'HEADING':'CONTENT',
+   segmentation:'BOUNDED_INDEPENDENT_CLAUSES_NO_CONDITIONAL_SCOPE_PROMOTION'}}:{})});
  const applies=party.children>0?'APPLIES':'NOT_APPLICABLE';
  if(typeof property?.childAllowed==='boolean')add('PROPERTY_CHILD_ALLOWED',String(property.childAllowed),'ADMISSION',property.childAllowed?applies:applies==='NOT_APPLICABLE'?applies:'UNVERIFIED',property.childAllowed?'PERMITS':'PROHIBITS','data.childAllowed');
  else if(property&&Object.hasOwn(property,'childAllowed'))add('PROPERTY_CHILD_ALLOWED_UNINTERPRETABLE',JSON.stringify(property.childAllowed),'ADMISSION',applies,'REQUIRES_CONFIRMATION','data.childAllowed');
  const texts=[];
  if(typeof property?.hotelImportantInformation==='string')texts.push({text:property.hotelImportantInformation,pointer:'data.hotelImportantInformation',scope:'PROPERTY'});
- const walk=(v,p)=>{if(typeof v==='string')texts.push({text:v,pointer:p,scope:'PROPERTY'});else if(Array.isArray(v))v.forEach((x,i)=>walk(x,p+'['+i+']'));else if(v&&typeof v==='object')for(const k of Object.keys(v))if(!['id','type'].includes(k))walk(v[k],p+'.'+k);};
+ const walk=(v,p)=>{if(typeof v==='string')texts.push({text:v,pointer:p,scope:'PROPERTY'});else if(Array.isArray(v))v.forEach((x,i)=>walk(x,p+'['+i+']'));else if(v&&typeof v==='object')for(const k of Object.keys(v))if(k!=='id')walk(v[k],p+'.'+k);};
  walk(property?.policies,'data.policies');
  texts.push(...rateTexts);
  for(const item of texts){
   const normalized=interpretRoomPresentation(item.text);
+  context={originalFieldText:item.text,presentationText:normalized.text,scope:item.scope??ref.scope};
   if(!normalized.supported){add('UNSUPPORTED_CONDITION_PRESENTATION',item.text,'ACCESSORY','UNVERIFIED','REQUIRES_CONFIRMATION',item.pointer);continue;}
   let priorPet=false;
-  for(const text of normalized.text.split(/\r?\n|;|(?<=[.!?])\s+(?=[A-Z])/).map(t=>t.trim()).filter(Boolean)){
+  for(const text of normalized.text.split(/\r?\n|;|(?<=[.!?])\s+(?=[A-Z])/).map(t=>t.trim()).filter(Boolean).flatMap(independentConditionClauses)){
+   if(nominalPolicyHeading.test(text)||item.pointer.startsWith('data.policies')&&/^POLICY_[A-Z_]+$/.test(text)){
+    add('POLICY_HEADING',text,'ACCESSORY','NOT_APPLICABLE','INFORMATION_ONLY',item.pointer);priorPet=false;continue;
+   }
+   if(animalExemption.test(text)){
+    // Exempt only the named subject from the named charges/restrictions. This
+    // does not certify absence of fees for ordinary pets or for all guests.
+    add('SCOPED_ANIMAL_EXEMPTION',text,'MONETARY','UNVERIFIED','INFORMATION_ONLY',item.pointer);priorPet=false;continue;
+   }
    const monetary=/\b(?:fees?|tax(?:es)?|charges?|charged|surcharge|costs?|cleaning|deposit|supplement|EUR|USD|GBP|CAD|payment|payable)\b|[€$£]/i.test(text);
    const pet=/\bpets?\b/i.test(text),petContinuation=priorPet&&/^Plus\b/i.test(text)&&/\bcleaning\b/i.test(text)&&!/(?:tax|mandatory|compulsory)/i.test(text);
    priorPet=pet||petContinuation;
@@ -72,7 +106,9 @@ export function qualifyHistoricalPropertyConditions(property,party,boardName,ref
    else if(/\bspecial requests?\b/i.test(text))add('OPTIONAL_SPECIAL_REQUEST',text,'ACCESSORY','UNVERIFIED','INFORMATION_ONLY',item.pointer);
    else if(/\b(?:more than|over) (\d+) rooms?\b/i.test(text)){
     const n=Number(text.match(/\b(?:more than|over) (\d+) rooms?\b/i)[1]);add('ROOM_GROUP_THRESHOLD',text,'ACCESSORY',party.units<=n?'NOT_APPLICABLE':'APPLIES','REQUIRES_CONFIRMATION',item.pointer);
-   }else if(pet||petContinuation)add('CONDITIONAL_PET_EXTRA',text,'MONETARY','UNVERIFIED','INFORMATION_ONLY',item.pointer);
+   }else if((pet||petContinuation)&&monetary&&/\b(?:mandatory|compulsory|must|all guests|every guest|each guest)\b/i.test(text))
+    add('UNRESOLVED_COMPOUND_MONETARY_SCOPE',text,'MONETARY','UNVERIFIED','REQUIRES_CONFIRMATION',item.pointer);
+   else if(pet||petContinuation)add('CONDITIONAL_PET_EXTRA',text,'MONETARY','UNVERIFIED','INFORMATION_ONLY',item.pointer);
    else if(/\bbreakfast\b/i.test(text)&&/^room\s*only$/i.test(boardName??''))add('OPTIONAL_BREAKFAST',text,'MONETARY','NOT_APPLICABLE','INFORMATION_ONLY',item.pointer);
    else if(/\bdeposit\b/i.test(text))add('DEPOSIT_SEPARATE_NOT_AUTOMATIC_STAY_COST',text,'ACCESSORY','UNVERIFIED','REQUIRES_CONFIRMATION',item.pointer);
    else if(/\bcash transactions?\b/i.test(text))add('CASH_PAYMENT_LIMIT_NOT_A_CHARGE',text,'ACCESSORY','UNVERIFIED','REQUIRES_CONFIRMATION',item.pointer);
@@ -81,8 +117,6 @@ export function qualifyHistoricalPropertyConditions(property,party,boardName,ref
    else add('OTHER_CONDITION_RETAINED',text,'ACCESSORY','UNVERIFIED','INFORMATION_ONLY',item.pointer);
    if(/\b(?:child|children)\b/i.test(text)&&/\b(?:parent|guardian)\b/i.test(text)&&!out.some(e=>e.text===text&&e.subject==='ACCOMPANIMENT'))
     add('CHILD_ACCOMPANIMENT_IN_TERMS',text,'ACCOMPANIMENT',applies,'REQUIRES_CONFIRMATION',item.pointer);
-   // Preserve exact field scope even for tariff remarks, not only property prose.
-   for(const e of out.filter(e=>e.source.pointer===item.pointer))if(item.scope)e.source.scope=item.scope;
   }
  }
  return out;
