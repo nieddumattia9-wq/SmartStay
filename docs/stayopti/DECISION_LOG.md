@@ -194,3 +194,15 @@ build, dependency audit, local smoke and all canonical suites). Lifecycle665
 PASS/17 preexisting Valkey skips. Source/test hashes remain fixed while reporting
 Markdown is completed. No CI or LIVE claim; final publication is verified by
 direct remote readback, with main and all historical/protected materials intact.
+
+| D-0073 | 2026-09-21 | Add an authenticated historical observation ingress and pure commercial matrix, separating provider revision from local identity and consuming scoped monetary, accommodation and family constraints without decision binding or historical migration. | Evaluation-only; selective work-branch publication conditional on final Windows gates, private derivation separate | `decisions/0073-authenticated-historical-commercial-preparation.md` |
+
+D-0073 final local validation: isolated candidate e0451e6, targeted 141/141
+(33 new tests, including actual PS5.1/DPAPI), V2 242/242, V3 3295/3295,
+exact Windows release:ci exit 0. Lifecycle 665 PASS/17 existing Valkey skips;
+all release/security gates, TypeScript/build/audit and local smoke PASS.
+One private pure preparation, zero private engine/policy/provider invocations.
+Historical A02 contracts, 25 protected paths and private originals preserved.
+Only reporting Markdown follows validated software/test hashes. Selective push
+status and pending commits are established by direct remote readback at delivery,
+not inferred from these local PASS results or attributed to GitHub CI.

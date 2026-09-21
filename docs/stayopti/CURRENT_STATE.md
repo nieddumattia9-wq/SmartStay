@@ -1,5 +1,24 @@
 # StayOpti Current State
 
+## D-0073 — authenticated historical commercial preparation, 2026-09-21
+
+Additive evaluation-only historical matrix @1, based on 41bea039. Existing
+authenticated journal readers feed a separate LiteAPI adapter and common pure
+qualification; all variants survive, provider revisions can remain UNKNOWN,
+and subsequent room observations never refresh commercial facts. SSP, cost,
+capacity/beds and scoped family conditions are consumed as separate checks.
+A02 @1/@1.1, real binding, ranking and public activation remain unchanged.
+Final isolated Windows candidate `e0451e63bd047052c2c257f8215d8a57a35691b0`:
+targeted 141/141 (33 new, including PS5.1/DPAPI), V2 242/242, V3 3295/3295,
+exact release:ci exit 0; lifecycle 665 PASS/17 existing Valkey skips; all
+security/release/analytics/capacity/beta gates, TypeScript/build/dependency audit
+and 18-check local smoke PASS. Only reporting Markdown changes follow the
+verified software/test hashes. One authorized private pure preparation, zero
+private kernel/policy invocations and provider calls; original observations and
+retention remain unchanged. No real decision binding. Selective work-branch push
+and remaining local commits are verified by direct remote readback in delivery,
+separately from these local results; no GitHub CI or LIVE claim. See D-0073.
+
 ## D-0072 — search family context and A02 binding, 2026-09-20
 
 Source `e3622ae2a535acd80099a4e0f9a9ff630e747aa1`, evaluation work branch.
