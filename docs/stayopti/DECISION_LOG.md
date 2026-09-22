@@ -250,3 +250,20 @@ serialization and exhaustive-coverage counterexamples are retained; no legacy
 validator or private matrix is rewritten. Only reporting Markdown follows the
 verified code. Actual selective push and local pending commits are determined
 by direct remote readback at delivery; no CI claim or production authorization.
+
+| D-0075 R1 | 2026-09-22 | Use the explicitly validated authenticated decision-time reference for the independent A02 shadow segment; retain excluded alternatives and count shadow only at invocation. | Synthetic narrow correction authorized; production HOLD, final isolated validation and selective publication pending | `decisions/0075-r1-authenticated-time-reference.md` |
+
+The original first-position null-observation failure and inaccurate counter are
+retained separately (initial 1 PASS/2 FAIL); corrected targeted Windows 8/8 PASS.
+No prior D-0075 receipt/matrix is recomputed or relabeled as an R1 result.
+
+D-0075 R1 final local validation: isolated 9c4d0302 exact Windows release:ci
+exit 0; V2 242/242, V3 3397/3397 (eight new regressions), lifecycle665 PASS/
+17 existing opt-in skips; all remaining canonical suites, TypeScript/build,
+dependency audit and local smoke PASS. Both record orders retain all three
+alternatives and produce the same qualified input/decision with binding/replay.
+Measured counters: V2=1, V3 constructions=3, binding=1, shadow=1, replay=1.
+Pre-shadow temporal rejection counts shadow/replay zero. Only reporting Markdown
+follows software/test hash validation. Selective six-file commit/non-force push
+is authorized; exact local/remote SHA and pending commits are read back at
+delivery. Production remains HOLD; no private execution or CI claim.

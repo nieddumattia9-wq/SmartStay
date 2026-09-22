@@ -1,5 +1,22 @@
 # StayOpti Current State
 
+## D-0075 R1 — authenticated segment reference, 2026-09-22
+
+Narrow evaluation-only repair from 01d1ccfc. A retained excluded observation
+could be null in first position, preventing shadow execution while its counter
+already reported one call. The executor now validates the decision input's
+authenticated evaluation reference against all qualified facts before binding
+and shadow; retained exclusions are unchanged. Targeted Windows 8/8 PASS;
+final isolated 9c4d0302 exact release:ci PASS: V2 242/242, V3 3397/3397,
+lifecycle 665 PASS/17 preexisting opt-in skips, TypeScript/build, security,
+release/analytics/capacity/beta, dependency audits and local smoke PASS.
+Software/tests match the candidate; only reporting Markdown follows gates.
+Selective work-branch publication and pending commits are verified directly
+at delivery, not inferred from the tests. These are local results, not CI.
+Production HOLD; no provider calls, real key access or private execution.
+See `decisions/0075-r1-authenticated-time-reference.md` for the retained failure,
+six-file scope and limits. Historical D-0075 results below remain historical.
+
 ## D-0075 — authenticated A02 bridge and separate MAX11, 2026-09-22
 
 Additive evaluation-only development from 3c514545. Authenticated originals,

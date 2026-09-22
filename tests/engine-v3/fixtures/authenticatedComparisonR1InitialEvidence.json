@@ -1,0 +1,24 @@
+{
+  "origin": "SYNTHETIC_ONLY",
+  "checkpoint": "01d1ccfc02f70115860a6fbbf496457cd9c9de4a",
+  "fixture": "authenticatedComparisonFixture (three invented properties)",
+  "mutationBeforeAuthenticatedRegistration": "SEARCH data: invented-wire-property-0.roomTypes[0].rates=[]; reverse only data array for the second control",
+  "environment": "Windows; local TypeScript compiler and node --test, same tsconfig.tests.json as canonical V3 runner",
+  "preparation": {"status": "PREPARED_PILOT_SET", "qualifiedProperties": 2, "retainedOffers": 3},
+  "excludedFirst": {
+    "status": "EXECUTED_BUT_BINDING_OR_SAFETY_FAILED",
+    "error": "Cannot read properties of null (reading 'time')",
+    "choice": "invented-wire-property-1",
+    "counts": {"v2Evaluations": 1, "v3Constructions": 1, "bindingCreations": 1, "shadowRuns": 1, "replayVerifications": 0},
+    "actualShadowCallsObservedBySpy": 0
+  },
+  "excludedLast": {
+    "status": "COMPARISON_EXECUTED_RECOMMENDED",
+    "error": null,
+    "choice": "invented-wire-property-1",
+    "counts": {"v2Evaluations": 1, "v3Constructions": 3, "bindingCreations": 1, "shadowRuns": 1, "replayVerifications": 1},
+    "actualShadowCallsObservedBySpy": 1
+  },
+  "initialRegressionResult": {"tests": 3, "pass": 1, "fail": 2, "exitCode": 1},
+  "limits": "Initial evidence only, not a corrected-code result. No provider call or real/private capture. Ordering changes raw evidence fingerprints, not the qualified facts."
+}
