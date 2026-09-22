@@ -1,5 +1,26 @@
 # StayOpti Current State
 
+## D-0075 — authenticated A02 bridge and separate MAX11, 2026-09-22
+
+Additive evaluation-only development from 3c514545. Authenticated originals,
+pure set qualification, private decision input, bound full alternative set and
+actual independent A02 shadow/replay are connected; legacy remains unchanged.
+Separate MAX11 reuses transport/journal/DPAPI/credential launcher. No provider
+calls, real credential access, private preparation or private engine execution.
+Production remains HOLD pending genuine public-price/use/retention evidence;
+Acquire and real Execute require distinct later authority. The target is the
+independent A02 compatibility consumer, not intent role-policy/public/Golden.
+Final isolated Windows release:ci PASS on 05a64bea: V2 242/242, V3 3389/3389
+(56 new tests); lifecycle 665 PASS/17 existing opt-in skips, security/release/
+analytics/capacity/beta PASS, TypeScript/build, zero-vulnerability audits,
+PS5.1 parse 20/20, same-SHA manifest and local smoke 18/18. Only reporting
+Markdown follows the gates; software/test hashes match the candidate. Main,
+25 protected files and unrelated changes are preserved. Selective work-branch
+push and remaining local commits require direct remote verification at delivery;
+these are local results, not a GitHub CI claim.
+See `decisions/0075-authenticated-commercial-max11.md` for inventory, retained
+initial counterexamples, commands and unresolved production prerequisites.
+
 ## D-0074 — separate DPAPI credential store, 2026-09-21
 
 Authorized implementation based on f33f4ea: one protected setup prompt, explicit

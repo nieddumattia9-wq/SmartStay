@@ -82,11 +82,14 @@ function keyAndHeader(input,p){const pths=paths(input),header=readJson(join(pths
  return {pths,header,key:checkedKey(p,protectedKey.wrappedKey),keyFileSha256:hash(readFileSync(join(pths.root,'journal-key.json')))};
 }
 function validateSummary(events,header){
- const requests=[],counts=Object.fromEntries(kinds.map(k=>[k,0])),seen=new Set();let active=null,terminal=null;
+ const requests=[],counts=Object.fromEntries(kinds.map(k=>[k,0])),seen=new Set();let active=null,terminal=null,selection=null;
  for(const e of events){const d=e.data;
   if(e.type==='START'){if(e.sequence!==1||!equal(d,{headerSha256:hashAcquisitionJournalValue(header)}))fail('START_EVENT_INVALID');continue;}
   if(terminal)fail('EVENT_AFTER_FINISH');
-  if(e.type==='RESERVE'){
+  if(e.type==='SEAL'&&profile.selection){
+   if(selection||active!==null||requests.length!==1||requests[0].state!=='SUCCEEDED'||!hex(d.selectionSha256)||!equal(Object.keys(d).sort(),['original','selectionSha256'].sort()))fail('SELECTION_SEAL_INVALID');
+   selection=clone(d);
+  }else if(e.type==='RESERVE'){
    if(active!==null||!kinds.includes(d.kind)||d.ordinal!==requests.length+1||d.ordinal>LITEAPI_ACQUISITION_CAPS.total||!hex(d.subjectSha256)||seen.has(d.kind+':'+d.subjectSha256))fail('RESERVATION_INTEGRITY');
    if(++counts[d.kind]>LITEAPI_ACQUISITION_CAPS[d.kind])fail('CAP_EXCEEDED');
    if(!equal(Object.keys(d).sort(),['kind','ordinal','request','subjectSha256'].sort()))fail('RESERVATION_FIELDS');
@@ -101,7 +104,7 @@ function validateSummary(events,header){
   }else fail('EVENT_TYPE_INVALID');
  }
  if(!events.length||events[0].type!=='START')fail('START_EVENT_MISSING');
- return {attemptsReserved:requests.length,counts,requests,activeOrdinal:active,status:terminal??'INCOMPLETE_ONE_SHOT',
+ return {...(profile.selection?{selection}:{}),attemptsReserved:requests.length,counts,requests,activeOrdinal:active,status:terminal??'INCOMPLETE_ONE_SHOT',
   restartAllowed:false,authorizationConsumed:true,syntheticProofOnly:header.binding.mode==='SYNTHETIC_ONLY'};
 }
 function verifyWithKey(input,context){
@@ -121,7 +124,7 @@ function verifyWithKey(input,context){
   }
  }finally{journalKey.fill(0);}
  const summary=validateSummary(events,header),files=new Set();
- for(const r of summary.requests)for(const direction of ['request','response']){
+ for(const r of [...(summary.selection?[{ordinal:0,selection:summary.selection.original}]:[]),...summary.requests])for(const direction of r.ordinal===0?['selection']:['request','response']){
   const ref=r[direction];if(!ref){if(direction==='request')fail('ORIGINAL_MISSING');continue;}
   if(!plain(ref)||!equal(Object.keys(ref).sort(),['file','fileSha256','rawSha256','byteLength'].sort())||
    ref.file!==String(r.ordinal).padStart(3,'0')+'-'+direction+'.aesgcm'||!hex(ref.fileSha256)||!hex(ref.rawSha256)||!Number.isInteger(ref.byteLength)||ref.byteLength<0)fail('ORIGINAL_REFERENCE_INVALID');
@@ -207,6 +210,12 @@ function createAcquisitionJournal(input){
   }finally{raw.fill(0);encryptionKey.fill(0);}
  };
  return Object.freeze({root:pths.root,mode:input.mode,
+  ...(profile.selection?{sealSelection(selection){
+   const s=current();if(s.selection||s.activeOrdinal!==null||s.requests.length!==1||s.requests[0].state!=='SUCCEEDED')fail('SELECTION_SEAL_INVALID');
+   profile.validateSelection?.(selection,header.context);
+   try{const original=persistOriginal(0,'selection',Buffer.from(json(selection)));append('SEAL',{original,selectionSha256:hashAcquisitionJournalValue(selection)},s);return current().selection;}
+   catch(e){poisoned=true;throw e;}
+  }}:{}),
   reserve({kind,hotelId=null,offerId=null,requestBytes,checkpointSha256}){
    const s=current();if(checkpointSha256!==input.bindingSha256)fail('CHECKPOINT_MISMATCH');
    if(!kinds.includes(kind))fail('KIND_NOT_ALLOWED');if(s.activeOrdinal!==null)fail('CONCURRENCY_PROHIBITED');
@@ -242,7 +251,7 @@ function createAcquisitionJournal(input){
 }
 
 function decryptWithKey(input,context,r,direction){
- const ref=r?.[direction];if(!['request','response'].includes(direction)||!ref)fail('ORIGINAL_NOT_FOUND');
+ const ref=r?.[direction];if(!['request','response',...(profile.selection?['selection']:[])].includes(direction)||!ref)fail('ORIGINAL_NOT_FOUND');
  const envelope=readJson(join(context.pths.root,'encrypted',ref.file)),m=envelope.metadata;
  if(m.caseId!==input.caseId||m.bindingSha256!==input.bindingSha256||m.authorizationSha256!==input.authorizationSha256||m.ordinal!==r.ordinal||m.direction!==direction||
   m.rawSha256!==ref.rawSha256||m.byteLength!==ref.byteLength||m.mode!==input.mode||m.keyProtection!==context.protectionClass)fail('ENVELOPE_BINDING');
@@ -254,7 +263,7 @@ function decryptWithKey(input,context,r,direction){
 }
 /** Read-only authenticated reopening, never a store constructor or restart. */
 function decryptAcquisitionOriginal(input){const p=protectorFor(input),context={...keyAndHeader(input,p),protectionClass:p.protectionClass};
- try{const s=verifyWithKey(input,context),r=s.requests.find(r=>r.ordinal===input.ordinal);return decryptWithKey(input,context,r,input.direction);}
+ try{const s=verifyWithKey(input,context),r=input.ordinal===0&&profile.selection?{ordinal:0,selection:s.selection?.original}:s.requests.find(r=>r.ordinal===input.ordinal);return decryptWithKey(input,context,r,input.direction);}
  finally{context.key.fill(0);}
 }
 return Object.freeze({create:createAcquisitionJournal,verify:verifyAcquisitionJournal,decrypt:decryptAcquisitionOriginal,hashValue:hashAcquisitionJournalValue});

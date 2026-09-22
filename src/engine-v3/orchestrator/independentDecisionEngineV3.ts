@@ -53,6 +53,7 @@ import type {
 } from "../evaluation/evaluationCalibrationV3";
 
 import { verifyBoundCommercialEvidenceV3, type BoundCommercialEvidenceV3 } from "../evaluation/boundCommercialEvidenceV3";
+import { verifyBoundAuthenticatedCommercialV3, type BoundAuthenticatedCommercialV3 } from "../evaluation/boundAuthenticatedCommercialV3";
 
 export interface RunIndependentDecisionShadowInputV3 {
   mode?: "off" | "shadow";
@@ -62,6 +63,9 @@ export interface RunIndependentDecisionShadowInputV3 {
   publicV2Result: SmartStayEngineV2SearchResult;
   publicRateEvidence?: StayOptiBoundPublicRateEvidenceInputV3;
   compatibilityPolicy?: StayOptiV3CompatibilityPolicyInput;
+  /** Evaluation telemetry only; called for actual constructions, never inferred. */
+  onDecisionConstructed?: () => void;
+  onReplayVerified?: () => void;
 }
 
 export interface RunIndependentDecisionShadowResultV3 {
@@ -115,7 +119,8 @@ export interface StayOptiBoundPublicRateAbstentionEvidenceV3 {
 export type StayOptiBoundPublicRateEvidenceInputV3 =
   | StayOptiBoundPublicRateEvidenceV3
   | StayOptiBoundPublicRateAbstentionEvidenceV3
-  | BoundCommercialEvidenceV3;
+  | BoundCommercialEvidenceV3
+  | BoundAuthenticatedCommercialV3;
 
 type PublicRateEvidenceWithoutFingerprintV3 =
   Omit<
@@ -651,8 +656,11 @@ function finitePositiveAmount(
 }
 
 export function deriveBoundPublicRateConsistencyV3(
-  input: {decision: StayOptiDecisionV3; comparable: StayOptiComparableDecisionV3; evidence?: StayOptiBoundPublicRateEvidenceInputV3}
+  input: {decision: StayOptiDecisionV3; comparable: StayOptiComparableDecisionV3; searchInput?: SmartStayEngineV2SearchInput; evidence?: StayOptiBoundPublicRateEvidenceInputV3}
 ): StayPublicRatesConsistencyV3 {
+  if (input.evidence?.evidenceType === 'authenticated-commercial-alternative-set') {
+    return verifyBoundAuthenticatedCommercialV3({...input,evidence:input.evidence});
+  }
   if (input.evidence?.evidenceType === "protocol-neutral-commercial-evidence") {
     return verifyBoundCommercialEvidenceV3({...input, evidence: input.evidence});
   }
@@ -907,6 +915,7 @@ export function deriveIndependentShadowSafetySignalsV3(
     comparable: StayOptiComparableDecisionV3;
     publicRateEvidence?: StayOptiBoundPublicRateEvidenceInputV3;
     deterministicReplayMatches: boolean;
+    searchInput?: SmartStayEngineV2SearchInput;
   }
 ): StayOptiShadowSafetySignalsV3 {
   const decisionValidation =
@@ -922,7 +931,9 @@ export function deriveIndependentShadowSafetySignalsV3(
     );
 
   return {
-    priceIntegrity:
+    priceIntegrity: derivePriceIntegrity(input.decision,input.comparable) !== 'fail' &&
+      input.publicRateEvidence?.evidenceType === 'authenticated-commercial-alternative-set' &&
+      verifyBoundAuthenticatedCommercialV3({...input,evidence:input.publicRateEvidence}) === 'verified' ? 'pass' :
       derivePriceIntegrity(
         input.decision,
         input.comparable
@@ -935,6 +946,7 @@ export function deriveIndependentShadowSafetySignalsV3(
           input.comparable,
         evidence:
           input.publicRateEvidence,
+        searchInput: input.searchInput,
       }),
     commercialFirewall:
       evaluateCommercialFirewallV3(
@@ -997,9 +1009,11 @@ export function runIndependentDecisionShadowV3(
 
       const first =
         createDecision();
+      input.onDecisionConstructed?.();
 
       const second =
         createDecision();
+      input.onDecisionConstructed?.();
 
       const validation =
         validateStayOptiDecisionV3(
@@ -1027,6 +1041,7 @@ export function runIndependentDecisionShadowV3(
           first,
           second
         );
+      input.onReplayVerified?.();
 
       return {
         decision:
@@ -1040,6 +1055,7 @@ export function runIndependentDecisionShadowV3(
               input.publicRateEvidence,
             deterministicReplayMatches:
               replay.matches,
+            searchInput: input.searchInput,
           }),
       };
     },

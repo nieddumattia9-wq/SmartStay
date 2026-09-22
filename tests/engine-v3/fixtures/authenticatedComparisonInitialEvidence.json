@@ -1,0 +1,27 @@
+{
+  "version": "stayopti.d0075.initial-development-evidence@1",
+  "origin": "SYNTHETIC_ONLY",
+  "base": "3c51454582ac935d9fff03defc77d35c2505137b",
+  "counterexamples": [
+    {
+      "name": "component list is not an exhaustive guarantee",
+      "input": {"bothObservedAndVerified": [{"amount": 15, "currency": "EUR", "included": false, "mandatory": true, "basis": "TOTAL_STAY"}]},
+      "initial": "PREPARED_PILOT_SET with no blockers",
+      "correction": "Components retained; coverage UNKNOWN and COMPLETE_VERIFIED_COST_UNPROVEN. Historical validators unchanged."
+    },
+    {
+      "name": "opaque IDs cannot directly satisfy legacy offer routing grammar",
+      "input": {"providerOfferId": "invented-wire-offer-0", "qualifiedProperties": 3},
+      "initial": {"preparation": "PREPARED_PILOT_SET", "execution": "COMPARISON_EXECUTED_ABSTAINED", "bookability": "unknown"},
+      "cause": "Legacy DTO recognizes its documented offer ID grammar, not arbitrary provider IDs.",
+      "correction": "Explicit local routing alias; raw ID and UNKNOWN provider revision preserved."
+    },
+    {
+      "name": "missing verification must remain reportable",
+      "initial": "Stable serialization rejected an undefined optional semantic fingerprint value.",
+      "correction": "Explicit null in semantic fingerprint; PREPARATION_STOPPED and zero engine invocations."
+    }
+  ],
+  "privateExecution": false,
+  "providerRequests": 0
+}

@@ -239,3 +239,14 @@ The initial full-gate CL01 failure is preserved and corrected by following
 the shared launcher/store instead of requiring the removed duplicate prompt.
 No historical inventory/receipt migration or private acquisition. Publication
 status and pending commits require direct remote readback; no GitHub CI claim.
+
+| D-0075 | 2026-09-22 | Add authenticated observation-bound commercial set @2, pure qualification and whole-set binding to the existing independent A02 shadow; isolate MAX11 acquisition authority from execution, reusing finite journal/transport/DPAPI. | Synthetic offline implementation authorized; production HOLD and separate later acquisition/execution authority; selective work-branch publication conditional on final gates | `decisions/0075-authenticated-commercial-max11.md` |
+
+D-0075 local final validation: isolated 05a64bea, exact release:ci exit 0;
+V2 242/242, V3 3389/3389 (56 new), lifecycle 665 PASS/17 existing skips and all
+release-related gates PASS. PS5.1/DPAPI with synthetic bytes/credentials,
+parse 20/20, explicit-SHA manifest and local smoke 18/18. Initial routing,
+serialization and exhaustive-coverage counterexamples are retained; no legacy
+validator or private matrix is rewritten. Only reporting Markdown follows the
+verified code. Actual selective push and local pending commits are determined
+by direct remote readback at delivery; no CI claim or production authorization.

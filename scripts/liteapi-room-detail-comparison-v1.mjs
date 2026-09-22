@@ -122,7 +122,8 @@ const roomRelevant=room=>{
  if(Array.isArray(facts.bedTypes))facts.bedTypes=facts.bedTypes.map(b=>plain(b)?project(b,['quantity','bedType','bedSize']):b).sort((a,b)=>canonical(a)<canonical(b)?-1:canonical(a)>canonical(b)?1:0);
  return facts;
 };
-function compareOne(source,offer,record){
+// Pure shared comparison. Authenticity belongs to the ingress, not this function.
+export function compareMappedRoomObservation(source,offer,record){
  const initial={offerKey:offer.offerKey,hotelId:offer.hotelId,offerId:offer.offerId,rateId:offer.rateId,mappedRoomId:clone(offer.mappedRoomId),rateObservedAt:offer.observedAt,
   detailObservedAt:record?.completedAt??null,rateResponseSha256:offer.responseSha256,detailResponseSha256:record?.response?.body?.sha256??null,
   originalRate:clone(offer.rate),rateRoomText:offer.roomText,issues:[...offer.issues],commercialObservationsRefreshed:false,bookabilityCertified:false,priceOrExpiryChanged:false};
@@ -208,7 +209,7 @@ export function compareHotelDetailCapture(source,capture){
   if(q?.kind!=='HOTEL_DETAIL'||!source.targets.some(t=>t.hotelId===q.hotelId)||matches.has(q.hotelId))fail('DETAIL_CAPTURE_TARGET_IDENTITY');
   matches.set(q.hotelId,r);
  }
- const offers=source.offers.map(o=>compareOne(source,o,matches.get(o.hotelId)));
+ const offers=source.offers.map(o=>compareMappedRoomObservation(source,o,matches.get(o.hotelId)));
  return {version:'stayopti.liteapi-room-detail-comparison@1.2',sourceBindingSha256:source.bindingSha256,sourceCaseId:source.caseId,
   collectionStatus:capture?.journal?.status??capture?.status??'UNVERIFIED_COLLECTION_STATUS',offerCount:offers.length,propertyCount:source.targets.length,
   roomFoundCount:offers.filter(o=>o.roomFound).length,assessableCount:offers.filter(o=>o.compatibility==='COMPATIBLE_OBSERVATIONS_NOT_COMMERCIAL_CERTIFICATION').length,
