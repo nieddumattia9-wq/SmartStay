@@ -2,14 +2,14 @@ import type {Hotel,HotelOffer} from '../../types/hotel';
 import type {SmartStayEngineV2SearchInput} from '../../engine-v2/orchestrator/smartStayEngineV2';
 import {createSearchPartySource,resolveSearchParty} from '../../utils/searchParty';
 import {createStableHashV3} from '../contract/stableHashV3';
-import {commercialFactsTermsV3} from '../contract/authenticatedCommercialSetV3';
+import {commercialFactsTermsV3,authenticatedQualifiedCostV3} from '../contract/authenticatedCommercialSetV3';
 import {enumerateStayNightsV3} from '../integrity/stayOfferIntegrityV3';
 import {isAuthenticatedCommercialPreparationV3,type AuthenticatedCommercialPreparationV3} from './authenticatedCommercialPreparationV3';
 export function authenticatedDecisionInputV3(p:AuthenticatedCommercialPreparationV3):SmartStayEngineV2SearchInput {
  if(!isAuthenticatedCommercialPreparationV3(p))throw Error('ISSUED_PREPARATION_REQUIRED');
  const s=p.facts.scenario;
  const hotels:Hotel[]=p.assessment.offers.filter(x=>p.assessment.qualifiedKeys.includes(x.key)).map(({facts:f,qualification:q}):Hotel=>{
-  const v=f.verified!,t=commercialFactsTermsV3(v),price=q.verified!.cost.completeTotal!,currency=s.currency,provider=v.identity.provider;
+  const v=f.verified!,t=commercialFactsTermsV3(v),price=authenticatedQualifiedCostV3(q).completeTotal!,currency=s.currency,provider=v.identity.provider;
   const offer:HotelOffer={id:f.decisionOfferId,provider,price,basePrice:price,saving:0,currency,taxesIncluded:true,totalKnownCost:price,
    cancellationPolicy:t.cancellation.refundable===false?'Non-refundable':t.cancellation.refundable===true?'Refundable':null,
    refundable:t.cancellation.refundable,refundableTag:t.cancellation.refundable?'RFN':'NRFN',freeCancellationUntil:t.cancellation.until,

@@ -2,18 +2,20 @@ import {qualifyHistoricalCommercialFactsV3,type HistoricalOfferFactsV3,type Hist
 import {COMMERCIAL_EVIDENCE_DELTA_V3,type CommercialTermsV3} from './commercialEvidenceV3';
 import {createStableHashV3,stableSerializeV3} from './stableHashV3';
 import {orderExplicitInstants} from '../../../server/shared/explicit-instant';
+import {qualifyPublicPricePerspectiveV3,validatePublicPricePolicyV3,type PublicPricePolicyV3,type PublicPriceVerificationV3} from './publicPricePerspectiveV3';
 
 /** Additive @2: local observation identity never becomes a provider revision.
  * This is a pure qualifier, not an authentication or decision factory. */
 export const AUTHENTICATED_COMMERCIAL_SET_V3='stayopti.authenticated-commercial-set@2' as const;
 export interface ComparisonOfferFactsV3 {
+ publicPriceVerification?:PublicPriceVerificationV3|null;
  key:string;decisionOfferId:string;decisionIdMeaning:'LOCAL_ROUTING_ALIAS_NOT_PROVIDER_REVISION';selected:boolean;observed:HistoricalOfferFactsV3|null;verified:HistoricalOfferFactsV3|null;issues:string[];
  continuity:{kind:'EXACT_OBSERVATION_REQUEST_RESPONSE';providerVersion:{state:'UNKNOWN'};observationSha256:string;
   verificationRequest:unknown;verificationSource:HistoricalSourceV3|null;sessionId:string|null;retrievalCount:number};
  merit:{name:string;stars:number|null;features:string[];reviewScore:null;reviewCount:null;ratingReason:string};originalSources:HistoricalSourceV3[];
 }
 export interface AuthenticatedComparisonFactsV3 {
- version:'stayopti.authenticated-commercial-facts@2';origin:'AUTHENTICATED_PROVIDER'|'AUTHENTICATED_SYNTHETIC';
+ version:'stayopti.authenticated-commercial-facts@2'|'stayopti.authenticated-commercial-facts@2.1';origin:'AUTHENTICATED_PROVIDER'|'AUTHENTICATED_SYNTHETIC';
  scenario:{city:string;country:string;checkin:string;checkout:string;currency:string;adults:number;childAges:number[];units:number;budget:number;preference:'balanced-manual';distance:'NOT_REQUESTED'};
  offers:ComparisonOfferFactsV3[];sourceSetFingerprint:string;journalFingerprint:string;selection:unknown;observationWindow:unknown;
 }
@@ -23,7 +25,7 @@ export function commercialFactsTermsV3(f:HistoricalOfferFactsV3):CommercialTerms
 }
 const eq=(a:unknown,b:unknown)=>stableSerializeV3(a)===stableSerializeV3(b);
 const unique=(a:string[])=>[...new Set(a)].sort();
-export function qualifyAuthenticatedCommercialOfferV3(f:ComparisonOfferFactsV3){
+function qualifyAuthenticatedCommercialOfferLegacyV3(f:ComparisonOfferFactsV3){
  const reasons=[...f.issues];
  const observed=f.observed?qualifyHistoricalCommercialFactsV3(f.observed):null,verified=f.verified?qualifyHistoricalCommercialFactsV3(f.verified):null;
  if(!f.selected)reasons.push('NOT_SELECTED_FOR_VERIFICATION_ALL_VARIANTS_RETAINED');
@@ -60,12 +62,29 @@ export function qualifyAuthenticatedCommercialOfferV3(f:ComparisonOfferFactsV3){
   providerVersion:f.continuity.providerVersion,verificationCount:verified?1:0,retrievalCount:f.continuity.retrievalCount,
   currentBookabilityGuaranteed:false,engineInvocations:0,policyInvocations:0,semanticFingerprint:createStableHashV3({observed:observed?.semanticKey??null,verified:verified?.semanticKey??null,knowledge,reasons:problems},'authenticated-commercial-facts-v2')};
 }
-export function qualifyAuthenticatedCommercialSetV3(facts:AuthenticatedComparisonFactsV3){
- const offers=facts.offers.map(f=>({key:f.key,facts:f,qualification:qualifyAuthenticatedCommercialOfferV3(f)}));
+export function qualifyAuthenticatedCommercialOfferV3(f:ComparisonOfferFactsV3,pricePolicy?:PublicPricePolicyV3){
+ const historical=qualifyAuthenticatedCommercialOfferLegacyV3(f);
+ if(!pricePolicy)return historical;
+ const pricePerspective=qualifyPublicPricePerspectiveV3(f.observed,f.verified,pricePolicy,f.publicPriceVerification);
+ // Only the conflated public-minimum gate is superseded. Original facts and
+ // both legacy qualifications stay visible; every other substantive gate stays.
+ const reasons=unique([...historical.reasons.filter(r=>!/^((OBSERVED|VERIFIED):PUBLIC_PRICE_)/.test(r)&&
+  !(r==='COMPLETE_VERIFIED_COST_UNPROVEN'&&pricePerspective.completeCost.status==='SUPPORTED')),...pricePerspective.reasons]);
+ return {...historical,status:reasons.length?'INCOMPLETE_OR_CONFLICTING':'QUALIFIED_AT_OBSERVATION',reasons,pricePerspective,
+  historicalStatus:historical.status,historicalReasons:historical.reasons,
+  semanticFingerprint:createStableHashV3({historical:historical.semanticFingerprint,pricePerspective,reasons},'authenticated-public-price-facts-v2.1')};
+}
+export function authenticatedQualifiedCostV3(q:ReturnType<typeof qualifyAuthenticatedCommercialOfferV3>){
+ return 'pricePerspective' in q?q.pricePerspective!.completeCost:q.verified?.cost??{status:'UNKNOWN' as const,completeTotal:null,currency:null};
+}
+export function qualifyAuthenticatedCommercialSetV3(facts:AuthenticatedComparisonFactsV3,pricePolicy?:PublicPricePolicyV3){
+ if(facts.version!==(pricePolicy?'stayopti.authenticated-commercial-facts@2.1':'stayopti.authenticated-commercial-facts@2'))throw Error('COMMERCIAL_FACTS_PRICE_VERSION_MISMATCH');
+ if(pricePolicy)validatePublicPricePolicyV3(pricePolicy);
+ const offers=facts.offers.map(f=>({key:f.key,facts:f,qualification:qualifyAuthenticatedCommercialOfferV3(f,pricePolicy)}));
  const qualified=offers.filter(o=>o.qualification.status==='QUALIFIED_AT_OBSERVATION');
  const properties=new Set(qualified.map(o=>o.facts.observed!.identity.propertyId));
- return {version:AUTHENTICATED_COMMERCIAL_SET_V3,offers,qualifiedKeys:qualified.map(o=>o.key).sort(),distinctQualifiedProperties:properties.size,
+ return {version:pricePolicy?'stayopti.authenticated-commercial-set@2.1' as const:AUTHENTICATED_COMMERCIAL_SET_V3,offers,qualifiedKeys:qualified.map(o=>o.key).sort(),distinctQualifiedProperties:properties.size,
   status:properties.size>=2?'PREPARED_PILOT_SET':properties.size===1?'TECHNICAL_SINGLE_PROPERTY_ONLY':'PREPARATION_STOPPED',
   minimumTwoPropertiesIsPilotOnly:true,sourceSetFingerprint:facts.sourceSetFingerprint,
-  fullSetFingerprint:createStableHashV3(facts,'authenticated-full-alternative-set'),engineInvocations:0,policyInvocations:0,goldenAdmission:false};
+  fullSetFingerprint:pricePolicy?createStableHashV3({facts,pricePolicy},'authenticated-public-price-alternative-set-v2.1'):createStableHashV3(facts,'authenticated-full-alternative-set'),engineInvocations:0,policyInvocations:0,goldenAdmission:false};
 }

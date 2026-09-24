@@ -1,5 +1,38 @@
 # StayOpti Current State
 
+## D-0076 — separate public-price perspective, consolidated 2026-09-25
+
+Evaluation-only phase from d3ef117a, authorized for selective work-branch
+consolidation after local validation. Explicit
+@2.1 opt-in separates original retail, documented public minimum, local
+proposal and authenticated verified quote/complete cost. Default @2 and
+historical qualifications stay unchanged. The analytical minimum choice adds
+zero local markup, does not change account commission and cannot certify
+checkout, taxes, freshness or availability. Above-floor proposals are allowed
+only with the unchanged substantive requirements and matching verified price.
+The independent A02 compatibility consumer, full-set binding and actual replay
+are tested; this is not intent role-policy, public V3 or Golden promotion.
+
+Final isolated Windows V3 3444/3444 (47 new), V2 242/242, TypeScript/build PASS;
+lifecycle 665 PASS/17 existing opt-in skips. Synthetic PS5.1/DPAPI CLI passes.
+Initial sandbox/dependency/clone-line-ending failures are retained and explained
+in `decisions/0076-public-price-perspective.md`; no assertions were weakened.
+Consolidation verifies all 14 starting hashes against the delivered inventory;
+the 11 software/test files remain identical. Prior V2/V3/typecheck/build and
+lifecycle results are reused with unchanged relevant inputs/dependencies.
+New isolated PS5.1 publication checks: security29, release101, analytics31,
+capacity9, beta4, analytics-beta gate and local smoke18 PASS. The dependency
+audit PASS is reused as of 2026-09-22 after comparing both manifests/lockfiles
+and the audit script; the environment blocked a fresh registry audit, and no
+new-advisory check is claimed. No new monolithic release:ci or GitHub CI claim.
+Only reporting Markdown follows the software/test gates. Main, 25 protected
+files and preexisting work remain unchanged. Selective commit/non-force push
+and pending commits are verified by direct remote readback at delivery, not
+inferred from tests. No provider/key/private decryption/real execution.
+Production HOLD: separate public-price proof is synthetic, MAX11 still stops
+on below-SSP retail, and selecting SSP proves neither checkout nor complete
+cost. Previous private analyses retain their historical code binding.
+
 ## D-0075 R1 — authenticated segment reference, 2026-09-22
 
 Narrow evaluation-only repair from 01d1ccfc. A retained excluded observation

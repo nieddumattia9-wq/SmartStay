@@ -267,3 +267,36 @@ Pre-shadow temporal rejection counts shadow/replay zero. Only reporting Markdown
 follows software/test hash validation. Selective six-file commit/non-force push
 is authorized; exact local/remote SHA and pending commits are read back at
 delivery. Production remains HOLD; no private execution or CI claim.
+
+| D-0076 | 2026-09-24 | Separate original retail, documented public minimum, local proposal and authenticated verified quote/cost through opt-in set @2.1; preserve default @2 and all other substantive gates. Current analytical choice equals the floor with zero additional local markup; verified above-floor proposals are allowed. | Evaluation-only offline software task; no account/request changes, acquisition, private execution, commit or push; Production HOLD | `decisions/0076-public-price-perspective.md` |
+
+D-0076 final local validation: isolated Windows V3 3444/3444 (47 new),
+V2 242/242, TypeScript/build PASS; lifecycle 665 PASS/17 existing opt-in skips.
+Actual synthetic DPAPI runner, full-set binding, independent shadow/replay
+verified. Initial sandbox, isolated dependency and clone-line-ending failures
+are retained; no test or historical validator is weakened. Default historical
+qualifier body is unchanged. Phase hashes match the candidate, 25 protected
+paths and unrelated work preserved. No full release:ci/CI assertion. HEAD stays
+d3ef117a, staging empty, no commit/push or fresh remote observation; historical
+private results remain bound to their original code. SSP selection alone does
+not attest cost completeness, a public verified quote, freshness or bookability.
+
+D-0076 consolidation addendum (2026-09-25): later explicit authority permits
+only the fourteen-file phase commit and non-force publication on
+`codex/evaluation-d0036-d0041`. All fourteen starting hashes match the prior
+delivered receipt; all eleven software/test inputs match the tested isolated
+candidate. Reporting Markdown alone is updated. Reused Windows results:
+V3 3444/3444, V2 242/242, TypeScript/build and lifecycle665 PASS/17 existing
+opt-in skips, with input/dependency correspondence recorded outside the repo.
+New canonical checks: security29, release101, analytics31, capacity9, beta4,
+analytics-beta and local smoke18 PASS. The dependency audit from 2026-09-22
+(zero reported vulnerabilities) is reused only after exact content comparison
+of root/server manifests, lockfiles and audit script (CRLF/LF noted). A fresh
+online audit was blocked by the environment's external-metadata permission;
+no bypass, new-advisory check, monolithic release:ci rerun or GitHub CI claim.
+Main/protected25/unrelated work and historical evidence remain unchanged.
+Publication SHA, empty staging and remaining local commits require direct
+remote readback in the delivery. Separate public-price proof remains synthetic;
+MAX11 retains its historical below-SSP retail stop; an analytical SSP proposal
+does not certify checkout or complete cost. Production HOLD. No provider,
+credential access, private decryption or real engine execution.

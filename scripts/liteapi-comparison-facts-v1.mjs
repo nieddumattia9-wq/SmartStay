@@ -4,6 +4,7 @@ import {hash,same,fail} from './liteapi-comparison-plan-v1.mjs';
 import {readDocumentaryResponse,inspectDocumentaryFiscal,documentaryDetail} from './liteapi-documentary-wire-v1.mjs';
 import {compareMappedRoomObservation,inspectHotelDetailResponse} from './liteapi-room-detail-comparison-v1.mjs';
 import {historicalCancellationInstants,qualifyHistoricalPropertyConditions} from './liteapi-historical-commercial-v1.mjs';
+import {readComparisonPublicPriceProof} from './comparison-public-price-proof-v1.mjs';
 const freeze=x=>{if(x&&typeof x==='object'){Object.values(x).forEach(freeze);Object.freeze(x);}return x;},issued=new WeakSet();
 export const isIssuedComparisonFacts=x=>Boolean(x&&issued.has(x));
 const status=x=>['SATISFIED','COMPATIBLE'].includes(x)?'SUPPORTED':x==='INSUFFICIENT'?'VIOLATED':x==='CONFLICTING'?'CONFLICTING':'UNKNOWN';
@@ -21,8 +22,9 @@ function comparableCommercial(d){
  return {roomName:d.rate.name??null,meal:d.rate.boardName??null,rateId:d.rate.rateId,cancellation:historicalCancellationInstants(d.rate.cancellationPolicies),
   occupancy:[d.rate.occupancyNumber,d.rate.adultCount,d.rate.childCount],remarks:d.rate.remarks??null};
 }
-export function readComparisonFacts(locator){return normalizeAuthenticatedComparisonCapture(readAuthenticatedComparisonCapture(locator));}
-export function normalizeAuthenticatedComparisonCapture(capture){
+export function readComparisonFacts(locator,priceVersion){return normalizeAuthenticatedComparisonCapture(readAuthenticatedComparisonCapture(locator),priceVersion);}
+export function normalizeAuthenticatedComparisonCapture(capture,priceVersion){
+ if(priceVersion!==undefined&&priceVersion!=='stayopti.public-price-perspective@1')fail('PUBLIC_PRICE_VERSION');
  if(!isAuthenticatedComparisonCapture(capture))fail('AUTHENTICATED_CAPTURE_REQUIRED');
  const {journal,records,selection}=capture,config=journal.context.config,s=config.scenario;
  if(journal.status!=='COMPLETED')fail('COMPLETED_CAPTURE_REQUIRED');
@@ -73,9 +75,10 @@ export function normalizeAuthenticatedComparisonCapture(capture){
   }
   const prop=detail?.usable?detail.property:null;
   offers.push({key:hash({record:ref.recordSha256,pointer}),decisionOfferId:'offer-'+hash({propertyId:h.hotelId,providerOfferId:o.offerId}).slice(0,24),decisionIdMeaning:'LOCAL_ROUTING_ALIAS_NOT_PROVIDER_REVISION',selected,observed:a,verified:b,issues:[...(observed.issue?[observed.issue]:[]),...continuityIssues],
+   ...(priceVersion?{publicPriceVerification:vp?readComparisonPublicPriceProof(vp.response,config.protocol,source(vp,'data')):null}:{}),
    continuity:{kind:'EXACT_OBSERVATION_REQUEST_RESPONSE',providerVersion:{state:'UNKNOWN'},observationSha256:hash(o),verificationRequest:vp?.request??null,verificationSource:vp?source(vp,'data'):null,sessionId:verified?.hotel?.prebookId??null,retrievalCount:0},
    merit:{name:typeof prop?.name==='string'?prop.name:h.hotelId,stars:typeof prop?.starRating==='number'?prop.starRating:null,features:prop?documentaryDetail(detailRecord,h.hotelId).facilityObservations.map(x=>x.value):[],reviewScore:null,reviewCount:null,ratingReason:'SCALE_LINK_NOT_QUALIFIED_BY_THIS_INGRESS'},
    originalSources:[ref,...(detailRef?[detailRef]:[]),...(vp?[source(vp,'data')]:[])]});
  }
- const result=freeze({version:'stayopti.authenticated-commercial-facts@2',origin:capture.origin,scenario:config.scenario,offers,sourceSetFingerprint:hash({journal:journal.lastEventSha256,selection}),journalFingerprint:journal.lastEventSha256,selection,observationWindow:records.filter(r=>r.response).map(r=>({kind:r.request.kind,at:r.response.completedAt})),engineInvocations:0,policyInvocations:0});issued.add(result);return result;
+ const result=freeze({version:priceVersion?'stayopti.authenticated-commercial-facts@2.1':'stayopti.authenticated-commercial-facts@2',origin:capture.origin,scenario:config.scenario,offers,sourceSetFingerprint:hash({journal:journal.lastEventSha256,selection}),journalFingerprint:journal.lastEventSha256,selection,observationWindow:records.filter(r=>r.response).map(r=>({kind:r.request.kind,at:r.response.completedAt})),engineInvocations:0,policyInvocations:0});issued.add(result);return result;
 }

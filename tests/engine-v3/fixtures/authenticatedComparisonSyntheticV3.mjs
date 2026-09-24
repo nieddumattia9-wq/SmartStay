@@ -25,7 +25,8 @@ export function comparisonFixture(options={}){
   options.mutate?.(b,q);
   if(config.protocol==='SYNTHETIC_ATTESTED_QUOTE@1'){
    if(q.kind==='PREBOOK'){const quote=clone(b.data);delete quote.prebookId;
-    return {format:'invented-observation-and-attestation@1',operation:'ATTEST_QUOTE',quote,verification:{kind:'COMMERCIAL_VERIFICATION',id:'INVENTED_ATTESTATION_'+q.hotelId,offerToken:q.offerId,property:q.hotelId}};
+    const envelope={format:'invented-observation-and-attestation@1',operation:'ATTEST_QUOTE',quote,verification:{kind:'COMMERCIAL_VERIFICATION',id:'INVENTED_ATTESTATION_'+q.hotelId,offerToken:q.offerId,property:q.hotelId}};
+    options.mutateEnvelope?.(envelope,q,config);return envelope;
    }
    return {format:'invented-observation-and-attestation@1',operation:q.kind,document:b};
   }

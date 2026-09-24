@@ -12,14 +12,15 @@ const walk=p=>readdirSync(join(root,p),{withFileTypes:true}).flatMap(x=>x.isDire
 export function commercialRunnerInventory(expectedHead,expectedBranch){
  if(expectedBranch!==COMPARISON_BRANCH||git(root,['branch','--show-current'])!==expectedBranch||git(root,['rev-parse','HEAD'])!==expectedHead||git(root,['diff','--cached','--name-only']))fail('EXECUTION_CHECKPOINT');
  const files=[...new Set([...walk('src'),...walk('server/shared'),...walk('tests'),...comparisonCodePaths(root),
-  'scripts/run-authenticated-commercial-comparison.mjs','scripts/liteapi-comparison-facts-v1.mjs','scripts/liteapi-historical-commercial-v1.mjs',
+  'scripts/run-authenticated-commercial-comparison.mjs','scripts/liteapi-comparison-facts-v1.mjs','scripts/comparison-public-price-proof-v1.mjs','scripts/liteapi-historical-commercial-v1.mjs',
   'package.json','package-lock.json','tsconfig.tests.json','node_modules/typescript/bin/tsc','node_modules/typescript/lib/_tsc.js','node_modules/typescript/lib/tsc.js','node_modules/typescript/package.json'])].sort();
  return {version:'stayopti.commercial-runner-code@2',expectedHead,expectedBranch,nodeSha256:sha(readFileSync(process.execPath)),files:files.map(path=>({path,sha256:sha(readFileSync(join(root,path)))}))};
 }
 const load=(p,h)=>{assertNoLinks(p);const b=readFileSync(p);if(sha(b)!==h)fail('EXECUTION_INPUT_HASH');return JSON.parse(b);};
 async function main(){
  const a={};for(const v of process.argv.slice(2)){const m=/^--([A-Za-z]+)=(.*)$/s.exec(v);if(!m||Object.hasOwn(a,m[1]))fail('ARGUMENTS');a[m[1]]=m[2];}
- if(Object.keys(a).some(k=>!['Mode','ExpectedHead','ExpectedBranch','InventoryPath','InventorySha','LocatorPath','LocatorSha','OutputPath','Authorization'].includes(k))||!['Inventory','Prepare','Execute'].includes(a.Mode))fail('ARGUMENTS');
+ if(Object.keys(a).some(k=>!['Mode','ExpectedHead','ExpectedBranch','InventoryPath','InventorySha','LocatorPath','LocatorSha','OutputPath','Authorization','PricePolicyPath','PricePolicySha'].includes(k))||!['Inventory','Prepare','Execute'].includes(a.Mode))fail('ARGUMENTS');
+ if(Boolean(a.PricePolicyPath)!==Boolean(a.PricePolicySha)||(a.Mode==='Inventory'&&a.PricePolicyPath))fail('PRICE_POLICY_ARGUMENTS');
  if(!a.OutputPath)fail('EXPLICIT_PRIVATE_OUTPUT_REQUIRED');outside(root,a.OutputPath);assertNoLinks(a.OutputPath);if(existsSync(a.OutputPath))fail('RESULT_ALREADY_EXISTS');
  const inventory=commercialRunnerInventory(a.ExpectedHead,a.ExpectedBranch);
  const emit=v=>writeFileSync(a.OutputPath,JSON.stringify(v,null,2)+'\n',{flag:'wx'});
@@ -27,6 +28,7 @@ async function main(){
  if(a.Mode==='Prepare'&&a.Authorization)fail('PREPARE_HAS_NO_EXECUTION_AUTHORITY');
  if(!same(load(a.InventoryPath,a.InventorySha),inventory))fail('EXECUTION_CODE_CHANGED');
  const locator=load(a.LocatorPath,a.LocatorSha);
+ const pricePolicy=a.PricePolicyPath?load(a.PricePolicyPath,a.PricePolicySha):undefined;
  if(!locator||!same(Object.keys(locator).sort(),['registryRoot','root']))fail('LOCATOR_NO_CALLER_VERIFIER');
  const temporary=mkdtempSync(join(tmpdir(),'stayopti-commercial-compile-'));
  try{
@@ -36,13 +38,15 @@ async function main(){
   if(!same(inventory,commercialRunnerInventory(a.ExpectedHead,a.ExpectedBranch)))fail('EXECUTION_CODE_CHANGED');
   process.chdir(root);
   const req=createRequire(join(temporary,'package.json')),prepare=req(join(temporary,'src/engine-v3/evaluation/authenticatedCommercialPreparationV3.js'));
-  const p=await prepare.prepareAuthenticatedCommercialSetV3(locator);
+  const p=await prepare.prepareAuthenticatedCommercialSetV3(locator,pricePolicy);
   const executor=req(join(temporary,'src/engine-v3/evaluation/executeAuthenticatedCommercialV3.js'));
   // Prepare does not call this executor. JSON serialization is not an issued token.
   const execution=a.Mode==='Execute'?executor.executeAuthenticatedCommercialV3(p,a.Authorization):null;
   if(!same(inventory,commercialRunnerInventory(a.ExpectedHead,a.ExpectedBranch)))fail('EXECUTION_CODE_CHANGED');
   if(!same(locator,load(a.LocatorPath,a.LocatorSha)))fail('EXECUTION_INPUT_CHANGED');
-  emit({version:'stayopti.private-commercial-run@2',mode:a.Mode,code:inventory,locatorSha256:a.LocatorSha,preparation:p,
+  if(pricePolicy&&!same(pricePolicy,load(a.PricePolicyPath,a.PricePolicySha)))fail('EXECUTION_INPUT_CHANGED');
+  emit({version:pricePolicy?'stayopti.private-commercial-run@2.1':'stayopti.private-commercial-run@2',mode:a.Mode,code:inventory,locatorSha256:a.LocatorSha,
+   ...(pricePolicy?{pricePolicySha256:a.PricePolicySha}:{}),preparation:p,
    executionAuthorization:executor.commercialExecutionAuthorizationV3(p),execution,counts:execution?.counts??{v2Evaluations:0,v3Constructions:0,bindingCreations:0,shadowRuns:0,replayVerifications:0},currentBookabilityGuaranteed:false});
   process.stdout.write(a.Mode==='Prepare'?'PREPARATION_WRITTEN_ENGINE_ZERO\n':'EXECUTION_RESULT_WRITTEN_PRIVATE\n');
  }finally{
