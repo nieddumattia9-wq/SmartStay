@@ -83,7 +83,7 @@ test('K06 invalid replacement preserves old bytes and ordinary cleanup',{skip:WI
  assert.match(r.stderr,/CREDENTIAL_EMPTY_OR_INVALID/);assert.equal(hash(f.file),before);f.check();assert.deepEqual(readdirSync(join(f.store,'Production')),['private-api-key.dpapi']);
  }finally{f.clean();}
 });
-for(const ready of ['READY_FOR_EXPLICIT_ACQUISITION_AUTHORIZATION','READY_FOR_EXPLICIT_COVERAGE_ACQUISITION_AUTHORIZATION','READY_FOR_EXPLICIT_DETAIL_ACQUISITION_AUTHORIZATION'])test('K07 shared production boundary '+ready+' retrieves only after literal; protected stdin; failed key does not retry',{skip:WIN},()=>{
+for(const ready of ['READY_FOR_EXPLICIT_ACQUISITION_AUTHORIZATION','READY_FOR_EXPLICIT_COVERAGE_ACQUISITION_AUTHORIZATION','READY_FOR_EXPLICIT_DETAIL_ACQUISITION_AUTHORIZATION','READY_FOR_EXPLICIT_SSP_PROBE_AUTHORIZATION'])test('K07 shared production boundary '+ready+' retrieves only after literal; protected stdin; failed key does not retry',{skip:WIN},()=>{
  const f=fixture();try{f.configure();const child=join(f.temp,'synthetic-child.mjs'),marker=join(f.temp,'consumed.json');
  const channel=pathToFileURL(join(root,'scripts/liteapi-credential-channel.mjs')).href;
  writeFileSync(child,`import fs from 'node:fs';import assert from 'node:assert/strict';import {readProtectedCredentialFrame,credentialHandlingReport} from ${JSON.stringify(channel)};
@@ -115,7 +115,7 @@ test('K08 stdin frame validation and reporting do not confuse encrypted persiste
  assert.equal(m.credentialHandlingReport('SYNTHETIC_NO_CREDENTIAL').credentialPersisted,false);
 });
 test('K09 every operational code inventory seals the shared secret code, and CLI has no plaintext or path override parameter',async()=>{
- for(const [p,fn] of [['liteapi-controlled-plan-v1.mjs','acquisitionCodePaths'],['liteapi-search-coverage-plan-v1.mjs','coverageCodePaths'],['liteapi-hotel-detail-plan-v1.mjs','hotelDetailCodePaths']]){
+ for(const [p,fn] of [['liteapi-controlled-plan-v1.mjs','acquisitionCodePaths'],['liteapi-search-coverage-plan-v1.mjs','coverageCodePaths'],['liteapi-hotel-detail-plan-v1.mjs','hotelDetailCodePaths'],['liteapi-ssp-probe-plan-v1.mjs','sspCodePaths']]){
   const m=await load(pathToFileURL(join(root,'scripts',p)).href),paths=m[fn](root);
   for(const dep of ['invoke-liteapi-profile-runner.ps1','liteapi-credential-store.ps1','liteapi-credential-channel.mjs'])assert(paths.includes('scripts/'+dep),p+': '+dep);
  }

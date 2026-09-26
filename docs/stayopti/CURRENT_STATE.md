@@ -1,5 +1,51 @@
 # StayOpti Current State
 
+## D-0077 — operational single-hotel SSP MAX3, 2026-09-27
+
+Authorized completion of the already tested local probe, not a new A02 pilot.
+Explicit @1.1 plan/profile adds fixed-hotel documentary binding, recursive
+code/runtime inventory, Windows PS5.1 launcher and D0074 stored-credential
+handoff after preflight and the new literal. Separate registry/case/counters;
+one Rates, one candidate-margin Rates, at most one exact-new-token prebook.
+Legacy @1 synthetic-only and MAX11 remain separate; no account/core/policy change.
+Current isolated evidence: targeted 84/84 PASS, full test compilation,
+TypeScript/build PASS, lifecycle665 PASS/17 existing skips, security29/29 and
+release101/101. Actual PS5.1/DPAPI uses only invented originals and credentials.
+Initial runner-test JSON parse failure and missing isolated server dependencies
+are preserved with their fixes; no assertion/gate relaxed. The final inventory
+must match the tested ten software/test files before selective publication.
+Thirteen total phase files; main/protected25/unrelated work preserved.
+Private operational materials use only existing derived provenance, not
+historical decryption. No Acquire, real key read or engine execution. Public
+documentation requests are read-only; Git publication is explicitly authorized.
+Final delivery verifies the remote and pending commits; operational config and
+literal bind that final checkpoint. Probe authorization is still pending;
+**A02 Production HOLD** remains independent. See the operational addendum in
+`decisions/0077-ssp-request-margin-offline-probe.md` for evidence and limits.
+
+## D-0077 — request-margin / SSP offline probe, 2026-09-26
+
+Local additive work from e840031b; no commit/push authorized. The documented
+request margin supports a conditional repricing experiment, not guaranteed
+SSP equality. A separate SYNTHETIC_ONLY MAX3 probe (discovery1/requote1/prebook1)
+reuses documentary qualification, loopback transport and authenticated journal.
+The derived retail-minus-explicit-commission base is not provider-returned net.
+New observation and exact new offer token stay distinct; any target mismatch
+or relevant conflict stops without iterative adjustment. No production switch.
+MAX11, all old validators, account markup, core/policy and historical receipts
+remain unchanged. D-0076 verified-transaction path already supports matching
+SSP and is not replaced with an invented LiteAPI public-price proof.
+Final isolated Windows checks: 40/40 new probe tests plus PP17 CLI PASS;
+46 other D-0076 price/binding tests PASS on unchanged dependency code, reused
+explicitly. Full test compilation, TypeScript and build PASS. Real PS5.1/DPAPI
+uses invented originals only. Initial sandbox/Git-context failures, MP08
+uninterpretable-time failure and MP18 selected-offer expiry failure are retained;
+no old helper/validator or assertion was relaxed. See
+`decisions/0077-ssp-request-margin-offline-probe.md`. No new provider/credential/
+private-decryption/real-engine operation. Production HOLD; live account behavior
+and operational authorization remain unverified. HEAD unchanged, staging empty;
+only local additions, no fresh remote observation or synchronization claim.
+
 ## D-0076 — separate public-price perspective, consolidated 2026-09-25
 
 Evaluation-only phase from d3ef117a, authorized for selective work-branch

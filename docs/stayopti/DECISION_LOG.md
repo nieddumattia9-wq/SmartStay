@@ -300,3 +300,40 @@ remote readback in the delivery. Separate public-price proof remains synthetic;
 MAX11 retains its historical below-SSP retail stop; an analytical SSP proposal
 does not certify checkout or complete cost. Production HOLD. No provider,
 credential access, private decryption or real engine execution.
+
+## D-0077 — bounded offline request-margin experiment (2026-09-26)
+
+Authority: explicit user instruction after D-0076. Preserve the approved
+analytical SSP target with zero extra StayOpti markup; this does not mean
+zero commission or margin0. Public documentation supports a request-level
+percentage, not guaranteed exact per-offer SSP repricing. Implement only an
+offline, separately versioned discovery1/requote1/prebook1 price probe,
+reusing the existing transport/journal and qualifiers. Derived base/percentage,
+actual returned price and prebook price remain separate. No adjustment loop,
+retail rewrite, MAX11 relaxation, LIVE capability, A02 promotion or account
+change. See `decisions/0077-ssp-request-margin-offline-probe.md`. Final isolated
+Windows tests: 40 new probe checks and PP17 PASS, plus 46 D-0076 checks reused
+on unchanged dependencies; full test compilation/typecheck/build PASS. Initial
+failures are retained, not rewritten. PS5.1/DPAPI used only on synthetic data.
+No provider calls, key access or private preparation. Commit/push not authorized.
+
+## D-0077 — operational completion, separate price probe (2026-09-27)
+
+Later explicit user authority permits finishing/publishing the local D0077
+probe and preparing private operational materials, not executing Acquire.
+Use additive @1.1, fixed documented hotel/seed, two Rates and at most one
+prebook; new registry and literal, no reuse of consumed MAX11 authorization.
+The request-margin calculation remains conditional, exact returned SSP and
+unchanged terms are checked before prebook, and no adjustment/fallback loop
+exists. Reuse D0074 only after positive preflight and literal acceptance;
+do not read the saved Production key during preparation. The first @1
+simulator remains explicitly synthetic; no historical migration or A02 gate
+relaxation. Standard endpoint terms/cost and confirmed retention are qualified
+for the bounded functional test, not a provider waiver or benchmark license.
+New evidence: 84 targeted PASS, compilation/typecheck/build PASS, lifecycle
+665 PASS/17 skips, security29 and release101 PASS in isolated Windows; initial
+runner-test/environment failures retained. Final dispatch/inventory checks
+and direct Git readback are required in the delivery. Thirteen selective
+phase files, no private payload. The published checkpoint will identify new
+private inventory/configuration; older receipts remain unchanged. Acquisition
+still awaits a manual new literal; A02 Production HOLD is not superseded.
