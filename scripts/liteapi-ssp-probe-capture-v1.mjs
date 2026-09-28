@@ -6,7 +6,7 @@ import {sendBoundedAcquisitionHttp} from './bounded-acquisition-http-v1.mjs';
 import {comparisonRequest} from './liteapi-comparison-plan-v1.mjs';
 import {readDocumentaryResponse,decodeDocumentaryOffer} from './liteapi-documentary-wire-v1.mjs';
 import {classifyCoverageRatesResponse} from './liteapi-search-coverage-diagnostics-v1.mjs';
-import {SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_CAPS,sspDiscoveryRequest,prepareSspRequote,assessSspRequote,assessSspPrebook} from './liteapi-ssp-probe-v1.mjs';
+import {isOperationalSspVersion,SSP_PROBE_CAPS,sspDiscoveryRequest,prepareSspRequote,assessSspRequote,assessSspPrebook} from './liteapi-ssp-probe-v1.mjs';
 import {SSP_REGISTRY,validateSspProbePlan,verifySspInventory,verifySspPlanEvidence,loadSspFile,sspAuthorization,canonical,hash,sha,same,fail,assertNoLinks} from './liteapi-ssp-probe-plan-v1.mjs';
 
 /** One sequence shared by the original offline simulator and operational profile. */
@@ -21,7 +21,7 @@ export async function runSspProbeSequence(plan,send,seal){
 }
 export const operationalSspJournal=createBoundedAcquisitionJournalProfile({version:'stayopti.ssp-operational-journal@1',registryDirectory:SSP_REGISTRY,caps:SSP_PROBE_CAPS,errorPrefix:'SSP_PROBE_',selection:true,
  validateContext(input,c){validateSspProbePlan(c?.config);
-  if(c.config.version!==SSP_PROBE_OPERATIONAL_VERSION||c.config.caseId!==input.caseId||hash({config:c.config,checkpoint:c.checkpoint})!==input.bindingSha256||
+  if(!isOperationalSspVersion(c.config.version)||c.config.caseId!==input.caseId||hash({config:c.config,checkpoint:c.checkpoint})!==input.bindingSha256||
    (input.mode==='REAL')!==(c.config.origin==='LITEAPI_PRODUCTION')||input.mode==='REAL'&&input.authorizationSha256!==hash(sspAuthorization(c.config,c.inventory)))fail('JOURNAL_CONTEXT');},
  validateSelection(s,c){if(s?.status!=='CANDIDATE_REQUOTE_NOT_VERIFIED'||s.planSha256!==hash(c.config))fail('SELECTION');},
  validateRequest({context,request,kind,snapshot}){
@@ -60,7 +60,7 @@ export function readAuthenticatedSspProbe({root,registryRoot,syntheticProtector}
 }
 export async function acquireSspProbe({config,checkpoint,approval,simulation=null,syntheticProtector,verifyBeforeSend,signal}){
  const status=validateSspProbePlan(config),synthetic=config.origin==='SYNTHETIC_ONLY';
- if(config.version!==SSP_PROBE_OPERATIONAL_VERSION||status.pending.length)fail('CONFIGURATION_PENDING');
+ if(!isOperationalSspVersion(config.version)||status.pending.length)fail('CONFIGURATION_PENDING');
  if(synthetic!==Boolean(simulation)||!synthetic&&(syntheticProtector||verifyBeforeSend)||synthetic&&(simulation.origin!=='SYNTHETIC_ONLY'||!Array.isArray(simulation.responses)))fail('PRODUCTION_INJECTION');
  let credential=approval?.credential??null;
  if(!synthetic){if(!approval||approval.authorization!==sspAuthorization(config,approval.inventory)||typeof credential!=='string'||!credential.trim())fail('AUTHORIZATION_REQUIRED');

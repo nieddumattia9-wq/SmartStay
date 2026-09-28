@@ -1,5 +1,44 @@
 # StayOpti Current State
 
+## D-0077 R1 @1.2 — final review and selective consolidation (2026-09-28)
+
+Later user authority permits seven-file work-branch publication and preparation
+of a new, separately authorized SSP MAX3 attempt, NOT Acquire. Final review
+requires no further functional delta. All seven delivered hashes match;
+four software/test hashes match the isolated 114/114 candidate. Runtime hash,
+984 unchanged baseline files/manifests/locks and installed dependencies were
+checked before reusing test compilation, 114/114, TypeScript/build and the
+synthetic PS5.1/DPAPI evidence. Newly run publication checks: security29/29,
+release101/101 PASS on Windows PS5.1; no CI GitHub assertion.
+Only reporting Markdown changes during consolidation. Direct remote readback,
+empty staging and final preservation checks are recorded in the delivery.
+The new @1.2 plan must derive its target from a NEW DISCOVERY; no old offer
+token or historical price enters the configuration. Prior confirmations on
+cost/retention are reused only in their scope. Retention starts with future
+custody, not preparation. Final Inventory/Preflight must bind the published
+checkpoint; the literal remains for manual acceptance before DPAPI credential
+retrieval. No new real case custody, secret read, provider request or engine.
+Historical consumed case/result and 25 protected files remain unchanged.
+A02 Production HOLD. See the R1 report's consolidation addendum.
+
+## D-0077 R1 — bounded SSP discrepancy, local review candidate (2026-09-28)
+
+Base remains `79c203e96f9c211a9b4e2864c9cf8c07bcdcbfe5`; no commit/push.
+Opt-in probe @1.2 preserves distinct rate/offer SSPs and qualifies at most
+one cent only within the verified single-rate/single-unit/currency scope.
+The greater SSP is a local conservative proposal, not a provider quote.
+Returned Rates price must match that target exactly and meet every threshold;
+prebook, original terms, identity and scope checks remain effective.
+@1/@1.1, shared qualifiers, MAX11, core and account remain unchanged.
+Final isolated Windows checks: **114/114 PASS**, full test compilation,
+TypeScript and build PASS; PS5.1/DPAPI launcher uses synthetic originals only.
+Initial reproduced STOP and intermediate 109/111 result retained; no weakened
+assertions. Seven local phase files; see `decisions/0077-r1-bounded-ssp-discrepancy.md`.
+Historical consumed result stays STOP; private diagnosis is a new separate
+document, not a rerun/authentication of encrypted originals. No real provider
+requests, credential read, case creation, engine or Git publication.
+No operational inventory/configuration regenerated. A02 Production HOLD.
+
 ## D-0077 — operational single-hotel SSP MAX3, 2026-09-27
 
 Authorized completion of the already tested local probe, not a new A02 pilot.

@@ -337,3 +337,42 @@ and direct Git readback are required in the delivery. Thirteen selective
 phase files, no private payload. The published checkpoint will identify new
 private inventory/configuration; older receipts remain unchanged. Acquisition
 still awaits a manual new literal; A02 Production HOLD is not superseded.
+
+## D-0077 R1 — bounded SSP discrepancy, explicit local proposal (2026-09-28)
+
+User authorizes an offline local correction for review, not publication or
+another acquisition. Opt-in probe @1.2 qualifies a one-cent rate/offer SSP
+discrepancy only with verified common currency/single rate/single unit scope.
+Both observations survive; the higher threshold is a LOCAL proposal, not a
+replacement provider SSP or asserted rounding explanation. Exact returned
+price and strict below-any-threshold checks remain separate. Changed terms,
+occupancy, identity, missing scope or larger differences remain blocking.
+Historical @1/@1.1 and all shared documentary contracts keep their behavior.
+All three probe stages and the final fiscal summary consume the same scoped
+classification without erasing the historical qualifier's contrary output.
+No changes to A02, MAX11, account markup, core, caps or historical materials.
+See `decisions/0077-r1-bounded-ssp-discrepancy.md`; evidence/tests are synthetic.
+Commit/push, real key read, real case creation and provider calls prohibited.
+Final isolated Windows result: 114/114 targeted PASS, full test compilation,
+TypeScript/build PASS, actual PS5.1/DPAPI synthetic launcher. Intermediate
+109/111 exposed the residual fiscal-summary conflict; fixed without altering
+the assertions or historical qualifier. Source/log manifests retained locally.
+
+### D-0077 R1 consolidation and next-attempt preparation (2026-09-28)
+
+Subsequent explicit user authority supersedes the preceding no-commit/push
+limit for the seven-file correction only. Final review found no additional
+functional change necessary: @1.2 local-target classification, strict floors,
+scope and historical dispatch remain as tested. Exact seven-file delivery and
+four-file tested-code hashes verified, along with runtime/dependency inputs;
+reuse 114 targeted PASS, full compilation, TypeScript/build and synthetic
+PS5.1/DPAPI results. New Windows publication gates: security29, release101 PASS.
+No blanket full-suite rerun, private payload or changed public behavior.
+Prepare a new unused case with the same approved hotel/scenario/selection,
+one new DISCOVERY, one REQUOTE and at most one PREBOOK. Target comes from the
+new response; no old price/token copied. New inventory and manual literal
+bind the final published commit. An unaccepted literal is not an acquisition
+and must not be reported as a consumed attempt. Recorded start and missing
+result require separate reporting, with no automatic retry. No Acquire or
+real credential read now. Future retention14days, no extension of history;
+A02 stays HOLD. Delivery must verify actual remote SHA and pending commits.

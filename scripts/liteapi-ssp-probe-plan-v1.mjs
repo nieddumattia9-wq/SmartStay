@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {resolve,relative,dirname,join,isAbsolute} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {canonical,sha,hash,same,git,outside,assertNoLinks,COMPARISON_BRANCH} from './liteapi-comparison-plan-v1.mjs';
-import {validateSspProbePlan,SSP_PROBE_OPERATIONAL_VERSION} from './liteapi-ssp-probe-v1.mjs';
+import {validateSspProbePlan,SSP_PROBE_OPERATIONAL_VERSION,isOperationalSspVersion} from './liteapi-ssp-probe-v1.mjs';
 export {canonical,sha,hash,same,git,outside,assertNoLinks,validateSspProbePlan};
 export const SSP_REGISTRY='liteapi-ssp-price-probe-max3';
 export const fail=c=>{throw Error('SSP_PROBE_'+c);};
@@ -14,7 +14,7 @@ export function loadSspFile(file,digest){
 /** Integrity of already-reviewed non-secret documentary references. Not a
  * provider permission oracle: documented scope and limitations stay in refs. */
 export function verifySspPlanEvidence(c,root){
- validateSspProbePlan(c);if(c.version!==SSP_PROBE_OPERATIONAL_VERSION)fail('OPERATIONAL_VERSION_REQUIRED');
+ validateSspProbePlan(c);if(!isOperationalSspVersion(c.version))fail('OPERATIONAL_VERSION_REQUIRED');
  const evidence=[];
  for(const [name,v]of [['hotelSource',c.hotelSource],...Object.entries(c.comparisonPlan.externalConditions).filter(([,v])=>v?.status==='DOCUMENTED')]){
   if(!isAbsolute(v.reference)||!(/\.(json|md)$/i).test(v.reference)||/private-evidence|credentials|private-api-key/i.test(v.reference))fail('EVIDENCE_REFERENCE_SCOPE');

@@ -7,14 +7,18 @@ import {parseExplicitInstant} from '../server/shared/explicit-instant.mjs';
 
 export const SSP_PROBE_VERSION='stayopti.liteapi-ssp-probe@1';
 export const SSP_PROBE_OPERATIONAL_VERSION='stayopti.liteapi-ssp-probe@1.1';
+// Explicit opt-in. @1/@1.1 keep their original exact-source-equality policy.
+export const SSP_PROBE_DISCREPANCY_VERSION='stayopti.liteapi-ssp-probe@1.2';
+export const isOperationalSspVersion=v=>[SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_DISCREPANCY_VERSION].includes(v);
+const boundedSsp=p=>p.version===SSP_PROBE_DISCREPANCY_VERSION;
 export const SSP_PROBE_CAPS=Object.freeze({DISCOVERY:1,REQUOTE:1,PREBOOK:1,total:3,concurrency:1,retries:0,redirects:0});
 const fail=c=>{throw Error('SSP_PROBE_'+c);};
 const own=(o,k)=>o!=null&&Object.hasOwn(o,k);
 const id=x=>typeof x==='string'&&x.length>0&&!/[\x00-\x1f\x7f]/.test(x);
 export function validateSspProbePlan(p){
- const operational=p?.version===SSP_PROBE_OPERATIONAL_VERSION;
+ const operational=isOperationalSspVersion(p?.version);
  if(!p||!same(Object.keys(p).sort(),['version','origin','caseId','comparisonPlan','hotelId','marginDecimals','caps',...(operational?['hotelSource','purpose']:[])].sort())||
-  ![SSP_PROBE_VERSION,SSP_PROBE_OPERATIONAL_VERSION].includes(p.version)||
+  ![SSP_PROBE_VERSION,SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_DISCREPANCY_VERSION].includes(p.version)||
   !(p.origin==='SYNTHETIC_ONLY'&&p.comparisonPlan?.origin==='SYNTHETIC_LOCAL_TRANSPORT'||operational&&p.origin==='LITEAPI_PRODUCTION'&&p.comparisonPlan?.origin==='LITEAPI_PRODUCTION')||
   p.comparisonPlan?.protocol!=='LITEAPI_DOCUMENTARY@1'||!id(p.hotelId)||!/^[-_A-Za-z0-9]{1,120}$/.test(p.caseId??'')||
   p.marginDecimals!==6||!same(p.caps,SSP_PROBE_CAPS))fail('PLAN_UNSUPPORTED');
@@ -52,6 +56,69 @@ const money=(x,currency)=>x&&x.currency===currency&&cents(x.amount)!==null?{...x
 function decoded(p,r,target,stage='SEARCH'){
  return decodeDocumentaryOffer(r,{...target,scenario:{searchRequest:sspDiscoveryRequest(p).body},stage});
 }
+/** Local proposal, not a replacement SSP. Caller supplies only authenticated
+ * wire records to the public entry points; scope comes from their decoder and
+ * the single-unit request, never a caller assertion about comparable amounts. */
+function resolveProbeSsp(p,d,fields){
+ const currency=p.comparisonPlan.scenario.currency;
+ const all=fields.filter(f=>f.scope.endsWith('PUBLIC_MINIMUM'));
+ const present=all.filter(f=>f.presence!=='OMITTED');
+ const reasons=[];
+ const scope={basis:'SAME_SELECTED_OFFER_SINGLE_RATE_SINGLE_UNIT_TOTAL_STAY',binding:d.binding,
+  units:p.comparisonPlan.scenario.units,rateCount:d.offer?.rates?.length};
+ if(d.issue||d.issues.length||scope.units!==1||scope.rateCount!==1||d.binding?.occupancyNumber!==1)reasons.push('SSP_SCOPE_NOT_COMPARABLE');
+ for(const container of [d.offer,d.rate])for(const k of ['quantity','units','roomCount','numberOfRooms'])
+  if(own(container,k)&&container[k]!==1)reasons.push('SSP_EXPLICIT_QUANTITY_UNQUALIFIED');
+ if(!present.length)reasons.push('SSP_MISSING');
+ for(const f of present){
+  const original=Array.isArray(f.original)&&f.original.length===1?f.original[0]:f.original;
+  // MONEY plus documented source metadata only. Uninterpreted basis/quantity
+  // annotations must not silently become a same-stay/same-unit certificate.
+  if(f.presence!=='PRESENT'||!money(f.parsed,currency)||!original||Array.isArray(original)||
+   Object.keys(original).some(k=>!['amount','currency','source'].includes(k))||
+   own(original,'source')&&typeof original.source!=='string')reasons.push('SSP_AMOUNT_SCOPE_OR_CURRENCY_UNQUALIFIED');
+  if(f.source.responseSha256!==d.binding.payloadSha256||f.source.selectedOfferPointer!==d.binding.pointer)reasons.push('SSP_SOURCE_BINDING_UNQUALIFIED');
+  if(f.field==='prebook.suggestedSellingPrice'&&(!d.binding.prebookId||d.binding.identityBasis!=='CAPTURED_OFFER_REQUEST_AND_PREBOOK_SESSION'))reasons.push('SSP_PREBOOK_SCOPE_UNQUALIFIED');
+ }
+ const values=present.map(f=>money(f.parsed,currency)?.cents??null);
+ const valid=!reasons.length;
+ const low=valid?values.reduce((a,b)=>a<b?a:b):null,high=valid?values.reduce((a,b)=>a>b?a:b):null;
+ const difference=valid?high-low:null;
+ // A limited discrepancy requires the actual rate and offer observations.
+ // Optional PREBOOK SSP, if returned, is also checked; it cannot be discarded.
+ if(difference===1n&&!['rate.suggestedSellingPrice','offer.suggestedSellingPrice'].every(k=>present.some(f=>f.field===k)))reasons.push('SSP_DISCREPANCY_PAIR_UNPROVEN');
+ if(difference!==null&&difference>1n)reasons.push('SSP_DISCREPANCY_EXCEEDS_ONE_CENT');
+ const accepted=!reasons.length;
+ const maximum=accepted?present[values.findIndex(v=>v===high)].parsed:null;
+ return {version:'stayopti.ssp-source-resolution@1',status:!accepted?'BLOCKED':difference===0n?'EQUAL_OBSERVED_THRESHOLDS':'LIMITED_ONE_CENT_DISCREPANCY',
+  reasons:[...new Set(reasons)],scope,sources:all,differenceMinorUnits:difference?.toString()??null,
+  localProposal:maximum?{amount:maximum.amount,currency,basis:difference===0n?'OBSERVED_EQUAL_THRESHOLD':'CONSERVATIVE_MAXIMUM_OF_DISTINCT_SSPS',providerReturnedSsp:false}:null,
+  cause:'NOT_ESTABLISHED',valuesDeclaredEqual:accepted&&difference===0n,thresholdToleranceMinorUnits:0};
+}
+const proposalPrice=(p,f)=>boundedSsp(p)?(f.sspResolution.localProposal?{amount:f.sspResolution.localProposal.amount,currency:f.sspResolution.localProposal.currency}:null):f.ssp;
+function probePriceIssues(p,f){
+ const original=f.fiscal.priceQualification.issues;
+ if(!boundedSsp(p))return original;
+ const qualified=f.sspResolution.status==='LIMITED_ONE_CENT_DISCREPANCY';
+ // Keep the historical qualification in facts.fiscal; supersede ONLY this
+ // exact source-conflict issue in the explicitly opted-in probe decision.
+ return [...original.filter(x=>!(qualified&&x==='SSP_SOURCES_CONFLICT')),...f.sspResolution.reasons];
+}
+function thresholdsUnchanged(p,a,b){
+ if(!boundedSsp(p))return same(a.ssp,b.ssp);
+ // A stable maximum is not permission to conceal a changed lower SSP/source.
+ const thresholds=f=>f.sspResolution.sources.map(x=>({field:x.field,scope:x.scope,presence:x.presence,parsed:x.parsed}));
+ return same(thresholds(a),thresholds(b));
+}
+function probeFiscalSummary(p,f){
+ const fiscal=f.fiscal,limited=boundedSsp(p)&&f.sspResolution.status==='LIMITED_ONE_CENT_DISCREPANCY';
+ const issues=fiscal.issues.filter(x=>!(limited&&x==='SSP_SOURCES_CONFLICT'));
+ // Same documented NULL_ALL_INCLUDED rule; no proposal is added/substituted
+ // into cost. Only the actual observed retail can be this conditional total.
+ const completeCost=fiscal.representation!=='NULL_ALL_INCLUDED'?null:
+  limited?(issues.length?null:fiscal.baseAmount):fiscal.completeTotal;
+ return {completeCost,remainingFiscalIssues:[...issues,...(fiscal.representation==='COMPONENT_LIST'?['COMPONENT_LIST_EXHAUSTIVENESS_NOT_ATTESTED']:[])]};
+}
 function priceFacts(p,r,d){
  const fiscal=inspectDocumentaryFiscal(d,p.comparisonPlan.scenario.currency),fields=fiscal.priceQualification.fields;
  const retail=fields.find(f=>f.field==='retailRate.total')?.parsed??null;
@@ -62,42 +129,43 @@ function priceFacts(p,r,d){
  // an unrelated offer's expiry must neither disappear nor bind this one.
  const timingView={...readDocumentaryResponse(r),data:{...d.hotel,roomTypes:[d.offer]}};
  return {retail,ssp:good?minima[0].parsed:null,commission:fields.find(f=>f.field==='rate.commission')?.parsed??null,
-  fields,fiscal,timing:documentaryTiming(timingView,r,r.completedAt),timingScope:'RESPONSE_AND_SELECTED_PROPERTY_OFFER_RATE_ONLY',source:source(r,d.binding?.pointer??'response')};
+  fields,fiscal,...(boundedSsp(p)?{sspResolution:resolveProbeSsp(p,d,fields)}:{}),
+  timing:documentaryTiming(timingView,r,r.completedAt),timingScope:'RESPONSE_AND_SELECTED_PROPERTY_OFFER_RATE_ONLY',source:source(r,d.binding?.pointer??'response')};
 }
 const timeIssues=f=>['EXPLICITLY_EXPIRED','PROVIDER_EXPIRY_UNINTERPRETABLE','PROVIDER_EXPIRY_CONFLICT'].includes(f.timing.status)?[f.timing.status]:[];
-const result=(status,reasons,extra={})=>({version:SSP_PROBE_VERSION,status,reasons,...extra,engineInvocations:0,providerBehaviorProven:false,checkoutCertified:false});
+const result=(p,status,reasons,extra={})=>({version:boundedSsp(p)?p.version:SSP_PROBE_VERSION,status,reasons,...extra,engineInvocations:0,providerBehaviorProven:false,checkoutCertified:false});
 
 /** A finite experiment candidate, never a provider-returned net or quote.
  * Selection precedes price interpretation and never substitutes another offer. */
 export function prepareSspRequote(p,record){
  const payload=checked(p,record,sspDiscoveryRequest(p));
- if(!Array.isArray(payload.data))return result('STOP',['DISCOVERY_SCHEMA']);
+ if(!Array.isArray(payload.data))return result(p,'STOP',['DISCOVERY_SCHEMA']);
  const hotels=payload.data.filter(h=>h?.hotelId===p.hotelId);
- if(hotels.length!==1||!Array.isArray(hotels[0].roomTypes))return result('STOP',['PROPERTY_MISSING_OR_AMBIGUOUS']);
+ if(hotels.length!==1||!Array.isArray(hotels[0].roomTypes))return result(p,'STOP',['PROPERTY_MISSING_OR_AMBIGUOUS']);
  const offers=hotels[0].roomTypes;
- if(!offers.length)return result('STOP',['NO_OFFERS']);
- if(offers.some(o=>!id(o?.offerId))||new Set(offers.map(o=>o.offerId)).size!==offers.length)return result('STOP',['OFFER_IDENTITY_AMBIGUOUS']);
+ if(!offers.length)return result(p,'STOP',['NO_OFFERS']);
+ if(offers.some(o=>!id(o?.offerId))||new Set(offers.map(o=>o.offerId)).size!==offers.length)return result(p,'STOP',['OFFER_IDENTITY_AMBIGUOUS']);
  const seed=p.comparisonPlan.selection.seed;
  const selected=[...offers].sort((a,b)=>hash([seed,p.hotelId,a.offerId]).localeCompare(hash([seed,p.hotelId,b.offerId])))[0];
  const target={hotelId:p.hotelId,offerId:selected.offerId};
  const d=decoded(p,record,target);
- if(d.issue||d.issues.length)return result('STOP',[d.issue??'OBSERVATION_SCOPE',...d.issues],{target});
- if(!d.binding.mappedRoomId)return result('STOP',['MAPPED_ROOM_REQUIRED_FOR_REQUOTE_COMPARISON'],{target});
+ if(d.issue||d.issues.length)return result(p,'STOP',[d.issue??'OBSERVATION_SCOPE',...d.issues],{target});
+ if(!d.binding.mappedRoomId)return result(p,'STOP',['MAPPED_ROOM_REQUIRED_FOR_REQUOTE_COMPARISON'],{target});
  const facts=priceFacts(p,record,d),currency=p.comparisonPlan.scenario.currency;
- const r=money(facts.retail,currency),s=money(facts.ssp,currency),c=money(facts.commission,currency);
- const problems=[...facts.fiscal.priceQualification.issues.filter(x=>x!=='OBSERVED_PUBLIC_PRICE_BELOW_SSP'),...timeIssues(facts)];
+ const r=money(facts.retail,currency),s=money(proposalPrice(p,facts),currency),c=money(facts.commission,currency);
+ const problems=[...probePriceIssues(p,facts).filter(x=>x!=='OBSERVED_PUBLIC_PRICE_BELOW_SSP'),...timeIssues(facts)];
  if(facts.fiscal.issues.includes('OFFER_RATE_RETAIL_CONFLICT'))problems.push('OFFER_RATE_RETAIL_CONFLICT');
- if(!r||!s||!c||problems.length)return result('STOP',['RETAIL_SSP_COMMISSION_SCOPE_OR_CURRENCY_UNSUPPORTED',...problems],{target,facts});
+ if(!r||!s||!c||problems.length)return result(p,'STOP',['RETAIL_SSP_COMMISSION_SCOPE_OR_CURRENCY_UNSUPPORTED',...problems],{target,facts});
  const base=r.cents-c.cents;
- if(base<=0n||s.cents<base)return result('STOP',['DERIVED_BASE_OR_MARGIN_UNSUPPORTED'],{target,facts});
+ if(base<=0n||s.cents<base)return result(p,'STOP',['DERIVED_BASE_OR_MARGIN_UNSUPPORTED'],{target,facts});
  const numerator=(s.cents-base)*100n,denominator=base,scale=10n**BigInt(p.marginDecimals);
  const rounded=(numerator*scale*2n+denominator)/(denominator*2n);
  const margin=Number(rounded)/Number(scale);
- if(!Number.isSafeInteger(Number(rounded))||!Number.isFinite(margin))return result('STOP',['MARGIN_NUMERIC_RANGE'],{target,facts});
+ if(!Number.isSafeInteger(Number(rounded))||!Number.isFinite(margin))return result(p,'STOP',['MARGIN_NUMERIC_RANGE'],{target,facts});
  const request=sspDiscoveryRequest(p);request.kind='REQUOTE';request.body.margin=margin;
  const predictionNumerator=base*(100n*scale+rounded),predictionDenominator=100n*scale;
- return result('CANDIDATE_REQUOTE_NOT_VERIFIED',[],{planSha256:hash(p),discoverySha256:record.response.body.sha256,
-  target,mappedRoomId:d.binding.mappedRoomId,facts,request,
+ return result(p,'CANDIDATE_REQUOTE_NOT_VERIFIED',[],{planSha256:hash(p),discoverySha256:record.response.body.sha256,
+  target,mappedRoomId:d.binding.mappedRoomId,facts,request,...(boundedSsp(p)?{version:p.version,localTarget:proposalPrice(p,facts)}:{}),
   calculation:{basis:'DERIVED_RETAIL_MINUS_EXPLICIT_COMMISSION_NOT_PROVIDER_NET',baseMinorUnits:base.toString(),
    currency,retailSource:facts.fields.find(f=>f.field==='retailRate.total'),commissionSource:facts.fields.find(f=>f.field==='rate.commission'),
    assumptions:['Commission and retail cover the same single rate and currency','Linear markup on this derived base','Base and terms may change in the new search'],
@@ -128,37 +196,44 @@ function compareTerms(a,b){
 export function assessSspRequote(p,discovery,requote){
  const prepared=prepareSspRequote(p,discovery);if(prepared.status!=='CANDIDATE_REQUOTE_NOT_VERIFIED')return prepared;
  const payload=checked(p,requote,prepared.request),before=decoded(p,discovery,prepared.target);
- if(!Array.isArray(payload.data))return result('STOP',['REQUOTE_SCHEMA'],{prepared});
+ if(!Array.isArray(payload.data))return result(p,'STOP',['REQUOTE_SCHEMA'],{prepared});
  const hotels=payload.data.filter(h=>h?.hotelId===p.hotelId);
- if(hotels.length!==1||!Array.isArray(hotels[0].roomTypes))return result('STOP',['REQUOTE_PROPERTY_MISSING_OR_AMBIGUOUS'],{prepared});
+ if(hotels.length!==1||!Array.isArray(hotels[0].roomTypes))return result(p,'STOP',['REQUOTE_PROPERTY_MISSING_OR_AMBIGUOUS'],{prepared});
  const variants=hotels[0].roomTypes.map(o=>({target:{hotelId:p.hotelId,offerId:o.offerId},d:decoded(p,requote,{hotelId:p.hotelId,offerId:o.offerId})}));
  const matching=variants.filter(x=>!x.d.issue&&!x.d.issues.length&&x.d.binding.mappedRoomId===prepared.mappedRoomId);
- if(matching.length!==1)return result('STOP',['NEW_OBSERVATION_MATCH_MISSING_OR_AMBIGUOUS'],{prepared,variantIssues:variants.map(x=>({target:x.target,issues:x.d.issues}))});
+ if(matching.length!==1)return result(p,'STOP',['NEW_OBSERVATION_MATCH_MISSING_OR_AMBIGUOUS'],{prepared,variantIssues:variants.map(x=>({target:x.target,issues:x.d.issues}))});
  const {target,d}=matching[0],comparison=compareTerms(before,d),facts=priceFacts(p,requote,d),reasons=[];
  if(!comparison.equal)reasons.push('NEW_OBSERVATION_CONDITIONS_CHANGED_OR_UNINTERPRETABLE');
- if(!same(facts.ssp,prepared.facts.ssp))reasons.push('NEW_SSP_CHANGED_OR_MISSING');
- if(!facts.retail||!facts.ssp||!same(facts.retail,facts.ssp))reasons.push('RETURNED_PRICE_NOT_EXACT_SSP');
- reasons.push(...facts.fiscal.priceQualification.issues,...timeIssues(facts));
+ if(!thresholdsUnchanged(p,facts,prepared.facts))reasons.push('NEW_SSP_CHANGED_OR_MISSING');
+ const targetPrice=boundedSsp(p)?proposalPrice(p,prepared.facts):facts.ssp;
+ if(!facts.retail||!proposalPrice(p,facts)||!same(facts.retail,targetPrice))reasons.push(boundedSsp(p)?'RETURNED_PRICE_NOT_EXACT_LOCAL_TARGET':'RETURNED_PRICE_NOT_EXACT_SSP');
+ reasons.push(...probePriceIssues(p,facts),...timeIssues(facts));
  if(facts.fiscal.issues.includes('OFFER_RATE_RETAIL_CONFLICT'))reasons.push('OFFER_RATE_RETAIL_CONFLICT');
  const prebook=comparisonRequest(p.comparisonPlan,'PREBOOK',target);
- return result(reasons.length?'STOP':'EXACT_SSP_RETURNED_NOT_PREBOOK_VERIFIED',[...new Set(reasons)],
+ return result(p,reasons.length?'STOP':boundedSsp(p)?'EXACT_LOCAL_TARGET_RETURNED_NOT_PREBOOK_VERIFIED':'EXACT_SSP_RETURNED_NOT_PREBOOK_VERIFIED',[...new Set(reasons)],
   {prepared,target,newObservationSha256:requote.response.body.sha256,facts,comparison,prebookRequest:reasons.length?null:prebook,
-   historicalOfferContinuityCertified:false,oldOfferId:prepared.target.offerId,newOfferId:target.offerId});
+   historicalOfferContinuityCertified:false,oldOfferId:prepared.target.offerId,newOfferId:target.offerId,
+   ...(boundedSsp(p)?{version:p.version,localTarget:targetPrice,returnedPriceMatchesLocalTarget:same(facts.retail,targetPrice)}:{})});
 }
 export function assessSspPrebook(p,discovery,requote,prebook){
  const r=assessSspRequote(p,discovery,requote);if(!r.prebookRequest)return r;
  checked(p,prebook,r.prebookRequest);
  const d=decoded(p,prebook,r.target,'PREBOOK'),s=decoded(p,requote,r.target);
- if(d.issue||d.issues.length)return result('STOP',[d.issue??'PREBOOK_SCOPE',...d.issues],{requote:r});
+ if(d.issue||d.issues.length)return result(p,'STOP',[d.issue??'PREBOOK_SCOPE',...d.issues],{requote:r});
  const facts=priceFacts(p,prebook,d),reasons=[],comparison=compareTerms(s,d);
- if(!same(facts.retail,r.facts.retail)||!same(facts.ssp,r.facts.ssp))reasons.push('PREBOOK_PRICE_OR_SSP_CHANGED');
+ // PREBOOK may newly report its own SSP; compare the rate/offer facts exactly
+ // and qualify any new session-level SSP separately against the fixed target.
+ const previous=boundedSsp(p)?{...r.facts,sspResolution:{...r.facts.sspResolution,sources:r.facts.sspResolution.sources.filter(x=>x.field!=='prebook.suggestedSellingPrice')}}:r.facts;
+ const current=boundedSsp(p)?{...facts,sspResolution:{...facts.sspResolution,sources:facts.sspResolution.sources.filter(x=>x.field!=='prebook.suggestedSellingPrice')}}:facts;
+ if(!same(facts.retail,r.facts.retail)||!thresholdsUnchanged(p,current,previous))reasons.push('PREBOOK_PRICE_OR_SSP_CHANGED');
+ if(boundedSsp(p)&&(!same(facts.retail,r.localTarget)||!same(proposalPrice(p,facts),r.localTarget)))reasons.push('PREBOOK_PRICE_NOT_EXACT_LOCAL_TARGET');
  if(d.rate.rateId!==s.rate.rateId)reasons.push('PREBOOK_RATE_ID_CONTINUITY_UNRESOLVED');
  if(d.binding.mappedRoomId!==null&&d.binding.mappedRoomId!==s.binding.mappedRoomId)reasons.push('PREBOOK_ROOM_CONFLICT');
  if(!comparison.equal)reasons.push('PREBOOK_CONDITIONS_CHANGED_OR_UNINTERPRETABLE');
- reasons.push(...facts.fiscal.priceQualification.issues,...timeIssues(facts));
+ reasons.push(...probePriceIssues(p,facts),...timeIssues(facts));
  if(facts.fiscal.issues.includes('PREBOOK_PRICE_COMPONENT_CONFLICT_OR_UNSUPPORTED_ADJUSTMENT'))reasons.push('PREBOOK_PAYABLE_PRICE_CONFLICT');
- return result(reasons.length?'STOP':'EXACT_SSP_OBSERVED_AND_PREBOOK_PRICE_MATCHED',[...new Set(reasons)],
-  {requote:r,facts,comparison,completeCost:facts.fiscal.representation==='NULL_ALL_INCLUDED'?facts.fiscal.completeTotal:null,
-   remainingFiscalIssues:[...facts.fiscal.issues,...(facts.fiscal.representation==='COMPONENT_LIST'?['COMPONENT_LIST_EXHAUSTIVENESS_NOT_ATTESTED']:[])],
-   fullA02Admission:false,accommodationVerified:false,providerExpiryInvented:false});
+ return result(p,reasons.length?'STOP':boundedSsp(p)?'EXACT_LOCAL_TARGET_AND_PREBOOK_PRICE_MATCHED':'EXACT_SSP_OBSERVED_AND_PREBOOK_PRICE_MATCHED',[...new Set(reasons)],
+  {requote:r,facts,comparison,...probeFiscalSummary(p,facts),
+   fullA02Admission:false,accommodationVerified:false,providerExpiryInvented:false,
+   ...(boundedSsp(p)?{version:p.version,localTarget:r.localTarget,returnedPriceMatchesLocalTarget:same(facts.retail,r.localTarget)}:{})});
 }
