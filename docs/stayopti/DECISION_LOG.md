@@ -376,3 +376,42 @@ and must not be reported as a consumed attempt. Recorded start and missing
 result require separate reporting, with no automatic retry. No Acquire or
 real credential read now. Future retention14days, no extension of history;
 A02 stays HOLD. Delivery must verify actual remote SHA and pending commits.
+
+## D-0077 R2 — match observed terms before uniqueness, opt-in @1.3 (2026-09-29)
+
+User authorizes only a local offline repair from d4f97d78, not publication,
+acquisition, historical remeasurement or another case. All legacy probe
+versions preserve their semantics. New @1.3 compares the existing non-price
+condition projection with R06, retaining additional payment/restriction scopes.
+Exactly one observed equivalent and no unresolved potential competitor are
+required. An independently established difference may exclude a variant while
+its other uncertainties remain visible; uncertainty alone is not an exclusion.
+Retail/target/SSP and provider order never choose the match. All monetary R1
+checks remain subsequent and strict, including both SSP sources and exact
+local target. No token continuity is inferred from observed terms equality.
+Initial synthetic false ambiguity retained; isolated Windows PS5.1 results:
+148/148 targeted, complete test compilation, TypeScript/build and synthetic
+launcher/DPAPI authentication/replay PASS; 33 historical output comparisons
+identical. Intermediate sandbox/ownership/fixture query failures preserved,
+no assertions weakened. See decisions/0077-r2-observed-condition-matching.md.
+Seven local files, protected25/main/unrelated materials preserved. HEAD and
+staging unchanged; no commit/push or fresh remote observation. Historical
+consumed STOP unchanged; no _003 preparation or real key read. A02 HOLD.
+
+## D-0077 R2 — authorized selective consolidation (2026-09-29)
+
+Subsequent authority permits committing/pushing exactly the seven R2 files on
+the existing work branch. Review confirmed the previously tested implementation;
+no software, fixture or assertion was altered during consolidation. All seven
+pre-consolidation hashes matched the retained delivery, with source/dependency
+and runtime correspondence checked before reusing 148 targeted tests, 33 legacy
+output comparisons, compilation, TypeScript, build and synthetic PS5.1/DPAPI.
+Publication gates newly run in that isolated candidate: security29 and release101,
+all PASS. Only reporting documents receive this later status; earlier evidence
+and authority statements remain historical. No result is attributed to GitHub CI.
+Publication is limited to software, invented fixtures and documentation; private
+monetary arithmetic stays outside Git. It neither changes margin/thresholds nor
+rewrites the consumed result. Final delivery must verify direct remote equality,
+pending commits, empty staging, main and protected25 preservation. No _003,
+new operational inventory/literal, real key access, acquisition or engine call.
+A02 remains HOLD.

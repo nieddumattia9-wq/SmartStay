@@ -4,13 +4,16 @@ import {comparisonRequest,validateComparisonPlan,hash,same} from './liteapi-comp
 import {readDocumentaryResponse,decodeDocumentaryOffer,inspectDocumentaryFiscal,documentaryTiming} from './liteapi-documentary-wire-v1.mjs';
 import {compareLiteApiCommercialTerms} from './liteapi-cancellation-comparison-v1.mjs';
 import {parseExplicitInstant} from '../server/shared/explicit-instant.mjs';
+import {compareSspObservedConditions} from './liteapi-ssp-requote-conditions-v1.mjs';
 
 export const SSP_PROBE_VERSION='stayopti.liteapi-ssp-probe@1';
 export const SSP_PROBE_OPERATIONAL_VERSION='stayopti.liteapi-ssp-probe@1.1';
 // Explicit opt-in. @1/@1.1 keep their original exact-source-equality policy.
 export const SSP_PROBE_DISCREPANCY_VERSION='stayopti.liteapi-ssp-probe@1.2';
-export const isOperationalSspVersion=v=>[SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_DISCREPANCY_VERSION].includes(v);
-const boundedSsp=p=>p.version===SSP_PROBE_DISCREPANCY_VERSION;
+export const SSP_PROBE_CONDITIONS_VERSION='stayopti.liteapi-ssp-probe@1.3';
+export const isOperationalSspVersion=v=>[SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_DISCREPANCY_VERSION,SSP_PROBE_CONDITIONS_VERSION].includes(v);
+const boundedSsp=p=>[SSP_PROBE_DISCREPANCY_VERSION,SSP_PROBE_CONDITIONS_VERSION].includes(p.version);
+const conditionsFirst=p=>p.version===SSP_PROBE_CONDITIONS_VERSION;
 export const SSP_PROBE_CAPS=Object.freeze({DISCOVERY:1,REQUOTE:1,PREBOOK:1,total:3,concurrency:1,retries:0,redirects:0});
 const fail=c=>{throw Error('SSP_PROBE_'+c);};
 const own=(o,k)=>o!=null&&Object.hasOwn(o,k);
@@ -18,7 +21,7 @@ const id=x=>typeof x==='string'&&x.length>0&&!/[\x00-\x1f\x7f]/.test(x);
 export function validateSspProbePlan(p){
  const operational=isOperationalSspVersion(p?.version);
  if(!p||!same(Object.keys(p).sort(),['version','origin','caseId','comparisonPlan','hotelId','marginDecimals','caps',...(operational?['hotelSource','purpose']:[])].sort())||
-  ![SSP_PROBE_VERSION,SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_DISCREPANCY_VERSION].includes(p.version)||
+  ![SSP_PROBE_VERSION,SSP_PROBE_OPERATIONAL_VERSION,SSP_PROBE_DISCREPANCY_VERSION,SSP_PROBE_CONDITIONS_VERSION].includes(p.version)||
   !(p.origin==='SYNTHETIC_ONLY'&&p.comparisonPlan?.origin==='SYNTHETIC_LOCAL_TRANSPORT'||operational&&p.origin==='LITEAPI_PRODUCTION'&&p.comparisonPlan?.origin==='LITEAPI_PRODUCTION')||
   p.comparisonPlan?.protocol!=='LITEAPI_DOCUMENTARY@1'||!id(p.hotelId)||!/^[-_A-Za-z0-9]{1,120}$/.test(p.caseId??'')||
   p.marginDecimals!==6||!same(p.caps,SSP_PROBE_CAPS))fail('PLAN_UNSUPPORTED');
@@ -193,16 +196,37 @@ function compareTerms(a,b){
  const compared=compareLiteApiCommercialTerms(x,y);
  return {...compared,equal:compared.equal&&compared.temporalComparisons.every(t=>t.status==='SAME_INSTANT')};
 }
+const compareVersionedTerms=(p,a,b)=>conditionsFirst(p)?compareSspObservedConditions(a,b,terms(a),terms(b)):compareTerms(a,b);
+function matchObservedVariants(before,variants,record){
+ const candidates=variants.map((x,index)=>{
+  const d=x.d;
+  const base={index,target:x.target,source:source(record,x.pointer),binding:d.binding??null,
+   decoderError:d.issue??null,issues:d.issues??[],mappedRoomId:d.binding?.mappedRoomId??null};
+  if(!id(x.target.offerId)||d.issue||d.issues.length||!d.binding?.mappedRoomId)return {...base,status:'UNRESOLVED',reasons:[d.issue??'CANDIDATE_SCOPE_OR_ROOM_UNRESOLVED',...(d.issues??[])]};
+  if(d.binding.mappedRoomId!==before.binding.mappedRoomId)return {...base,status:'DIFFERENT_ROOM',reasons:['MAPPED_ROOM_DIFFERS']};
+  const comparison=compareSspObservedConditions(before,d,terms(before),terms(d));
+  return {...base,status:comparison.status,comparison,reasons:[...(comparison.establishedDifferences.length?['OBSERVED_CONDITIONS_DIFFER']:[]),...(comparison.unresolved.length?['CONDITIONS_UNINTERPRETABLE']:[])]};
+ });
+ const equivalent=candidates.filter(c=>c.status==='EQUIVALENT_OBSERVED_CONDITIONS'),unresolved=candidates.filter(c=>c.status==='UNRESOLVED');
+ const selected=equivalent.length===1&&!unresolved.length?variants[equivalent[0].index]:null;
+ return {selected,trace:{version:'stayopti.ssp-variant-matching@1',candidates,equivalentCount:equivalent.length,unresolvedCount:unresolved.length,
+  selectionBasis:'UNIQUE_OBSERVED_CONDITIONS_NOT_PRICE_TARGET_OR_ORDER',historicalOfferContinuityCertified:false}};
+}
 export function assessSspRequote(p,discovery,requote){
  const prepared=prepareSspRequote(p,discovery);if(prepared.status!=='CANDIDATE_REQUOTE_NOT_VERIFIED')return prepared;
  const payload=checked(p,requote,prepared.request),before=decoded(p,discovery,prepared.target);
  if(!Array.isArray(payload.data))return result(p,'STOP',['REQUOTE_SCHEMA'],{prepared});
  const hotels=payload.data.filter(h=>h?.hotelId===p.hotelId);
  if(hotels.length!==1||!Array.isArray(hotels[0].roomTypes))return result(p,'STOP',['REQUOTE_PROPERTY_MISSING_OR_AMBIGUOUS'],{prepared});
- const variants=hotels[0].roomTypes.map(o=>({target:{hotelId:p.hotelId,offerId:o.offerId},d:decoded(p,requote,{hotelId:p.hotelId,offerId:o.offerId})}));
+ const variants=hotels[0].roomTypes.map((o,i)=>{
+  const offerId=conditionsFirst(p)?o?.offerId:o.offerId;
+  return {target:{hotelId:p.hotelId,offerId},d:decoded(p,requote,{hotelId:p.hotelId,offerId}),pointer:`data[${payload.data.indexOf(hotels[0])}].roomTypes[${i}]`};
+ });
+ const resolved=conditionsFirst(p)?matchObservedVariants(before,variants,requote):null;
+ if(resolved&&!resolved.selected)return result(p,'STOP',[resolved.trace.unresolvedCount?'NEW_OBSERVATION_CONDITIONS_UNRESOLVED':'NEW_OBSERVATION_MATCH_MISSING_OR_AMBIGUOUS'],{prepared,variantMatching:resolved.trace});
  const matching=variants.filter(x=>!x.d.issue&&!x.d.issues.length&&x.d.binding.mappedRoomId===prepared.mappedRoomId);
- if(matching.length!==1)return result(p,'STOP',['NEW_OBSERVATION_MATCH_MISSING_OR_AMBIGUOUS'],{prepared,variantIssues:variants.map(x=>({target:x.target,issues:x.d.issues}))});
- const {target,d}=matching[0],comparison=compareTerms(before,d),facts=priceFacts(p,requote,d),reasons=[];
+ if(!resolved&&matching.length!==1)return result(p,'STOP',['NEW_OBSERVATION_MATCH_MISSING_OR_AMBIGUOUS'],{prepared,variantIssues:variants.map(x=>({target:x.target,issues:x.d.issues}))});
+ const {target,d}=resolved?.selected??matching[0],comparison=compareVersionedTerms(p,before,d),facts=priceFacts(p,requote,d),reasons=[];
  if(!comparison.equal)reasons.push('NEW_OBSERVATION_CONDITIONS_CHANGED_OR_UNINTERPRETABLE');
  if(!thresholdsUnchanged(p,facts,prepared.facts))reasons.push('NEW_SSP_CHANGED_OR_MISSING');
  const targetPrice=boundedSsp(p)?proposalPrice(p,prepared.facts):facts.ssp;
@@ -211,7 +235,7 @@ export function assessSspRequote(p,discovery,requote){
  if(facts.fiscal.issues.includes('OFFER_RATE_RETAIL_CONFLICT'))reasons.push('OFFER_RATE_RETAIL_CONFLICT');
  const prebook=comparisonRequest(p.comparisonPlan,'PREBOOK',target);
  return result(p,reasons.length?'STOP':boundedSsp(p)?'EXACT_LOCAL_TARGET_RETURNED_NOT_PREBOOK_VERIFIED':'EXACT_SSP_RETURNED_NOT_PREBOOK_VERIFIED',[...new Set(reasons)],
-  {prepared,target,newObservationSha256:requote.response.body.sha256,facts,comparison,prebookRequest:reasons.length?null:prebook,
+  {prepared,target,newObservationSha256:requote.response.body.sha256,facts,comparison,...(resolved?{variantMatching:resolved.trace}:{}),prebookRequest:reasons.length?null:prebook,
    historicalOfferContinuityCertified:false,oldOfferId:prepared.target.offerId,newOfferId:target.offerId,
    ...(boundedSsp(p)?{version:p.version,localTarget:targetPrice,returnedPriceMatchesLocalTarget:same(facts.retail,targetPrice)}:{})});
 }
@@ -220,7 +244,7 @@ export function assessSspPrebook(p,discovery,requote,prebook){
  checked(p,prebook,r.prebookRequest);
  const d=decoded(p,prebook,r.target,'PREBOOK'),s=decoded(p,requote,r.target);
  if(d.issue||d.issues.length)return result(p,'STOP',[d.issue??'PREBOOK_SCOPE',...d.issues],{requote:r});
- const facts=priceFacts(p,prebook,d),reasons=[],comparison=compareTerms(s,d);
+ const facts=priceFacts(p,prebook,d),reasons=[],comparison=compareVersionedTerms(p,s,d);
  // PREBOOK may newly report its own SSP; compare the rate/offer facts exactly
  // and qualify any new session-level SSP separately against the fixed target.
  const previous=boundedSsp(p)?{...r.facts,sspResolution:{...r.facts.sspResolution,sources:r.facts.sspResolution.sources.filter(x=>x.field!=='prebook.suggestedSellingPrice')}}:r.facts;

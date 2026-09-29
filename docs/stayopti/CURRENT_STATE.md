@@ -1,5 +1,43 @@
 # StayOpti Current State
 
+## D-0077 R2 @1.3 — selective consolidation (2026-09-29)
+
+Later user authority permits publication of ONLY the same seven phase files
+on `codex/evaluation-d0036-d0041`, not a new acquisition or operational plan.
+Final review found no functional delta: conditions precede uniqueness, unresolved
+potential competitors block, price/order do not select, monetary gates and legacy
+dispatch remain intact. All seven delivered hashes match the local tested delivery;
+four software/test files, 981 other tracked source/dependency files, runtime and
+15,525 installed dependency files were checked before evidence reuse. No installed
+dependency file was written after the original compile/test sequence.
+Reused: 148/148, 33 legacy comparisons, canonical test compilation, TypeScript,
+build and PS5.1/DPAPI synthetic launcher. Newly run on the same isolated candidate:
+security 29/29 and release 101/101 PASS on Windows PowerShell 5.1.26100.9444.
+Only the three reporting Markdown files change during consolidation. No CI result
+is claimed. Selective staging, direct remote readback, pending commits and protected
+file preservation are recorded in the final delivery. Separate monetary analysis
+uses existing private derivations, is excluded from Git, and does not rerun @1.3
+on the consumed case. No _003, inventory, literal, key read or provider/engine call.
+A02 Production HOLD; historical _002 STOP and all prior materials remain unchanged.
+
+## D-0077 R2 @1.3 — REQUOTE observed conditions, local-only (2026-09-29)
+
+Base d4f97d784a329de2bf8d01aa7c2dfce894304f50 remains unchanged. Explicit
+@1.3 compares all observed commercial conditions before requiring uniqueness
+among same-room variants. Demonstrated differences and unresolved conditions
+are separate; a merely uncertain competitor cannot be silently eliminated.
+All candidates/provenance survive. Price, target and order do not choose the
+variant. R1 scoped SSP discrepancy and strict price floors remain effective;
+@1/@1.1/@1.2 keep their dispatch and historical outputs (33 direct comparisons).
+Isolated Windows PS5.1: 148/148 targeted PASS (49 new, 99 prior), full test
+compilation, TypeScript and build PASS, synthetic launcher/DPAPI/replay PASS.
+Initial counterexample and environmental/fixture failures retained. No full
+unrelated suite rerun or CI assertion. Seven local phase files; protected25,
+main, unrelated work and historical materials preserved. No commit/push,
+real key access, provider request, private rerun or new operational case.
+Consumed _002/result unchanged; A02 Production HOLD. See
+`decisions/0077-r2-observed-condition-matching.md` for diff scope and limits.
+
 ## D-0077 R1 @1.2 — final review and selective consolidation (2026-09-28)
 
 Later user authority permits seven-file work-branch publication and preparation
