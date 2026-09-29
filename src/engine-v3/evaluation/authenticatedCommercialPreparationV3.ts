@@ -10,7 +10,7 @@ export async function prepareAuthenticatedCommercialSetV3(locator:ComparisonLoca
  if(pricePolicy)validatePublicPricePolicyV3(pricePolicy);
  const load=new Function('u','return import(u)') as (u:string)=>Promise<{readComparisonFacts:(x:ComparisonLocatorV3,version?:string)=>AuthenticatedComparisonFactsV3;isIssuedComparisonFacts:(x:unknown)=>boolean}>;
  const module=await load(await nodeLocation());
- const facts=module.readComparisonFacts(locator,pricePolicy?'stayopti.public-price-perspective@1':undefined);if(!module.isIssuedComparisonFacts(facts))throw Error('AUTHENTICATED_FACTS_REQUIRED');
+ const facts=module.readComparisonFacts(locator,pricePolicy?.version==='stayopti.public-price-policy@2'?'stayopti.public-price-perspective@2':pricePolicy?'stayopti.public-price-perspective@1':undefined);if(!module.isIssuedComparisonFacts(facts))throw Error('AUTHENTICATED_FACTS_REQUIRED');
  const prepared=freeze({version:pricePolicy?'stayopti.issued-commercial-preparation@2.1' as const:'stayopti.issued-commercial-preparation@2' as const,facts,
   ...(pricePolicy?{pricePolicy}:{}),assessment:qualifyAuthenticatedCommercialSetV3(facts,pricePolicy),engineInvocations:0,policyInvocations:0});
  issued.add(prepared);return prepared;

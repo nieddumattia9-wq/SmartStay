@@ -45,21 +45,21 @@ export function comparisonRequest(config,kind,target=null){
 }
 export const comparisonAuthorization=(c,i)=>'AUTHORIZE_MAX11_'+c.caseId+'_HEAD_'+i.expectedHead+'_INVENTORY_'+hash(i)+'_CONFIG_'+hash(c)+'_RATES1_DETAILS5_PREBOOK5_NO_RETRY_NO_ENGINE';
 const safe=p=>!isAbsolute(p)&&!p.includes(':')&&!p.split(/[\\/]/).includes('..');
-export function comparisonCodePaths(root){
+export function comparisonCodePaths(root,entry='scripts/run-liteapi-comparison-max11.mjs',launcher='invoke-liteapi-comparison-max11.ps1'){
  const seen=new Set(),visit=p=>{if(seen.has(p))return;seen.add(p);for(const m of readFileSync(join(root,p),'utf8').matchAll(/(?:from\s*|import\s*)['"](\.\.?\/[^'"]+)['"]/g)){
   const q=relative(root,resolve(root,dirname(p),m[1])).replaceAll('\\','/');if(!safe(q))fail('IMPORT_SCOPE');visit(q);}};
- visit('scripts/run-liteapi-comparison-max11.mjs');
- for(const p of ['invoke-liteapi-comparison-max11.ps1','invoke-liteapi-profile-runner.ps1','liteapi-credential-store.ps1','protect-v3-provider-raw-key-dpapi.ps1'])seen.add('scripts/'+p);
+ visit(entry);
+ for(const p of [launcher,'invoke-liteapi-profile-runner.ps1','liteapi-credential-store.ps1','protect-v3-provider-raw-key-dpapi.ps1'])seen.add('scripts/'+p);
  return [...seen].sort();
 }
-export function createComparisonInventory(root,expectedHead,expectedBranch){
+export function createComparisonInventory(root,expectedHead,expectedBranch,profile={}){
  if(expectedBranch!==COMPARISON_BRANCH||git(root,['branch','--show-current'])!==expectedBranch||git(root,['rev-parse','HEAD'])!==expectedHead||git(root,['diff','--cached','--name-only']))fail('CHECKPOINT');
- const code=comparisonCodePaths(root).map(path=>({path,sha256:sha(readFileSync(join(root,path)))}));
+ const code=comparisonCodePaths(root,profile.entry,profile.launcher).map(path=>({path,sha256:sha(readFileSync(join(root,path)))}));
  const preserved=git(root,['status','--porcelain=v1','--untracked-files=all']).split('\n').filter(Boolean).map(x=>x.slice(3)).filter(p=>!code.some(x=>x.path===p)).sort().map(path=>({path,sha256:sha(readFileSync(join(root,path)))}));
- return {version:COMPARISON_PLAN,expectedHead,expectedBranch,nodeSha256:sha(readFileSync(process.execPath)),code,preserved};
+ return {version:profile.version??COMPARISON_PLAN,expectedHead,expectedBranch,nodeSha256:sha(readFileSync(process.execPath)),code,preserved};
 }
-export function verifyComparisonInventory(root,i,head,branch,{synthetic=false}={}){
- const actual=createComparisonInventory(root,head,branch);
+export function verifyComparisonInventory(root,i,head,branch,{synthetic=false,profile={}}={}){
+ const actual=createComparisonInventory(root,head,branch,profile);
  if(!same(i,actual))fail('INVENTORY_OR_WORKTREE_CHANGED');
  if(!synthetic)for(const f of i.code){const r=spawnSync('git',['show',head+':'+f.path],{cwd:root,windowsHide:true});
   if(r.status!==0||r.stdout.toString('utf8').replaceAll('\r\n','\n')!==readFileSync(join(root,f.path),'utf8').replaceAll('\r\n','\n'))fail('CODE_NOT_COMMITTED');}

@@ -27,6 +27,9 @@ export interface HistoricalOfferFactsV3 {
  childAgeEchoes: Array<{value:unknown;field:string}>;
  price: { observed: {amount: number; currency: string} | null; publicMinimum: {
   applicability: 'APPLIES' | 'NOT_APPLICABLE' | 'UNKNOWN'; amounts: Array<{amount: number; currency: string}>; issues: string[];
+  // Additive documentary qualification, emitted only by the authenticated adapter.
+  singleStayScope?:{version:'stayopti.single-unit-threshold-scope@1';recordSha256:string;pointer:string;units:1;rateCount:1;qualified:boolean;
+   observations:Array<{level:'SELECTED_RATE'|'SELECTED_OFFER'|'VERIFICATION';presence:string;money:{amount:number;currency:string}|null}>};
  }; coverage: 'DOCUMENTED_ALL_INCLUDED' | 'UNKNOWN'; components: Array<{
   amount: number | null; currency: string | null; inclusion: 'INCLUDED' | 'EXCLUDED' | 'UNKNOWN';
   kind: 'MANDATORY' | 'OPTIONAL' | 'REFUNDABLE_DEPOSIT' | 'UNKNOWN'; basis: 'TOTAL_STAY' | 'UNKNOWN';

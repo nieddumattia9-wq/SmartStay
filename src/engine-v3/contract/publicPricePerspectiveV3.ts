@@ -3,6 +3,7 @@ import {qualifyHistoricalCommercialFactsV3} from './historicalCommercialEvidence
 import {stableSerializeV3} from './stableHashV3';
 import {interpretChildAges} from '../../utils/searchParty';
 import type {CommercialComponentV3} from './commercialEvidenceV3';
+import {exactEuroCents,euroMoney,qualifyStayPriceBand} from '../../../server/shared/stay-price-band';
 
 /** Provider-neutral semantics. Extraction of public minima stays in adapters.
  * A local proposal is a choice, never an authenticated commercial observation. */
@@ -19,6 +20,7 @@ export interface PublicPriceVerificationV3 {
  components:CommercialComponentV3[]; issues:string[];
 }
 export type PublicPricePolicyV3 =
+ | {version:'stayopti.public-price-policy@2';mode:'OBSERVED_EUR_STAY_BAND';maximumAboveMinimumMinorUnits:500;calculationOffsetMinorUnits:100}
  | {version:typeof PUBLIC_PRICE_POLICY_V3; mode:'DOCUMENTED_MINIMUM'; additionalMarkup:0}
  | {version:typeof PUBLIC_PRICE_POLICY_V3; mode:'EXPLICIT_PROPOSALS'; proposals:Array<{scope:PublicPriceScopeV3; money:PriceMoneyV3}>};
 const equal=(a:unknown,b:unknown)=>stableSerializeV3(a)===stableSerializeV3(b);
@@ -33,6 +35,9 @@ export function publicPriceScopeV3(f:HistoricalOfferFactsV3):PublicPriceScopeV3 
   childAges:ages.state==='KNOWN'?[...ages.ages!].sort((a,b)=>a-b):null,units:f.search.units,currency:f.search.currency};
 }
 export function validatePublicPricePolicyV3(p:PublicPricePolicyV3):void {
+ if(p?.version==='stayopti.public-price-policy@2'){
+  if(!keys(p,['version','mode','maximumAboveMinimumMinorUnits','calculationOffsetMinorUnits'])||p.mode!=='OBSERVED_EUR_STAY_BAND'||p.maximumAboveMinimumMinorUnits!==500||p.calculationOffsetMinorUnits!==100)throw Error('PUBLIC_PRICE_BAND_POLICY_INVALID');return;
+ }
  if(!p||p.version!==PUBLIC_PRICE_POLICY_V3)throw Error('PUBLIC_PRICE_POLICY_VERSION');
  if(p.mode==='DOCUMENTED_MINIMUM'){
   if(!keys(p,['version','mode','additionalMarkup'])||p.additionalMarkup!==0)throw Error('PUBLIC_PRICE_POLICY_MARKUP');
@@ -52,7 +57,7 @@ export function validatePublicPricePolicyV3(p:PublicPricePolicyV3):void {
  }else throw Error('PUBLIC_PRICE_POLICY_MODE');
 }
 type Assessment=ReturnType<typeof qualifyHistoricalCommercialFactsV3>;
-function threshold(f:HistoricalOfferFactsV3|null){
+function threshold(f:HistoricalOfferFactsV3|null,band=false){
  if(!f)return {state:'UNKNOWN' as const,money:null as PriceMoneyV3|null,scope:null as PublicPriceScopeV3|null,source:null as HistoricalSourceV3|null,observations:[] as PriceMoneyV3[],issues:['OBSERVATION_MISSING']};
  const t=f.price.publicMinimum,scope=publicPriceScopeV3(f),source=f.price.source;
  const valid=qualifyHistoricalCommercialFactsV3(f).representability==='REPRESENTABLE';
@@ -61,8 +66,16 @@ function threshold(f:HistoricalOfferFactsV3|null){
  if(!valid)issues.push('SOURCE_OR_SCOPE_UNVERIFIED');
  if(t.applicability!=='APPLIES'||!t.amounts.length)issues.push('PUBLIC_MINIMUM_NOT_DOCUMENTED');
  if(t.amounts.some(x=>!money(x)||x.currency!==f.search.currency))issues.push('PUBLIC_MINIMUM_CURRENCY_OR_AMOUNT');
- if(t.amounts.some(x=>!equal(x,t.amounts[0])))issues.push('PUBLIC_MINIMUM_CONFLICT');
- return {state:issues.length?'UNKNOWN' as const:'KNOWN' as const,money:issues.length?null:t.amounts[0],scope,source,observations:t.amounts,issues:unique(issues)};
+ const scopeProof=t.singleStayScope;
+ const integers=t.amounts.map(exactEuroCents);
+ const qualified=band&&valid&&f.search.units===1&&f.search.currency==='EUR'&&t.applicability==='APPLIES'&&integers.length>0&&integers.every(x=>x!==null)&&
+  scopeProof?.version==='stayopti.single-unit-threshold-scope@1'&&scopeProof.qualified&&scopeProof.units===1&&scopeProof.rateCount===1&&scopeProof.recordSha256===source.recordSha256&&scopeProof.pointer===source.pointer;
+ const high=qualified?integers.reduce<bigint>((a,b)=>a>b! ? a : b!,0n):null,low=qualified?integers.reduce<bigint>((a,b)=>a<b! ? a : b!,integers[0]!):null;
+ const bounded=qualified&&high!==null&&low!==null&&high-low<=1n;
+ if(band&&!bounded)issues.push('SINGLE_STAY_THRESHOLD_SCOPE_UNQUALIFIED');
+ if(t.amounts.some(x=>!equal(x,t.amounts[0]))&&!bounded)issues.push('PUBLIC_MINIMUM_CONFLICT');
+ if(bounded){const i=issues.indexOf('SSP_SOURCES_CONFLICT');if(i>=0)issues.splice(i,1);}
+ return {state:issues.length?'UNKNOWN' as const:'KNOWN' as const,money:issues.length?null:bounded?euroMoney(high!):t.amounts[0],scope,source,observations:t.amounts,issues:unique(issues)};
 }
 function conforms(proposed:PriceMoneyV3|null,t:ReturnType<typeof threshold>){
  if(!proposed||!money(proposed))return 'UNKNOWN' as const;
@@ -76,11 +89,23 @@ export function qualifyPublicPricePerspectiveV3(observed:HistoricalOfferFactsV3|
  validatePublicPricePolicyV3(policy);
  const original=observed?qualifyHistoricalCommercialFactsV3(observed):null;
  const verification:Assessment|null=verified?qualifyHistoricalCommercialFactsV3(verified):null;
- const atObservation=threshold(observed),atVerification=threshold(verified),scope=observed?publicPriceScopeV3(observed):null;
+ const band=policy.version==='stayopti.public-price-policy@2';
+ const atObservation=threshold(observed,band),atVerification=threshold(verified,band),scope=observed?publicPriceScopeV3(observed):null;
  const specified=policy.mode==='EXPLICIT_PROPOSALS'&&scope?policy.proposals.find(p=>equal(normalizedScope(p.scope),scope)):null;
- const proposed=policy.mode==='DOCUMENTED_MINIMUM'?atObservation.money:specified?.money??null;
+ const proposed=band?observed?.price.observed??null:policy.mode==='DOCUMENTED_MINIMUM'?atObservation.money:specified?.money??null;
  const proposalCompliance=conforms(proposed,atObservation),verifiedThresholdCompliance=conforms(proposed,atVerification);
  const reasons:string[]=[];
+ const bandAtObservation=band?qualifyStayPriceBand(atObservation.money,proposed):null,bandAtVerification=band?qualifyStayPriceBand(atVerification.money,verified?.price.observed):null;
+ if(bandAtObservation&&bandAtObservation.status!=='WITHIN_COMMERCIAL_BAND')reasons.push('OBSERVED_PRICE_'+bandAtObservation.status);
+ if(bandAtVerification&&bandAtVerification.status!=='WITHIN_COMMERCIAL_BAND')reasons.push('VERIFIED_PRICE_'+bandAtVerification.status);
+ if(band&&verified){
+  // Keep each prior threshold (including absence) stable. A newly disclosed
+  // verification-level threshold is separately qualified, not mistaken for a
+  // change to the prior rate/offer merely because the list gained a source.
+  const prior=(f:HistoricalOfferFactsV3|null)=>f?.price.publicMinimum.singleStayScope?.observations?.filter(x=>x.level!=='VERIFICATION');
+  if(!prior(observed)||!prior(verified)||!equal(prior(observed),prior(verified)))reasons.push('DOCUMENTED_THRESHOLDS_CHANGED');
+ }
+ if(band&&publicQuote)reasons.push('SEPARATE_PUBLIC_QUOTE_NOT_SUPPORTED_BY_OBSERVED_BAND');
  if(!proposed)reasons.push(policy.mode==='EXPLICIT_PROPOSALS'?'PROPOSAL_EXACT_SCOPE_MISSING':'PROPOSAL_MINIMUM_UNAVAILABLE');
  if(!['AT_OR_ABOVE_MINIMUM','NOT_APPLICABLE'].includes(proposalCompliance))reasons.push('PUBLIC_PROPOSAL_'+proposalCompliance);
  if(verified&&!['AT_OR_ABOVE_MINIMUM','NOT_APPLICABLE'].includes(verifiedThresholdCompliance))reasons.push('VERIFIED_PUBLIC_PROPOSAL_'+verifiedThresholdCompliance);
@@ -119,10 +144,11 @@ export function qualifyPublicPricePerspectiveV3(observed:HistoricalOfferFactsV3|
  const complete=!!quoteMatches&&quoteAssessment?.cost.status==='SUPPORTED';
  if(!complete)reasons.push('PUBLIC_PROPOSAL_COMPLETE_COST_UNPROVEN');
  const completeCost={status:complete?'SUPPORTED' as const:'UNKNOWN' as const,completeTotal:complete?quoteAssessment!.cost.completeTotal:null,currency:observed?.search.currency??null};
- return {version:PUBLIC_PRICE_PERSPECTIVE_V3,
+ return {version:band?'stayopti.public-price-perspective@2':PUBLIC_PRICE_PERSPECTIVE_V3,
   originalRetail:{money:observed?.price.observed??null,source:observed?.price.source??null,historicalPublicMinimumQualification:original?.publicPrice??'UNKNOWN'},
   documentedMinimum:{atObservation,atVerification},
   proposal:{money:proposed,scope,origin:'LOCAL_ANALYTICAL_CHOICE' as const,policy,providerObservation:false},
+  ...(band?{calculationObjective:bandAtObservation?.calculationObjective,bandAtObservation,bandAtVerification,selectionBasis:'RETAIN_ACTUAL_OBSERVED_PRICE_NOT_CALCULATION_OBJECTIVE'}:{}),
   proposalCompliance,verifiedThresholdCompliance,
   verifiedPrice:verified?{money:quote,scope:publicQuote?.scope??publicPriceScopeV3(verified),source:publicQuote?.source??verified.price.source,
    kind:publicQuote?'AUTHENTICATED_PUBLIC_QUOTE' as const:'AUTHENTICATED_TRANSACTION_QUOTE' as const,

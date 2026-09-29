@@ -220,7 +220,7 @@ function createAcquisitionJournal(input){
    const s=current();if(checkpointSha256!==input.bindingSha256)fail('CHECKPOINT_MISMATCH');
    if(!kinds.includes(kind))fail('KIND_NOT_ALLOWED');if(s.activeOrdinal!==null)fail('CONCURRENCY_PROHIBITED');
    if(s.attemptsReserved>=LITEAPI_ACQUISITION_CAPS.total||s.counts[kind]>=LITEAPI_ACQUISITION_CAPS[kind])fail('CAP_EXCEEDED');
-   if(['HOTEL_DETAIL','PREBOOK','PREBOOK_GET'].includes(kind)?typeof hotelId!=='string'||!hotelId.length:hotelId!==null)fail('SUBJECT_REQUIRED');
+   if((profile.subjectKinds??['HOTEL_DETAIL','PREBOOK','PREBOOK_GET']).includes(kind)?typeof hotelId!=='string'||!hotelId.length:hotelId!==null)fail('SUBJECT_REQUIRED');
    if(offerId!==null&&(typeof offerId!=='string'||!offerId.length))fail('OFFER_INVALID');
    const subjectSha256=hashAcquisitionJournalValue(kind==='SEARCH'||kind==='FACILITIES'?null:hotelId);
    if(s.requests.some(r=>r.kind===kind&&r.subjectSha256===subjectSha256))fail('DUPLICATE_REQUEST');

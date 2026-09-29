@@ -7,14 +7,15 @@ import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {spawnSync} from 'node:child_process';
 import {comparisonCodePaths,COMPARISON_BRANCH,git,sha,same,outside,assertNoLinks,fail} from './liteapi-comparison-plan-v1.mjs';
+import {BAND_PLAN} from './liteapi-band-comparison-plan-v1.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const walk=p=>readdirSync(join(root,p),{withFileTypes:true}).flatMap(x=>x.isDirectory()?walk(p+'/'+x.name):[p+'/'+x.name]);
 export function commercialRunnerInventory(expectedHead,expectedBranch){
  if(expectedBranch!==COMPARISON_BRANCH||git(root,['branch','--show-current'])!==expectedBranch||git(root,['rev-parse','HEAD'])!==expectedHead||git(root,['diff','--cached','--name-only']))fail('EXECUTION_CHECKPOINT');
- const files=[...new Set([...walk('src'),...walk('server/shared'),...walk('tests'),...comparisonCodePaths(root),
+ const files=[...new Set([...walk('src'),...walk('server/shared'),...walk('tests'),...comparisonCodePaths(root),...comparisonCodePaths(root,'scripts/run-liteapi-band-comparison.mjs','invoke-liteapi-band-comparison.ps1'),
   'scripts/run-authenticated-commercial-comparison.mjs','scripts/liteapi-comparison-facts-v1.mjs','scripts/comparison-public-price-proof-v1.mjs','scripts/liteapi-historical-commercial-v1.mjs',
   'package.json','package-lock.json','tsconfig.tests.json','node_modules/typescript/bin/tsc','node_modules/typescript/lib/_tsc.js','node_modules/typescript/lib/tsc.js','node_modules/typescript/package.json'])].sort();
- return {version:'stayopti.commercial-runner-code@2',expectedHead,expectedBranch,nodeSha256:sha(readFileSync(process.execPath)),files:files.map(path=>({path,sha256:sha(readFileSync(join(root,path)))}))};
+ return {version:'stayopti.commercial-runner-code@2',supportedAdditiveAcquisition:BAND_PLAN,expectedHead,expectedBranch,nodeSha256:sha(readFileSync(process.execPath)),files:files.map(path=>({path,sha256:sha(readFileSync(join(root,path)))}))};
 }
 const load=(p,h)=>{assertNoLinks(p);const b=readFileSync(p);if(sha(b)!==h)fail('EXECUTION_INPUT_HASH');return JSON.parse(b);};
 async function main(){

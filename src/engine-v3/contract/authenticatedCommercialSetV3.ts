@@ -16,6 +16,8 @@ export interface ComparisonOfferFactsV3 {
 }
 export interface AuthenticatedComparisonFactsV3 {
  version:'stayopti.authenticated-commercial-facts@2'|'stayopti.authenticated-commercial-facts@2.1';origin:'AUTHENTICATED_PROVIDER'|'AUTHENTICATED_SYNTHETIC';
+ pilotMinimumDistinctProperties?:10;
+ normalizationExclusions?:Array<{source:HistoricalSourceV3;reason:string;original:unknown}>;
  scenario:{city:string;country:string;checkin:string;checkout:string;currency:string;adults:number;childAges:number[];units:number;budget:number;preference:'balanced-manual';distance:'NOT_REQUESTED'};
  offers:ComparisonOfferFactsV3[];sourceSetFingerprint:string;journalFingerprint:string;selection:unknown;observationWindow:unknown;
 }
@@ -70,6 +72,8 @@ export function qualifyAuthenticatedCommercialOfferV3(f:ComparisonOfferFactsV3,p
  // both legacy qualifications stay visible; every other substantive gate stays.
  const reasons=unique([...historical.reasons.filter(r=>!/^((OBSERVED|VERIFIED):PUBLIC_PRICE_)/.test(r)&&
   !(r==='COMPLETE_VERIFIED_COST_UNPROVEN'&&pricePerspective.completeCost.status==='SUPPORTED')),...pricePerspective.reasons]);
+ if(pricePolicy.version==='stayopti.public-price-policy@2'&&f.observed&&f.verified&&
+  !eq(f.observed.price.observed,f.verified.price.observed))reasons.push('EXACT_OBSERVED_VERIFIED_PRICE_CONTINUITY_REQUIRED');
  return {...historical,status:reasons.length?'INCOMPLETE_OR_CONFLICTING':'QUALIFIED_AT_OBSERVATION',reasons,pricePerspective,
   historicalStatus:historical.status,historicalReasons:historical.reasons,
   semanticFingerprint:createStableHashV3({historical:historical.semanticFingerprint,pricePerspective,reasons},'authenticated-public-price-facts-v2.1')};
@@ -84,7 +88,7 @@ export function qualifyAuthenticatedCommercialSetV3(facts:AuthenticatedCompariso
  const qualified=offers.filter(o=>o.qualification.status==='QUALIFIED_AT_OBSERVATION');
  const properties=new Set(qualified.map(o=>o.facts.observed!.identity.propertyId));
  return {version:pricePolicy?'stayopti.authenticated-commercial-set@2.1' as const:AUTHENTICATED_COMMERCIAL_SET_V3,offers,qualifiedKeys:qualified.map(o=>o.key).sort(),distinctQualifiedProperties:properties.size,
-  status:properties.size>=2?'PREPARED_PILOT_SET':properties.size===1?'TECHNICAL_SINGLE_PROPERTY_ONLY':'PREPARATION_STOPPED',
+  status:facts.pilotMinimumDistinctProperties===10&&properties.size<10?'PILOT_SAMPLE_INCOMPLETE':properties.size>=2?'PREPARED_PILOT_SET':properties.size===1?'TECHNICAL_SINGLE_PROPERTY_ONLY':'PREPARATION_STOPPED',
   minimumTwoPropertiesIsPilotOnly:true,sourceSetFingerprint:facts.sourceSetFingerprint,
   fullSetFingerprint:pricePolicy?createStableHashV3({facts,pricePolicy},'authenticated-public-price-alternative-set-v2.1'):createStableHashV3(facts,'authenticated-full-alternative-set'),engineInvocations:0,policyInvocations:0,goldenAdmission:false};
 }

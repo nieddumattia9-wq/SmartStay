@@ -1,5 +1,35 @@
 # StayOpti Current State
 
+## D-0078 — EUR stay price band and finite MAX31 pilot (2026-09-29)
+
+Explicit user authority replaces exact-target equality ONLY in new opt-in
+probe component@1.4 / public-price-policy@2 / MAX31@1. Qualified S <= actual P
+<= S+5 EUR for a single offer/unit whole stay; calculation aim S+1, exact cents,
+strict floors, unchanged R1 source scope and R2 conditions-first uniqueness.
+Prebook must match the actual observed price exactly, not merely the band.
+Legacy @1–@1.3 and MAX11 are preserved (44 direct identical-output controls).
+One city SEARCH200, fixed ten-property/one-offer hash sample, at most one
+single-property REQUOTE + detail + prebook per member: caps1/10/10/10, MAX31,
+no retry, substitution, pagination or inherited authorization. Source facts,
+excluded/malformed records and old observations survive authenticated parsing.
+Pure preparation consumes the new band and pilot minimum10; actual A02
+independent decision, full-set binding, shadow and replay tested synthetically.
+No role-policy intent, public V3 or Golden promotion is claimed.
+
+Final isolated Windows PS5.1 gates: V3 **3648/3648** (55 new), V2 **242/242**,
+lifecycle **665 PASS/17 existing skips**, security29, release101, TypeScript
+and build PASS. Actual launcher/DPAPI and local simulated transport exercised;
+code/test hashes matched the isolated candidate. Initial fixture/environment
+failures retained, no weakened assertions; see decisions/0078-eur-price-band-max31.md.
+Main, 25 protected files and unrelated work unchanged. User authorizes selective
+24-file commit/push; direct remote SHA and pending commits must be verified in
+the final delivery. These are local Windows results, not GitHub CI results.
+New private plan/inventory/preflight bind the final published checkpoint;
+permitted data use and provider retention applicability remain PENDING, so
+HOLD and no operational literal. Prior nationality/cost-cap/retention choices
+are reused in their documented scope, not re-requested. No real acquisition,
+Production credential read, historical decryption or private engine execution.
+
 ## D-0077 R2 @1.3 — selective consolidation (2026-09-29)
 
 Later user authority permits publication of ONLY the same seven phase files

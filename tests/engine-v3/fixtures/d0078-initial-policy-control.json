@@ -1,0 +1,13 @@
+{
+  "origin": "SYNTHETIC_ONLY",
+  "observedWithBase": "4a9cb644b3c247a5ad5421a1a8e04a0d1469e4ba",
+  "fixture": "sspProbeFixture({returned:1152, plan: explicit @1.3 operational metadata})",
+  "ssp": {"amount":1150,"currency":"EUR"},
+  "returnedRetail": {"amount":1152,"currency":"EUR"},
+  "status": "STOP",
+  "reasons": ["RETURNED_PRICE_NOT_EXACT_LOCAL_TARGET"],
+  "meaning": "Correct historical exact-target behavior, incompatible with the newly authorized price band; preserved by version dispatch, not relabeled as a provider defect.",
+  "newPolicyExpectation": "Within the authorized whole-stay EUR band, subject to unchanged scope, condition, continuity and substantive evidence gates.",
+  "providerCalls":0,
+  "historicalCaseRerun":false
+}

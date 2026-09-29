@@ -5,6 +5,10 @@ import {readDocumentaryResponse,inspectDocumentaryFiscal,documentaryDetail} from
 import {compareMappedRoomObservation,inspectHotelDetailResponse} from './liteapi-room-detail-comparison-v1.mjs';
 import {historicalCancellationInstants,qualifyHistoricalPropertyConditions} from './liteapi-historical-commercial-v1.mjs';
 import {readComparisonPublicPriceProof} from './comparison-public-price-proof-v1.mjs';
+import {readFileSync} from 'node:fs';import {join} from 'node:path';
+import {readAuthenticatedBandCapture,isAuthenticatedBandCapture} from './liteapi-band-comparison-capture-v1.mjs';
+import {bandComparisonContext,bandProbePlan,assertNoLinks} from './liteapi-band-comparison-plan-v1.mjs';
+import {inspectedBandPriceFacts} from './liteapi-ssp-probe-v1.mjs';
 const freeze=x=>{if(x&&typeof x==='object'){Object.values(x).forEach(freeze);Object.freeze(x);}return x;},issued=new WeakSet();
 export const isIssuedComparisonFacts=x=>Boolean(x&&issued.has(x));
 const status=x=>['SATISFIED','COMPATIBLE'].includes(x)?'SUPPORTED':x==='INSUFFICIENT'?'VIOLATED':x==='CONFLICTING'?'CONFLICTING':'UNKNOWN';
@@ -22,24 +26,38 @@ function comparableCommercial(d){
  return {roomName:d.rate.name??null,meal:d.rate.boardName??null,rateId:d.rate.rateId,cancellation:historicalCancellationInstants(d.rate.cancellationPolicies),
   occupancy:[d.rate.occupancyNumber,d.rate.adultCount,d.rate.childCount],remarks:d.rate.remarks??null};
 }
-export function readComparisonFacts(locator,priceVersion){return normalizeAuthenticatedComparisonCapture(readAuthenticatedComparisonCapture(locator),priceVersion);}
+export function readComparisonFacts(locator,priceVersion){
+ // Header is only a dispatch hint, never proof; the selected reader authenticates
+ // the entire journal and rederives every request/selection before issuing facts.
+ const p=join(locator.root,'header.json');assertNoLinks(p);const h=JSON.parse(readFileSync(p));
+ return normalizeAuthenticatedComparisonCapture(h.version==='stayopti.band-comparison-journal@1'?readAuthenticatedBandCapture(locator):readAuthenticatedComparisonCapture(locator),priceVersion);
+}
 export function normalizeAuthenticatedComparisonCapture(capture,priceVersion){
- if(priceVersion!==undefined&&priceVersion!=='stayopti.public-price-perspective@1')fail('PUBLIC_PRICE_VERSION');
- if(!isAuthenticatedComparisonCapture(capture))fail('AUTHENTICATED_CAPTURE_REQUIRED');
- const {journal,records,selection}=capture,config=journal.context.config,s=config.scenario;
+ if(priceVersion!==undefined&&!['stayopti.public-price-perspective@1','stayopti.public-price-perspective@2'].includes(priceVersion))fail('PUBLIC_PRICE_VERSION');
+ const band=isAuthenticatedBandCapture(capture);
+ if(!isAuthenticatedComparisonCapture(capture)&&!band)fail('AUTHENTICATED_CAPTURE_REQUIRED');
+ if(band&&priceVersion!=='stayopti.public-price-perspective@2'||!band&&priceVersion==='stayopti.public-price-perspective@2')fail('PRICE_POLICY_CAPTURE_VERSION_MISMATCH');
+ const {journal,records,selection}=capture,config=band?bandComparisonContext(journal.context.config):journal.context.config,s=config.scenario;
  if(journal.status!=='COMPLETED')fail('COMPLETED_CAPTURE_REQUIRED');
- const searchPair=records.find(p=>p.request.kind==='SEARCH');if(!searchPair?.response)fail('SEARCH_REQUIRED');
+ const initialSearch=records.find(p=>p.request.kind==='SEARCH');if(!initialSearch?.response)fail('SEARCH_REQUIRED');
+ const offers=[],seen=new Set(),normalizationExclusions=[];
+ for(const searchPair of band?records.filter(p=>['SEARCH','REQUOTE'].includes(p.request.kind)): [initialSearch]){
  const searchDoc=comparisonDocumentRecord(searchPair.response,config.protocol),payload=readDocumentaryResponse(searchDoc);
- const offers=[],seen=new Set();
  // Documented zero results has no invented candidates. Unknown schemas failed acquisition.
  const data=Array.isArray(payload?.data)?payload.data:[];
- for(const [hi,h]of data.entries())for(const [oi,o]of (h.roomTypes??[]).entries()){
+ for(const [hi,h]of data.entries()){
+ if(band&&(!h||typeof h!=='object'||!Array.isArray(h.roomTypes)||!h.roomTypes.length)){
+  normalizationExclusions.push({source:source(searchPair,`data[${hi}]`),reason:Array.isArray(h?.roomTypes)&&!h.roomTypes.length?'PROPERTY_WITH_NO_OFFERS':'UNINTERPRETABLE_PROPERTY_OFFERS',original:structuredClone(h)});continue;
+ }
+ for(const [oi,o]of (h.roomTypes??[]).entries()){
+ if(band&&(!o||typeof o!=='object'||Array.isArray(o))){normalizationExclusions.push({source:source(searchPair,`data[${hi}].roomTypes[${oi}]`),reason:'UNINTERPRETABLE_OFFER',original:structuredClone(o)});continue;}
   const target={hotelId:h.hotelId,offerId:o.offerId},pointer=`data[${hi}].roomTypes[${oi}]`,ref=source(searchPair,pointer);
   const observed=decodeComparisonObservation(searchPair.response,config,target),identity=hash(target),duplicate=seen.has(identity);seen.add(identity);
   const dp=records.find(p=>p.request.kind==='HOTEL_DETAIL'&&p.request.hotelId===h.hotelId),vp=records.find(p=>p.request.kind==='PREBOOK'&&p.request.hotelId===h.hotelId&&p.request.offerId===o.offerId);
   const detailRecord=dp?.response?comparisonDocumentRecord(dp.response,config.protocol):null,detail=detailRecord?inspectHotelDetailResponse(detailRecord,h.hotelId):null,detailRef=dp?source(dp,'data','PROPERTY'):null;
   const vd=vp?comparisonDocumentRecord(vp.response,config.protocol):null,verified=vd?decodeComparisonVerification(vp.response,vp.request,config):null;
-  const selected=Boolean(selection?.selected.some(t=>t.hotelId===h.hotelId&&t.offerId===o.offerId));
+  const bandResult=band?capture.progress.offers.find(t=>t.target?.hotelId===h.hotelId&&t.target?.offerId===o.offerId&&t.observationSha256===searchPair.response.response.body.sha256):null;
+  const selected=band?Boolean(bandResult):Boolean(selection?.selected.some(t=>t.hotelId===h.hotelId&&t.offerId===o.offerId));
   const compare=d=>d&&!d.issue?compareMappedRoomObservation({scenario:s},{...target,offerKey:hash(target),mappedRoomId:d.binding.mappedRoomId??observed.binding?.mappedRoomId,rateId:d.rate.rateId,rate:d.rate,roomText:d.rate.name??'',observedAt:ref.observedAt,responseSha256:ref.recordSha256,pointer,issues:d.issues},detailRecord):null;
   const base=(d,p,r)=>{
    if(!d||d.issue)return null;
@@ -50,16 +68,19 @@ export function normalizeAuthenticatedComparisonCapture(capture,priceVersion){
    remarks.push(...rest.map(text=>({text,pointer:r.pointer+'.termsAndConditions',scope:'OFFER'})));
    const conditions=[...(detailRef?qualifyHistoricalPropertyConditions(detail?.property,party,rate.boardName,detailRef):[]),...qualifyHistoricalPropertyConditions(null,party,rate.boardName,r,remarks)];
    const minima=prices.fields.filter(f=>f.scope.endsWith('PUBLIC_MINIMUM'));
+   const bandPrices=band?inspectedBandPriceFacts(bandProbePlan(journal.context.config,h.hotelId,initialSearch.response.response.body.sha256),p.response,target,p===searchPair?'SEARCH':'PREBOOK'):null;
+   const thresholdScope=bandPrices?{version:'stayopti.single-unit-threshold-scope@1',recordSha256:r.recordSha256,pointer:r.pointer,units:1,rateCount:1,qualified:bandPrices.sspResolution.status!=='BLOCKED',
+    observations:bandPrices.sspResolution.sources.map(x=>({level:({'rate.suggestedSellingPrice':'SELECTED_RATE','offer.suggestedSellingPrice':'SELECTED_OFFER','prebook.suggestedSellingPrice':'VERIFICATION'})[x.field],presence:x.presence,money:x.parsed}))}:null;
    return {identity:{provider:config.protocol==='LITEAPI_DOCUMENTARY@1'?'LiteAPI':'Synthetic Attestation',propertyId:h.hotelId,offerId:o.offerId,roomId:observed.binding?.mappedRoomId??null,providerVersion:{state:'UNKNOWN',reason:'NO_PROVIDER_REVISION_ATTESTED'},observationId:hash({sha256:ref.recordSha256,pointer}),originalOfferSha256:hash(o),source:ref},search:party,
     representationIssues:[...d.issues.filter(x=>!x.startsWith('RETURNED_CHILD_AGES_MISMATCH'))],childAgeEchoes:[d.hotel,d.offer,rate].flatMap(v=>['childrenAges','children','childAges'].filter(k=>Object.hasOwn(v,k)).map(k=>({field:k,value:v[k]}))),
-    price:{observed:prices.fields.find(f=>f.field==='retailRate.total')?.parsed??null,publicMinimum:{applicability:minima.some(m=>m.presence==='PRESENT')?'APPLIES':'UNKNOWN',amounts:minima.filter(m=>m.parsed).map(m=>m.parsed),issues:prices.issues.filter(x=>x!=='OBSERVED_PUBLIC_PRICE_BELOW_SSP')},coverage:fiscal.representation==='NULL_ALL_INCLUDED'?'DOCUMENTED_ALL_INCLUDED':'UNKNOWN',components:fiscal.components.map(c=>({amount:c.sourceAmount,currency:c.currency??null,inclusion:c.included===true?'INCLUDED':c.included===false?'EXCLUDED':'UNKNOWN',kind:c.mandatory===false?'OPTIONAL':c.mandatory===true?'MANDATORY':'UNKNOWN',basis:['TOTAL_STAY','PER_STAY'].includes(c.calculationBasis)?'TOTAL_STAY':'UNKNOWN'})),issues:[...fiscal.issues.filter(x=>!prices.issues.includes(x)&&x!=='REMARKS_REQUIRE_COMMERCIAL_QUALIFICATION'),...(fiscal.representation==='COMPONENT_LIST'?['COMPONENT_LIST_EXHAUSTIVENESS_NOT_ATTESTED']:[])],source:r},
+    price:{observed:prices.fields.find(f=>f.field==='retailRate.total')?.parsed??null,publicMinimum:{applicability:minima.some(m=>m.presence==='PRESENT')?'APPLIES':'UNKNOWN',amounts:minima.filter(m=>m.parsed).map(m=>m.parsed),issues:prices.issues.filter(x=>x!=='OBSERVED_PUBLIC_PRICE_BELOW_SSP'),...(thresholdScope?{singleStayScope:thresholdScope}:{})},coverage:fiscal.representation==='NULL_ALL_INCLUDED'?'DOCUMENTED_ALL_INCLUDED':'UNKNOWN',components:fiscal.components.map(c=>({amount:c.sourceAmount,currency:c.currency??null,inclusion:c.included===true?'INCLUDED':c.included===false?'EXCLUDED':'UNKNOWN',kind:c.mandatory===false?'OPTIONAL':c.mandatory===true?'MANDATORY':'UNKNOWN',basis:['TOTAL_STAY','PER_STAY'].includes(c.calculationBasis)?'TOTAL_STAY':'UNKNOWN'})),issues:[...fiscal.issues.filter(x=>!prices.issues.includes(x)&&x!=='REMARKS_REQUIRE_COMMERCIAL_QUALIFICATION'),...(fiscal.representation==='COMPONENT_LIST'?['COMPONENT_LIST_EXHAUSTIVENESS_NOT_ATTESTED']:[])],source:r},
     accommodation:{capacity:status(cmp?.partyCapacityStatus),sleeping:status(cmp?.sleepingAssessment?.status),sourcesAgree:cmp?.compatibility==='CONFLICTING'?'CONFLICTING':cmp?.roomFound?'SUPPORTED':'UNKNOWN',issues:cmp?.issues??['MAPPED_ROOM_MISSING'],source:detailRef,originalComparison:cmp},conditions,
     terms:{meal:termsValue.mealPlan,cancellation:historicalCancellationInstants(rate.cancellationPolicies),cancellationStatus:termsValue.cancellationStatus,payment:termsValue.payment==='unknown'?'UNKNOWN':'KNOWN',source:r},
     availability:{state:d.issues.includes('NEGATIVE_AVAILABILITY_IN_RETURNED_RECORD')?'UNAVAILABLE':'OBSERVED_AVAILABLE',source:r},commercialVerification:'NOT_OBSERVED',sessionRetrieval:'NOT_OBSERVED',
     time:{observedAt:p.response.completedAt,detailObservedAt:dp?.response.completedAt??null,providerExpiryObservations:[readDocumentaryResponse(p===searchPair?searchDoc:vd),d.hotel,d.offer,rate].flatMap(x=>x?['validUntil','expiresAt'].filter(k=>Object.hasOwn(x,k)).map(k=>x[k]):[]),evaluatedAt:journal.events.at(-1).at},trace:{prices,fiscal,terms:termsValue,room:cmp,originalRate:structuredClone(rate)}};
   };
   const a=base(observed,searchPair,ref),b=vp?base(verified,vp,source(vp,'data.roomTypes[0]')):null;
-  const continuityIssues=duplicate?['DUPLICATE_OBSERVATION_RETAINED_NOT_ANOTHER_ALTERNATIVE']:[];
+  const continuityIssues=[...(duplicate?['DUPLICATE_OBSERVATION_RETAINED_NOT_ANOTHER_ALTERNATIVE']:[]),...(bandResult?.reasons??[])];
   if(vp){if(vp.request.body.offerId!==o.offerId)continuityIssues.push('EXACT_OBSERVED_OFFER_REQUEST_REQUIRED');
    if(verified?.issue)continuityIssues.push(verified.issue);
    if(observed.rate&&verified?.rate){
@@ -80,5 +101,7 @@ export function normalizeAuthenticatedComparisonCapture(capture,priceVersion){
    merit:{name:typeof prop?.name==='string'?prop.name:h.hotelId,stars:typeof prop?.starRating==='number'?prop.starRating:null,features:prop?documentaryDetail(detailRecord,h.hotelId).facilityObservations.map(x=>x.value):[],reviewScore:null,reviewCount:null,ratingReason:'SCALE_LINK_NOT_QUALIFIED_BY_THIS_INGRESS'},
    originalSources:[ref,...(detailRef?[detailRef]:[]),...(vp?[source(vp,'data')]:[])]});
  }
- const result=freeze({version:priceVersion?'stayopti.authenticated-commercial-facts@2.1':'stayopti.authenticated-commercial-facts@2',origin:capture.origin,scenario:config.scenario,offers,sourceSetFingerprint:hash({journal:journal.lastEventSha256,selection}),journalFingerprint:journal.lastEventSha256,selection,observationWindow:records.filter(r=>r.response).map(r=>({kind:r.request.kind,at:r.response.completedAt})),engineInvocations:0,policyInvocations:0});issued.add(result);return result;
+ }
+ }
+ const result=freeze({version:priceVersion?'stayopti.authenticated-commercial-facts@2.1':'stayopti.authenticated-commercial-facts@2',...(band?{pilotMinimumDistinctProperties:10,acquisitionPricePolicy:journal.context.config.pricePolicy,acquisitionAssessment:capture.progress,normalizationExclusions}:{}),origin:capture.origin,scenario:config.scenario,offers,sourceSetFingerprint:hash({journal:journal.lastEventSha256,selection}),journalFingerprint:journal.lastEventSha256,selection,observationWindow:records.filter(r=>r.response).map(r=>({kind:r.request.kind,at:r.response.completedAt})),engineInvocations:0,policyInvocations:0});issued.add(result);return result;
 }

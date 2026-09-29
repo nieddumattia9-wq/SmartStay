@@ -415,3 +415,37 @@ rewrites the consumed result. Final delivery must verify direct remote equality,
 pending commits, empty staging, main and protected25 preservation. No _003,
 new operational inventory/literal, real key access, acquisition or engine call.
 A02 remains HOLD.
+
+## D-0078 — observed EUR whole-stay band and bounded ten-property pilot (2026-09-29)
+
+Mattia explicitly authorizes S <= P <= S+5 EUR for the actual returned price
+of one offer/unit over the whole stay. S+1 is a calculation objective, not a
+provider promise. This is a local commercial decision, not a LiteAPI threshold
+or general continuity tolerance. Exact minor units, all applicable SSP floors,
+R1 source/scope qualifications and R2 conditions-first matching are preserved.
+Observed Rates/prebook price equality is still mandatory; account markup,
+merit weights, roles and public behavior remain unchanged.
+
+Implement opt-in probe component@1.4 and public-price-policy@2 through the
+authenticated adapter and existing independent A02 consumer. Preserve retail,
+every SSP source, local intention and actual verified amount separately.
+No scope/identity hash or caller boolean substitutes for authenticated facts.
+The ten-property requirement is bounded pilot metadata, not a product gate.
+MAX31@1: city SEARCH1 (window200/rates3), up to10 single-property REQUOTE,
+10 details and10 prebook; fixed deterministic hash sample, no substitution,
+iteration, retry, redirect, pagination or transfer of sublimits. A direct
+in-band observation needs no REQUOTE. Missing/invalid candidates stay visible.
+Acquisition and engine execution require separate explicit authorities.
+
+Final isolated Windows PS5.1/DPAPI/local transport evidence: V3 3648/3648
+(55 new), V2 242/242, lifecycle665 PASS/17 existing skips, security29,
+release101, TypeScript/build PASS; 44 old-version output comparisons identical.
+Full synthetic set reaches decision/binding/shadow/replay; incomplete nine
+does not execute. Initial failures retained and explained in the phase report,
+including environment-only junction/line-ending repairs, no legacy assertion
+changes. No CI claim. Authorized selective work-branch publication only,
+with direct remote readback/pending-commit report required. Main/protected25,
+unrelated work and historical receipts remain preserved. New private plan is
+HOLD pending documented permitted-use/provider-retention applicability; no
+Production key access, provider acquisition, private engine run or old-case
+reopening occurred. No personalized provider letter is imposed.
